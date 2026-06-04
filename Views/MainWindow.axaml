@@ -1,0 +1,320 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:ParallelReactor.ViewModels"
+        xmlns:ctl="using:ParallelReactor.Controls"
+        xmlns:conv="using:ParallelReactor.Converters"
+        mc:Ignorable="d"
+        x:Class="ParallelReactor.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Width="1280" Height="800"
+        MaxWidth="1280" MaxHeight="800"
+        SystemDecorations="None"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        Title="霍桐多通道平行反应仪控制系统"
+        Background="#0c0c0f"
+        FontFamily="Inter, Noto Sans SC, sans-serif">
+
+  <Window.Resources>
+    <conv:InverseBoolConverter x:Key="InvBool" />
+    <conv:EqualsConverter x:Key="Eq" />
+    <conv:StateColorConverter x:Key="StColor" />
+  </Window.Resources>
+
+  <!-- 全屏背景 + 4 行网格（64 / 46 / 1fr / 58）-->
+  <Panel>
+    <Panel.Background>
+      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+        <GradientStop Color="#131316" Offset="0" />
+        <GradientStop Color="#0e0e11" Offset="0.45" />
+        <GradientStop Color="#160d10" Offset="1" />
+      </LinearGradientBrush>
+    </Panel.Background>
+
+    <Grid RowDefinitions="64,46,*,88">
+
+      <!-- ============ 顶栏 ============ -->
+      <Grid Grid.Row="0" Margin="22,0">
+        <!-- 左：品牌（logo 用图片，放 Assets/logo.png 替换）-->
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                    HorizontalAlignment="Left">
+          <Image Source="avares://ParallelReactor/Assets/logo.png" Height="32"
+                 Stretch="Uniform" VerticalAlignment="Center" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="霍桐仪器" FontSize="15" FontWeight="Bold"
+                       Foreground="{DynamicResource OnDark}" LetterSpacing="2" />
+            <TextBlock Text="HUOTONG INSTRUMENT" FontSize="8.5" FontWeight="Medium"
+                       Foreground="{DynamicResource Body}" LetterSpacing="1.8" Margin="0,3,0,0" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 中：标题（绝对居中）-->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+          <TextBlock Text="多通道平行反应仪" FontSize="20" FontWeight="SemiBold"
+                     Foreground="{DynamicResource OnDark}" LetterSpacing="6"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR · 8CH" FontSize="9" FontWeight="Medium"
+                     Foreground="{DynamicResource Body}" LetterSpacing="3.5" Margin="0,4,0,0"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
+
+        <!-- 右：信息区 -->
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                    HorizontalAlignment="Right">
+          <!-- WiFi（SVG 矢量还原：三段弧 + 底部圆点，红色）-->
+          <Canvas Width="18" Height="18" VerticalAlignment="Center">
+            <Canvas.RenderTransform>
+              <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+            </Canvas.RenderTransform>
+            <Path Data="M1.42 9a16 16 0 0 1 21.16 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Path Data="M5 12.55a11 11 0 0 1 14 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Path Data="M8.53 16.11a6 6 0 0 1 6.95 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Ellipse Canvas.Left="11" Canvas.Top="19" Width="2" Height="2"
+                     Fill="{DynamicResource AccentBright}" />
+          </Canvas>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 服务热线 -->
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="服务热线" FontSize="9" Foreground="{DynamicResource Mute}"
+                       LetterSpacing="3" HorizontalAlignment="Right" />
+            <TextBlock Text="021-67230701" FontSize="13" FontWeight="Bold"
+                       Foreground="{DynamicResource OnDark}" LetterSpacing="0.5"
+                       HorizontalAlignment="Right" Margin="0,1,0,0" />
+          </StackPanel>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 时钟 -->
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding ClockTime}" FontSize="14" FontWeight="SemiBold"
+                       Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
+            <TextBlock Text="{Binding ClockDate}" FontSize="9.5" Foreground="{DynamicResource Body}"
+                       HorizontalAlignment="Right" Margin="0,1,0,0" />
+          </StackPanel>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 通知铃 -->
+          <Border Width="34" Height="34" CornerRadius="11" Background="{DynamicResource GlassBright}"
+                  BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1">
+            <Panel>
+				<Image Source="avares://ParallelReactor/Assets/icons/bell.png" Width="28" Height="28"
+		 HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <Border Background="{DynamicResource AccentBright}" CornerRadius="9"
+                      MinWidth="17" Height="17" Padding="4,0"
+                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-4,-4,0">
+                <TextBlock Text="2" FontSize="10" FontWeight="Bold" Foreground="White"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Panel>
+          </Border>
+          <!-- 头像（用图片，放 Assets/user-avatar.png 替换）-->
+          <Border Width="34" Height="34" CornerRadius="17"
+                  BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+            <Image Source="avares://ParallelReactor/Assets/user-avatar.png" Width="30" Height="30"
+                   Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- ============ 工具栏 ============ -->
+      <Border Grid.Row="1" Margin="22,0" Height="36" VerticalAlignment="Center"
+              CornerRadius="11" Background="{DynamicResource GlassSoft}"
+              BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="7,0">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="tbtn go" Command="{Binding RunAllCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="avares://ParallelReactor/Assets/icons/run.png" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="开始运行" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="tbtn" Command="{Binding StopAllCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="avares://ParallelReactor/Assets/icons/stop.png" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="全部停止" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
+            <Button Classes="tbtn">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="avares://ParallelReactor/Assets/icons/recipe.png" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="配方模板" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="tbtn">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="avares://ParallelReactor/Assets/icons/leak.png" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="泄漏测试" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
+            <Button Classes="tbtn man" Classes.on="{Binding ManualValve}"
+                    Command="{Binding ToggleManualCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Image Source="avares://ParallelReactor/Assets/icons/manual.png" Width="14" Height="14" VerticalAlignment="Center" />
+                <TextBlock Text="手动阀控" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+            <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource Body}">
+              <Run Text="运行 " /><Run Text="{Binding RunCountText}" Foreground="{DynamicResource GreenBright}" FontWeight="Bold" /><Run Text=" 通道" />
+            </TextBlock>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" />
+            <Button Classes="estop" Command="{Binding EstopCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <Image Source="avares://ParallelReactor/Assets/icons/estop.png" Width="13" Height="13" VerticalAlignment="Center" />
+                <TextBlock Text="急停" VerticalAlignment="Center" LetterSpacing="1.6" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- ============ 首页面板 ============ -->
+      <Border Grid.Row="2" Margin="22,6" CornerRadius="18"
+              Background="{DynamicResource Glass}"
+              BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+        <Grid RowDefinitions="Auto,*">
+          <!-- 面板头 -->
+          <Grid Grid.Row="0" Margin="20,16,20,8" ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="反应器与气路系统" FontSize="16" FontWeight="SemiBold"
+                         Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="Reactor &amp; Gas Network" FontSize="9.5"
+                         Foreground="{DynamicResource Body}" LetterSpacing="1.5" Margin="0,2,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <Border Width="14" Height="4" CornerRadius="2">
+                  <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                      <GradientStop Color="#84cc16" Offset="0" />
+                      <GradientStop Color="#a3e635" Offset="1" />
+                    </LinearGradientBrush>
+                  </Border.Background>
+                </Border>
+                <TextBlock Text="气体流通" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <Border Width="14" Height="4" CornerRadius="2" Background="#38FFFFFF" />
+                <TextBlock Text="共用总管" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="点击反应釜可控制 · 阀门需开启手动阀控"
+                         FontSize="11" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Grid>
+
+          <!-- 气路图 -->
+          <ctl:SchematicControl Grid.Row="1" x:Name="Schematic" Margin="14,0,14,12" />
+        </Grid>
+      </Border>
+
+      <!-- ============ 底栏 ============ -->
+      <Grid Grid.Row="3" Margin="22,8,22,0" ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="tbtn" Background="Transparent"
+                Command="{Binding LogoutCommand}" Foreground="{DynamicResource Body}">
+          <TextBlock Text="← 退出登录" FontSize="12" />
+        </Button>
+
+        <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
+                CornerRadius="999" Height="52"
+                Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}"
+                BorderThickness="1" Padding="3">
+          <StackPanel Orientation="Horizontal" Spacing="3" x:Name="Pills" VerticalAlignment="Stretch">
+            <Button Classes="pill active" Command="{Binding SwitchTabCmdCommand}" CommandParameter="home">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 12l9-9 9 9 M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" />
+                <TextBlock Classes="en" Text="HOME" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="总览" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pill" Command="{Binding SwitchTabCmdCommand}" CommandParameter="program">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 3h18v6H3z M3 15h18v6H3z M7 9v6 M17 9v6" />
+                <TextBlock Classes="en" Text="PROGRAM" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="程序" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pill" Command="{Binding SwitchTabCmdCommand}" CommandParameter="graph">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 3v18h18 M7 14l4-4 4 3 5-6" />
+                <TextBlock Classes="en" Text="GRAPH" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="曲线" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pill" Command="{Binding SwitchTabCmdCommand}" CommandParameter="data">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M4 5c0 1.66 3.58 3 8 3s8-1.34 8-3-3.58-3-8-3-8 1.34-8 3z M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5 M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+                <TextBlock Classes="en" Text="DATA" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="记录" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pill" Command="{Binding SwitchTabCmdCommand}" CommandParameter="alarm">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 8v4 M12 16h0.01" />
+                <TextBlock Classes="en" Text="ALARM" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="报警" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pill" Command="{Binding SwitchTabCmdCommand}" CommandParameter="setting">
+              <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <TextBlock Classes="en" Text="SETTING" VerticalAlignment="Center" />
+                <TextBlock Classes="sep" Text="·" VerticalAlignment="Center" />
+                <TextBlock Classes="zh" Text="设置" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Column="2" HorizontalAlignment="Right">
+          <TextBlock Text="MODEL" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource Mute}"
+                     LetterSpacing="2" HorizontalAlignment="Right" />
+          <TextBlock Text="HT-PR8" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource OnDark}"
+                     LetterSpacing="1" HorizontalAlignment="Right" Margin="0,2,0,0" />
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <!-- ============ 抽屉遮罩 ============ -->
+    <Border x:Name="Backdrop" Background="#80060609"
+            Opacity="{Binding Drawer.IsOpen, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
+            IsHitTestVisible="{Binding Drawer.IsOpen}"
+            PointerPressed="OnBackdropPressed">
+      <Border.Transitions>
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+        </Transitions>
+      </Border.Transitions>
+    </Border>
+
+    <!-- ============ 抽屉（从右侧滑入动画）============ -->
+    <ctl:DrawerView x:Name="Drawer" DataContext="{Binding Drawer}"
+                    HorizontalAlignment="Right" Width="392"
+                    RenderTransform="{Binding IsOpen, Converter={x:Static conv:BoolToTranslateConverter.Instance}}">
+      <ctl:DrawerView.Transitions>
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform"
+                                         Duration="0:0:0.28" Easing="CubicEaseOut" />
+        </Transitions>
+      </ctl:DrawerView.Transitions>
+    </ctl:DrawerView>
+    <!-- ============ Toast 容器 ============ -->
+    <StackPanel x:Name="ToastHost" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,80" Spacing="8" />
+
+    <!-- ============ 屏幕全键盘（中央模态）============ -->
+    <Border Background="#A6000000" IsVisible="{Binding Keyboard.IsOpen}">
+      <ctl:OnScreenKeyboard DataContext="{Binding Keyboard}" />
+    </Border>
+  </Panel>
+</Window>

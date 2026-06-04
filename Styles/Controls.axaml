@@ -1,0 +1,257 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ============ 工具栏按钮 .tbtn ============ -->
+  <Style Selector="Button.tbtn">
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.tbtn /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="Button.tbtn:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+  </Style>
+  <Style Selector="Button.tbtn.go">
+    <Setter Property="Foreground" Value="{DynamicResource GreenBright}" />
+  </Style>
+  <Style Selector="Button.tbtn.man.on">
+    <Setter Property="Foreground" Value="{DynamicResource Amber}" />
+    <Setter Property="Background" Value="#1FF0A830" />
+    <Setter Property="BorderBrush" Value="#59F0A830" />
+  </Style>
+
+  <!-- ============ 急停按钮（工具栏内 estop-tb 变体）============ -->
+  <Style Selector="Button.estop">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="#f06b78" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#e0394c" Offset="0" />
+          <GradientStop Color="#A41626" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.estop:pointerover /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#f04a5d" Offset="0" />
+          <GradientStop Color="#b51a2c" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.estop /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+
+  <!-- ============ 底栏导航药丸 .nav-pill（自定义模板）============ -->
+  <Style Selector="Button.pill">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="{TemplateBinding Background}"
+                  CornerRadius="999" Padding="14,0"
+                  VerticalAlignment="Stretch">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.pill:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+  </Style>
+  <Style Selector="Button.pill.active">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.pill.active /template/ Border#bg">
+    <Setter Property="BoxShadow" Value="0 4 18 0 #66e0394c" />
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#A41626" Offset="0" />
+          <GradientStop Color="#d4435a" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- ============ 抽屉内通用按钮 .btn ============ -->
+  <Style Selector="Button.dbtn">
+    <Setter Property="Height" Value="38" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+  <Style Selector="Button.dbtn:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+  <Style Selector="Button.dbtn.pri">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#A41626" Offset="0" />
+          <GradientStop Color="#d4435a" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.dbtn.go">
+    <Setter Property="Background" Value="#2484cc16" />
+    <Setter Property="BorderBrush" Value="#5984cc16" />
+    <Setter Property="Foreground" Value="{DynamicResource GreenBright}" />
+  </Style>
+  <Style Selector="Button.dbtn.ghost">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
+  <!-- ============ 步进器按钮 ============ -->
+  <Style Selector="Button.step">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="17" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="Button.step:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+
+  <!-- ============ 分段选择按钮 .seg ============ -->
+  <Style Selector="Button.seg">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="sb" Background="{TemplateBinding Background}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center"
+                              Padding="6,7" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.seg:pointerover /template/ Border#sb">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+  <Style Selector="Button.seg.on">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.seg.on /template/ Border#sb">
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="85%,100%">
+          <GradientStop Color="#A41626" Offset="0" />
+          <GradientStop Color="#d4435a" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- 导航药丸内的线框图标 -->
+  <Style Selector="Path.navico">
+    <Setter Property="Width" Value="13" />
+    <Setter Property="Height" Value="13" />
+    <Setter Property="Stretch" Value="Uniform" />
+    <Setter Property="Fill" Value="Transparent" />
+    <Setter Property="Stroke" Value="{DynamicResource Body}" />
+    <Setter Property="StrokeThickness" Value="2" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.pill.active Path.navico">
+    <Setter Property="Stroke" Value="White" />
+  </Style>
+  <Style Selector="Button.pill:pointerover Path.navico">
+    <Setter Property="Stroke" Value="{DynamicResource OnDark}" />
+  </Style>
+  <!-- 导航药丸内的文字三段：英文 / 分隔点 / 中文 -->
+  <Style Selector="Button.pill TextBlock.en">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="LetterSpacing" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+  </Style>
+  <Style Selector="Button.pill TextBlock.sep">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="Button.pill TextBlock.zh">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+  </Style>
+  <Style Selector="Button.pill:pointerover TextBlock.en, Button.pill:pointerover TextBlock.zh">
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+  </Style>
+  <Style Selector="Button.pill.active TextBlock.en, Button.pill.active TextBlock.zh">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.pill.active TextBlock.sep">
+    <Setter Property="Foreground" Value="#80FFFFFF" />
+  </Style>
+  <!-- 步进器中间可点击的数字（点击弹数字键盘）-->
+  <Style Selector="Button.numval">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.numval:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+</Styles>

@@ -1,0 +1,48 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ParallelReactor.App"
+             RequestedThemeVariant="Dark">
+
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://ParallelReactor/Styles/Controls.axaml" />
+  </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <!-- ============ 颜色（对应 HTML :root 变量）============ -->
+      <Color x:Key="AccentColor">#A41626</Color>
+      <Color x:Key="AccentBrightColor">#e0394c</Color>
+      <Color x:Key="VioletColor">#d4435a</Color>
+      <Color x:Key="GreenColor">#84cc16</Color>
+      <Color x:Key="GreenBrightColor">#a3e635</Color>
+      <Color x:Key="AmberColor">#f0a830</Color>
+      <Color x:Key="OnDarkColor">#f6f6f8</Color>
+      <Color x:Key="BodyColor">#a4a4b0</Color>
+      <Color x:Key="MuteColor">#66666f</Color>
+
+      <!-- 画刷 -->
+      <SolidColorBrush x:Key="Accent" Color="#A41626" />
+      <SolidColorBrush x:Key="AccentBright" Color="#e0394c" />
+      <SolidColorBrush x:Key="Violet" Color="#d4435a" />
+      <SolidColorBrush x:Key="Green" Color="#84cc16" />
+      <SolidColorBrush x:Key="GreenBright" Color="#a3e635" />
+      <SolidColorBrush x:Key="GreenGlow" Color="#66a3e635" />
+      <SolidColorBrush x:Key="Amber" Color="#f0a830" />
+      <SolidColorBrush x:Key="OnDark" Color="#f6f6f8" />
+      <SolidColorBrush x:Key="Body" Color="#a4a4b0" />
+      <SolidColorBrush x:Key="Mute" Color="#66666f" />
+      <SolidColorBrush x:Key="AccentGlow" Color="#66e0394c" />
+
+      <!-- 玻璃拟态 -->
+      <SolidColorBrush x:Key="Glass" Color="#9E26262C" />
+      <SolidColorBrush x:Key="GlassSoft" Color="#73303037" />
+      <SolidColorBrush x:Key="GlassBright" Color="#9942424A" />
+      <SolidColorBrush x:Key="GlassLine" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="GlassLine2" Color="#21FFFFFF" />
+
+      <FontFamily x:Key="Sans">Inter, Noto Sans SC, sans-serif</FontFamily>
+    </ResourceDictionary>
+  </Application.Resources>
+
+</Application>
