@@ -1,0 +1,341 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="using:ParallelReactor.Models"
+             xmlns:vm="using:ParallelReactor.ViewModels"
+             xmlns:conv="using:ParallelReactor.Converters"
+             x:Class="ParallelReactor.Controls.ProgramView"
+             x:CompileBindings="False"
+             x:DataType="vm:ProgramViewModel">
+
+  <UserControl.Resources>
+    <conv:InverseBoolConverter x:Key="InvBool" />
+    <conv:StateColorConverter x:Key="StColor" />
+  </UserControl.Resources>
+
+  <Grid RowDefinitions="Auto,Auto,*">
+
+    <!-- ===== 标题 ===== -->
+    <Grid Grid.Row="0" Margin="20,14,20,2" ColumnDefinitions="Auto,*,Auto">
+      <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
+        <TextBlock Text="实验程序" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+        <TextBlock Text="EXPERIMENT PROGRAM" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+                   Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
+      </StackPanel>
+      <TextBlock Grid.Column="2" Text="每通道独立编辑 · 上/下按钮排序" FontSize="11"
+                 Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
+    </Grid>
+
+    <!-- ===== 通道选择条 ===== -->
+    <Grid Grid.Row="1" Margin="0,8,0,10" ColumnDefinitions="*,Auto">
+      <Border Grid.ColumnSpan="2" Height="1" VerticalAlignment="Bottom"
+              Background="{DynamicResource GlassLine}" />
+      <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                    Padding="22,0,0,8">
+        <ItemsControl ItemsSource="{Binding Channels}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:ProgramChannel">
+              <Button Classes="pch" Classes.on="{Binding IsCurrent}"
+                      IsEnabled="{Binding Reactor.IsIdle, Converter={StaticResource InvBool}}"
+                      Command="{Binding $parent[ItemsControl].DataContext.SelectChannelCommand}"
+                      CommandParameter="{Binding}">
+                <Panel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse Width="6" Height="6" Fill="{Binding Reactor.State, Converter={StaticResource StColor}}" />
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding SmallText}" Classes="pchsmall" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <Ellipse Width="6" Height="6" Fill="#3aa6ff" HorizontalAlignment="Right" VerticalAlignment="Top"
+                           Margin="0,-3,-3,0" IsVisible="{Binding IsModified}" />
+                </Panel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
+                  Margin="12,0,22,8">
+        <Ellipse Width="6" Height="6" Fill="#3aa6ff" VerticalAlignment="Center" />
+        <TextBlock Text="已独立修改" FontSize="10.5" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+
+    <!-- ===== 三栏：步骤库 / 时间线 / 检查器 ===== -->
+    <Grid Grid.Row="2" Margin="18,0,18,14" ColumnDefinitions="200,*,290">
+
+      <!-- 左：步骤库 -->
+      <Border Grid.Column="0" Classes="progcol" Padding="10">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="步骤库" Classes="sidehd" />
+          <Border DockPanel.Dock="Bottom" Classes="sidetip">
+            <TextBlock Text="点击步骤即可添加到当前程序末尾（拖拽下一轮接入）"
+                       FontSize="10.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="15" />
+          </Border>
+          <ItemsControl ItemsSource="{Binding Palette}" Margin="0,6,0,8">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:PaletteItem">
+                <Button Classes="pstep"
+                        Command="{Binding $parent[ItemsControl].DataContext.AddStepCommand}"
+                        CommandParameter="{Binding}">
+                  <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                    <Border Width="22" Height="22" CornerRadius="6" Background="#0AFFFFFF">
+                      <Viewbox Width="12" Height="12">
+                        <Canvas Width="24" Height="24">
+                          <Path Data="{Binding Icon}" Stroke="{Binding IconBrush}" StrokeThickness="2"
+                                StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                        </Canvas>
+                      </Viewbox>
+                    </Border>
+                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium"
+                               Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+
+      <!-- 中：时间线 -->
+      <Border Grid.Column="1" x:Name="DropZone" Classes="progcol" Margin="12,0" DragDrop.AllowDrop="True">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <!-- 头 -->
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="0" Margin="16,11"
+                      VerticalAlignment="Center">
+            <TextBlock Text="{Binding ProgTitle}" FontSize="13.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding ProgSub}" FontSize="11" Foreground="{DynamicResource Mute}"
+                       VerticalAlignment="Center" Margin="8,0,0,0" />
+            <TextBlock VerticalAlignment="Center" Margin="14,0,0,0" FontSize="11"
+                       Foreground="{DynamicResource Body}" HorizontalAlignment="Right">
+              <Run Text="共 " /><Run Text="{Binding StepCountText}" Foreground="{DynamicResource OnDark}" FontWeight="SemiBold" /><Run Text=" 步 · 估计 " /><Run Text="{Binding DurText}" Foreground="{DynamicResource OnDark}" FontWeight="SemiBold" />
+            </TextBlock>
+          </StackPanel>
+          <Border Grid.Row="0" Height="1" VerticalAlignment="Bottom" Background="{DynamicResource GlassLine}" />
+
+          <!-- 体 -->
+          <ScrollViewer Grid.Row="1" Padding="14,12" VerticalScrollBarVisibility="Auto">
+            <Panel>
+              <!-- 空状态 -->
+              <Border Classes="progempty" IsVisible="{Binding IsEmpty}">
+                <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Viewbox Width="22" Height="22" HorizontalAlignment="Center">
+                    <Canvas Width="24" Height="24">
+                      <Path Data="M3 5h18v14H3z M3 10h18 M9 5v14" Stroke="{DynamicResource Mute}"
+                            StrokeThickness="1.6" Fill="Transparent" />
+                    </Canvas>
+                  </Viewbox>
+                  <StackPanel Spacing="2" HorizontalAlignment="Center">
+                    <TextBlock Text="空程序" FontSize="12" Foreground="{DynamicResource Body}" HorizontalAlignment="Center" />
+                    <TextBlock Text="从左侧步骤库点击步骤开始构建" FontSize="11"
+                               Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <!-- 步骤列表 -->
+              <ListBox x:Name="Timeline" Classes="timeline" ItemsSource="{Binding Steps}"
+                       SelectedItem="{Binding SelectedStep, Mode=TwoWay}"
+                       IsVisible="{Binding IsEmpty, Converter={StaticResource InvBool}}"
+                       Background="Transparent" BorderThickness="0" Padding="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:ProgramStep">
+                    <Border Classes="pblk">
+                      <Grid ColumnDefinitions="24,*,Auto">
+                        <TextBlock Grid.Column="0" Text="{Binding IndexText}" Classes="pidx"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                            <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                              <Canvas Width="24" Height="24">
+                                <Path Data="{Binding Icon}" Stroke="{Binding IconBrush}" StrokeThickness="2"
+                                      StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                              </Canvas>
+                            </Viewbox>
+                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                            <Border Classes="ptag" VerticalAlignment="Center">
+                              <TextBlock Text="{Binding Chip}" FontSize="9" FontWeight="SemiBold"
+                                         Foreground="{DynamicResource Mute}" LetterSpacing="1" />
+                            </Border>
+                          </StackPanel>
+                          <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource Body}"
+                                     Margin="0,3,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Classes="pact" Orientation="Horizontal" Spacing="2"
+                                    VerticalAlignment="Center">
+                          <Button Classes="pactbtn" ToolTip.Tip="上移"
+                                  Command="{Binding $parent[ListBox].DataContext.MoveUpCommand}"
+                                  CommandParameter="{Binding}">
+                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M18 15l-6-6-6 6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                          </Button>
+                          <Button Classes="pactbtn" ToolTip.Tip="下移"
+                                  Command="{Binding $parent[ListBox].DataContext.MoveDownCommand}"
+                                  CommandParameter="{Binding}">
+                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M6 9l6 6 6-6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                          </Button>
+                          <Button Classes="pactbtn" ToolTip.Tip="删除"
+                                  Command="{Binding $parent[ListBox].DataContext.DeleteStepCommand}"
+                                  CommandParameter="{Binding}">
+                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M18 6L6 18 M6 6l12 12" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                          </Button>
+                        </StackPanel>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Panel>
+          </ScrollViewer>
+
+          <!-- 底部操作栏 -->
+          <Border Grid.Row="2" Height="1" VerticalAlignment="Top" Background="{DynamicResource GlassLine}" />
+          <DockPanel Grid.Row="2" Margin="14,10" LastChildFill="False">
+            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M10 9l5 3-5 3z" Fill="White" /></Canvas></Viewbox>
+                <TextBlock Text="下发并运行" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding ApplyOthersCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <TextBlock Text="应用到其他通道" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding InsertLeakCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <TextBlock Text="插入泄漏测试" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="pbtn" Command="{Binding SaveTemplateCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <TextBlock Text="保存为模板" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </DockPanel>
+        </Grid>
+      </Border>
+
+      <!-- 右：参数检查器 -->
+      <Border Grid.Column="2" Classes="progcol" Padding="14">
+        <Panel>
+          <!-- 空状态 -->
+          <StackPanel IsVisible="{Binding HasSelection, Converter={StaticResource InvBool}}"
+                      VerticalAlignment="Center" Spacing="2">
+            <Viewbox Width="32" Height="32" HorizontalAlignment="Center" Margin="0,0,0,8">
+              <Canvas Width="24" Height="24">
+                <Path Data="M9 17V7l8 5-8 5z" Stroke="{DynamicResource Mute}" StrokeThickness="1.5" Fill="Transparent" />
+                <Path Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" Stroke="{DynamicResource Mute}" StrokeThickness="1.5" Fill="Transparent" />
+              </Canvas>
+            </Viewbox>
+            <TextBlock Text="选择左侧步骤" FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+            <TextBlock Text="查看并编辑参数" FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding EmptyHint}" FontSize="10.5" Foreground="{DynamicResource Mute}"
+                       HorizontalAlignment="Center" Margin="0,8,0,0" />
+          </StackPanel>
+
+          <!-- 有选中 -->
+          <DockPanel IsVisible="{Binding HasSelection}">
+            <!-- 头 -->
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
+              <Border Width="24" Height="24" CornerRadius="6" Background="#0AFFFFFF">
+                <Viewbox Width="13" Height="13">
+                  <Canvas Width="24" Height="24">
+                    <Path Data="{Binding SelectedStep.Icon}" Stroke="{Binding SelectedStep.IconBrush}"
+                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                  </Canvas>
+                </Viewbox>
+              </Border>
+              <TextBlock Grid.Column="1" Text="{Binding SelectedStep.Name}" FontSize="13" FontWeight="SemiBold"
+                         Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" Margin="8,0,0,0" />
+              <Border Grid.Column="2" Classes="ichip" VerticalAlignment="Center">
+                <TextBlock Text="{Binding SelInfo}" FontSize="10" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Body}" />
+              </Border>
+            </Grid>
+            <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource GlassLine}" Margin="0,0,0,12" />
+            <!-- 字段 -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+              <ItemsControl ItemsSource="{Binding InspectorRows}">
+                <ItemsControl.DataTemplates>
+
+                  <!-- 普通字段 num/sel -->
+                  <DataTemplate DataType="models:StepField">
+                    <StackPanel Margin="0,0,0,11">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                        <TextBlock Text="{Binding Label}" Classes="flab" />
+                        <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="funit" />
+                      </Grid>
+                      <TextBox Classes="ipt" Text="{Binding Value, Mode=TwoWay}" IsVisible="{Binding IsNum}" />
+                      <ComboBox Classes="ipt" ItemsSource="{Binding Options}" HorizontalAlignment="Stretch"
+                                SelectedItem="{Binding Value, Mode=TwoWay}" IsVisible="{Binding IsSel}" />
+                    </StackPanel>
+                  </DataTemplate>
+
+                  <!-- 升温方式切换 -->
+                  <DataTemplate DataType="vm:HeatModeRow">
+                    <StackPanel Margin="0,0,0,11">
+                      <TextBlock Text="升温方式" Classes="flab" Margin="0,0,0,5" />
+                      <Border Classes="modeseg">
+                        <Grid ColumnDefinitions="*,*">
+                          <Button Classes="modebtn" Classes.on="{Binding IsFixed}"
+                                  Command="{Binding FixedCommand}" Content="定值升温" />
+                          <Button Grid.Column="1" Classes="modebtn" Classes.on="{Binding IsCurve}"
+                                  Command="{Binding CurveCommand}" Content="16 段曲线" />
+                        </Grid>
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+
+                  <!-- 曲线卡片 -->
+                  <DataTemplate DataType="vm:CurveRow">
+                    <Button Classes="curvecard" Command="{Binding EditCommand}" Margin="0,0,0,11">
+                      <StackPanel>
+                        <Border Classes="curvemini" Height="90">
+                          <Polyline Points="{Binding Points}" Stroke="#f0a830" StrokeThickness="1.6"
+                                    StrokeLineCap="Round" StrokeJoin="Round" />
+                        </Border>
+                        <Grid ColumnDefinitions="*,Auto" Margin="0,9,0,0">
+                          <StackPanel Orientation="Horizontal" Spacing="14">
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="段数" Classes="cvk" />
+                              <TextBlock Text="{Binding SegCountText}" Classes="cvv" />
+                            </StackPanel>
+                            <StackPanel Spacing="2">
+                              <TextBlock Text="终温" Classes="cvk" />
+                              <TextBlock Text="{Binding EndTempText}" Classes="cvv" />
+                            </StackPanel>
+                          </StackPanel>
+                          <Border Grid.Column="1" Classes="curveeditbtn" VerticalAlignment="Center">
+                            <TextBlock Text="编辑曲线 →" FontSize="11" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource Amber}" />
+                          </Border>
+                        </Grid>
+                      </StackPanel>
+                    </Button>
+                  </DataTemplate>
+
+                  <!-- 帮助 -->
+                  <DataTemplate DataType="vm:HelpRow">
+                    <Border Classes="phelp" Margin="0,2,0,0">
+                      <TextBlock Text="{Binding Text}" FontSize="10.5" Foreground="{DynamicResource Body}"
+                                 TextWrapping="Wrap" LineHeight="16" />
+                    </Border>
+                  </DataTemplate>
+
+                </ItemsControl.DataTemplates>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </Panel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

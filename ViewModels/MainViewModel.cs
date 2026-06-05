@@ -14,6 +14,16 @@ public partial class MainViewModel : ViewModelBase
     public ObservableCollection<GasInlet> GasInlets { get; } = new();
     public List<Recipe> Recipes { get; } = new();
 
+    // ============ 顶栏通知铃铛数据 ============
+    public ObservableCollection<Notification> Notifications { get; } = new();
+
+    public int NotifCount => Notifications.Count;
+    public bool HasNotif => Notifications.Count > 0;
+    public bool HasAlarm => Notifications.Any(n => n.Kind == "alarm");
+    public string NotifCountText => NotifCount.ToString();
+    public string NotifSummary => $"{NotifCount} 条未处理";
+    public string NotifTotalText => $"共 {NotifCount} 条";
+
     [ObservableProperty] private bool _ventOn;
     [ObservableProperty] private bool _manualValve;
     [ObservableProperty] private bool _isAdmin = true;
@@ -27,6 +37,7 @@ public partial class MainViewModel : ViewModelBase
 
     public DrawerViewModel Drawer { get; }
     public KeyboardViewModel Keyboard { get; } = new();
+    public ProgramViewModel Program { get; }
 
     // 气路图重绘信号（View 订阅后调用 InvalidateVisual）
     public event Action? SchematicInvalidated;
@@ -43,6 +54,7 @@ public partial class MainViewModel : ViewModelBase
         Drawer = new DrawerViewModel(this);
         SeedData();
         UpdateRunCount();
+        Program = new ProgramViewModel(this);
     }
 
     private void SeedData()
@@ -65,6 +77,13 @@ public partial class MainViewModel : ViewModelBase
         Recipes.Add(new Recipe { Id = "olefin-poly", Name = "烯烃聚合", Sub = "Ziegler-Natta · 高温高压", Tag = "聚合", TSp = 80, PSp = 350, RpmSp = 1000, Vol = 4, Blade = "锚式", End = "吹扫", Run = "01:30:00" });
         Recipes.Add(new Recipe { Id = "co-carbo", Name = "CO 羰基化", Sub = "低压 CO · 长反应时间", Tag = "有机", TSp = 120, PSp = 150, RpmSp = 600, Vol = 3, Blade = "桨式", End = "淬灭", Run = "06:00:00" });
         Recipes.Add(new Recipe { Id = "leak-test", Name = "空白泄漏测试", Sub = "仅充氮 · 不加热", Tag = "诊断", TSp = 25, PSp = 500, RpmSp = 0, Vol = 0, Blade = "桨式", End = "排空", Run = "00:40:00" });
+
+        Notifications.Add(Notification.Alarm(
+            "RV5 超压报警",
+            "RV5 压力已达到危险水平，超过 510 psi 阈值。密封圈仅承受 500 psi，继续加压有泄漏与喷射风险。"));
+        Notifications.Add(Notification.Advice(
+            "RV4 升温过慢",
+            "RV4 已升温 14 分钟仍未达到设定值。可能原因：缺少传热液、热电偶接触不良或相邻 RV 温差过大。"));
     }
 
     public Reactor? FindReactor(int id) => Reactors.FirstOrDefault(r => r.Id == id);

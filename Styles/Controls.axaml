@@ -254,4 +254,105 @@
   <Style Selector="Button.numval:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource GlassBright}" />
   </Style>
+
+  <!-- ============ 工具栏矢量图标 .tico（替代原 PNG）============ -->
+  <Style Selector="Path.tico">
+    <Setter Property="Stroke" Value="{DynamicResource Body}" />
+    <Setter Property="StrokeThickness" Value="2.2" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+    <Setter Property="Fill" Value="Transparent" />
+  </Style>
+  <Style Selector="Path.tico-fill">
+    <Setter Property="Fill" Value="{DynamicResource Body}" />
+  </Style>
+  <!-- 开始运行：绿 -->
+  <Style Selector="Button.tbtn.go Path.tico">
+    <Setter Property="Stroke" Value="{DynamicResource GreenBright}" />
+  </Style>
+  <Style Selector="Button.tbtn.go Path.tico-fill">
+    <Setter Property="Fill" Value="{DynamicResource GreenBright}" />
+  </Style>
+  <!-- 手动阀控激活：琥珀（实心填充图标）-->
+  <Style Selector="Button.tbtn.man.on Path.tico">
+    <Setter Property="Stroke" Value="{DynamicResource Amber}" />
+  </Style>
+  <Style Selector="Button.tbtn.man.on Path.tico-fill">
+    <Setter Property="Fill" Value="{DynamicResource Amber}" />
+  </Style>
+  <!-- 急停：白（实心填充图标，红底按钮）-->
+  <Style Selector="Button.estop Path.tico-fill.estop-ico">
+    <Setter Property="Fill" Value="White" />
+  </Style>
+
+  <!-- ============ 通知铃铛 Button.bell ============ -->
+  <Style Selector="Button.bell">
+    <Setter Property="Width" Value="34" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="{DynamicResource GlassBright}" CornerRadius="11"
+                  BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.bell:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="Background" Value="{DynamicResource Glass}" />
+  </Style>
+  <!-- 铃铛（实心填充图标，颜色走主题色）-->
+  <Style Selector="Path.bellfill">
+    <Setter Property="Fill" Value="{DynamicResource Body}" />
+  </Style>
+  <Style Selector="Button.bell:pointerover Path.bellfill">
+    <Setter Property="Fill" Value="{DynamicResource OnDark}" />
+  </Style>
+  <Style Selector="Button.bell.hasalarm Path.bellfill">
+    <Setter Property="Fill" Value="{DynamicResource AccentBright}" />
+  </Style>
+
+  <!-- 未读角标 + 报警脉冲动效（用 Opacity 闪烁，避免 RenderTransform 动画需注册 animator）-->
+  <Style Selector="Border.nbadge.pulse">
+    <Style.Animations>
+      <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+        <KeyFrame Cue="50%">
+          <Setter Property="Opacity" Value="0.45" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+
+  <!-- ============ 通知下拉列表项 .nli ============ -->
+  <Style Selector="Border.nli">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.nli:pointerover">
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+  </Style>
+  <!-- 「查看历史 →」链接按钮 -->
+  <Style Selector="Button.nlflink">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,2" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.nlflink:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Button.nlflink:pointerover TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+  </Style>
 </Styles>

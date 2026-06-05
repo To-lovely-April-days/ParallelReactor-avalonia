@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Animation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
@@ -101,6 +102,20 @@ public partial class MainWindow : Window
     // 点击遮罩关闭抽屉
     private void OnBackdropPressed(object? sender, PointerPressedEventArgs e)
         => _vm?.Drawer.CloseCommand.Execute(null);
+
+    // ============ 通知铃铛：点击展开/收起下拉列表 ============
+    private void OnBellClick(object? sender, RoutedEventArgs e)
+    {
+        var popup = this.FindControl<Popup>("NotifPopup");
+        if (popup != null) popup.IsOpen = !popup.IsOpen;
+    }
+
+    // 点击「查看历史 →」后关闭下拉
+    private void OnNotifLinkClick(object? sender, RoutedEventArgs e)
+    {
+        var popup = this.FindControl<Popup>("NotifPopup");
+        if (popup != null) popup.IsOpen = false;
+    }
 
     // 导航药丸高亮
     private void OnTabSwitched(string id)
