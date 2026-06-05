@@ -302,7 +302,8 @@
               <TextBlock Text="Reactor &amp; Gas Network" FontSize="9.5"
                          Foreground="{DynamicResource Body}" LetterSpacing="1.5" Margin="0,2,0,0" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
               <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                 <Border Width="14" Height="4" CornerRadius="2">
                   <Border.Background>
@@ -321,6 +322,51 @@
               <TextBlock Text="点击反应釜可控制 · 阀门需开启手动阀控"
                          FontSize="11" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
             </StackPanel>
+
+            <!-- 搅拌总控（全局共用一台搅拌器：8 釜同开同关、同一转速）-->
+            <Border Grid.Column="2" CornerRadius="11" Background="{DynamicResource GlassSoft}"
+                    BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="11,6" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+                <Viewbox Width="26" Height="26" VerticalAlignment="Center">
+                  <Canvas Width="1024" Height="1024">
+                    <Path Fill="#d4a8ff"
+                          Data="M544 421.44V448a32 32 0 1 1-64 0v-64a32 32 0 0 1 32-32 160 160 0 0 1 160 160 32 32 0 1 1-64 0 96.032 96.032 0 0 0-64-90.56z m-64 181.12V576a32 32 0 0 1 64 0v64a32 32 0 0 1-32 32 160 160 0 0 1-160-160 32 32 0 1 1 64 0c0 41.792 26.72 77.344 64 90.56zM512 800a288 288 0 1 1 0-576 288 288 0 0 1 0 576z m0-512a224 224 0 1 0 0 448 224 224 0 0 0 0-448z" />
+                  </Canvas>
+                </Viewbox>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="搅拌总控" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  <TextBlock Text="全部反应釜共用" FontSize="9" Foreground="{DynamicResource Mute}" Margin="0,1,0,0" />
+                </StackPanel>
+                <!-- 转速（点击调起数字键盘）-->
+                <Button Command="{Binding EditStirRpmCommand}" Padding="10,4" CornerRadius="8"
+                        Background="#40000000" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                        VerticalAlignment="Center" Cursor="Hand">
+                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+                    <Run Text="{Binding StirRpm}" /><Run Text=" rpm" FontSize="9" Foreground="{DynamicResource Body}" />
+                  </TextBlock>
+                </Button>
+                <!-- 开关 -->
+                <Button Command="{Binding ToggleStirCommand}" Padding="0" Background="Transparent"
+                        BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
+                  <Panel Width="46" Height="25">
+                    <Border CornerRadius="999" Background="{DynamicResource GlassBright}"
+                            BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                            IsVisible="{Binding StirOn, Converter={x:Static conv:InverseBoolConverter.Instance}}">
+                      <Ellipse Width="19" Height="19" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
+                    </Border>
+                    <Border CornerRadius="999" IsVisible="{Binding StirOn}">
+                      <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                          <GradientStop Color="#84cc16" Offset="0" />
+                          <GradientStop Color="#a3e635" Offset="1" />
+                        </LinearGradientBrush>
+                      </Border.Background>
+                      <Ellipse Width="19" Height="19" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
+                    </Border>
+                  </Panel>
+                </Button>
+              </StackPanel>
+            </Border>
           </Grid>
 
           <!-- 气路图 -->
@@ -433,11 +479,6 @@
     <StackPanel x:Name="ToastHost" HorizontalAlignment="Center" VerticalAlignment="Bottom"
                 Margin="0,0,0,80" Spacing="8" />
 
-    <!-- ============ 屏幕全键盘（中央模态）============ -->
-    <Border Background="#A6000000" IsVisible="{Binding Keyboard.IsOpen}">
-      <ctl:OnScreenKeyboard DataContext="{Binding Keyboard}" />
-    </Border>
-
     <!-- ============ 程序界面弹窗（DataContext = Program）============ -->
     <Panel x:CompileBindings="False" DataContext="{Binding Program}">
 
@@ -505,9 +546,12 @@
                       <Grid ColumnDefinitions="36,*,*,*,32">
                         <TextBlock Grid.Column="0" Text="{Binding No}" Classes="segno"
                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        <TextBox Grid.Column="1" Classes="sinp" Text="{Binding Temp, Mode=TwoWay}" Margin="0,0,7,0" />
-                        <TextBox Grid.Column="2" Classes="sinp" Text="{Binding Rate, Mode=TwoWay}" Margin="0,0,7,0" />
-                        <TextBox Grid.Column="3" Classes="sinp" Text="{Binding Hold, Mode=TwoWay}" Margin="0,0,7,0" />
+                        <Button Grid.Column="1" Classes="sinpbtn" Content="{Binding Temp}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegTempCommand}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="2" Classes="sinpbtn" Content="{Binding Rate}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegRateCommand}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="3" Classes="sinpbtn" Content="{Binding Hold}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegHoldCommand}" CommandParameter="{Binding}" />
                         <Button Grid.Column="4" Classes="segdel"
                                 Command="{Binding $parent[ItemsControl].DataContext.DelSegCommand}"
                                 CommandParameter="{Binding}">
@@ -598,5 +642,69 @@
         </Border>
       </Panel>
     </Panel>
+
+    <!-- ============ 预运行检查 ============ -->
+    <Panel IsVisible="{Binding IsPreRunOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="560" MaxHeight="660" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <!-- 头 -->
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
+            <Border Width="36" Height="36" CornerRadius="11" Background="#2E84cc16" VerticalAlignment="Center">
+              <Viewbox Width="18" Height="18">
+                <Canvas Width="24" Height="24">
+                  <Path Data="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
+                        Stroke="#a3e635" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                </Canvas>
+              </Viewbox>
+            </Border>
+            <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
+              <TextBlock Text="预运行检查" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="{Binding PreRunSummary}" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
+            </StackPanel>
+          </Grid>
+          <!-- 底 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                      HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn" Command="{Binding CancelPreRunCommand}" Content="取消" />
+            <Button Classes="mfbtn go" Command="{Binding ConfirmRunCommand}"
+                    IsEnabled="{Binding PreRunCanRun}" Content="确认开始运行" />
+          </StackPanel>
+          <!-- 检查项列表 -->
+          <ScrollViewer MaxHeight="440" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding PreRunChecks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PreRunCheck">
+                  <Border CornerRadius="11" Background="{Binding TintBg}" BorderBrush="{Binding Tint}"
+                          BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
+                    <Grid ColumnDefinitions="Auto,*">
+                      <Border Width="26" Height="26" CornerRadius="13" Background="{Binding TintBg}" VerticalAlignment="Top">
+                        <Viewbox Width="14" Height="14">
+                          <Canvas Width="24" Height="24">
+                            <Path Data="{Binding Icon}" Stroke="{Binding Tint}" StrokeThickness="2.2"
+                                  StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                          </Canvas>
+                        </Viewbox>
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource OnDark}" />
+                        <TextBlock Text="{Binding Detail}" FontSize="10.5" Foreground="{DynamicResource Body}"
+                                   Margin="0,2,0,0" TextWrapping="Wrap" LineHeight="15" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Panel>
+
+    <!-- ============ 屏幕全键盘（中央模态，置于最顶层，确保在所有弹窗之上）============ -->
+    <Border Background="#A6000000" IsVisible="{Binding Keyboard.IsOpen}">
+      <ctl:OnScreenKeyboard DataContext="{Binding Keyboard}" />
+    </Border>
   </Panel>
 </Window>

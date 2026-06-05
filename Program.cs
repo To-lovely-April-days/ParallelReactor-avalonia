@@ -13,6 +13,9 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            // Linux/X11 下让弹层（通知下拉、ComboBox、ToolTip 等）在窗口内绘制，
+            // 避免独立子窗口在嵌入式设备上"先黑框再出内容"的闪烁。
+            .With(new X11PlatformOptions { OverlayPopups = true })
             .WithInterFont()
             .LogToTrace();
 }

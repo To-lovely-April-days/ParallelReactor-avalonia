@@ -134,20 +134,14 @@
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
               <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="搅拌 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="250 – 1000 rpm" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                <TextBlock Text="搅拌（全局共用）" FontSize="12.5" Foreground="{DynamicResource Body}" />
+                <TextBlock Text="所有反应釜同一搅拌器 · 在主界面调节" FontSize="9.5"
+                           Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
               </StackPanel>
               <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <StackPanel Orientation="Horizontal">
-                  <Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="RpmSp:-1" />
-                  <Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="RpmSp">
-                    <TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                      <Run Text="{Binding Reactor.RpmSp}" /><Run Text=" rpm" FontSize="9" Foreground="{DynamicResource Body}" />
-                    </TextBlock>
-                  </Button>
-                  <Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="RpmSp:1" />
-                </StackPanel>
+                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" Padding="14,7" VerticalAlignment="Center">
+                <TextBlock Text="{Binding StirInfo}" MinWidth="60" TextAlignment="Center"
+                           FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
               </Border>
             </Grid>
           </StackPanel>

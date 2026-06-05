@@ -18,6 +18,9 @@ public class SchematicControl : Control
 {
     // —— 设计坐标系 ——
     private const double VbW = 1440, VbH = 560;
+    // 实际图形内容的包围盒（设计坐标系）。按它来缩放铺满，去掉 viewBox 四周空白，
+    // 使反应釜/阀门/文字整体更大、更充分利用面板空间。
+    private const double CtX = 80, CtY = 2, CtW = 1312, CtH = 556;
     private static readonly double[] Xs = { 250, 400, 550, 700, 850, 1000, 1150, 1300 };
     private const double Scale = 0.82, RTop = 40;
     private static readonly double RBot = RTop + 222 * Scale;     // ≈ 222
@@ -94,10 +97,10 @@ public class SchematicControl : Control
         var b = Bounds;
         if (b.Width <= 0 || b.Height <= 0) return;
 
-        // 等比缩放（preserveAspectRatio: xMidYMid meet）
-        double s = Math.Min(b.Width / VbW, b.Height / VbH);
-        double ox = (b.Width - VbW * s) / 2;
-        double oy = (b.Height - VbH * s) / 2;
+        // 等比缩放，按内容包围盒铺满并居中（preserveAspectRatio: xMidYMid meet）
+        double s = Math.Min(b.Width / CtW, b.Height / CtH);
+        double ox = (b.Width - CtW * s) / 2 - CtX * s;
+        double oy = (b.Height - CtH * s) / 2 - CtY * s;
 
         using (ctx.PushTransform(Matrix.CreateScale(s, s) * Matrix.CreateTranslation(ox, oy)))
         {
@@ -138,10 +141,17 @@ public class SchematicControl : Control
         var lc = flow ? col : Color.FromArgb(51, 255, 255, 255);
         double lw = flow ? 3 : 2.2;
 
-        // RV 标号 + 状态点
-        ctx.DrawEllipse(new SolidColorBrush(col), null, new Point(cx - 34, 18), 4, 4);
-        DrawText(ctx, $"RV{c.Id}", cx - 26, 22 - 12, OnDark, 14.5, SansFace,
-            TextAlignment.Left, FontWeight.Bold);
+        // RV 标号 + 状态点（整组水平居中于釜中心 cx，与釜体/读数同一竖直中线）
+        var rvFt = new FormattedText($"RV{c.Id}", System.Globalization.CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(SansFace.FontFamily, FontStyle.Normal, FontWeight.Bold), 14.5,
+            new SolidColorBrush(OnDark));
+        const double dotR = 4, gap = 8;
+        double groupW = dotR * 2 + gap + rvFt.Width;
+        double gx = cx - groupW / 2;
+        const double gcy = 18;
+        ctx.DrawEllipse(new SolidColorBrush(col), null, new Point(gx + dotR, gcy), dotR, dotR);
+        ctx.DrawText(rvFt, new Point(gx + dotR * 2 + gap, gcy - rvFt.Height / 2));
 
         // 釜体（平移 + 缩放到内部坐标系）
         using (ctx.PushTransform(
@@ -164,7 +174,8 @@ public class SchematicControl : Control
             DrawText(ctx, $"{c.P:0.0} psi · {c.Gas:0.00} mmol", cx, RBot + 37 - 9,
                 pCol, 11, SansFace, TextAlignment.Center, FontWeight.SemiBold);
 
-            DrawText(ctx, $"{c.StateZh} · {c.Rpm} rpm", cx, RBot + 52 - 8,
+            // 搅拌为全局共用，转速统一显示在主界面「搅拌总控」卡片，这里只显示状态
+            DrawText(ctx, c.StateZh, cx, RBot + 52 - 8,
                 col, 10, SansFace, TextAlignment.Center, FontWeight.SemiBold);
         }
         else
@@ -246,45 +257,48 @@ public class SchematicControl : Control
         // 6. 液体
         if (!isOff)
         {
-            double liqH = Math.Max(40, Math.Min(110, 60 + c.Gas * 3));
+            double liqH = Math.Max(30, Math.Min(78, 26 + c.Vol * 10));
             double liqTop = 176 - liqH;
             var liqBrush = StateLiquidBrush(c.State);
             using (ctx.PushOpacity(0.88))
                 ctx.DrawRectangle(liqBrush, null, new RoundedRect(new Rect(37, liqTop, 26, liqH), 4));
         }
 
-        // 7. 桨叶（搅拌时旋转 — 用 phase 控制水平缩放模拟）
+        // 7. 桨叶（搅拌时旋转 — 用 phase 控制水平缩放模拟旋转）
+        //    放大桨片、加大摆动幅度并加快周期，确保在嵌入式 Linux 上也清晰可见
         bool showStir = !(isOff || c.IsDone || c.Rpm == 0);
-        using (ctx.PushTransform(Matrix.CreateTranslation(50, 168)))
+        using (ctx.PushTransform(Matrix.CreateTranslation(50, 166)))
         {
-            ctx.DrawLine(new Pen(new SolidColorBrush(Color.Parse("#2f2a23")), 1.4),
-                new Point(0, -50), new Point(0, 0));
-            double rx = 11;
+            var bladeBrush = new SolidColorBrush(Color.Parse("#2f2a23"));
+            // 搅拌杆（更粗）
+            ctx.DrawLine(new Pen(bladeBrush, 2.2), new Point(0, -52), new Point(0, 4));
+            double rx = 14;
             if (showStir)
             {
-                // 对应 HTML @keyframes churn{0%,100%{scaleX(1)}50%{scaleX(-.72)}}，周期 1.4s
-                double t = (Phase / 1.4) % 1.0;
-                double scaleX = 1 + (-0.72 - 1) * (1 - Math.Cos(t * Math.PI * 2)) / 2;
-                rx = 11 * scaleX;
+                // 周期 0.9s，scaleX 在 1 ↔ -0.9 间振荡（边缘几乎成竖线 = 旋转到侧面）
+                double t = (Phase / 0.9) % 1.0;
+                double scaleX = 1 + (-0.9 - 1) * (1 - Math.Cos(t * Math.PI * 2)) / 2;
+                rx = 14 * scaleX;
             }
-            double absRx = Math.Abs(rx);
-            ctx.DrawEllipse(new SolidColorBrush(Color.Parse("#2f2a23")), null, new Point(0, -2),
-                absRx < 0.8 ? 0.8 : absRx, 2);
+            double absRx = Math.Max(1.6, Math.Abs(rx));
+            // 桨片画成圆角矩形（比细椭圆更醒目）
+            ctx.DrawRectangle(bladeBrush, null,
+                new RoundedRect(new Rect(-absRx, -2.5, absRx * 2, 5), 2.5));
         }
 
         // 8. 气泡（反应中）
         if (c.State == ReactorState.React)
         {
-            double liqH = Math.Max(40, Math.Min(110, 60 + c.Gas * 3));
+            double liqH = Math.Max(30, Math.Min(78, 26 + c.Vol * 10));
             double liqTop = 176 - liqH;
-            for (int k = 0; k < 3; k++)
+            for (int k = 0; k < 4; k++)
             {
-                double bx = 45 + k * 7, dur = 2 + k * 0.4, top = liqTop + 8;
-                double tt = ((Phase / dur) + k * 0.3) % 1.0;
+                double bx = 43 + k * 5, dur = 1.4 + k * 0.3, top = liqTop + 8;
+                double tt = ((Phase / dur) + k * 0.25) % 1.0;
                 double by = 168 - (168 - top) * tt;
-                double op = Math.Sin(tt * Math.PI) * 0.6;
+                double op = Math.Sin(tt * Math.PI) * 0.75;
                 using (ctx.PushOpacity(Math.Max(0, op)))
-                    ctx.DrawEllipse(Brushes.White, null, new Point(bx, by), 1.4, 1.4);
+                    ctx.DrawEllipse(Brushes.White, null, new Point(bx, by), 2.3, 2.3);
             }
         }
 

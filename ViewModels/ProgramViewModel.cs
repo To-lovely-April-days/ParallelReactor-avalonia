@@ -73,6 +73,7 @@ public partial class ProgramViewModel : ViewModelBase
     {
         if (CurrentChannel == null) return;
         var step = ProgramStep.New(item.Type);
+        if (item.Type == StepType.Stir) step.With("rpm", (double)_main.StirRpm);
         int at = SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count;
         Steps.Insert(at, step);
         SelectedStep = step;
@@ -85,6 +86,40 @@ public partial class ProgramViewModel : ViewModelBase
     {
         SelectedStep = step;
     }
+
+    // ============ 屏幕键盘：检查器数值字段 ============
+    [RelayCommand]
+    private void EditField(StepField f)
+    {
+        if (f is not { IsNum: true }) return;
+        _main.Keyboard.OpenNumeric(f.Label, f.Number, f.Unit ?? "", f.Min, f.Max, f.SetNumber);
+    }
+
+    // ============ 全局搅拌（程序里的「搅拌」步骤改为全局单步）============
+    private StirRow? _stirRow;
+    public string GlobalStirText => $"{_main.StirRpm} rpm";
+
+    public void EditGlobalStir()
+        => _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, 2000, v =>
+        {
+            _main.StirRpm = (int)v;
+            _stirRow?.Refresh();
+            // 同步当前步骤数据，使时间线中的步骤详情一致
+            if (SelectedStep?.Type == StepType.Stir) SelectedStep.SetNum("rpm", v);
+        });
+
+    // ============ 屏幕键盘：曲线段数值（温度 / 斜率 / 保温）============
+    [RelayCommand]
+    private void EditSegTemp(HeatSeg s)
+    { if (s != null) _main.Keyboard.OpenNumeric("目标温度", s.Temp, "°C", 0, 300, v => s.Temp = v); }
+
+    [RelayCommand]
+    private void EditSegRate(HeatSeg s)
+    { if (s != null) _main.Keyboard.OpenNumeric("升温斜率", s.Rate, "°C/min", 0, 50, v => s.Rate = v); }
+
+    [RelayCommand]
+    private void EditSegHold(HeatSeg s)
+    { if (s != null) _main.Keyboard.OpenNumeric("保温时长", s.Hold, "min", 0, 600, v => s.Hold = v); }
 
     [RelayCommand]
     private void MoveUp(ProgramStep step)
@@ -151,6 +186,7 @@ public partial class ProgramViewModel : ViewModelBase
     public void DropPaletteAt(StepType t, int index)
     {
         var step = ProgramStep.New(t);
+        if (t == StepType.Stir) step.With("rpm", (double)_main.StirRpm);
         index = Math.Clamp(index, 0, Steps.Count);
         Steps.Insert(index, step);
         SelectedStep = step;
@@ -234,6 +270,12 @@ public partial class ProgramViewModel : ViewModelBase
                 s.EnsureSegments();
                 InspectorRows.Add(new CurveRow(this, s));
             }
+        }
+        else if (s.Type == StepType.Stir)
+        {
+            // 搅拌为全部反应釜共用一台搅拌器：只设一个全局转速
+            _stirRow = new StirRow(this);
+            InspectorRows.Add(_stirRow);
         }
         else
         {
@@ -502,6 +544,16 @@ public partial class HeatModeRow : ObservableObject
 
     [RelayCommand] private void Fixed() => _vm.SetHeatMode(_step, "fixed");
     [RelayCommand] private void Curve() => _vm.SetHeatMode(_step, "curve");
+}
+
+/// <summary>检查器：全局搅拌转速（共用一台搅拌器，所有反应釜同一转速）。</summary>
+public partial class StirRow : ObservableObject
+{
+    private readonly ProgramViewModel _vm;
+    public StirRow(ProgramViewModel vm) { _vm = vm; }
+    public string RpmText => _vm.GlobalStirText;
+    public void Refresh() => OnPropertyChanged(nameof(RpmText));
+    [RelayCommand] private void Edit() => _vm.EditGlobalStir();
 }
 
 /// <summary>检查器：曲线预览卡片。</summary>

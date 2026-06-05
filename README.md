@@ -39,6 +39,40 @@ sudo apt-get install -y fonts-noto-cjk
 
 字体：Inter 已通过 `Avalonia.Fonts.Inter` 内置；中文走系统字体（建议安装 Noto Sans CJK）。
 
+## 打包发布（Linux）
+
+> 需在已安装 **.NET 8 SDK** 的机器上执行（Windows/Mac/Linux 均可交叉编译出 Linux 包）。
+> 按目标设备 CPU 选 RID：x86 工控机/PC 用 `linux-x64`，ARM 工控屏/树莓派用 `linux-arm64`。
+
+### 自包含单文件（推荐，目标机无需装 .NET）
+
+```bash
+dotnet publish -c Release -r linux-x64 --self-contained true \
+  -p:PublishSingleFile=true \
+  -p:IncludeNativeLibrariesForSelfExtract=true \
+  -o publish/linux-x64
+```
+
+产物为单个可执行文件 `publish/linux-x64/ParallelReactor`（约 70–100 MB，已内含运行时）。
+ARM 设备把 `-r linux-x64` 换成 `-r linux-arm64` 即可。
+
+> ⚠️ 不要加 `-p:PublishTrimmed=true`：Avalonia 大量使用反射，裁剪会破坏界面/绑定。
+
+### 框架依赖（目标机已装 .NET 8 运行时，包更小）
+
+```bash
+dotnet publish -c Release -r linux-x64 --self-contained false -o publish/linux-x64-fd
+```
+
+### 拷到 Linux 运行
+
+```bash
+chmod +x ParallelReactor
+./ParallelReactor
+```
+
+首次在新机器上跑前，请确认已装 X11/字体依赖与中文字体（见上文「Linux 依赖」）；缺中文字体会显示成方块 □□□。
+
 ## 结构
 
 ```

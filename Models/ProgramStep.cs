@@ -31,6 +31,8 @@ public class FieldDef
     public string? Unit;
     public string[]? Options;
     public object? Default;
+    public double Min = 0;            // 数值字段范围（供屏幕键盘裁剪与提示）
+    public double Max = 9999;
 }
 
 /// <summary>步骤静态定义（名称 / 角标 / 图标 / 字段 / 详情 / 帮助），对应 STEP_DEFS。</summary>
@@ -67,7 +69,7 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="gas", Label="气体", Kind="sel", Options=new[]{"惰性气体","气体 A","气体 B"} },
-                    new FieldDef{ Key="cycles", Label="循环次数", Kind="num", Unit="次", Default=10.0 },
+                    new FieldDef{ Key="cycles", Label="循环次数", Kind="num", Unit="次", Default=10.0, Min=1, Max=50 },
                 },
                 DetailFn = s => $"{s.Str("gas","惰性气体")} × {N(s.Num("cycles",10))} 次",
             },
@@ -78,8 +80,8 @@ public class StepDef
                 Help = "升温建议：使用「等待平衡」给予 15-25 分钟，确保溶液温度达到设定值。",
                 Fields = new()
                 {
-                    new FieldDef{ Key="temp", Label="目标温度", Kind="num", Unit="°C", Default=150.0 },
-                    new FieldDef{ Key="wait", Label="等待平衡", Kind="num", Unit="分钟", Default=15.0 },
+                    new FieldDef{ Key="temp", Label="目标温度", Kind="num", Unit="°C", Default=150.0, Min=0, Max=300 },
+                    new FieldDef{ Key="wait", Label="等待平衡", Kind="num", Unit="分钟", Default=15.0, Min=0, Max=120 },
                 },
                 DetailFn = s =>
                 {
@@ -105,7 +107,7 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="gas", Label="反应气", Kind="sel", Options=new[]{"气体 A","气体 B"} },
-                    new FieldDef{ Key="pres", Label="目标压力", Kind="num", Unit="psi", Default=50.0 },
+                    new FieldDef{ Key="pres", Label="目标压力", Kind="num", Unit="psi", Default=50.0, Min=0, Max=200 },
                     new FieldDef{ Key="regulate", Label="压力稳压", Kind="sel", Options=new[]{"开启","关闭"} },
                 },
                 DetailFn = s => $"{s.Str("gas","气体 A")} 到 {N(s.Num("pres",50))} psi · 稳压{s.Str("regulate","开启")}",
@@ -117,7 +119,7 @@ public class StepDef
                 Help = "搅拌速度变更不会立即生效，需要约 50 秒过渡。",
                 Fields = new()
                 {
-                    new FieldDef{ Key="rpm", Label="转速", Kind="num", Unit="rpm", Default=1000.0 },
+                    new FieldDef{ Key="rpm", Label="转速", Kind="num", Unit="rpm", Default=1000.0, Min=0, Max=2000 },
                 },
                 DetailFn = s => $"{N(s.Num("rpm",1000))} rpm",
             },
@@ -129,7 +131,7 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="mode", Label="条件", Kind="sel", Options=new[]{"固定时长","等待温度到位","等待压力到位"} },
-                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=30.0 },
+                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=30.0, Min=0, Max=600 },
                 },
                 DetailFn = s => $"{s.Str("mode","固定时长")} · {N(s.Num("time",30))} min",
             },
@@ -141,8 +143,8 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="endBy", Label="结束条件", Kind="sel", Options=new[]{"时间","气体消耗","两者先到"} },
-                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=120.0 },
-                    new FieldDef{ Key="mmol", Label="目标 mmol", Kind="num", Unit="mmol", Default=5.0 },
+                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=120.0, Min=0, Max=600 },
+                    new FieldDef{ Key="mmol", Label="目标 mmol", Kind="num", Unit="mmol", Default=5.0, Min=0, Max=100 },
                 },
                 DetailFn = s => $"{s.Str("endBy","两者先到")} · {N(s.Num("time",120))} min 或 {N(s.Num("mmol",5))} mmol",
             },
@@ -154,7 +156,7 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="mode", Label="方式", Kind="sel", Options=new[]{"密封 (推荐)","吹扫","淬灭","排空"} },
-                    new FieldDef{ Key="cool", Label="先降温至", Kind="num", Unit="°C", Default=40.0 },
+                    new FieldDef{ Key="cool", Label="先降温至", Kind="num", Unit="°C", Default=40.0, Min=0, Max=300 },
                 },
                 DetailFn = s => $"先降至 {N(s.Num("cool",40))}°C · {s.Str("mode","密封 (推荐)")}",
             },
@@ -261,6 +263,9 @@ public partial class StepField : ObservableObject
     public bool IsNum => Kind == "num";
     public bool IsSel => Kind == "sel";
 
+    public double Min { get; }                  // 数值范围（供屏幕键盘）
+    public double Max { get; }
+
     private readonly ProgramStep _s;
     private readonly string _key;
 
@@ -269,6 +274,17 @@ public partial class StepField : ObservableObject
         _s = s; _key = f.Key;
         Label = f.Label; Unit = f.Unit; Kind = f.Kind;
         Options = f.Options ?? Array.Empty<string>();
+        Min = f.Min; Max = f.Max;
+    }
+
+    /// <summary>当前数值（屏幕键盘读取初值用）。</summary>
+    public double Number => _s.Num(_key);
+
+    /// <summary>屏幕键盘确认后写回数值。</summary>
+    public void SetNumber(double v)
+    {
+        _s.SetNum(_key, v);
+        OnPropertyChanged(nameof(Value));
     }
 
     public string Value

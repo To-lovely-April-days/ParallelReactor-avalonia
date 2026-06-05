@@ -7,6 +7,25 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+        <BrushTransition Property="Background" Duration="0:0:0.15" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <!-- 拖拽悬停在时间线上时的高亮：用「选中态」蓝，克制不刺眼（红色会像报警）-->
+  <Style Selector="Border.progcol.dropactive">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+    <Setter Property="Background" Value="#0D5FA1E6" />
+  </Style>
+
+  <!-- 步骤库卡片：拖拽中的源卡片淡化 -->
+  <Style Selector="Button.pstep.dragsrc">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="ListBoxItem.dragsrc">
+    <Setter Property="Opacity" Value="0.45" />
   </Style>
 
   <!-- ===== 通道选择条 chip ===== -->
@@ -230,6 +249,40 @@
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
     <Setter Property="FontSize" Value="12.5" />
   </Style>
+  <!-- 检查器数值字段：外观同输入框，点按调起屏幕键盘 -->
+  <Style Selector="Button.iptbtn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#40000000" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
+            <Grid ColumnDefinitions="*,Auto">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                TextElement.Foreground="{TemplateBinding Foreground}"
+                                VerticalAlignment="Center" HorizontalAlignment="Left" />
+              <!-- 右侧小键盘提示图标 -->
+              <Viewbox Grid.Column="1" Width="14" Height="14" Opacity="0.5">
+                <Canvas Width="24" Height="24">
+                  <Path Data="M3 6h18v12H3z M7 10h0.01 M11 10h0.01 M15 10h0.01 M7 14h10"
+                        Stroke="{DynamicResource Mute}" StrokeThickness="2"
+                        StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                </Canvas>
+              </Viewbox>
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.iptbtn:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+  </Style>
+
   <Style Selector="Border.ichip">
     <Setter Property="Background" Value="#0AFFFFFF" />
     <Setter Property="CornerRadius" Value="5" />
@@ -374,6 +427,30 @@
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
     <Setter Property="FontSize" Value="12.5" />
   </Style>
+  <!-- 曲线段数值：外观同 sinp 输入框，点按调起屏幕键盘（右对齐）-->
+  <Style Selector="Button.sinpbtn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#4D000000" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              VerticalAlignment="Center" HorizontalAlignment="Right" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.sinpbtn:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+  </Style>
+
   <Style Selector="Button.segdel">
     <Setter Property="Width" Value="30" />
     <Setter Property="Height" Value="30" />
@@ -446,9 +523,12 @@
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="Button.mfbtn /template/ ContentPresenter">
     <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="Button.mfbtn:pointerover /template/ ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource GlassBright}" />
@@ -473,6 +553,23 @@
         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
           <GradientStop Color="#2b7fd6" Offset="0" />
           <GradientStop Color="#1668c5" Offset="1" />
+        </LinearGradientBrush>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style Selector="Button.mfbtn:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+  <!-- 弹窗底部按钮：绿色（确认运行）-->
+  <Style Selector="Button.mfbtn.go">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background">
+      <Setter.Value>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Color="#5fa72a" Offset="0" />
+          <GradientStop Color="#3e8021" Offset="1" />
         </LinearGradientBrush>
       </Setter.Value>
     </Setter>

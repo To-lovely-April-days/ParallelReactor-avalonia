@@ -12,7 +12,7 @@
     <conv:StateColorConverter x:Key="StColor" />
   </UserControl.Resources>
 
-  <Grid RowDefinitions="Auto,Auto,*">
+  <Grid RowDefinitions="Auto,56,*">
 
     <!-- ===== 标题 ===== -->
     <Grid Grid.Row="0" Margin="20,14,20,2" ColumnDefinitions="Auto,*,Auto">
@@ -26,11 +26,11 @@
     </Grid>
 
     <!-- ===== 通道选择条 ===== -->
-    <Grid Grid.Row="1" Margin="0,8,0,10" ColumnDefinitions="*,Auto">
+    <Grid Grid.Row="1" Margin="0,6,0,8" ColumnDefinitions="*,Auto">
       <Border Grid.ColumnSpan="2" Height="1" VerticalAlignment="Bottom"
               Background="{DynamicResource GlassLine}" />
-      <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                    Padding="22,0,0,8">
+      <ScrollViewer Grid.Column="0" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                    VerticalContentAlignment="Center" Padding="22,0,0,2">
         <ItemsControl ItemsSource="{Binding Channels}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="5" /></ItemsPanelTemplate>
@@ -48,7 +48,7 @@
                     <TextBlock Text="{Binding SmallText}" Classes="pchsmall" VerticalAlignment="Center" />
                   </StackPanel>
                   <Ellipse Width="6" Height="6" Fill="#3aa6ff" HorizontalAlignment="Right" VerticalAlignment="Top"
-                           Margin="0,-3,-3,0" IsVisible="{Binding IsModified}" />
+                           Margin="0,-2,-1,0" IsVisible="{Binding IsModified}" />
                 </Panel>
               </Button>
             </DataTemplate>
@@ -70,7 +70,7 @@
         <DockPanel>
           <TextBlock DockPanel.Dock="Top" Text="步骤库" Classes="sidehd" />
           <Border DockPanel.Dock="Bottom" Classes="sidetip">
-            <TextBlock Text="点击步骤即可添加到当前程序末尾（拖拽下一轮接入）"
+            <TextBlock Text="点击步骤添加到末尾，或拖拽到右侧时间线的指定位置"
                        FontSize="10.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="15" />
           </Border>
           <ItemsControl ItemsSource="{Binding Palette}" Margin="0,6,0,8">
@@ -102,7 +102,7 @@
       </Border>
 
       <!-- 中：时间线 -->
-      <Border Grid.Column="1" x:Name="DropZone" Classes="progcol" Margin="12,0" DragDrop.AllowDrop="True">
+      <Border Grid.Column="1" x:Name="DropZone" Classes="progcol" Margin="12,0">
         <Grid RowDefinitions="Auto,*,Auto">
           <!-- 头 -->
           <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="0" Margin="16,11"
@@ -273,9 +273,22 @@
                         <TextBlock Text="{Binding Label}" Classes="flab" />
                         <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="funit" />
                       </Grid>
-                      <TextBox Classes="ipt" Text="{Binding Value, Mode=TwoWay}" IsVisible="{Binding IsNum}" />
+                      <Button Classes="iptbtn" Content="{Binding Value}" IsVisible="{Binding IsNum}"
+                              Command="{Binding $parent[ItemsControl].DataContext.EditFieldCommand}"
+                              CommandParameter="{Binding}" />
                       <ComboBox Classes="ipt" ItemsSource="{Binding Options}" HorizontalAlignment="Stretch"
                                 SelectedItem="{Binding Value, Mode=TwoWay}" IsVisible="{Binding IsSel}" />
+                    </StackPanel>
+                  </DataTemplate>
+
+                  <!-- 搅拌：全局共用转速（点按调起键盘）-->
+                  <DataTemplate DataType="vm:StirRow">
+                    <StackPanel Margin="0,0,0,11">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                        <TextBlock Text="搅拌转速（全局共用）" Classes="flab" />
+                        <TextBlock Text="rpm" Classes="funit" />
+                      </Grid>
+                      <Button Classes="iptbtn" Content="{Binding RpmText}" Command="{Binding EditCommand}" />
                     </StackPanel>
                   </DataTemplate>
 
@@ -337,5 +350,36 @@
         </Panel>
       </Border>
     </Grid>
+
+    <!-- ===== 拖拽浮层：插入指示线 + 幽灵预览（覆盖全部行，不参与命中测试）===== -->
+    <Canvas x:Name="DragOverlay" Grid.RowSpan="3" IsHitTestVisible="False" ZIndex="100">
+
+      <!-- 插入位置指示线（用「选中态」蓝，语义=定位，避免红色的报警感）-->
+      <Panel x:Name="DropIndicator" IsVisible="False">
+        <Border Height="2" CornerRadius="1" VerticalAlignment="Center" Background="#5FA1E6" />
+        <Ellipse Width="7" Height="7" Fill="#5FA1E6"
+                 HorizontalAlignment="Left" VerticalAlignment="Center" />
+        <Ellipse Width="7" Height="7" Fill="#5FA1E6"
+                 HorizontalAlignment="Right" VerticalAlignment="Center" />
+      </Panel>
+
+      <!-- 拖拽幽灵预览：克制的悬浮卡片，无倾斜、无彩色辉光 -->
+      <Border x:Name="DragGhost" IsVisible="False" Padding="11,8" CornerRadius="9"
+              BorderThickness="1" BorderBrush="#5A5FA1E6"
+              Background="#F21E1E23" BoxShadow="0 10 26 0 #73000000" Opacity="0.97">
+        <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+          <Border Width="22" Height="22" CornerRadius="6" Background="#0AFFFFFF">
+            <Viewbox Width="12" Height="12">
+              <Canvas Width="24" Height="24">
+                <Path x:Name="GhostPath" StrokeThickness="2"
+                      StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+              </Canvas>
+            </Viewbox>
+          </Border>
+          <TextBlock x:Name="GhostText" FontSize="12" FontWeight="SemiBold"
+                     Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </Canvas>
   </Grid>
 </UserControl>

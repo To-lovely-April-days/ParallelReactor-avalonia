@@ -115,7 +115,7 @@ public partial class DrawerViewModel : ViewModelBase
     {
         if (Reactor is not { } c) return;
         c.State = ReactorState.Heating;
-        c.Rpm = c.RpmSp;
+        c.Rpm = _main.StirOn ? _main.StirRpm : 0;
         _main.RefreshSchematic();
         _main.Toast("ok", $"RV{c.Id} 已启动");
         RaiseAll();
@@ -151,7 +151,7 @@ public partial class DrawerViewModel : ViewModelBase
         if (Reactor is not { } c) return;
         c.State = ReactorState.Heating;
         if (c.Vol == 0) c.Vol = 3;
-        c.Rpm = c.RpmSp;
+        c.Rpm = _main.StirOn ? _main.StirRpm : 0;
         _main.RefreshSchematic();
         _main.Toast("ok", $"RV{c.Id} 已启用");
         RaiseAll();
@@ -199,7 +199,11 @@ public partial class DrawerViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(Reactor));
         OnPropertyChanged(nameof(ManualValveHint));
+        OnPropertyChanged(nameof(StirInfo));
     }
 
     public string ManualValveHint => _main.ManualValve ? "手动可控" : "开启手动阀控后可手动操作";
+
+    /// <summary>全局搅拌只读信息（搅拌为全部反应釜共用，在主界面调节）。</summary>
+    public string StirInfo => _main.StirOn ? $"{_main.StirRpm} rpm" : "已停止";
 }
