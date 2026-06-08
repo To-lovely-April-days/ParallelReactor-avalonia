@@ -68,6 +68,10 @@ public partial class MainViewModel : ViewModelBase
     public DrawerViewModel Drawer { get; }
     public KeyboardViewModel Keyboard { get; } = new();
     public ProgramViewModel Program { get; }
+    public GraphViewModel Graph { get; }
+    public DataViewModel Data { get; }
+    public AlarmViewModel Alarm { get; }
+    public SettingViewModel Setting { get; }
 
     // 气路图重绘信号（View 订阅后调用 InvalidateVisual）
     public event Action? SchematicInvalidated;
@@ -85,6 +89,10 @@ public partial class MainViewModel : ViewModelBase
         SeedData();
         UpdateRunCount();
         Program = new ProgramViewModel(this);
+        Graph = new GraphViewModel(this);
+        Data = new DataViewModel(this);
+        Alarm = new AlarmViewModel();
+        Setting = new SettingViewModel();
     }
 
     private void SeedData()
@@ -341,6 +349,7 @@ public partial class MainViewModel : ViewModelBase
         }
         RefreshSchematic();
         if (Drawer.IsOpen) Drawer.RaiseAll();
+        Graph.AppendSample();
     }
 
     public void ClockTick()

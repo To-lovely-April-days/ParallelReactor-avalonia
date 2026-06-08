@@ -1,0 +1,206 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.ViewModels"
+             xmlns:conv="using:ParallelReactor.Converters"
+             x:Class="ParallelReactor.Controls.SettingView"
+             x:CompileBindings="False"
+             x:DataType="vm:SettingViewModel">
+
+	<UserControl.Styles>
+		<Style Selector="TextBlock.seth">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="FontWeight" Value="Bold" />
+			<Setter Property="Foreground" Value="{DynamicResource Mute}" />
+			<Setter Property="LetterSpacing" Value="1.5" />
+			<Setter Property="Margin" Value="0,14,0,6" />
+		</Style>
+		<Style Selector="Border.setcard">
+			<Setter Property="Background" Value="{DynamicResource Glass}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="11" />
+			<Setter Property="Padding" Value="16,4" />
+			<Setter Property="Margin" Value="0,0,0,11" />
+		</Style>
+	</UserControl.Styles>
+
+	<Grid RowDefinitions="Auto,*">
+
+		<!-- 标题 -->
+		<Grid Grid.Row="0" Margin="20,14,20,6">
+			<StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
+				<TextBlock Text="系统设置" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+				<TextBlock Text="SYSTEM SETTINGS" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+						   Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
+			</StackPanel>
+		</Grid>
+
+		<!-- 主体：左菜单 + 右内容 -->
+		<Grid Grid.Row="1" Margin="18,4,18,14" ColumnDefinitions="200,*">
+
+			<!-- 左菜单 -->
+			<Border Grid.Column="0" Classes="graphcol" Margin="0,0,12,0" Padding="10">
+				<ListBox Background="Transparent" BorderThickness="0" Padding="0"
+						 ItemsSource="{Binding Pages}" SelectedItem="{Binding Selected, Mode=TwoWay}">
+					<ListBox.ItemContainerTheme>
+						<ControlTheme TargetType="ListBoxItem">
+							<Setter Property="Padding" Value="0" />
+							<Setter Property="Margin" Value="0,0,0,2" />
+							<Setter Property="MinHeight" Value="0" />
+							<Setter Property="Cursor" Value="Hand" />
+							<Setter Property="Background" Value="Transparent" />
+							<Setter Property="Foreground" Value="{DynamicResource Body}" />
+							<Setter Property="Template">
+								<ControlTemplate>
+									<Border Background="{TemplateBinding Background}" CornerRadius="9" Padding="12,10">
+										<ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+									</Border>
+								</ControlTemplate>
+							</Setter>
+							<Style Selector="^:pointerover">
+								<Setter Property="Background" Value="{DynamicResource Glass}" />
+							</Style>
+							<Style Selector="^:selected">
+								<Setter Property="Background" Value="{DynamicResource GlassBright}" />
+								<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+								<Setter Property="FontWeight" Value="SemiBold" />
+							</Style>
+						</ControlTheme>
+					</ListBox.ItemContainerTheme>
+					<ListBox.ItemTemplate>
+						<DataTemplate>
+							<StackPanel Orientation="Horizontal" Spacing="9">
+								<Path Data="{Binding Icon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+									  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+									  Width="14" Height="14" Stretch="Uniform" VerticalAlignment="Center" />
+								<TextBlock Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
+										   Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=ListBoxItem}}"
+										   FontWeight="{Binding FontWeight, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" />
+							</StackPanel>
+						</DataTemplate>
+					</ListBox.ItemTemplate>
+				</ListBox>
+			</Border>
+
+			<!-- 右内容 -->
+			<Border Grid.Column="1" Classes="graphcol" Padding="22,18">
+				<ScrollViewer VerticalScrollBarVisibility="Auto">
+					<StackPanel>
+						<TextBlock Text="{Binding Selected.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+						<TextBlock Text="{Binding Selected.Sub}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,4,0,16" />
+
+						<ItemsControl ItemsSource="{Binding Selected.Sections}">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<StackPanel>
+										<!-- 区块标题 -->
+										<TextBlock Classes="seth" Text="{Binding Header}" IsVisible="{Binding HasHeader}" />
+
+										<!-- 卡片 -->
+										<Border Classes="setcard" IsVisible="{Binding IsCard}">
+											<ItemsControl ItemsSource="{Binding Rows}">
+												<ItemsControl.ItemTemplate>
+													<DataTemplate>
+														<Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="0,8">
+															<Grid ColumnDefinitions="*,Auto">
+																<!-- 标签 -->
+																<StackPanel Grid.Column="0" VerticalAlignment="Center">
+																	<TextBlock Text="{Binding Label}" FontSize="12.5"
+																			   Foreground="{Binding LabelBrush}" FontWeight="{Binding LabelWeight}" />
+																	<TextBlock Text="{Binding Sub}" IsVisible="{Binding HasSub}" FontSize="10.5"
+																			   Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+																</StackPanel>
+																<!-- 值 -->
+																<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+																	<TextBlock Text="{Binding ValText}" IsVisible="{Binding IsVal}" FontSize="12.5"
+																			   FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+																	<Border IsVisible="{Binding IsChip}" CornerRadius="999" Padding="9,3" VerticalAlignment="Center"
+																			Background="{Binding ChipBg}" BorderBrush="{Binding ChipBorder}" BorderThickness="1">
+																		<TextBlock Text="{Binding ChipText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding ChipFg}" />
+																	</Border>
+																	<TextBlock Text="{Binding Trail}" IsVisible="{Binding HasTrail}" FontSize="12.5"
+																			   FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+																	<!-- 开关 -->
+																	<Button IsVisible="{Binding IsToggle}" Command="{Binding FlipCommand}" Padding="0"
+																			Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
+																		<Panel Width="38" Height="21">
+																			<Border CornerRadius="999" Background="{DynamicResource GlassBright}"
+																					BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+																					IsVisible="{Binding On, Converter={x:Static conv:InverseBoolConverter.Instance}}">
+																				<Ellipse Width="15" Height="15" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
+																			</Border>
+																			<Border CornerRadius="999" IsVisible="{Binding On}">
+																				<Border.Background>
+																					<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+																						<GradientStop Color="#84cc16" Offset="0" />
+																						<GradientStop Color="#a3e635" Offset="1" />
+																					</LinearGradientBrush>
+																				</Border.Background>
+																				<Ellipse Width="15" Height="15" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
+																			</Border>
+																		</Panel>
+																	</Button>
+																</StackPanel>
+															</Grid>
+														</Border>
+													</DataTemplate>
+												</ItemsControl.ItemTemplate>
+											</ItemsControl>
+										</Border>
+
+										<!-- 提示框 -->
+										<Border IsVisible="{Binding IsNote}" Background="{DynamicResource Glass}" CornerRadius="9" Padding="13,10" Margin="0,0,0,11">
+											<TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="18" />
+										</Border>
+
+										<!-- 关于公司 -->
+										<Border IsVisible="{Binding IsAbout}" Background="{DynamicResource Glass}"
+												BorderBrush="{DynamicResource GlassLine}" BorderThickness="1"
+												CornerRadius="11" Padding="18,16" Margin="0,0,0,11">
+											<StackPanel>
+												<TextBlock Text="{Binding AboutTitle}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+												<TextBlock Text="{Binding Intro}" FontSize="12" Foreground="{DynamicResource Body}"
+														   TextWrapping="Wrap" LineHeight="21" Margin="0,9,0,0" />
+
+												<Border Height="1" Background="{DynamicResource GlassLine}" Margin="0,16,0,15" />
+
+												<!-- 联系方式 + 二维码 -->
+												<Grid ColumnDefinitions="*,Auto">
+													<StackPanel Grid.Column="0" VerticalAlignment="Top">
+														<TextBlock Text="联系我们 · CONTACT" FontSize="10.5" FontWeight="Bold"
+																   Foreground="{DynamicResource Mute}" LetterSpacing="1" Margin="0,0,0,12" />
+														<ItemsControl ItemsSource="{Binding Contacts}">
+															<ItemsControl.ItemTemplate>
+																<DataTemplate>
+																	<Grid ColumnDefinitions="52,*" Margin="0,0,0,10">
+																		<TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource Mute}" />
+																		<TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12.5"
+																				   Foreground="{DynamicResource OnDark}" TextWrapping="Wrap" />
+																	</Grid>
+																</DataTemplate>
+															</ItemsControl.ItemTemplate>
+														</ItemsControl>
+													</StackPanel>
+
+													<StackPanel Grid.Column="1" Margin="22,0,0,0" VerticalAlignment="Top">
+														<Border Background="White" CornerRadius="8" Width="128" Height="128" ClipToBounds="True">
+															<Image Source="{Binding QrImage}" Stretch="Fill" />
+														</Border>
+														<TextBlock Text="{Binding QrCaption}" FontSize="10.5" Foreground="{DynamicResource Mute}"
+																   HorizontalAlignment="Center" Margin="0,8,0,0" />
+													</StackPanel>
+												</Grid>
+
+												<TextBlock Text="{Binding AboutCopyright}" FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,16,0,0" />
+											</StackPanel>
+										</Border>
+									</StackPanel>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+					</StackPanel>
+				</ScrollViewer>
+			</Border>
+		</Grid>
+	</Grid>
+</UserControl>

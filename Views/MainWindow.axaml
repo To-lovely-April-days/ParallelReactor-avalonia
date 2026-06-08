@@ -34,7 +34,7 @@
       </LinearGradientBrush>
     </Panel.Background>
 
-    <Grid RowDefinitions="64,46,*,88">
+    <Grid RowDefinitions="64,46,*,66">
 
       <!-- ============ 顶栏 ============ -->
       <Grid Grid.Row="0" Margin="22,0">
@@ -377,6 +377,26 @@
         <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=program}">
           <ctl:ProgramView DataContext="{Binding Program}" />
         </ContentControl>
+
+        <!-- ===== 实时曲线界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=graph}">
+          <ctl:GraphView DataContext="{Binding Graph}" />
+        </ContentControl>
+
+        <!-- ===== 运行记录界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=data}">
+          <ctl:DataView DataContext="{Binding Data}" />
+        </ContentControl>
+
+        <!-- ===== 报警与事件界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=alarm}">
+          <ctl:AlarmView DataContext="{Binding Alarm}" />
+        </ContentControl>
+
+        <!-- ===== 系统设置界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=setting}">
+          <ctl:SettingView DataContext="{Binding Setting}" />
+        </ContentControl>
         </Panel>
       </Border>
 
@@ -388,7 +408,7 @@
         </Button>
 
         <Border Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                CornerRadius="999" Height="52"
+                CornerRadius="999" Height="44"
                 Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}"
                 BorderThickness="1" Padding="3">
           <StackPanel Orientation="Horizontal" Spacing="3" x:Name="Pills" VerticalAlignment="Stretch">

@@ -128,7 +128,7 @@ public class SchematicControl : Control
         var main = new Pen(new SolidColorBrush(HeaderLine), 4) { LineCap = PenLineCap.Round };
         ctx.DrawLine(main, new Point(90, HdrY), new Point(1380, HdrY));
 
-        DrawText(ctx, "共用气路总管 · GAS HEADER HDR-01", 735, HdrY - 11,
+        DrawText(ctx, "共用气路总管 · GAS HEADER HDR-01", 735, HdrY + 10,
             Color.Parse("#5c5c66"), 10.5, SansFace, TextAlignment.Center);
     }
 

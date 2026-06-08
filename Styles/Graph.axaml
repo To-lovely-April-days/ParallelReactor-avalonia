@@ -1,0 +1,103 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- 容器（左图 / 右栏）-->
+  <Style Selector="Border.graphcol">
+    <Setter Property="Background" Value="#73303037" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="13" />
+  </Style>
+
+  <!-- 画布容器 -->
+  <Style Selector="Border.graphcanvas">
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Background" Value="#9E26262C" />
+  </Style>
+
+  <!-- 工具栏标签按钮 -->
+  <Style Selector="Button.ctab">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="12,6">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.ctab:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="#0DFFFFFF" />
+  </Style>
+  <Style Selector="Button.ctab.on">
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+  </Style>
+  <Style Selector="Button.ctab.on /template/ Border#bg">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+  </Style>
+
+  <!-- 右上角工具按钮（自适应/导出/截图）-->
+  <Style Selector="Button.gbtn">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#9E26262C" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="11,6">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.gbtn:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+  </Style>
+  <Style Selector="Button.gbtn:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+  </Style>
+
+  <!-- 侧栏小节标题 -->
+  <Style Selector="TextBlock.gsect">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+    <Setter Property="LetterSpacing" Value="1.5" />
+    <Setter Property="Margin" Value="2,4,0,8" />
+  </Style>
+
+  <!-- 通道开关行 -->
+  <Style Selector="Button.chtog">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="8" Padding="9,7">
+            <ContentPresenter Content="{TemplateBinding Content}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.chtog:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="#9E26262C" />
+  </Style>
+  <Style Selector="Button.chtog.off">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+
+</Styles>

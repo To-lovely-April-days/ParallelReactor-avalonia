@@ -1,0 +1,134 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.ViewModels"
+             xmlns:conv="using:ParallelReactor.Converters"
+             x:Class="ParallelReactor.Controls.AlarmView"
+             x:CompileBindings="False"
+             x:DataType="vm:AlarmViewModel">
+
+	<UserControl.Resources>
+		<conv:EqualsConverter x:Key="Eq" />
+	</UserControl.Resources>
+
+	<UserControl.Styles>
+		<!-- 过滤按钮 -->
+		<Style Selector="Button.fbtn">
+			<Setter Property="Padding" Value="11,5" />
+			<Setter Property="MinHeight" Value="0" />
+			<Setter Property="CornerRadius" Value="7" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+			<Setter Property="Foreground" Value="{DynamicResource Body}" />
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Cursor" Value="Hand" />
+		</Style>
+		<Style Selector="Button.fbtn /template/ ContentPresenter">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="CornerRadius" Value="7" />
+		</Style>
+		<Style Selector="Button.fbtn:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource Glass}" />
+		</Style>
+		<Style Selector="Button.fbtn.on">
+			<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+			<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+		</Style>
+		<Style Selector="Button.fbtn.on /template/ ContentPresenter">
+			<Setter Property="Background" Value="{DynamicResource GlassBright}" />
+		</Style>
+
+		<!-- 报警行 -->
+		<Style Selector="Border.almrow">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+			<Setter Property="BorderThickness" Value="0,0,0,1" />
+			<Setter Property="Padding" Value="16,10" />
+		</Style>
+		<Style Selector="Border.almrow:pointerover">
+			<Setter Property="Background" Value="{DynamicResource Glass}" />
+		</Style>
+	</UserControl.Styles>
+
+	<Grid RowDefinitions="Auto,*">
+
+		<!-- 标题 -->
+		<Grid Grid.Row="0" Margin="20,14,20,6" ColumnDefinitions="Auto,*">
+			<StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
+				<TextBlock Text="报警与事件" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+				<TextBlock Text="ALARMS &amp; EVENTS" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+						   Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
+			</StackPanel>
+			<TextBlock Grid.Column="1" Text="所有报警自动归档 · 支持按通道、严重度、时间过滤" FontSize="11" HorizontalAlignment="Right"
+					   Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
+		</Grid>
+
+		<!-- 主体：报警列表（占满整宽） -->
+		<Grid Grid.Row="1" Margin="18,4,18,14">
+
+			<Border Classes="graphcol" ClipToBounds="True">
+				<DockPanel>
+					<!-- 过滤栏 -->
+					<Border DockPanel.Dock="Top" BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="14,11">
+						<Grid ColumnDefinitions="Auto,*">
+							<StackPanel Orientation="Horizontal" Spacing="6">
+								<Button Classes="fbtn" Content="全部" Command="{Binding SetFilterCommand}" CommandParameter="all"
+										Classes.on="{Binding Filter, Converter={StaticResource Eq}, ConverterParameter=all}" />
+								<Button Classes="fbtn" Content="未处理" Command="{Binding SetFilterCommand}" CommandParameter="active"
+										Classes.on="{Binding Filter, Converter={StaticResource Eq}, ConverterParameter=active}" />
+								<Button Classes="fbtn" Content="错误" Command="{Binding SetFilterCommand}" CommandParameter="err"
+										Classes.on="{Binding Filter, Converter={StaticResource Eq}, ConverterParameter=err}" />
+								<Button Classes="fbtn" Content="警告" Command="{Binding SetFilterCommand}" CommandParameter="warn"
+										Classes.on="{Binding Filter, Converter={StaticResource Eq}, ConverterParameter=warn}" />
+							</StackPanel>
+							<TextBlock Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"
+									   FontSize="11" Foreground="{DynamicResource Body}">
+								<Run Text="共 " />
+								<Run Text="{Binding Total}" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+								<Run Text=" 条 · 未处理 " />
+								<Run Text="{Binding ActiveCount}" FontWeight="SemiBold" Foreground="{DynamicResource AccentBright}" />
+							</TextBlock>
+						</Grid>
+					</Border>
+					<!-- 列表体 -->
+					<ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8">
+						<ItemsControl ItemsSource="{Binding Filtered}">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<Border Classes="almrow">
+										<Grid ColumnDefinitions="28,80,*,90,80">
+											<!-- 徽标 -->
+											<Border Grid.Column="0" Width="22" Height="22" CornerRadius="6"
+													Background="{Binding BadgeBg}" HorizontalAlignment="Left" VerticalAlignment="Center">
+												<Viewbox Width="11" Height="11">
+													<Canvas Width="24" Height="24">
+														<Path Data="{Binding IconData}" Stroke="{Binding BadgeFg}" StrokeThickness="2.4"
+															  StrokeLineCap="Round" StrokeJoin="Round" />
+													</Canvas>
+												</Viewbox>
+											</Border>
+											<!-- 通道 -->
+											<TextBlock Grid.Column="1" Text="{Binding Rv}" FontSize="11" FontWeight="SemiBold"
+													   Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+											<!-- 消息 + 副标题 -->
+											<StackPanel Grid.Column="2" VerticalAlignment="Center">
+												<TextBlock Text="{Binding Msg}" FontSize="12" Foreground="{DynamicResource OnDark}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+												<TextBlock Text="{Binding Sub}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,1,0,0"
+														   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+											</StackPanel>
+											<!-- 时间 -->
+											<TextBlock Grid.Column="3" Text="{Binding Time}" FontSize="10.5" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+											<!-- 状态 -->
+											<TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"
+													   Foreground="{Binding StatusBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+										</Grid>
+									</Border>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+					</ScrollViewer>
+				</DockPanel>
+			</Border>
+		</Grid>
+	</Grid>
+</UserControl>
