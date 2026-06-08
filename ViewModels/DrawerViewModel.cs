@@ -19,11 +19,16 @@ public partial class DrawerViewModel : ViewModelBase
     [ObservableProperty] private Reactor? _reactor;
     [ObservableProperty] private bool _advOpen;
 
-    // 步进器限制：[min,max,step]
-    private static readonly (double min, double max, double step) LimTsp = (10, 200, 5);
-    private static readonly (double min, double max, double step) LimPsp = (0, 500, 10);
-    private static readonly (double min, double max, double step) LimRpm = (250, 1000, 50);
-    private static readonly (double min, double max, double step) LimVol = (1, 5, 1);
+    // 步进器限制：[min,max,step]；上限读全局设置（设置页可改）
+    private (double min, double max, double step) LimTsp => (10, _main.Settings.TMaxSp, 5);
+    private (double min, double max, double step) LimPsp => (0, _main.Settings.PMaxSp, 10);
+    private (double min, double max, double step) LimRpm => (250, _main.Settings.RpmMax, 50);
+    private (double min, double max, double step) LimVol => (1, _main.Settings.VolMax, 1);
+
+    // SP 范围提示文本（随设置变化）
+    public string TspRange => $"{LimTsp.min:0} – {LimTsp.max:0} °C";
+    public string PspRange => $"{LimPsp.min:0} – {LimPsp.max:0} psi";
+    public string VolRange => $"{LimVol.min:0} – {LimVol.max:0} mL";
 
     public void Open(int id)
     {
@@ -94,6 +99,9 @@ public partial class DrawerViewModel : ViewModelBase
 
     [RelayCommand]
     private void SetEnd(string val) { if (Reactor is { } c) { c.End = val; RaiseAll(); } }
+
+    [RelayCommand]
+    private void ClearRecipe() { if (Reactor is { } c) { c.AppliedRecipe = ""; RaiseAll(); _main.Toast("ok", $"RV{c.Id} 配方标签已清除"); } }
 
     // —— 阀门 ——
     [RelayCommand]
@@ -200,6 +208,9 @@ public partial class DrawerViewModel : ViewModelBase
         OnPropertyChanged(nameof(Reactor));
         OnPropertyChanged(nameof(ManualValveHint));
         OnPropertyChanged(nameof(StirInfo));
+        OnPropertyChanged(nameof(TspRange));
+        OnPropertyChanged(nameof(PspRange));
+        OnPropertyChanged(nameof(VolRange));
     }
 
     public string ManualValveHint => _main.ManualValve ? "手动可控" : "开启手动阀控后可手动操作";

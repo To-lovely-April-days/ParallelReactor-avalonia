@@ -67,11 +67,14 @@ public partial class MainViewModel : ViewModelBase
 
     public DrawerViewModel Drawer { get; }
     public KeyboardViewModel Keyboard { get; } = new();
+    public AppSettings Settings { get; } = new();
     public ProgramViewModel Program { get; }
     public GraphViewModel Graph { get; }
     public DataViewModel Data { get; }
     public AlarmViewModel Alarm { get; }
     public SettingViewModel Setting { get; }
+    public LeakViewModel Leak { get; }
+    public RecipeViewModel RecipePicker { get; }
 
     // 气路图重绘信号（View 订阅后调用 InvalidateVisual）
     public event Action? SchematicInvalidated;
@@ -92,7 +95,9 @@ public partial class MainViewModel : ViewModelBase
         Graph = new GraphViewModel(this);
         Data = new DataViewModel(this);
         Alarm = new AlarmViewModel();
-        Setting = new SettingViewModel();
+        Setting = new SettingViewModel(this);
+        Leak = new LeakViewModel(this);
+        RecipePicker = new RecipeViewModel(this);
     }
 
     private void SeedData()
@@ -189,7 +194,7 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private void EditStirRpm()
-        => Keyboard.OpenNumeric("搅拌转速（全局共用）", StirRpm, "rpm", 0, 2000, v =>
+        => Keyboard.OpenNumeric("搅拌转速（全局共用）", StirRpm, "rpm", 0, Settings.RpmMax, v =>
         {
             StirRpm = (int)v;
             if (StirOn) Toast("ok", $"搅拌转速已设为 {StirRpm} rpm · 全部反应釜");
@@ -346,6 +351,10 @@ public partial class MainViewModel : ViewModelBase
             {
                 c.T = Math.Min(c.TSp, c.T + Random.Shared.NextDouble() * 0.4);
             }
+
+            // 超压 / 超温报警判定（阈值来自全局设置）
+            if (c.P >= Settings.OverPressure || c.T >= Settings.OverTemp)
+                c.State = ReactorState.Alarm;
         }
         RefreshSchematic();
         if (Drawer.IsOpen) Drawer.RaiseAll();

@@ -32,6 +32,15 @@ public partial class Reactor : ObservableObject
     // —— 阀门 / IO ——
     [ObservableProperty] private bool _valve;
 
+    // —— 已应用配方（标签）——
+    private string _appliedRecipe = "";
+    public string AppliedRecipe
+    {
+        get => _appliedRecipe;
+        set { if (SetProperty(ref _appliedRecipe, value)) OnPropertyChanged(nameof(HasRecipe)); }
+    }
+    public bool HasRecipe => !string.IsNullOrEmpty(AppliedRecipe);
+
     public PidParams Pid { get; } = new();
 
     /// <summary>状态中文名，对应 HTML stZh 映射</summary>

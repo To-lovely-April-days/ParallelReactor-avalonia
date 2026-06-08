@@ -597,6 +597,28 @@
     <Setter Property="Background" Value="#08FFFFFF" />
   </Style>
 
+  <!-- 配方参数预览小卡 -->
+  <Style Selector="Border.rvcard">
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Margin" Value="3" />
+  </Style>
+  <Style Selector="TextBlock.rvk">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.rvv">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,3,0,0" />
+  </Style>
+
   <!-- 应用通道行 -->
   <Style Selector="Button.applyrow">
     <Setter Property="HorizontalAlignment" Value="Stretch" />

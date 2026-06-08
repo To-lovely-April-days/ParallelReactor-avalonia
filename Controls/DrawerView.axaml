@@ -59,6 +59,19 @@
                     HorizontalScrollBarVisibility="Disabled">
         <StackPanel Spacing="0">
 
+          <!-- 已应用配方标签 -->
+          <Border IsVisible="{Binding Reactor.HasRecipe}" Margin="0,0,0,16" CornerRadius="999" Padding="11,5"
+                  HorizontalAlignment="Left" Background="#29A86CE0" BorderBrush="#80A86CE0" BorderThickness="1">
+            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+              <Path Data="M4 4h16v4H4z M4 12h16v8H4z M8 4v4 M8 12v8 M16 4v4 M16 12v8" Stroke="#d4a8ff"
+                    StrokeThickness="2" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Reactor.AppliedRecipe, StringFormat='配方：{0}'}" FontSize="11.5"
+                         FontWeight="SemiBold" Foreground="#d4a8ff" VerticalAlignment="Center" />
+              <Button Command="{Binding ClearRecipeCommand}" Background="Transparent" BorderThickness="0"
+                      Padding="3,0" FontSize="12" Foreground="#d4a8ff" Cursor="Hand" VerticalAlignment="Center" Content="✕" />
+            </StackPanel>
+          </Border>
+
           <!-- 测量值 PV -->
           <StackPanel Margin="0,0,0,18">
             <TextBlock Classes="sect" Text="测量值 PV" />
@@ -99,7 +112,7 @@
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
               <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="温度 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="10 – 200 °C" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                <TextBlock Text="{Binding TspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
               </StackPanel>
               <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
                       BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
@@ -117,7 +130,7 @@
             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
               <StackPanel Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="压力 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="0 – 500 psi" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                <TextBlock Text="{Binding PspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
               </StackPanel>
               <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
                       BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">

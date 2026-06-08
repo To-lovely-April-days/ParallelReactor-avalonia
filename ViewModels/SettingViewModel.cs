@@ -19,8 +19,11 @@ public partial class SettingViewModel : ViewModelBase
     public ObservableCollection<SetPage> Pages { get; } = new();
     [ObservableProperty] private SetPage? _selected;
 
-    public SettingViewModel()
+    private readonly MainViewModel _main;
+
+    public SettingViewModel(MainViewModel main)
     {
+        _main = main;
         Seed();
         Selected = Pages.Count > 0 ? Pages[0] : null;
 
@@ -75,6 +78,15 @@ public partial class SettingViewModel : ViewModelBase
 
     private static Geometry G(string d) => Geometry.Parse(d);
 
+    /// <summary>构造一行可编辑数值：双向回写全局设置，点数值弹键盘。</summary>
+    private SetRow Num(string label, double value, string unit, double min, double max, double step, Action<double> apply, string? sub = null)
+    {
+        var row = SetRow.Num(label, value, unit, min, max, step, sub);
+        row.Apply = apply;
+        row.EditRequest = () => _main.Keyboard.OpenNumeric(label, row.NumValue, unit, min, max, v => row.NumValue = v);
+        return row;
+    }
+
     private void Seed()
     {
         Pages.Add(new SetPage
@@ -93,6 +105,27 @@ public partial class SettingViewModel : ViewModelBase
                     SetRow.Toggle("运行前自动检查", "每次启动前弹出 9 项检查清单", true),
                     SetRow.Toggle("注射事件自动重置计数", "检测到注射后弹气泡询问是否清零", true),
                     SetRow.Toggle("智能升温诊断", "升温超时主动建议", true)),
+            },
+        });
+
+        Pages.Add(new SetPage
+        {
+            Id = "params", Name = "参数与报警", Title = "参数与报警", Sub = "可设置参数范围与报警阈值",
+            Icon = G("M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M2 14h4 M10 8h4 M18 16h4"),
+            Sections =
+            {
+                SetSection.Card("可设置参数范围",
+                    Num("温度 SP 上限", _main.Settings.TMaxSp, "°C", 50, 300, 5, v => _main.Settings.TMaxSp = v),
+                    Num("压力 SP 上限", _main.Settings.PMaxSp, "psi", 100, 1000, 10, v => _main.Settings.PMaxSp = v),
+                    Num("搅拌转速上限", _main.Settings.RpmMax, "rpm", 500, 3000, 100, v => _main.Settings.RpmMax = v),
+                    Num("溶液体积上限", _main.Settings.VolMax, "mL", 5, 200, 5, v => _main.Settings.VolMax = v)),
+                SetSection.Card("报警阈值",
+                    Num("超压报警", _main.Settings.OverPressure, "psi", 100, 1000, 5, v => _main.Settings.OverPressure = v, "压力 ≥ 此值触发硬报警"),
+                    Num("超温报警", _main.Settings.OverTemp, "°C", 50, 400, 5, v => _main.Settings.OverTemp = v, "温度 ≥ 此值触发报警"),
+                    Num("升温超时报警", _main.Settings.HeatTimeout, "分钟", 5, 60, 1, v => _main.Settings.HeatTimeout = v, "升温超过此时长未到 SP 时提示"),
+                    Num("压力偏离 SP 报警", _main.Settings.PressDeviation, "psi", 1, 50, 1, v => _main.Settings.PressDeviation = v, "稳压后偏离超过此值时提示"),
+                    Num("泄漏率阈值", _main.Settings.LeakRate, "psi/hr", 0.5, 10, 0.5, v => _main.Settings.LeakRate = v, "泄漏测试判定不通过的阈值"),
+                    Num("泄漏测试提醒周期", _main.Settings.LeakReminderDays, "天", 1, 30, 1, v => _main.Settings.LeakReminderDays = v, "超过此天数未测试则提醒")),
             },
         });
 
@@ -267,20 +300,41 @@ public partial class SetRow : ObservableObject
     public string Label { get; set; } = "";
     public string? Sub { get; set; }
     public bool LabelBold { get; set; }
-    public string Kind { get; set; } = "val";           // val | chip | toggle
+    public string Kind { get; set; } = "val";           // val | chip | toggle | num
     public string ValText { get; set; } = "";
     public string ChipText { get; set; } = "";
     public bool ChipWarn { get; set; }
     public string? Trail { get; set; }
+    public string Unit { get; set; } = "";
+    public double Min { get; set; }
+    public double Max { get; set; } = 9999;
+    public double Step { get; set; } = 1;
     [ObservableProperty] private bool _on;
 
+    /// <summary>数值变化时回写全局设置。</summary>
+    public Action<double>? Apply;
+    /// <summary>点击数值时打开键盘。</summary>
+    public Action? EditRequest;
+
+    private double _numValue;
+    public double NumValue
+    {
+        get => _numValue;
+        set { if (SetProperty(ref _numValue, value)) { OnPropertyChanged(nameof(NumText)); Apply?.Invoke(value); } }
+    }
+
     [RelayCommand] private void Flip() => On = !On;
+    [RelayCommand] private void Inc() => NumValue = Math.Min(Max, NumValue + Step);
+    [RelayCommand] private void Dec() => NumValue = Math.Max(Min, NumValue - Step);
+    [RelayCommand] private void Edit() => EditRequest?.Invoke();
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
 
     public bool IsVal => Kind == "val";
     public bool IsChip => Kind == "chip";
     public bool IsToggle => Kind == "toggle";
+    public bool IsNum => Kind == "num";
+    public string NumText => Unit.Length > 0 ? $"{NumValue:0.#} {Unit}" : $"{NumValue:0.#}";
     public bool HasSub => !string.IsNullOrEmpty(Sub);
     public bool HasTrail => !string.IsNullOrEmpty(Trail);
 
@@ -297,4 +351,6 @@ public partial class SetRow : ObservableObject
         => new() { Kind = "chip", Label = label, ChipText = chip, ChipWarn = warn, Trail = trail, Sub = sub, LabelBold = labelBold };
     public static SetRow Toggle(string label, string? sub, bool on)
         => new() { Kind = "toggle", Label = label, Sub = sub, On = on };
+    public static SetRow Num(string label, double value, string unit, double min, double max, double step, string? sub = null)
+        => new() { Kind = "num", Label = label, NumValue = value, Unit = unit, Min = min, Max = max, Step = step, Sub = sub };
 }
