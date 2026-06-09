@@ -52,6 +52,7 @@ public partial class ProgramView : UserControl
     private void OnPreviewPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) { _dragSrc = null; return; }
+        if (DataContext is ProgramViewModel pvm && !pvm.CanEdit) { _dragSrc = null; return; }   // 运行中只读，禁止拖拽
         _dragSrc = FindDragSource(e.Source as Control, out _dragRow);
         _press = e.GetPosition(this);
         _dragging = false;

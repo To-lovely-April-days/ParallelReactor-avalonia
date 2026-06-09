@@ -28,11 +28,30 @@
   <Panel>
     <Panel.Background>
       <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-        <GradientStop Color="#131316" Offset="0" />
-        <GradientStop Color="#0e0e11" Offset="0.45" />
-        <GradientStop Color="#160d10" Offset="1" />
+        <GradientStop Color="#160F12" Offset="0" />
+        <GradientStop Color="#0d0c0f" Offset="0.42" />
+        <GradientStop Color="#0b0b0e" Offset="0.6" />
+        <GradientStop Color="#1a0d12" Offset="1" />
       </LinearGradientBrush>
     </Panel.Background>
+
+    <!-- 主题红氛围光晕（左上 + 右下），营造黑红毛玻璃底 -->
+    <Border IsHitTestVisible="False">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="2%,0%" EndPoint="60%,52%">
+          <GradientStop Color="#2BE0394C" Offset="0" />
+          <GradientStop Color="#00E0394C" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
+    <Border IsHitTestVisible="False">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="100%,100%" EndPoint="42%,50%">
+          <GradientStop Color="#26A41626" Offset="0" />
+          <GradientStop Color="#00A41626" Offset="1" />
+        </LinearGradientBrush>
+      </Border.Background>
+    </Border>
 
     <Grid RowDefinitions="64,46,*,66">
 
@@ -210,7 +229,7 @@
               BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="7,0">
         <Grid ColumnDefinitions="Auto,*,Auto">
           <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-            <Button Classes="tbtn go" Command="{Binding RunAllCommand}">
+            <Button Classes="tbtn go" Command="{Binding RunAllCommand}" IsVisible="{Binding NotRunning}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="16" Height="16" VerticalAlignment="Center">
                   <Canvas Width="24" Height="24">
@@ -221,7 +240,7 @@
                 <TextBlock Text="开始运行" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
-            <Button Classes="tbtn" Command="{Binding StopAllCommand}">
+            <Button Classes="tbtn" Command="{Binding StopAllCommand}" IsVisible="{Binding AnyRunning}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="16" Height="16" VerticalAlignment="Center">
                   <Canvas Width="24" Height="24">
@@ -236,8 +255,8 @@
             <Button Classes="tbtn" Command="{Binding RecipePicker.OpenCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                  <Canvas Width="1024" Height="1024">
-                    <Path Classes="tico-fill" Data="M163.2656 477.792h277.44v64h-277.44zM1022.9456 984.32a30.24 30.24 0 0 0-0.704-5.056l-99.232-284.8 22.944-63.04h7.04a32 32 0 0 0 0-64h-286.08a32 32 0 0 0 0 64h6.56l23.136 63.52-98.88 283.968a85.12 85.12 0 0 1-1.856 10.624c0 0.448 0.224 0.832 0.224 1.28a31.008 31.008 0 0 0 0.96 4.608 31.808 31.808 0 0 0 1.984 7.584c0.416 0.896 1.152 1.6 1.664 2.432a31.648 31.648 0 0 0 5.536 7.424c0.64 0.608 1.536 0.96 2.24 1.504a31.424 31.424 0 0 0 8.384 4.96c0.224 0.096 0.32 0.256 0.544 0.32a184.864 184.864 0 0 1 10.464 1.92h362.56c0.544 0 1.056 0.224 1.6 0.224a31.872 31.872 0 0 0 10.56-1.792c0.544-0.192 0.928-0.64 1.472-0.896 0.832-0.32 1.44-0.928 2.24-1.312a31.616 31.616 0 0 0 8.096-5.44c0.512-0.544 0.832-1.216 1.312-1.792a31.744 31.744 0 0 0 5.44-8.096 32.864 32.864 0 0 0 0.96-3.552 31.296 31.296 0 0 0 1.696-8.352c0-0.352 0.192-0.64 0.192-1.024a30.176 30.176 0 0 0-1.056-5.216z m-349.984-26.784l87.712-251.968a59748.224 59748.224 0 0 1 1.536-11.008 31427.936 31427.936 0 0 0-1.696-11.2l-18.944-51.968h136.288l-18.912 51.968a30.08 30.08 0 0 0-0.576 3.744 24.288 24.288 0 0 0-0.128 13.696 29.984 29.984 0 0 0 0.544 3.872l88.128 252.896zM163.2656 318.624h408.512v64H163.2656z M64.0016 125.792h136v41.92a26.464 26.464 0 0 0 26.464 26.496h427.072a26.464 26.464 0 0 0 26.464-26.496v-41.92h136v338.08h64V100.672a38.592 38.592 0 0 0-38.24-38.88H680.0016V28.672a26.464 26.464 0 0 0-26.464-26.464H226.4656a26.464 26.464 0 0 0-26.464 26.432v33.152H38.2416A38.592 38.592 0 0 0 0.0016 100.672v882.24a38.592 38.592 0 0 0 38.24 38.88H486.7216v-64H64.0016zM264.0016 66.24h352v64h-352z" />
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 3h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M9 12h6 M9 16h4" />
                   </Canvas>
                 </Viewbox>
                 <TextBlock Text="配方模板" VerticalAlignment="Center" />
@@ -246,8 +265,8 @@
             <Button Classes="tbtn" Command="{Binding Leak.OpenCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                  <Canvas Width="1024" Height="1024">
-                    <Path Classes="tico-fill" Data="M491.008 386.048c0-97.792 176.64-244.224 176.64-244.224S844.8 288.256 844.8 386.048 765.44 563.2 668.16 563.2s-177.152-78.848-177.152-177.152z M562.688 383.488c0-57.856 104.96-144.896 104.96-144.896s105.472 87.04 105.472 144.896-47.104 104.96-104.96 104.96-105.472-46.592-105.472-104.96z M397.312 221.696h-289.28c-22.016 0-39.936-17.92-39.936-39.424 0-22.016 17.92-39.936 39.936-39.936h289.28c22.016 0 39.424 17.92 39.424 39.936 0 21.504-17.408 39.424-39.424 39.424zM927.232 894.976h-819.2c-22.016 0-39.936-17.92-39.936-39.936s17.92-39.424 39.936-39.424h819.2c22.016 0 39.424 17.92 39.424 39.424 0 22.016-17.408 39.936-39.424 39.936zM750.08 729.6h-464.896c-22.016 0-39.936-17.92-39.936-39.936s17.92-39.424 39.936-39.424h464.896c22.016 0 39.424 17.92 39.424 39.424 0 22.016-17.92 39.936-39.424 39.936zM297.472 384.512h-189.44c-22.016 0-39.936-17.92-39.936-39.424 0-22.016 17.92-39.936 39.936-39.936h189.44c22.016 0 39.424 17.92 39.424 39.936 0 21.504-17.408 39.424-39.424 39.424z M147.456 524.288V855.04c0 22.016-17.92 39.936-39.424 39.936-22.016 0-39.936-17.92-39.936-39.936v-330.24c0-22.016 17.92-39.936 39.936-39.936 22.016 0.512 39.424 18.432 39.424 39.424zM966.656 524.288V855.04c0 22.016-17.92 39.936-39.424 39.936-22.016 0-39.424-17.92-39.424-39.936v-330.24c0-22.016 17.92-39.936 39.424-39.936 22.016 0.512 39.424 18.432 39.424 39.424zM364.544 564.736h-79.36c-22.016 0-39.936-17.92-39.936-39.936s17.92-39.424 39.936-39.424h79.36c22.016 0 39.424 17.92 39.424 39.424 0.512 22.016-17.408 39.936-39.424 39.936z" />
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
                   </Canvas>
                 </Viewbox>
                 <TextBlock Text="泄漏测试" VerticalAlignment="Center" />
@@ -258,8 +277,8 @@
                     Command="{Binding ToggleManualCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                  <Canvas Width="1024" Height="1024">
-                    <Path Classes="tico-fill" Data="M251.112727 432.989091q17.710545 40.890182 49.966546 72.378182l32.535272-33.28Q279.272727 419.025455 279.272727 344.133818q0-74.914909 54.341818-127.953454Q388.165818 162.909091 465.454545 162.909091q77.265455 0 131.84 53.294545Q651.636364 269.195636 651.636364 344.110545q0 74.891636-54.341819 127.953455l32.535273 33.28q32.256-31.488 49.966546-72.378182 18.385455-42.426182 18.385454-88.855273t-18.385454-88.855272q-17.710545-40.890182-49.989819-72.378182-32.186182-31.464727-73.937454-48.709818Q512.674909 116.363636 465.454545 116.363636q-47.243636 0-90.414545 17.826909-41.751273 17.221818-73.960727 48.686546-32.256 31.511273-49.966546 72.401454-18.385455 42.426182-18.385454 88.855273t18.385454 88.855273zM394.077091 919.272727H751.941818l28.392727-301.521454-3.560727-8.238546q-13.847273-31.930182-58.647273-44.962909-33.838545-9.821091-89.6-9.821091-36.561455 0-58.321454-0.605091v-204.893091l-11.170909-10.356363Q507.275636 290.909091 473.530182 290.909091q-39.703273 0-93.370182 47.406545l-11.776 10.426182v257.466182q-30.673455-11.729455-52.689455-16.802909l-5.306181-1.233455-5.422546 0.465455q-43.776 3.607273-66.024727 32.674909-21.061818 27.508364-17.268364 72.192l0.907637 10.519273 171.52 215.249454z m294.283636-69.818182h-260.654545L290.909091 677.725091q0.279273-9.774545 3.490909-13.963636 2.699636-3.514182 11.264-4.933819 30.72 8.075636 83.362909 31.650909l49.198546 22.039273V380.602182q23.133091-18.781091 34.094545-19.805091l0.232727 0.069818q3.118545 1.186909 7.912728 4.189091 8.610909 5.399273 19.921454 15.034182v205.591273q0 31.744 36.328727 36.375272 7.284364 0.930909 20.410182 1.466182 24.040727 1.024 71.400727 1.024 45.824 0 70.097455 7.051636 6.004364 1.745455 9.937455 3.677091l-20.177455 214.178909z" />
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M5 8l7 4-7 4z M19 8l-7 4 7 4z M12 8V4 M9 4h6" />
                   </Canvas>
                 </Viewbox>
                 <TextBlock Text="手动阀控" VerticalAlignment="Center" />
@@ -269,7 +288,7 @@
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
             <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource Body}">
-              <Run Text="运行 " /><Run Text="{Binding RunCountText}" Foreground="{DynamicResource GreenBright}" FontWeight="Bold" /><Run Text=" 通道" />
+              <Run Text="运行 " /><Run Text="{Binding RunCountText}" Foreground="{DynamicResource OnDark}" FontWeight="Bold" /><Run Text=" 通道" />
             </TextBlock>
             <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" />
             <Button Classes="estop" Command="{Binding EstopCommand}">
@@ -329,7 +348,7 @@
               <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
                 <Viewbox Width="26" Height="26" VerticalAlignment="Center">
                   <Canvas Width="1024" Height="1024">
-                    <Path Fill="#d4a8ff"
+                    <Path Fill="#e0394c"
                           Data="M544 421.44V448a32 32 0 1 1-64 0v-64a32 32 0 0 1 32-32 160 160 0 0 1 160 160 32 32 0 1 1-64 0 96.032 96.032 0 0 0-64-90.56z m-64 181.12V576a32 32 0 0 1 64 0v64a32 32 0 0 1-32 32 160 160 0 0 1-160-160 32 32 0 1 1 64 0c0 41.792 26.72 77.344 64 90.56zM512 800a288 288 0 1 1 0-576 288 288 0 0 1 0 576z m0-512a224 224 0 1 0 0 448 224 224 0 0 0 0-448z" />
                   </Canvas>
                 </Viewbox>
@@ -357,11 +376,11 @@
                     <Border CornerRadius="999" IsVisible="{Binding StirOn}">
                       <Border.Background>
                         <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                          <GradientStop Color="#84cc16" Offset="0" />
-                          <GradientStop Color="#a3e635" Offset="1" />
+                          <GradientStop Color="#e0394c" Offset="0" />
+                          <GradientStop Color="#A41626" Offset="1" />
                         </LinearGradientBrush>
                       </Border.Background>
-                      <Ellipse Width="19" Height="19" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
+                      <Ellipse Width="19" Height="19" Fill="#f4f4f6" HorizontalAlignment="Right" Margin="0,0,2,0" />
                     </Border>
                   </Panel>
                 </Button>
@@ -669,20 +688,10 @@
       <Border Classes="pmodal" Width="560" MaxHeight="660" HorizontalAlignment="Center" VerticalAlignment="Center">
         <DockPanel>
           <!-- 头 -->
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
-            <Border Width="36" Height="36" CornerRadius="11" Background="#2E84cc16" VerticalAlignment="Center">
-              <Viewbox Width="18" Height="18">
-                <Canvas Width="24" Height="24">
-                  <Path Data="M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"
-                        Stroke="#a3e635" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-                </Canvas>
-              </Viewbox>
-            </Border>
-            <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="预运行检查" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-              <TextBlock Text="{Binding PreRunSummary}" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
-            </StackPanel>
-          </Grid>
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="预运行检查" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="{Binding PreRunSummary}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
           <!-- 底 -->
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
                       HorizontalAlignment="Right" Margin="22,6,22,20">
@@ -695,23 +704,24 @@
             <ItemsControl ItemsSource="{Binding PreRunChecks}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:PreRunCheck">
-                  <Border CornerRadius="11" Background="{Binding TintBg}" BorderBrush="{Binding Tint}"
-                          BorderThickness="1" Padding="12,10" Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="Auto,*">
-                      <Border Width="26" Height="26" CornerRadius="13" Background="{Binding TintBg}" VerticalAlignment="Top">
-                        <Viewbox Width="14" Height="14">
+                  <Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="2,12">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="22" Height="22" CornerRadius="11" Background="{Binding TintBg}" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12">
                           <Canvas Width="24" Height="24">
-                            <Path Data="{Binding Icon}" Stroke="{Binding Tint}" StrokeThickness="2.2"
+                            <Path Data="{Binding Icon}" Stroke="{Binding Tint}" StrokeThickness="2.4"
                                   StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
                           </Canvas>
                         </Viewbox>
                       </Border>
-                      <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                      <StackPanel Grid.Column="1" Margin="13,0,12,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
                                    Foreground="{DynamicResource OnDark}" />
                         <TextBlock Text="{Binding Detail}" FontSize="10.5" Foreground="{DynamicResource Body}"
                                    Margin="0,2,0,0" TextWrapping="Wrap" LineHeight="15" />
                       </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{Binding Tint}" VerticalAlignment="Center" />
                     </Grid>
                   </Border>
                 </DataTemplate>
@@ -728,26 +738,10 @@
       <Border Classes="pmodal" Width="800" MaxHeight="700" HorizontalAlignment="Center" VerticalAlignment="Center">
         <DockPanel>
           <!-- 头 -->
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
-            <Border Width="36" Height="36" CornerRadius="11" VerticalAlignment="Center">
-              <Border.Background>
-                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-                  <GradientStop Color="#A41626" Offset="0" />
-                  <GradientStop Color="#d4435a" Offset="1" />
-                </LinearGradientBrush>
-              </Border.Background>
-              <Viewbox Width="18" Height="18">
-                <Canvas Width="24" Height="24">
-                  <Path Data="M4 4h16v4H4z M4 12h16v8H4z M8 4v4 M8 12v8 M16 4v4 M16 12v8" Stroke="#fff"
-                        StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-                </Canvas>
-              </Viewbox>
-            </Border>
-            <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="应用配方" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-              <TextBlock Text="选择配方模板与目标通道" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
-            </StackPanel>
-          </Grid>
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="应用配方" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="选择配方模板与目标通道" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
           <!-- 底 -->
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
             <Button Classes="mfbtn" Command="{Binding RecipePicker.CloseCommand}" Content="取消" />
@@ -770,16 +764,18 @@
                     <Setter Property="Background" Value="Transparent" />
                     <Setter Property="Template">
                       <ControlTemplate>
-                        <Border Background="{TemplateBinding Background}" CornerRadius="9" Padding="9">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="9" Padding="9"
+                                BorderBrush="Transparent" BorderThickness="1">
                           <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
                         </Border>
                       </ControlTemplate>
                     </Setter>
-                    <Style Selector="^:pointerover">
+                    <Style Selector="^:pointerover /template/ Border#bg">
                       <Setter Property="Background" Value="#7E26262C" />
                     </Style>
-                    <Style Selector="^:selected">
-                      <Setter Property="Background" Value="#9942424A" />
+                    <Style Selector="^:selected /template/ Border#bg">
+                      <Setter Property="Background" Value="#22E0394C" />
+                      <Setter Property="BorderBrush" Value="#e0394c" />
                     </Style>
                   </ControlTheme>
                 </ListBox.ItemContainerTheme>
@@ -855,20 +851,10 @@
       <Border Classes="pmodal" Width="640" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
         <DockPanel>
           <!-- 头 -->
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
-            <Border Width="36" Height="36" CornerRadius="11" Background="#2E5B96E4" VerticalAlignment="Center">
-              <Viewbox Width="18" Height="18">
-                <Canvas Width="24" Height="24">
-                  <Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="#7eb6ee"
-                        StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-                </Canvas>
-              </Viewbox>
-            </Border>
-            <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="自动泄漏测试" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-              <TextBlock Text="Auto Leak Test · 充氮 510 psi · 阈值 &lt; 2 psi/hr" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
-            </StackPanel>
-          </Grid>
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="自动泄漏测试" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="Auto Leak Test · 充氮 510 psi · 阈值 &lt; 2 psi/hr" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
           <!-- 底 -->
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
             <Button Classes="mfbtn" Command="{Binding Leak.CloseCommand}" Content="关闭" />
@@ -896,9 +882,9 @@
                     <Run Text="4.  自动判读：压降 ≥ 2 psi/hr 为不通过" />
                   </TextBlock>
                 </StackPanel>
-                <Border Background="#145B96E4" BorderBrush="#4D5B96E4" BorderThickness="1" CornerRadius="10" Padding="13,11">
+                <Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" CornerRadius="9" Padding="13,11">
                   <TextBlock Text="取代原 Endeavor 中必须人工点 Listen → 等 40 分钟 → 人工读图的流程。系统会同时记录全部 8 路并给出每路的结论。"
-                             FontSize="11.5" Foreground="#b6d4f5" TextWrapping="Wrap" LineHeight="17" />
+                             FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17" />
                 </Border>
               </StackPanel>
 
@@ -964,20 +950,10 @@
       <Border Background="#99060609" />
       <Border Classes="pmodal" Width="600" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
         <DockPanel>
-          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
-            <Border Width="36" Height="36" CornerRadius="11" Background="#2EE0394C" VerticalAlignment="Center">
-              <Viewbox Width="18" Height="18">
-                <Canvas Width="24" Height="24">
-                  <Path Data="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z M12 9v4 M12 17h.01"
-                        Stroke="#e0394c" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-                </Canvas>
-              </Viewbox>
-            </Border>
-            <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-              <TextBlock Text="泄漏诊断与维修建议" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-              <TextBlock Text="Leak Diagnosis &amp; Repair" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
-            </StackPanel>
-          </Grid>
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="泄漏诊断与维修建议" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="Leak Diagnosis &amp; Repair" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
             <Button Classes="mfbtn go" Command="{Binding Leak.CloseDiagCommand}" Content="关闭" />
           </StackPanel>

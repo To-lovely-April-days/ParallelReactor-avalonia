@@ -63,8 +63,8 @@ public class StepDef
         {
             [StepType.Purge] = new StepDef
             {
-                Type = StepType.Purge, Name = "吹扫", Chip = "PURGE", Brush = B("#7eb6ee"),
-                Icon = G("M3 12h18 M9 6l-6 6 6 6 M21 6v12"),
+                Type = StepType.Purge, Name = "吹扫", Chip = "PURGE", Brush = B("#6f93b8"),
+                Icon = G("M9.6 4.6A2 2 0 1 1 11 8H2 M12.6 19.4A2 2 0 1 0 14 16H2 M17.5 8A2.5 2.5 0 1 1 19.5 12.5H2"),
                 Help = "每次循环：充气→卸压。10 次循环可让 RV 内残留气体含量 < 0.1%。",
                 Fields = new()
                 {
@@ -75,8 +75,8 @@ public class StepDef
             },
             [StepType.Heat] = new StepDef
             {
-                Type = StepType.Heat, Name = "升温", Chip = "HEAT", Brush = B("#f0a830"),
-                Icon = G("M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5s-3 3.5-3 5.5a7 7 0 0 0 7 7z"),
+                Type = StepType.Heat, Name = "升温", Chip = "HEAT", Brush = B("#c79450"),
+                Icon = G("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
                 Help = "升温建议：使用「等待平衡」给予 15-25 分钟，确保溶液温度达到设定值。",
                 Fields = new()
                 {
@@ -101,8 +101,8 @@ public class StepDef
             },
             [StepType.Press] = new StepDef
             {
-                Type = StepType.Press, Name = "升压", Chip = "PRESS", Brush = B("#7eb6ee"),
-                Icon = G("M12 2v20 M5 9l7-7 7 7"),
+                Type = StepType.Press, Name = "升压", Chip = "PRESS", Brush = B("#5f87b5"),
+                Icon = G("M12 14l4-4 M3.34 19a10 10 0 1 1 17.32 0"),
                 Help = "稳压建议：低气体消耗反应（< 0.5 mmol/h）关闭稳压可获更低 rsd。",
                 Fields = new()
                 {
@@ -114,8 +114,8 @@ public class StepDef
             },
             [StepType.Stir] = new StepDef
             {
-                Type = StepType.Stir, Name = "搅拌", Chip = "STIR", Brush = B("#d4a8ff"),
-                Icon = G("M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M12 2v4 M12 18v4 M4.93 4.93l2.83 2.83 M16.24 16.24l2.83 2.83 M2 12h4 M18 12h4"),
+                Type = StepType.Stir, Name = "搅拌", Chip = "STIR", Brush = B("#7e86a8"),
+                Icon = G("M21 12a9 9 0 1 1-6.22-8.56 M21 3v6h-6"),
                 Help = "搅拌速度变更不会立即生效，需要约 50 秒过渡。",
                 Fields = new()
                 {
@@ -126,7 +126,7 @@ public class StepDef
             [StepType.Wait] = new StepDef
             {
                 Type = StepType.Wait, Name = "等待", Chip = "WAIT", Brush = B("#a4a4b0"),
-                Icon = G("M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M12 7v5l3 2"),
+                Icon = G("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2"),
                 Help = "用「等待温度/压力到位」可让程序自适应实际耗时，比固定时长更稳健。",
                 Fields = new()
                 {
@@ -137,8 +137,8 @@ public class StepDef
             },
             [StepType.React] = new StepDef
             {
-                Type = StepType.React, Name = "反应", Chip = "REACT", Brush = B("#a3e635"),
-                Icon = G("M9 12l2 2 4-4 M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z"),
+                Type = StepType.React, Name = "反应", Chip = "REACT", Brush = B("#6f9f6a"),
+                Icon = G("M8.5 2h7 M10 2v6.5L5.6 18a2 2 0 0 0 1.8 3h9.2a2 2 0 0 0 1.8-3L14 8.5V2 M7 15h10"),
                 Help = "结束条件中选「两者先到」可避免反应完成后还在继续加热消耗气体。",
                 Fields = new()
                 {
@@ -150,8 +150,8 @@ public class StepDef
             },
             [StepType.End] = new StepDef
             {
-                Type = StepType.End, Name = "结束", Chip = "END", Brush = B("#e0394c"),
-                Icon = G("M6 6h12v12H6z"),
+                Type = StepType.End, Name = "结束", Chip = "END", Brush = B("#b0555f"),
+                Icon = G("M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7"),
                 Help = "强烈推荐使用「密封」：高温下吹扫或排空会让溶剂蒸气污染气路 manifold。",
                 Fields = new()
                 {

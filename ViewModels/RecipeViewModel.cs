@@ -145,7 +145,7 @@ public partial class ChannelPick : ObservableObject
     }
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
-    public IBrush PickBg => Picked && !Disabled ? B("#29A86CE0") : B("#73303037");
-    public IBrush PickBorder => Picked && !Disabled ? B("#80A86CE0") : B("#14FFFFFF");
+    public IBrush PickBg => Picked && !Disabled ? B("#22E0394C") : B("#73303037");
+    public IBrush PickBorder => Picked && !Disabled ? B("#e0394c") : B("#14FFFFFF");
     public IBrush NameBrush => Picked && !Disabled ? B("#f6f6f8") : B("#a4a4b0");
 }

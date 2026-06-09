@@ -22,7 +22,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
   </Style>
   <Style Selector="Button.tbtn.go">
-    <Setter Property="Foreground" Value="{DynamicResource GreenBright}" />
+    <Setter Property="Foreground" Value="{DynamicResource AccentBright}" />
   </Style>
   <Style Selector="Button.tbtn.man.on">
     <Setter Property="Foreground" Value="{DynamicResource Amber}" />
@@ -266,12 +266,15 @@
   <Style Selector="Path.tico-fill">
     <Setter Property="Fill" Value="{DynamicResource Body}" />
   </Style>
-  <!-- 开始运行：绿 -->
+  <!-- 开始运行：主题红 -->
   <Style Selector="Button.tbtn.go Path.tico">
-    <Setter Property="Stroke" Value="{DynamicResource GreenBright}" />
+    <Setter Property="Stroke" Value="{DynamicResource AccentBright}" />
   </Style>
   <Style Selector="Button.tbtn.go Path.tico-fill">
-    <Setter Property="Fill" Value="{DynamicResource GreenBright}" />
+    <Setter Property="Fill" Value="{DynamicResource AccentBright}" />
+  </Style>
+  <Style Selector="Button.tbtn:disabled">
+    <Setter Property="Opacity" Value="0.35" />
   </Style>
   <!-- 手动阀控激活：琥珀（实心填充图标）-->
   <Style Selector="Button.tbtn.man.on Path.tico">

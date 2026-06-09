@@ -185,6 +185,10 @@
                                       <Button Classes="numstep" Content="+" Command="{Binding IncCommand}" />
                                     </StackPanel>
                                   </Border>
+                                  <!-- 下拉选择 -->
+                                  <ComboBox IsVisible="{Binding IsSel}" ItemsSource="{Binding Options}"
+                                            SelectedItem="{Binding SelValue, Mode=TwoWay}" MinWidth="160"
+                                            VerticalAlignment="Center" FontSize="12.5" />
                                 </StackPanel>
                               </Grid>
                             </Border>

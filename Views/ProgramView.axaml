@@ -48,7 +48,7 @@
                     <TextBlock Text="{Binding SmallText}" Classes="pchsmall" VerticalAlignment="Center" />
                   </StackPanel>
                   <Ellipse Width="6" Height="6" Fill="#3aa6ff" HorizontalAlignment="Right" VerticalAlignment="Top"
-                           Margin="0,-2,-1,0" IsVisible="{Binding IsModified}" />
+                           Margin="0,-6,-5,0" IsVisible="{Binding IsModified}" />
                 </Panel>
               </Button>
             </DataTemplate>
@@ -73,7 +73,7 @@
             <TextBlock Text="点击步骤添加到末尾，或拖拽到右侧时间线的指定位置"
                        FontSize="10.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="15" />
           </Border>
-          <ItemsControl ItemsSource="{Binding Palette}" Margin="0,6,0,8">
+          <ItemsControl ItemsSource="{Binding Palette}" Margin="0,6,0,8" IsEnabled="{Binding CanEdit}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
@@ -119,8 +119,23 @@
           <Border Grid.Row="0" Height="1" VerticalAlignment="Bottom" Background="{DynamicResource GlassLine}" />
 
           <!-- 体 -->
-          <ScrollViewer Grid.Row="1" Padding="14,12" VerticalScrollBarVisibility="Auto">
-            <Panel>
+          <DockPanel Grid.Row="1">
+            <!-- 运行中只读横幅 -->
+            <Border DockPanel.Dock="Top" IsVisible="{Binding IsLocked}" Background="#1FE0394C"
+                    BorderBrush="#4DE0394C" BorderThickness="0,0,0,1" Padding="16,9">
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <Viewbox Width="14" Height="14">
+                  <Canvas Width="24" Height="24">
+                    <Path Data="M5 11h14v10H5z M8 11V7a4 4 0 0 1 8 0v4" Stroke="#e0394c"
+                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="{Binding LockHint}" FontSize="11.5" FontWeight="SemiBold"
+                           Foreground="#e0394c" VerticalAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <ScrollViewer Padding="14,12" VerticalScrollBarVisibility="Auto">
+              <Panel>
               <!-- 空状态 -->
               <Border Classes="progempty" IsVisible="{Binding IsEmpty}">
                 <StackPanel Spacing="10" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -167,7 +182,8 @@
                                      Margin="0,3,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Classes="pact" Orientation="Horizontal" Spacing="2"
-                                    VerticalAlignment="Center">
+                                    VerticalAlignment="Center"
+                                    IsEnabled="{Binding $parent[ListBox].DataContext.CanEdit}">
                           <Button Classes="pactbtn" ToolTip.Tip="上移"
                                   Command="{Binding $parent[ListBox].DataContext.MoveUpCommand}"
                                   CommandParameter="{Binding}">
@@ -190,12 +206,13 @@
                 </ListBox.ItemTemplate>
               </ListBox>
             </Panel>
-          </ScrollViewer>
+            </ScrollViewer>
+          </DockPanel>
 
           <!-- 底部操作栏 -->
           <Border Grid.Row="2" Height="1" VerticalAlignment="Top" Background="{DynamicResource GlassLine}" />
           <DockPanel Grid.Row="2" Margin="14,10" LastChildFill="False">
-            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}">
+            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}" IsEnabled="{Binding CanEdit}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M10 9l5 3-5 3z" Fill="White" /></Canvas></Viewbox>
                 <TextBlock Text="下发并运行" VerticalAlignment="Center" />
@@ -207,7 +224,7 @@
                 <TextBlock Text="应用到其他通道" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
-            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding InsertLeakCommand}">
+            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding InsertLeakCommand}" IsEnabled="{Binding CanEdit}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
                 <TextBlock Text="插入泄漏测试" VerticalAlignment="Center" />
@@ -263,7 +280,7 @@
             <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource GlassLine}" Margin="0,0,0,12" />
             <!-- 字段 -->
             <ScrollViewer VerticalScrollBarVisibility="Auto">
-              <ItemsControl ItemsSource="{Binding InspectorRows}">
+              <ItemsControl ItemsSource="{Binding InspectorRows}" IsEnabled="{Binding CanEdit}">
                 <ItemsControl.DataTemplates>
 
                   <!-- 普通字段 num/sel -->

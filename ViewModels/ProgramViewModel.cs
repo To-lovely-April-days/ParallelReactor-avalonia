@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
 using Avalonia;
@@ -36,6 +37,22 @@ public partial class ProgramViewModel : ViewModelBase
     public string SelInfo => SelectedStep == null
         ? "" : $"{SelectedStep.Ordinal:00} / {Steps.Count:00}";
 
+    // 反应过程中（运行态）程序锁定为只读
+    public bool IsLocked => CurrentChannel?.Reactor.IsRunning == true;
+    public bool CanEdit => !IsLocked;
+    public string LockHint => "该通道正在运行 · 程序已锁定为只读";
+
+    private void OnReactorChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(Reactor.State) or nameof(Reactor.IsRunning)) RaiseLock();
+    }
+
+    private void RaiseLock()
+    {
+        OnPropertyChanged(nameof(IsLocked));
+        OnPropertyChanged(nameof(CanEdit));
+    }
+
     public ProgramViewModel(MainViewModel main)
     {
         _main = main;
@@ -60,8 +77,11 @@ public partial class ProgramViewModel : ViewModelBase
     private void SelectChannel(ProgramChannel ch)
     {
         if (ch.Reactor.IsIdle) return;
+        if (CurrentChannel != null) CurrentChannel.Reactor.PropertyChanged -= OnReactorChanged;
         foreach (var c in Channels) c.IsCurrent = c == ch;
         CurrentChannel = ch;
+        ch.Reactor.PropertyChanged += OnReactorChanged;
+        RaiseLock();
         Steps = _byRv[ch.Reactor.Id];
         SelectedStep = null;
         RenumberAndRefresh();
@@ -71,7 +91,7 @@ public partial class ProgramViewModel : ViewModelBase
     [RelayCommand]
     private void AddStep(PaletteItem item)
     {
-        if (CurrentChannel == null) return;
+        if (CurrentChannel == null || !CanEdit) return;
         var step = ProgramStep.New(item.Type);
         if (item.Type == StepType.Stir) step.With("rpm", (double)_main.StirRpm);
         int at = SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count;
@@ -91,7 +111,7 @@ public partial class ProgramViewModel : ViewModelBase
     [RelayCommand]
     private void EditField(StepField f)
     {
-        if (f is not { IsNum: true }) return;
+        if (!CanEdit || f is not { IsNum: true }) return;
         _main.Keyboard.OpenNumeric(f.Label, f.Number, f.Unit ?? "", f.Min, f.Max, f.SetNumber);
     }
 
@@ -111,19 +131,20 @@ public partial class ProgramViewModel : ViewModelBase
     // ============ 屏幕键盘：曲线段数值（温度 / 斜率 / 保温）============
     [RelayCommand]
     private void EditSegTemp(HeatSeg s)
-    { if (s != null) _main.Keyboard.OpenNumeric("目标温度", s.Temp, "°C", 0, 300, v => s.Temp = v); }
+    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("目标温度", s.Temp, "°C", 0, 300, v => s.Temp = v); }
 
     [RelayCommand]
     private void EditSegRate(HeatSeg s)
-    { if (s != null) _main.Keyboard.OpenNumeric("升温斜率", s.Rate, "°C/min", 0, 50, v => s.Rate = v); }
+    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("升温斜率", s.Rate, "°C/min", 0, 50, v => s.Rate = v); }
 
     [RelayCommand]
     private void EditSegHold(HeatSeg s)
-    { if (s != null) _main.Keyboard.OpenNumeric("保温时长", s.Hold, "min", 0, 600, v => s.Hold = v); }
+    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("保温时长", s.Hold, "min", 0, 600, v => s.Hold = v); }
 
     [RelayCommand]
     private void MoveUp(ProgramStep step)
     {
+        if (!CanEdit) return;
         int i = Steps.IndexOf(step);
         if (i <= 0) return;
         Steps.Move(i, i - 1);
@@ -135,6 +156,7 @@ public partial class ProgramViewModel : ViewModelBase
     [RelayCommand]
     private void MoveDown(ProgramStep step)
     {
+        if (!CanEdit) return;
         int i = Steps.IndexOf(step);
         if (i < 0 || i >= Steps.Count - 1) return;
         Steps.Move(i, i + 1);
@@ -146,6 +168,7 @@ public partial class ProgramViewModel : ViewModelBase
     [RelayCommand]
     private void DeleteStep(ProgramStep step)
     {
+        if (!CanEdit) return;
         int i = Steps.IndexOf(step);
         if (i < 0) return;
         Steps.RemoveAt(i);
@@ -158,7 +181,7 @@ public partial class ProgramViewModel : ViewModelBase
     [RelayCommand] private void ApplyOthers() => OpenApply();
     [RelayCommand] private void InsertLeak()
     {
-        if (CurrentChannel == null) return;
+        if (CurrentChannel == null || !CanEdit) return;
         var leak = ProgramStep.New(StepType.Purge).With("gas", "惰性气体").With("cycles", 3.0);
         Steps.Insert(0, leak);
         MarkModified();
@@ -175,6 +198,7 @@ public partial class ProgramViewModel : ViewModelBase
     // ============ 升温模式切换（HeatModeRow 调用）============
     public void SetHeatMode(ProgramStep step, string mode)
     {
+        if (!CanEdit) return;
         step.SetStr("mode", mode);
         if (mode == "curve") step.EnsureSegments();
         MarkModified();

@@ -328,8 +328,16 @@ public partial class MainViewModel : ViewModelBase
         TabSwitched?.Invoke(id);
     }
 
+    // —— 工具栏联动：运行中只显示「全部停止」，否则只显示「开始运行」——
+    public bool AnyRunning => Reactors.Any(r => r.IsRunning);
+    public bool NotRunning => !AnyRunning;
+
     public void UpdateRunCount()
-        => RunCountText = $"{Reactors.Count(r => r.State != ReactorState.Idle)} / 8";
+    {
+        RunCountText = $"{Reactors.Count(r => r.State != ReactorState.Idle)} / 8";
+        OnPropertyChanged(nameof(AnyRunning));
+        OnPropertyChanged(nameof(NotRunning));
+    }
 
     // ============ 实时数据 tick（对应 HTML setInterval）============
     public void Tick()
@@ -384,7 +392,7 @@ public class PreRunCheck
     {
         "err" => new SolidColorBrush(Color.Parse("#e0394c")),
         "warn" => new SolidColorBrush(Color.Parse("#f0a830")),
-        _ => new SolidColorBrush(Color.Parse("#a3e635")),
+        _ => new SolidColorBrush(Color.Parse("#7aa86a")),
     };
 
     public IBrush TintBg => Kind switch
@@ -400,4 +408,6 @@ public class PreRunCheck
         "warn" => "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 8v5 M12 16h0.01",
         _ => "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M8 12l3 3 5-6",
     });
+
+    public string StatusText => Kind switch { "err" => "异常", "warn" => "提示", _ => "正常" };
 }

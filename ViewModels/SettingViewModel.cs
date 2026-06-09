@@ -96,15 +96,12 @@ public partial class SettingViewModel : ViewModelBase
             Sections =
             {
                 SetSection.Card(
-                    SetRow.Val("语言", "中文（简体）", "Language"),
-                    SetRow.Val("压力单位", "psi（可切换至 bar）", "Pressure Unit"),
-                    SetRow.Val("温度单位", "°C"),
-                    SetRow.Val("主题", "深色（默认）"),
-                    SetRow.Val("采样率", "3 s/样", "影响 .ear 文件大小")),
+                    SetRow.Sel("语言", "中文（简体）", new[] { "中文（简体）", "English" }, "Language"),
+                    SetRow.Sel("压力单位", "psi", new[] { "psi", "bar" }, "Pressure Unit"),
+                    SetRow.Sel("温度单位", "°C", new[] { "°C", "°F" }),
+                    SetRow.Val("主题", "深色（默认）")),
                 SetSection.Card(
-                    SetRow.Toggle("运行前自动检查", "每次启动前弹出 9 项检查清单", true),
-                    SetRow.Toggle("注射事件自动重置计数", "检测到注射后弹气泡询问是否清零", true),
-                    SetRow.Toggle("智能升温诊断", "升温超时主动建议", true)),
+                    SetRow.Toggle("运行前自动检查", "每次启动前弹出 9 项检查清单", true)),
             },
         });
 
@@ -309,7 +306,11 @@ public partial class SetRow : ObservableObject
     public double Min { get; set; }
     public double Max { get; set; } = 9999;
     public double Step { get; set; } = 1;
+    public string[] Options { get; set; } = System.Array.Empty<string>();
     [ObservableProperty] private bool _on;
+
+    private string _selValue = "";
+    public string SelValue { get => _selValue; set => SetProperty(ref _selValue, value); }
 
     /// <summary>数值变化时回写全局设置。</summary>
     public Action<double>? Apply;
@@ -334,6 +335,7 @@ public partial class SetRow : ObservableObject
     public bool IsChip => Kind == "chip";
     public bool IsToggle => Kind == "toggle";
     public bool IsNum => Kind == "num";
+    public bool IsSel => Kind == "sel";
     public string NumText => Unit.Length > 0 ? $"{NumValue:0.#} {Unit}" : $"{NumValue:0.#}";
     public bool HasSub => !string.IsNullOrEmpty(Sub);
     public bool HasTrail => !string.IsNullOrEmpty(Trail);
@@ -353,4 +355,6 @@ public partial class SetRow : ObservableObject
         => new() { Kind = "toggle", Label = label, Sub = sub, On = on };
     public static SetRow Num(string label, double value, string unit, double min, double max, double step, string? sub = null)
         => new() { Kind = "num", Label = label, NumValue = value, Unit = unit, Min = min, Max = max, Step = step, Sub = sub };
+    public static SetRow Sel(string label, string value, string[] options, string? sub = null)
+        => new() { Kind = "sel", Label = label, SelValue = value, Options = options, Sub = sub };
 }
