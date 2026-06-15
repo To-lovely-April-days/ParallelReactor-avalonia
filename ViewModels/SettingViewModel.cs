@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
@@ -20,18 +23,61 @@ public partial class SettingViewModel : ViewModelBase
     [ObservableProperty] private SetPage? _selected;
 
     private readonly MainViewModel _main;
+    private SetRow? _ipRow;     // 「本机 IP 地址」行，运行时刷新
+    private int _netTick;
 
     public SettingViewModel(MainViewModel main)
     {
         _main = main;
         Seed();
         Selected = Pages.Count > 0 ? Pages[0] : null;
+        RefreshNetworkInfo(force: true);   // 进入即显示当前 IP
 
         // 加载关于页的二维码图片
         foreach (var p in Pages)
             foreach (var s in p.Sections)
                 if (s.IsAbout && !string.IsNullOrEmpty(s.QrUrl))
                     LoadQr(s);
+    }
+
+    /// <summary>退出整个程序（弹确认框，确认后关闭应用）。</summary>
+    [RelayCommand]
+    private void ExitApp() => _main.OpenExitConfirm();
+
+    /// <summary>刷新「本机 IP 地址」（WiFi 优先）。由时钟 tick 每 5s 调一次；force=true 立即刷新。</summary>
+    public void RefreshNetworkInfo(bool force = false)
+    {
+        if (_ipRow == null) return;
+        if (!force && _netTick++ % 5 != 0) return;   // 1s 一次 tick，节流到约 5s 查一次
+        _ipRow.ValText = GetLocalIPv4() ?? "未连接";
+    }
+
+    /// <summary>取当前在用网卡的 IPv4：优先无线网卡(WiFi)，否则取其它已连接网卡（排除回环/虚拟网卡）。</summary>
+    private static string? GetLocalIPv4()
+    {
+        try
+        {
+            string? wifi = null, other = null;
+            foreach (var ni in NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != OperationalStatus.Up) continue;
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Loopback) continue;
+                var name = ni.Name.ToLowerInvariant();
+                if (name.StartsWith("docker") || name.StartsWith("veth") ||
+                    name.StartsWith("br-") || name.StartsWith("virbr") || name.StartsWith("lo")) continue;
+
+                string? v4 = null;
+                foreach (var ua in ni.GetIPProperties().UnicastAddresses)
+                    if (ua.Address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(ua.Address))
+                    { v4 = ua.Address.ToString(); break; }
+                if (v4 == null) continue;
+
+                if (ni.NetworkInterfaceType == NetworkInterfaceType.Wireless80211) { wifi = v4; break; }
+                other ??= v4;
+            }
+            return wifi ?? other;
+        }
+        catch { return null; }
     }
 
     /// <summary>加载二维码：avares:// 或相对路径走本地打包资源，http(s) 走网络。</summary>
@@ -145,12 +191,16 @@ public partial class SettingViewModel : ViewModelBase
             },
         });
 
+        _ipRow = SetRow.Val("本机 IP 地址", "获取中…", "WiFi / 以太网当前地址");
         Pages.Add(new SetPage
         {
             Id = "comm", Name = "通讯设置", Title = "通讯设置", Sub = "3 路独立 RS485 · Modbus RTU",
             Icon = G("M5 12.55a11 11 0 0 1 14 0 M1.42 9a16 16 0 0 1 21.16 0 M8.53 16.11a6 6 0 0 1 6.95 0 M12 20h.01"),
             Sections =
             {
+                SetSection.Card("网络",
+                    _ipRow,
+                    SetRow.Val("主机名", Environment.MachineName)),
                 SetSection.Card(
                     SetRow.Chip("温控模块", "在线 · 9.6 kbps", sub: "宇电 AI-8 · /dev/ttyUSB0"),
                     SetRow.Chip("IO 模块", "在线 · 9.6 kbps", sub: "艾莫迅 JY-IO16R · /dev/ttyUSB1"),
@@ -298,7 +348,8 @@ public partial class SetRow : ObservableObject
     public string? Sub { get; set; }
     public bool LabelBold { get; set; }
     public string Kind { get; set; } = "val";           // val | chip | toggle | num
-    public string ValText { get; set; } = "";
+    private string _valText = "";
+    public string ValText { get => _valText; set => SetProperty(ref _valText, value); }   // 可运行时刷新（如 IP）
     public string ChipText { get; set; } = "";
     public bool ChipWarn { get; set; }
     public string? Trail { get; set; }

@@ -68,6 +68,10 @@ public partial class MainWindow : Window
 
     private void OnOpened(object? sender, EventArgs e)
     {
+        // 强制铺满整屏。borderless 窗口在部分 Linux 窗口管理器上不认 WindowState=FullScreen，
+        // 因此按屏幕实际尺寸手动铺满（无边框 + 占满屏幕 = 看板/全屏效果）。
+        GoFullScreen();
+
         // 实时数据 tick（1.2s，对应 HTML setInterval 节奏）
         _tickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
         _tickTimer.Tick += (_, _) => _vm?.Tick();
@@ -82,6 +86,22 @@ public partial class MainWindow : Window
         _animTimer = new DispatcherTimer(
             TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, OnAnimTick);
         _animTimer.Start();
+    }
+
+    /// <summary>把无边框窗口铺满当前屏幕（先按屏幕实际像素/缩放手动铺满，再尝试 FullScreen 兜底）。</summary>
+    private void GoFullScreen()
+    {
+        var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
+        if (screen == null)
+        {
+            WindowState = WindowState.FullScreen;
+            return;
+        }
+
+        var scaling = screen.Scaling <= 0 ? 1.0 : screen.Scaling;
+        Position = screen.Bounds.Position;            // 物理像素坐标，置于屏幕左上角
+        Width = screen.Bounds.Width / scaling;        // 逻辑单位 = 物理像素 / 缩放
+        Height = screen.Bounds.Height / scaling;
     }
 
     private void OnAnimTick(object? sender, EventArgs e)
@@ -103,24 +123,31 @@ public partial class MainWindow : Window
     private void OnBackdropPressed(object? sender, PointerPressedEventArgs e)
         => _vm?.Drawer.CloseCommand.Execute(null);
 
-    // ============ 通知铃铛：点击展开/收起下拉列表 ============
+    // ============ 通知铃铛：点击展开/收起下拉列表（根层浮层，随 Viewbox 缩放）============
     private void OnBellClick(object? sender, RoutedEventArgs e)
     {
-        var popup = this.FindControl<Popup>("NotifPopup");
-        if (popup != null) popup.IsOpen = !popup.IsOpen;
+        var overlay = this.FindControl<Panel>("NotifOverlay");
+        if (overlay != null) overlay.IsVisible = !overlay.IsVisible;
+    }
+
+    // 点击空白处关闭下拉
+    private void OnNotifDismiss(object? sender, PointerPressedEventArgs e)
+    {
+        var overlay = this.FindControl<Panel>("NotifOverlay");
+        if (overlay != null) overlay.IsVisible = false;
     }
 
     // 点击「查看历史 →」后关闭下拉
     private void OnNotifLinkClick(object? sender, RoutedEventArgs e)
     {
-        var popup = this.FindControl<Popup>("NotifPopup");
-        if (popup != null) popup.IsOpen = false;
+        var overlay = this.FindControl<Panel>("NotifOverlay");
+        if (overlay != null) overlay.IsVisible = false;
     }
 
     // 导航药丸高亮
     private void OnTabSwitched(string id)
     {
-        var pills = this.FindControl<StackPanel>("Pills");
+        var pills = this.FindControl<Panel>("Pills");
         if (pills == null) return;
         foreach (var child in pills.Children.OfType<Button>())
         {

@@ -60,12 +60,24 @@
   <Grid RowDefinitions="Auto,*">
 
     <!-- 标题 -->
-    <Grid Grid.Row="0" Margin="20,14,20,6">
-      <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
+    <Grid Grid.Row="0" Margin="20,14,20,6" ColumnDefinitions="*,Auto">
+      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
         <TextBlock Text="系统设置" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
         <TextBlock Text="SYSTEM SETTINGS" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
                    Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
       </StackPanel>
+
+      <!-- 退出程序 -->
+      <Button Grid.Column="1" Classes="mfbtn" Height="34" Padding="14,0" VerticalAlignment="Bottom"
+              Command="{Binding ExitAppCommand}"
+              Background="#1AE0394C" BorderBrush="#59E0394C" Foreground="#f06b78">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Path Data="M16 17l5-5-5-5 M21 12H9 M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+                Stroke="#f06b78" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center" />
+          <TextBlock Text="退出程序" FontSize="12.5" FontWeight="SemiBold" VerticalAlignment="Center" />
+        </StackPanel>
+      </Button>
     </Grid>
 
     <!-- 主体：左菜单 + 右内容 -->
@@ -85,16 +97,20 @@
               <Setter Property="Foreground" Value="{DynamicResource Body}" />
               <Setter Property="Template">
                 <ControlTemplate>
-                  <Border Background="{TemplateBinding Background}" CornerRadius="9" Padding="12,10">
+                  <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="9" Padding="12,10"
+                          BorderBrush="Transparent" BorderThickness="1">
                     <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
                   </Border>
                 </ControlTemplate>
               </Setter>
-              <Style Selector="^:pointerover">
+              <Style Selector="^:pointerover /template/ Border#bg">
                 <Setter Property="Background" Value="{DynamicResource Glass}" />
               </Style>
+              <Style Selector="^:selected /template/ Border#bg">
+                <Setter Property="Background" Value="#26E0394C" />
+                <Setter Property="BorderBrush" Value="#e0394c" />
+              </Style>
               <Style Selector="^:selected">
-                <Setter Property="Background" Value="{DynamicResource GlassBright}" />
                 <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
                 <Setter Property="FontWeight" Value="SemiBold" />
               </Style>

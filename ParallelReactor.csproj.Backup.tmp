@@ -15,13 +15,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="ParallelReactor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <!-- 真实串口通讯（Modbus RTU over RS485） -->
-    <PackageReference Include="System.IO.Ports" Version="8.0.0" />
     <!-- 调试期可视化树查看器；正式发布可移除 -->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.1.0" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>

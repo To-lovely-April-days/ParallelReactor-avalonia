@@ -1,0 +1,19 @@
+[Unit]
+Description=Parallel Reactor HMI
+After=graphical.target
+Wants=graphical.target
+
+[Service]
+Type=simple
+User=teamhd
+WorkingDirectory=/home/teamhd/ParallelReactorProject
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/teamhd/.Xauthority
+Environment=DOTNET_BUNDLE_EXTRACT_BASE_DIR=/home/teamhd/.cache/reactor-hmi
+ExecStart=/home/teamhd/ParallelReactorProject/ParallelReactor
+SupplementaryGroups=video render input dialout
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

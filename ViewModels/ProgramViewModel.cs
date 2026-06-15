@@ -646,6 +646,16 @@ public partial class ApplyRow : ObservableObject
     public string StateText => Channel.Reactor.IsIdle ? "已停用" : Channel.Reactor.StateZh;
     public string StepsText { get; }
 
+    // 自定义勾选指示（主题红）
+    partial void OnIsPickedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CheckBg));
+        OnPropertyChanged(nameof(CheckBorder));
+    }
+    private static IBrush PB(string hex) => new SolidColorBrush(Color.Parse(hex));
+    public IBrush CheckBg => IsPicked ? PB("#e0394c") : PB("#00000000");
+    public IBrush CheckBorder => IsPicked ? PB("#e0394c") : PB("#3DFFFFFF");
+
     [RelayCommand]
     private void Toggle() { if (CanPick) IsPicked = !IsPicked; }
 }

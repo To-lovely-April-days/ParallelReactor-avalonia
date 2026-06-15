@@ -1,0 +1,99 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+
+namespace ParallelReactor.Hardware;
+
+/// <summary>
+/// 无硬件时的内存模拟主站：保存写入值、返回存储值，并可通过 <see cref="SimulateStep"/> 让数据"活"起来
+/// （温度 PV 向 SP 漂移、压力轻微抖动）。用于在没有真实设备时运行与演示。线程安全（单锁）。
+/// </summary>
+public sealed class MockModbusMaster : IModbusMaster
+{
+    private readonly object _lock = new();
+    private readonly Dictionary<int, ushort> _hold = new();
+    private readonly Dictionary<int, ushort> _input = new();
+    private readonly Dictionary<int, bool> _coil = new();
+    private readonly Dictionary<int, bool> _di = new();
+    private readonly Random _rng = new();
+
+    /// <summary>AI-8 温控站地址（用于 PV 模拟），每台回路数见 <see cref="TempLoops"/>。</summary>
+    public byte[] TempSlaves { get; init; } = Array.Empty<byte>();
+    public int TempLoops { get; init; } = 4;
+
+    /// <summary>8AI 模拟量站地址（用于压力模拟），0 表示不模拟。</summary>
+    public byte AnalogSlave { get; init; }
+
+    private static int Key(byte s, ushort a) => (s << 16) | a;
+
+    /// <summary>每个轮询周期调用一次，推进模拟值。</summary>
+    public void SimulateStep()
+    {
+        lock (_lock)
+        {
+            foreach (var s in TempSlaves)
+                for (int i = 0; i < TempLoops; i++)
+                {
+                    short sp = (short)_hold.GetValueOrDefault(Key(s, (ushort)(0x0000 + i)), (ushort)250); // 默认 25.0℃
+                    int pvKey = Key(s, (ushort)(0x0600 + i));
+                    short pv = (short)_hold.GetValueOrDefault(pvKey, (ushort)sp);
+                    int step = Math.Sign(sp - pv) * Math.Min(Math.Abs(sp - pv), 5);
+                    pv = (short)(pv + step + _rng.Next(-1, 2));
+                    _hold[pvKey] = (ushort)pv;
+                }
+
+            if (AnalogSlave != 0)
+                for (int i = 0; i < 8; i++)
+                {
+                    int k = Key(AnalogSlave, (ushort)i);
+                    int v = _input.GetValueOrDefault(k, (ushort)8000) + _rng.Next(-30, 31);
+                    _input[k] = (ushort)Math.Clamp(v, 3200, 16000);
+                }
+        }
+    }
+
+    public Task<bool[]> ReadCoilsAsync(byte s, ushort start, ushort count, CancellationToken ct = default)
+        => ReadBits(_coil, s, start, count);
+
+    public Task<bool[]> ReadDiscreteInputsAsync(byte s, ushort start, ushort count, CancellationToken ct = default)
+        => ReadBits(_di, s, start, count);
+
+    public Task<ushort[]> ReadHoldingRegistersAsync(byte s, ushort start, ushort count, CancellationToken ct = default)
+        => ReadRegs(_hold, s, start, count);
+
+    public Task<ushort[]> ReadInputRegistersAsync(byte s, ushort start, ushort count, CancellationToken ct = default)
+        => ReadRegs(_input, s, start, count);
+
+    public Task WriteSingleCoilAsync(byte s, ushort a, bool on, CancellationToken ct = default)
+    { lock (_lock) { _coil[Key(s, a)] = on; } return Task.CompletedTask; }
+
+    public Task WriteSingleRegisterAsync(byte s, ushort a, ushort v, CancellationToken ct = default)
+    { lock (_lock) { _hold[Key(s, a)] = v; } return Task.CompletedTask; }
+
+    public Task WriteMultipleCoilsAsync(byte s, ushort start, bool[] values, CancellationToken ct = default)
+    { lock (_lock) { for (int i = 0; i < values.Length; i++) _coil[Key(s, (ushort)(start + i))] = values[i]; } return Task.CompletedTask; }
+
+    public Task WriteMultipleRegistersAsync(byte s, ushort start, ushort[] values, CancellationToken ct = default)
+    { lock (_lock) { for (int i = 0; i < values.Length; i++) _hold[Key(s, (ushort)(start + i))] = values[i]; } return Task.CompletedTask; }
+
+    private Task<bool[]> ReadBits(Dictionary<int, bool> map, byte s, ushort start, ushort count)
+    {
+        lock (_lock)
+        {
+            var r = new bool[count];
+            for (int i = 0; i < count; i++) r[i] = map.GetValueOrDefault(Key(s, (ushort)(start + i)));
+            return Task.FromResult(r);
+        }
+    }
+
+    private Task<ushort[]> ReadRegs(Dictionary<int, ushort> map, byte s, ushort start, ushort count)
+    {
+        lock (_lock)
+        {
+            var r = new ushort[count];
+            for (int i = 0; i < count; i++) r[i] = map.GetValueOrDefault(Key(s, (ushort)(start + i)));
+            return Task.FromResult(r);
+        }
+    }
+}

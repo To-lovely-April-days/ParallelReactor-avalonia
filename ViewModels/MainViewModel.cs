@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using ParallelReactor.Service;
 
 namespace ParallelReactor.ViewModels;
 
@@ -31,6 +32,11 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _estopped;
 
     // ============ 全局搅拌（共用一台搅拌器：8 釜同开同关、同一转速）============
+    // 通过 StirController 驱动雷赛 DM2C 步进驱动器。总线由 HardwareOptions 决定：
+    // 配置了串口(PR_STIR_PORT) → 走真实 ModbusRtuMaster；否则用内存 mock 演示。
+    private readonly Hardware.IModbusMaster _bus = HardwareOptions.CreateStirBus();
+    private readonly Services.StirController _stir;
+
     [ObservableProperty] private bool _stirOn = true;
     [ObservableProperty] private int _stirRpm = 600;
 
@@ -42,13 +48,22 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _preRunCanRun;
     public ObservableCollection<PreRunCheck> PreRunChecks { get; } = new();
 
+    // ============ 退出程序确认 ============
+    [ObservableProperty] private bool _isExitConfirmOpen;
+
     partial void OnStirOnChanged(bool value)
     {
         OnPropertyChanged(nameof(StirStateText));
         ApplyStir();
+        if (value) _ = _stir.StartAsync(StirRpm);
+        else _stir.Stop();
     }
 
-    partial void OnStirRpmChanged(int value) => ApplyStir();
+    partial void OnStirRpmChanged(int value)
+    {
+        ApplyStir();
+        _ = _stir.SetRpmAsync(value);
+    }
 
     /// <summary>把全局搅拌状态下发到所有运行中的反应釜（驱动桨叶动画）。</summary>
     private void ApplyStir()
@@ -88,8 +103,21 @@ public partial class MainViewModel : ViewModelBase
 
     public MainViewModel()
     {
+        // 搅拌驱动器（DM2C，站地址来自 HardwareOptions）。mock 与真机行为一致，仅总线实现不同。
+        _stir = new Services.StirController(
+            new Hardware.StepperDriver(_bus, HardwareOptions.StirSlave));
+        _stir.FaultRaised += code =>
+        {
+            StirOn = false;
+            Toast("err", $"搅拌驱动器报警（0x{code:X4}）· 已停止搅拌");
+        };
+        _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
+
         Drawer = new DrawerViewModel(this);
         SeedData();
+        // 抽屉默认选中 RV1（关闭时滑出屏外不可见）。避免 Reactor 为 null 时
+        // 抽屉子树里的 {Binding Reactor.*} 每个 tick 刷一批绑定告警。
+        Drawer.Reactor ??= Reactors.FirstOrDefault();
         UpdateRunCount();
         Program = new ProgramViewModel(this);
         Graph = new GraphViewModel(this);
@@ -98,6 +126,15 @@ public partial class MainViewModel : ViewModelBase
         Setting = new SettingViewModel(this);
         Leak = new LeakViewModel(this);
         RecipePicker = new RecipeViewModel(this);
+
+        // 初始 StirOn=true 由字段初始化设置，不会触发属性回调，这里显式启动搅拌。
+        if (StirOn) _ = _stir.StartAsync(StirRpm);
+
+        // 提示当前搅拌运行在真机还是模拟（开机一次）。延后到 View 订阅 Toast 之后再发。
+        var (k, m) = HardwareOptions.UseRealStir
+            ? ("ok", $"搅拌已连接真机 · {HardwareOptions.StirPort} @ {HardwareOptions.StirBaud} · 站{HardwareOptions.StirSlave}")
+            : ("warn", "搅拌运行于模拟模式 · 未配置串口（设 PR_STIR_PORT 连真机）");
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => Toast(k, m));
     }
 
     private void SeedData()
@@ -234,6 +271,25 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private void CancelPreRun() => IsPreRunOpen = false;
+
+    // ============ 退出程序 ============
+    /// <summary>打开退出确认弹窗（由设置页的「退出程序」触发）。</summary>
+    public void OpenExitConfirm() => IsExitConfirmOpen = true;
+
+    [RelayCommand]
+    private void CancelExit() => IsExitConfirmOpen = false;
+
+    [RelayCommand]
+    private void ConfirmExit()
+    {
+        IsExitConfirmOpen = false;
+        _stir.Stop();   // 停掉搅拌 JOG 保活，驱动器随之停转，避免退出后电机仍按最后一帧维持
+        if (Avalonia.Application.Current?.ApplicationLifetime
+                is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
+        else
+            Environment.Exit(0);
+    }
 
     [RelayCommand]
     private void ConfirmRun()
@@ -374,6 +430,7 @@ public partial class MainViewModel : ViewModelBase
         _clock = _clock.AddSeconds(1);
         ClockTime = _clock.ToString("HH:mm:ss");
         ClockDate = _clock.ToString("yyyy-MM-dd") + " " + Wk[(int)_clock.DayOfWeek];
+        Setting.RefreshNetworkInfo();   // 周期刷新设置页的本机 IP（内部已节流约 5s）
     }
 }
 

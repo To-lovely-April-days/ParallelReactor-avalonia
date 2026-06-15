@@ -3,3 +3,9 @@ dotnet publish -c Release -r linux-arm64 --self-contained true -p:PublishSingleF
 cd ~/reactor/ParallelReactor
 chmod +x ParallelReactor
 ./ParallelReactor
+
+
+linux系统SSH连接
+账户名teamhd
+密码teamhd
+cd ~/ParallelReactorProject
