@@ -8,6 +8,7 @@
 		<StyleInclude Source="avares://ParallelReactor/Styles/Controls.axaml" />
 		<StyleInclude Source="avares://ParallelReactor/Styles/Program.axaml" />
 		<StyleInclude Source="avares://ParallelReactor/Styles/Graph.axaml" />
+		<StyleInclude Source="avares://ParallelReactor/Styles/Data.axaml" />
 	</Application.Styles>
 
 	<Application.Resources>
@@ -43,7 +44,7 @@
 			<SolidColorBrush x:Key="GlassLine" Color="#14FFFFFF" />
 			<SolidColorBrush x:Key="GlassLine2" Color="#21FFFFFF" />
 
-			<FontFamily x:Key="Sans">Inter, Noto Sans SC, sans-serif</FontFamily>
+			<FontFamily x:Key="Sans">Inter, Noto Sans CJK SC, Source Han Sans CN, Noto Sans SC, Microsoft YaHei, WenQuanYi Micro Hei, sans-serif</FontFamily>
 		</ResourceDictionary>
 	</Application.Resources>
 

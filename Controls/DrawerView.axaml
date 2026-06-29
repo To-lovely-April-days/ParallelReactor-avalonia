@@ -5,324 +5,345 @@
              x:Class="ParallelReactor.Controls.DrawerView"
              x:DataType="vm:DrawerViewModel">
 
-  <UserControl.Resources>
-    <conv:EqualsConverter x:Key="Eq" />
-    <conv:StateColorConverter x:Key="StColor" />
-  </UserControl.Resources>
+	<UserControl.Resources>
+		<conv:EqualsConverter x:Key="Eq" />
+		<conv:StateColorConverter x:Key="StColor" />
+	</UserControl.Resources>
 
-  <UserControl.Styles>
-    <Style Selector="TextBlock.sect">
-      <Setter Property="FontSize" Value="10" />
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="{DynamicResource Mute}" />
-      <Setter Property="LetterSpacing" Value="1.5" />
-      <Setter Property="Margin" Value="0,0,0,9" />
-    </Style>
-  </UserControl.Styles>
+	<UserControl.Styles>
+		<Style Selector="TextBlock.sect">
+			<Setter Property="FontSize" Value="10" />
+			<Setter Property="FontWeight" Value="Bold" />
+			<Setter Property="Foreground" Value="{DynamicResource Mute}" />
+			<Setter Property="LetterSpacing" Value="1.5" />
+			<Setter Property="Margin" Value="0,0,0,9" />
+		</Style>
+	</UserControl.Styles>
 
-  <!-- 整体抽屉容器：平移滑入/滑出（由 UserControl.open 样式驱动）-->
-  <Border BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1,0,0,0">
-    <Border.Background>
-      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-        <GradientStop Color="#F51C1C21" Offset="0" />
-        <GradientStop Color="#F7141418" Offset="1" />
-      </LinearGradientBrush>
-    </Border.Background>
+	<!-- 整体抽屉容器：平移滑入/滑出（由 UserControl.open 样式驱动）-->
+	<Border BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1,0,0,0">
+		<Border.Background>
+			<LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+				<GradientStop Color="#F51C1C21" Offset="0" />
+				<GradientStop Color="#F7141418" Offset="1" />
+			</LinearGradientBrush>
+		</Border.Background>
 
-    <Grid RowDefinitions="Auto,*">
-      <!-- 头部 -->
-      <Grid Grid.Row="0" Margin="20,18,20,14" ColumnDefinitions="Auto,Auto,*,Auto">
-        <TextBlock Grid.Column="0" Text="{Binding Reactor.Id, StringFormat='RV-{0}'}"
-                   FontSize="22" FontWeight="Bold" Foreground="{DynamicResource OnDark}"
-                   VerticalAlignment="Center" />
-        <Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="999" Padding="11,4"
-                Background="{DynamicResource GlassBright}" VerticalAlignment="Center"
-                BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                     Fill="{Binding Reactor.State, Converter={StaticResource StColor}}" />
-            <TextBlock Text="{Binding Reactor.StateZh}" FontSize="11" FontWeight="SemiBold"
-                       Foreground="{Binding Reactor.State, Converter={StaticResource StColor}}"
-                       VerticalAlignment="Center" />
-          </StackPanel>
-        </Border>
-        <Button Grid.Column="3" Command="{Binding CloseCommand}" Width="32" Height="32"
-                CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="0">
-          <Path Data="M18 6L6 18M6 6l12 12" Stroke="{DynamicResource Body}" StrokeThickness="2"
-                Width="14" Height="14" Stretch="Uniform" />
-        </Button>
-      </Grid>
+		<Grid RowDefinitions="Auto,*">
+			<!-- 头部 -->
+			<Grid Grid.Row="0" Margin="20,18,20,14" ColumnDefinitions="Auto,Auto,*,Auto">
+				<TextBlock Grid.Column="0" Text="{Binding Reactor.Id, StringFormat='RV-{0}'}"
+						   FontSize="22" FontWeight="Bold" Foreground="{DynamicResource OnDark}"
+						   VerticalAlignment="Center" />
+				<Border Grid.Column="1" Margin="12,0,0,0" CornerRadius="999" Padding="11,4"
+						Background="{DynamicResource GlassBright}" VerticalAlignment="Center"
+						BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+					<StackPanel Orientation="Horizontal" Spacing="6">
+						<Ellipse Width="6" Height="6" VerticalAlignment="Center"
+								 Fill="{Binding Reactor.State, Converter={StaticResource StColor}}" />
+						<TextBlock Text="{Binding Reactor.StateZh}" FontSize="11" FontWeight="SemiBold"
+								   Foreground="{Binding Reactor.State, Converter={StaticResource StColor}}"
+								   VerticalAlignment="Center" />
+					</StackPanel>
+				</Border>
+				<Button Grid.Column="3" Command="{Binding CloseCommand}" Width="32" Height="32"
+						CornerRadius="9" Background="{DynamicResource GlassSoft}"
+						BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="0">
+					<Path Data="M18 6L6 18M6 6l12 12" Stroke="{DynamicResource Body}" StrokeThickness="2"
+						  Width="14" Height="14" Stretch="Uniform" />
+				</Button>
+			</Grid>
 
-      <!-- 主体（滚动）-->
-      <ScrollViewer Grid.Row="1" Padding="20,0,20,20"
-                    HorizontalScrollBarVisibility="Disabled">
-        <StackPanel Spacing="0">
+			<!-- 主体（滚动）-->
+			<ScrollViewer Grid.Row="1" Padding="20,0,20,20"
+						  HorizontalScrollBarVisibility="Disabled">
+				<StackPanel Spacing="0">
 
-          <!-- 已应用配方标签 -->
-          <Border IsVisible="{Binding Reactor.HasRecipe}" Margin="0,0,0,16" CornerRadius="999" Padding="11,5"
-                  HorizontalAlignment="Left" Background="#29A86CE0" BorderBrush="#80A86CE0" BorderThickness="1">
-            <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-              <Path Data="M4 4h16v4H4z M4 12h16v8H4z M8 4v4 M8 12v8 M16 4v4 M16 12v8" Stroke="#d4a8ff"
-                    StrokeThickness="2" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" />
-              <TextBlock Text="{Binding Reactor.AppliedRecipe, StringFormat='配方：{0}'}" FontSize="11.5"
-                         FontWeight="SemiBold" Foreground="#d4a8ff" VerticalAlignment="Center" />
-              <Button Command="{Binding ClearRecipeCommand}" Background="Transparent" BorderThickness="0"
-                      Padding="3,0" FontSize="12" Foreground="#d4a8ff" Cursor="Hand" VerticalAlignment="Center" Content="✕" />
-            </StackPanel>
-          </Border>
+					<!-- 已应用配方标签 -->
+					<Border IsVisible="{Binding Reactor.HasRecipe}" Margin="0,0,0,16" CornerRadius="999" Padding="11,5"
+							HorizontalAlignment="Left" Background="#29A86CE0" BorderBrush="#80A86CE0" BorderThickness="1">
+						<StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+							<Path Data="M4 4h16v4H4z M4 12h16v8H4z M8 4v4 M8 12v8 M16 4v4 M16 12v8" Stroke="#d4a8ff"
+								  StrokeThickness="2" Width="12" Height="12" Stretch="Uniform" VerticalAlignment="Center" />
+							<TextBlock Text="{Binding Reactor.AppliedRecipe, StringFormat='配方：{0}'}" FontSize="11.5"
+									   FontWeight="SemiBold" Foreground="#d4a8ff" VerticalAlignment="Center" />
+							<Button Command="{Binding ClearRecipeCommand}" Background="Transparent" BorderThickness="0"
+									Padding="3,0" FontSize="12" Foreground="#d4a8ff" Cursor="Hand" VerticalAlignment="Center" Content="✕" />
+						</StackPanel>
+					</Border>
 
-          <!-- 测量值 PV -->
-          <StackPanel Margin="0,0,0,18">
-            <TextBlock Classes="sect" Text="测量值 PV" />
-            <Grid ColumnDefinitions="*,*,*" Margin="0">
-              <Border Grid.Column="0" Margin="0,0,4,0" CornerRadius="11" Padding="10,11"
-                      Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
-                <StackPanel>
-                  <TextBlock Text="温度" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
-                  <TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
-                    <Run Text="{Binding Reactor.T, StringFormat='{}{0:0.0}'}" /><Run Text=" °C" FontSize="10" Foreground="{DynamicResource Body}" />
-                  </TextBlock>
-                </StackPanel>
-              </Border>
-              <Border Grid.Column="1" Margin="2,0,2,0" CornerRadius="11" Padding="10,11"
-                      Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
-                <StackPanel>
-                  <TextBlock Text="压力" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
-                  <TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
-                    <Run Text="{Binding Reactor.P, StringFormat='{}{0:0.0}'}" /><Run Text=" psi" FontSize="10" Foreground="{DynamicResource Body}" />
-                  </TextBlock>
-                </StackPanel>
-              </Border>
-              <Border Grid.Column="2" Margin="4,0,0,0" CornerRadius="11" Padding="10,11"
-                      Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
-                <StackPanel>
-                  <TextBlock Text="气体消耗" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
-                  <TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
-                    <Run Text="{Binding Reactor.Gas, StringFormat='{}{0:0.00}'}" /><Run Text=" mmol" FontSize="10" Foreground="{DynamicResource Body}" />
-                  </TextBlock>
-                </StackPanel>
-              </Border>
-            </Grid>
-          </StackPanel>
+					<!-- 测量值 PV -->
+					<StackPanel Margin="0,0,0,18">
+						<TextBlock Classes="sect" Text="测量值 PV" />
+						<Grid ColumnDefinitions="*,*,*" Margin="0">
+							<Border Grid.Column="0" Margin="0,0,4,0" CornerRadius="11" Padding="10,11"
+									Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+								<StackPanel>
+									<TextBlock Text="温度" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
+									<TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
+										<Run Text="{Binding Reactor.T, StringFormat='{}{0:0.0}'}" />
+										<Run Text=" °C" FontSize="10" Foreground="{DynamicResource Body}" />
+									</TextBlock>
+								</StackPanel>
+							</Border>
+							<Border Grid.Column="1" Margin="2,0,2,0" CornerRadius="11" Padding="10,11"
+									Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+								<StackPanel>
+									<TextBlock Text="压力" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
+									<TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
+										<Run Text="{Binding Reactor.P, StringFormat='{}{0:0.0}'}" />
+										<Run Text=" psi" FontSize="10" Foreground="{DynamicResource Body}" />
+									</TextBlock>
+								</StackPanel>
+							</Border>
+							<Border Grid.Column="2" Margin="4,0,0,0" CornerRadius="11" Padding="10,11"
+									Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+								<StackPanel>
+									<TextBlock Text="气体消耗" FontSize="9" Foreground="{DynamicResource Mute}" LetterSpacing="1" />
+									<TextBlock FontSize="19" FontWeight="Light" Margin="0,4,0,0" Foreground="{DynamicResource OnDark}">
+										<Run Text="{Binding Reactor.Gas, StringFormat='{}{0:0.00}'}" />
+										<Run Text=" mmol" FontSize="10" Foreground="{DynamicResource Body}" />
+									</TextBlock>
+								</StackPanel>
+							</Border>
+						</Grid>
+					</StackPanel>
 
-          <!-- 设定值 SP -->
-          <StackPanel Margin="0,0,0,18">
-            <TextBlock Classes="sect" Text="设定值 SP" />
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="温度 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="{Binding TspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-              </StackPanel>
-              <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <StackPanel Orientation="Horizontal">
-                  <Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Tsp:-1" />
-                  <Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Tsp">
-                    <TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                      <Run Text="{Binding Reactor.TSp, StringFormat='{}{0:0}'}" /><Run Text=" °C" FontSize="9" Foreground="{DynamicResource Body}" />
-                    </TextBlock>
-                  </Button>
-                  <Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Tsp:1" />
-                </StackPanel>
-              </Border>
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="压力 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="{Binding PspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-              </StackPanel>
-              <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <StackPanel Orientation="Horizontal">
-                  <Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Psp:-1" />
-                  <Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Psp">
-                    <TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                      <Run Text="{Binding Reactor.PSp, StringFormat='{}{0:0}'}" /><Run Text=" psi" FontSize="9" Foreground="{DynamicResource Body}" />
-                    </TextBlock>
-                  </Button>
-                  <Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Psp:1" />
-                </StackPanel>
-              </Border>
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="搅拌（全局共用）" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="所有反应釜同一搅拌器 · 在主界面调节" FontSize="9.5"
-                           Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-              </StackPanel>
-              <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" Padding="14,7" VerticalAlignment="Center">
-                <TextBlock Text="{Binding StirInfo}" MinWidth="60" TextAlignment="Center"
-                           FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-              </Border>
-            </Grid>
-          </StackPanel>
+					<!-- 设定值 SP -->
+					<StackPanel Margin="0,0,0,18">
+						<TextBlock Classes="sect" Text="设定值 SP" />
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="温度 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="{Binding TspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+								<StackPanel Orientation="Horizontal">
+									<Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Tsp:-1" />
+									<Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Tsp">
+										<TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+											<Run Text="{Binding Reactor.TSp, StringFormat='{}{0:0}'}" />
+											<Run Text=" °C" FontSize="9" Foreground="{DynamicResource Body}" />
+										</TextBlock>
+									</Button>
+									<Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Tsp:1" />
+								</StackPanel>
+							</Border>
+						</Grid>
+						<!-- PID 自整定（该路温控通道）-->
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="PID 自整定" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="对该路启动一次整定，结束自动回读参数" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<Button Grid.Column="1" Classes="mfbtn" Height="34" MinWidth="96" Padding="0" VerticalAlignment="Center"
+									Command="{Binding AutotuneCommand}" IsEnabled="{Binding !TempCh.Autotuning}">
+								<Panel>
+									<TextBlock Text="自整定" IsVisible="{Binding !TempCh.Autotuning}" FontSize="12.5" />
+									<TextBlock Text="整定中…" IsVisible="{Binding TempCh.Autotuning}" FontSize="12.5" Foreground="#f0a830" />
+								</Panel>
+							</Button>
+						</Grid>
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="压力 SP" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="{Binding PspRange}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+								<StackPanel Orientation="Horizontal">
+									<Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Psp:-1" />
+									<Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Psp">
+										<TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+											<Run Text="{Binding Reactor.PSp, StringFormat='{}{0:0}'}" />
+											<Run Text=" psi" FontSize="9" Foreground="{DynamicResource Body}" />
+										</TextBlock>
+									</Button>
+									<Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Psp:1" />
+								</StackPanel>
+							</Border>
+						</Grid>
+						<Grid ColumnDefinitions="*,Auto">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="搅拌（全局共用）" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="所有反应釜同一搅拌器 · 在主界面调节" FontSize="9.5"
+										   Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" Padding="14,7" VerticalAlignment="Center">
+								<TextBlock Text="{Binding StirInfo}" MinWidth="60" TextAlignment="Center"
+										   FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+							</Border>
+						</Grid>
+					</StackPanel>
 
-          <!-- 反应配置 -->
-          <StackPanel Margin="0,0,0,18">
-            <TextBlock Classes="sect" Text="反应配置" />
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="溶液体积" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="用于 PV=nRT 气体计算" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-              </StackPanel>
-              <Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <StackPanel Orientation="Horizontal">
-                  <Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Vol:-1" />
-                  <Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Vol">
-                    <TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                      <Run Text="{Binding Reactor.Vol}" /><Run Text=" mL" FontSize="9" Foreground="{DynamicResource Body}" />
-                    </TextBlock>
-                  </Button>
-                  <Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Vol:1" />
-                </StackPanel>
-              </Border>
-            </Grid>
-            <!-- 桨叶类型 -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-              <TextBlock Grid.Column="0" Text="桨叶类型" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Width="150" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <Grid ColumnDefinitions="*,*">
-                  <Button Grid.Column="0" Classes="seg" Content="桨式"
-                          Classes.on="{Binding Reactor.Blade, Converter={StaticResource Eq}, ConverterParameter=桨式}"
-                          Command="{Binding SetBladeCommand}" CommandParameter="桨式" />
-                  <Button Grid.Column="1" Classes="seg" Content="锚式"
-                          Classes.on="{Binding Reactor.Blade, Converter={StaticResource Eq}, ConverterParameter=锚式}"
-                          Command="{Binding SetBladeCommand}" CommandParameter="锚式" />
-                </Grid>
-              </Border>
-            </Grid>
-            <!-- 结束方式 -->
-            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-              <TextBlock Grid.Column="0" Text="结束方式" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-              <Border Grid.Column="1" Width="210" CornerRadius="9" Background="{DynamicResource GlassSoft}"
-                      BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-                <Grid ColumnDefinitions="*,*,*,*">
-                  <Button Grid.Column="0" Classes="seg" Content="密封"
-                          Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=密封}"
-                          Command="{Binding SetEndCommand}" CommandParameter="密封" />
-                  <Button Grid.Column="1" Classes="seg" Content="吹扫"
-                          Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=吹扫}"
-                          Command="{Binding SetEndCommand}" CommandParameter="吹扫" />
-                  <Button Grid.Column="2" Classes="seg" Content="淬灭"
-                          Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=淬灭}"
-                          Command="{Binding SetEndCommand}" CommandParameter="淬灭" />
-                  <Button Grid.Column="3" Classes="seg" Content="排空"
-                          Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=排空}"
-                          Command="{Binding SetEndCommand}" CommandParameter="排空" />
-                </Grid>
-              </Border>
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Grid.Column="0" Text="运行时间" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{Binding Reactor.Run}" FontSize="13" FontWeight="SemiBold"
-                         Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
-            </Grid>
-          </StackPanel>
+					<!-- 反应配置 -->
+					<StackPanel Margin="0,0,0,18">
+						<TextBlock Classes="sect" Text="反应配置" />
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="溶液体积" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="用于 PV=nRT 气体计算" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<Border Grid.Column="1" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+								<StackPanel Orientation="Horizontal">
+									<Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Vol:-1" />
+									<Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Vol">
+										<TextBlock VerticalAlignment="Center" MinWidth="60" TextAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+											<Run Text="{Binding Reactor.Vol}" />
+											<Run Text=" mL" FontSize="9" Foreground="{DynamicResource Body}" />
+										</TextBlock>
+									</Button>
+									<Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Vol:1" />
+								</StackPanel>
+							</Border>
+						</Grid>
+						<!-- 桨叶类型 -->
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<TextBlock Grid.Column="0" Text="桨叶类型" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+							<Border Grid.Column="1" Width="150" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+								<Grid ColumnDefinitions="*,*">
+									<Button Grid.Column="0" Classes="seg" Content="桨式"
+											Classes.on="{Binding Reactor.Blade, Converter={StaticResource Eq}, ConverterParameter=桨式}"
+											Command="{Binding SetBladeCommand}" CommandParameter="桨式" />
+									<Button Grid.Column="1" Classes="seg" Content="锚式"
+											Classes.on="{Binding Reactor.Blade, Converter={StaticResource Eq}, ConverterParameter=锚式}"
+											Command="{Binding SetBladeCommand}" CommandParameter="锚式" />
+								</Grid>
+							</Border>
+						</Grid>
+						<!-- 结束方式 -->
+						<Grid ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+							<TextBlock Grid.Column="0" Text="结束方式" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+							<Border Grid.Column="1" Width="210" CornerRadius="9" Background="{DynamicResource GlassSoft}"
+									BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+								<Grid ColumnDefinitions="*,*,*,*">
+									<Button Grid.Column="0" Classes="seg" Content="密封"
+											Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=密封}"
+											Command="{Binding SetEndCommand}" CommandParameter="密封" />
+									<Button Grid.Column="1" Classes="seg" Content="吹扫"
+											Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=吹扫}"
+											Command="{Binding SetEndCommand}" CommandParameter="吹扫" />
+									<Button Grid.Column="2" Classes="seg" Content="淬灭"
+											Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=淬灭}"
+											Command="{Binding SetEndCommand}" CommandParameter="淬灭" />
+									<Button Grid.Column="3" Classes="seg" Content="排空"
+											Classes.on="{Binding Reactor.End, Converter={StaticResource Eq}, ConverterParameter=排空}"
+											Command="{Binding SetEndCommand}" CommandParameter="排空" />
+								</Grid>
+							</Border>
+						</Grid>
+						<Grid ColumnDefinitions="*,Auto">
+							<TextBlock Grid.Column="0" Text="运行时间" FontSize="12.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+							<TextBlock Grid.Column="1" Text="{Binding Reactor.Run}" FontSize="13" FontWeight="SemiBold"
+									   Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+						</Grid>
+					</StackPanel>
 
-          <!-- 阀门 / IO -->
-          <StackPanel Margin="0,0,0,18">
-            <TextBlock Classes="sect" Text="阀门 / IO" />
-            <Grid ColumnDefinitions="*,Auto">
-              <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="{Binding Reactor.Id, StringFormat='进气阀 SV{0}'}" FontSize="12.5" Foreground="{DynamicResource Body}" />
-                <TextBlock Text="{Binding ManualValveHint}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-              </StackPanel>
-              <!-- 开关 -->
-              <Button Grid.Column="1" Command="{Binding ToggleValveCommand}" Padding="0"
-                      Background="Transparent" BorderThickness="0" VerticalAlignment="Center">
-                <Panel Width="46" Height="25">
-                  <!-- 关 -->
-                  <Border CornerRadius="999" Background="{DynamicResource GlassBright}"
-                          BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
-                          IsVisible="{Binding Reactor.Valve, Converter={x:Static conv:InverseBoolConverter.Instance}}">
-                    <Ellipse Width="19" Height="19" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
-                  </Border>
-                  <!-- 开 -->
-                  <Border CornerRadius="999" IsVisible="{Binding Reactor.Valve}">
-                    <Border.Background>
-                      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                        <GradientStop Color="#84cc16" Offset="0" />
-                        <GradientStop Color="#a3e635" Offset="1" />
-                      </LinearGradientBrush>
-                    </Border.Background>
-                    <Ellipse Width="19" Height="19" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
-                  </Border>
-                </Panel>
-              </Button>
-            </Grid>
-          </StackPanel>
+					<!-- 阀门 / IO -->
+					<StackPanel Margin="0,0,0,18">
+						<TextBlock Classes="sect" Text="阀门 / IO" />
+						<Grid ColumnDefinitions="*,Auto">
+							<StackPanel Grid.Column="0" VerticalAlignment="Center">
+								<TextBlock Text="{Binding Reactor.Id, StringFormat='进气阀 SV{0}'}" FontSize="12.5" Foreground="{DynamicResource Body}" />
+								<TextBlock Text="{Binding ManualValveHint}" FontSize="9.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+							</StackPanel>
+							<!-- 开关 -->
+							<Button Grid.Column="1" Command="{Binding ToggleValveCommand}" Padding="0"
+									Background="Transparent" BorderThickness="0" VerticalAlignment="Center">
+								<Panel Width="46" Height="25">
+									<!-- 关 -->
+									<Border CornerRadius="999" Background="{DynamicResource GlassBright}"
+											BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+											IsVisible="{Binding Reactor.Valve, Converter={x:Static conv:InverseBoolConverter.Instance}}">
+										<Ellipse Width="19" Height="19" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
+									</Border>
+									<!-- 开 -->
+									<Border CornerRadius="999" IsVisible="{Binding Reactor.Valve}">
+										<Border.Background>
+											<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+												<GradientStop Color="#84cc16" Offset="0" />
+												<GradientStop Color="#a3e635" Offset="1" />
+											</LinearGradientBrush>
+										</Border.Background>
+										<Ellipse Width="19" Height="19" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
+									</Border>
+								</Panel>
+							</Button>
+						</Grid>
+					</StackPanel>
 
-          <!-- 操作 -->
-          <StackPanel Margin="0,0,0,4">
-            <TextBlock Classes="sect" Text="操作" />
-            <Button Classes="dbtn pri" Command="{Binding CountResetCommand}" Content="启动计数 · 进样清零" />
-            <Button Classes="dbtn go" Content="启动该通道" Command="{Binding StartCommand}"
-                    IsVisible="{Binding Reactor.IsRunning, Converter={x:Static conv:InverseBoolConverter.Instance}}" />
-            <Button Classes="dbtn" Content="停止该通道" Command="{Binding StopCommand}"
-                    IsVisible="{Binding Reactor.IsRunning}" />
-            <Button Classes="dbtn ghost" Command="{Binding CopyToAllCommand}" Content="复制本配置到全部通道" />
-            <Button Classes="dbtn ghost" Command="{Binding DisableCommand}" Content="停用通道"
-                    Foreground="{DynamicResource Mute}" />
-          </StackPanel>
+					<!-- 操作 -->
+					<StackPanel Margin="0,0,0,4">
+						<TextBlock Classes="sect" Text="操作" />
+						<Button Classes="dbtn pri" Command="{Binding CountResetCommand}" Content="启动计数 · 进样清零" />
+						<Button Classes="dbtn go" Content="启动该通道" Command="{Binding StartCommand}"
+								IsVisible="{Binding Reactor.IsRunning, Converter={x:Static conv:InverseBoolConverter.Instance}}" />
+						<Button Classes="dbtn" Content="停止该通道" Command="{Binding StopCommand}"
+								IsVisible="{Binding Reactor.IsRunning}" />
+						<Button Classes="dbtn ghost" Command="{Binding CopyToAllCommand}" Content="复制本配置到全部通道" />
+						<Button Classes="dbtn ghost" Command="{Binding DisableCommand}" Content="停用通道"
+								Foreground="{DynamicResource Mute}" />
+					</StackPanel>
 
-          <!-- 高级 PID -->
-          <Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,1,0,0" Margin="0,4,0,0">
-            <StackPanel>
-              <Button Background="Transparent" BorderThickness="0" Padding="0,9" HorizontalAlignment="Stretch"
-                      HorizontalContentAlignment="Left" Command="{Binding ToggleAdvCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <Path Data="M9 6l6 6-6 6" Stroke="{DynamicResource Body}" StrokeThickness="2" Width="11" Height="11" Stretch="Uniform" />
-                  <TextBlock Text="高级 · 压力 PID 整定" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-                  <TextBlock Text="仅高级用户" FontSize="10" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                </StackPanel>
-              </Button>
-              <StackPanel IsVisible="{Binding AdvOpen}" Margin="0,2,0,4">
-                <Grid ColumnDefinitions="90,*,Auto" Margin="0,7">
-                  <TextBlock Grid.Column="0" Text="初始脉宽" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-                  <Slider Grid.Column="1" Minimum="2.5" Maximum="20" TickFrequency="0.5" IsSnapToTickEnabled="True"
-                          Value="{Binding Reactor.Pid.MaxPulse, Mode=TwoWay}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource OnDark}" MinWidth="40" TextAlignment="Right">
-                    <Run Text="{Binding Reactor.Pid.MaxPulse}" /><Run Text=" ms" />
-                  </TextBlock>
-                </Grid>
-                <Grid ColumnDefinitions="90,*,Auto" Margin="0,7">
-                  <TextBlock Grid.Column="0" Text="收敛增益" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-                  <Slider Grid.Column="1" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True"
-                          Value="{Binding Reactor.Pid.PBoost, Mode=TwoWay}" VerticalAlignment="Center" />
-                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource OnDark}" MinWidth="40" TextAlignment="Right"
-                             Text="{Binding Reactor.Pid.PBoost}" />
-                </Grid>
-                <Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
-                  <Button Grid.Column="0" Classes="dbtn ghost" Content="恢复默认" Command="{Binding AdvResetCommand}" Margin="0,0,4,0" />
-                  <Button Grid.Column="1" Classes="dbtn pri" Content="自动整定" Command="{Binding AdvAutoCommand}" Margin="4,0,0,0" />
-                </Grid>
-              </StackPanel>
-            </StackPanel>
-          </Border>
+					<!-- 高级 PID -->
+					<Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,1,0,0" Margin="0,4,0,0">
+						<StackPanel>
+							<Button Background="Transparent" BorderThickness="0" Padding="0,9" HorizontalAlignment="Stretch"
+									HorizontalContentAlignment="Left" Command="{Binding ToggleAdvCommand}">
+								<StackPanel Orientation="Horizontal" Spacing="8">
+									<Path Data="M9 6l6 6-6 6" Stroke="{DynamicResource Body}" StrokeThickness="2" Width="11" Height="11" Stretch="Uniform" />
+									<TextBlock Text="高级 · 压力 PID 整定" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+									<TextBlock Text="仅高级用户" FontSize="10" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" Margin="8,0,0,0" />
+								</StackPanel>
+							</Button>
+							<StackPanel IsVisible="{Binding AdvOpen}" Margin="0,2,0,4">
+								<Grid ColumnDefinitions="90,*,Auto" Margin="0,7">
+									<TextBlock Grid.Column="0" Text="初始脉宽" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+									<Slider Grid.Column="1" Minimum="2.5" Maximum="20" TickFrequency="0.5" IsSnapToTickEnabled="True"
+											Value="{Binding Reactor.Pid.MaxPulse, Mode=TwoWay}" VerticalAlignment="Center" />
+									<TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource OnDark}" MinWidth="40" TextAlignment="Right">
+										<Run Text="{Binding Reactor.Pid.MaxPulse}" />
+										<Run Text=" ms" />
+									</TextBlock>
+								</Grid>
+								<Grid ColumnDefinitions="90,*,Auto" Margin="0,7">
+									<TextBlock Grid.Column="0" Text="收敛增益" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+									<Slider Grid.Column="1" Minimum="1" Maximum="30" TickFrequency="1" IsSnapToTickEnabled="True"
+											Value="{Binding Reactor.Pid.PBoost, Mode=TwoWay}" VerticalAlignment="Center" />
+									<TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource OnDark}" MinWidth="40" TextAlignment="Right"
+											   Text="{Binding Reactor.Pid.PBoost}" />
+								</Grid>
+								<Grid ColumnDefinitions="*,*" Margin="0,6,0,0">
+									<Button Grid.Column="0" Classes="dbtn ghost" Content="恢复默认" Command="{Binding AdvResetCommand}" Margin="0,0,4,0" />
+									<Button Grid.Column="1" Classes="dbtn pri" Content="自动整定" Command="{Binding AdvAutoCommand}" Margin="4,0,0,0" />
+								</Grid>
+							</StackPanel>
+						</StackPanel>
+					</Border>
 
-          <!-- Modbus 寄存器 -->
-          <StackPanel Margin="0,14,0,0">
-            <TextBlock Classes="sect" Text="Modbus 寄存器" />
-            <Grid ColumnDefinitions="*,Auto" Margin="0,5">
-              <TextBlock Grid.Column="0" Text="温度 SP 地址" FontSize="11" Foreground="{DynamicResource Mute}" />
-              <TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.SpAddr}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto" Margin="0,5">
-              <TextBlock Grid.Column="0" Text="温度 PV 地址" FontSize="11" Foreground="{DynamicResource Mute}" />
-              <TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.PvAddr}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto" Margin="0,5">
-              <TextBlock Grid.Column="0" Text="阀门 DO 线圈" FontSize="11" Foreground="{DynamicResource Mute}" />
-              <TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.DoCoil}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
-            </Grid>
-          </StackPanel>
+					<!-- Modbus 寄存器 -->
+					<StackPanel Margin="0,14,0,0">
+						<TextBlock Classes="sect" Text="Modbus 寄存器" />
+						<Grid ColumnDefinitions="*,Auto" Margin="0,5">
+							<TextBlock Grid.Column="0" Text="温度 SP 地址" FontSize="11" Foreground="{DynamicResource Mute}" />
+							<TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.SpAddr}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
+						</Grid>
+						<Grid ColumnDefinitions="*,Auto" Margin="0,5">
+							<TextBlock Grid.Column="0" Text="温度 PV 地址" FontSize="11" Foreground="{DynamicResource Mute}" />
+							<TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.PvAddr}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
+						</Grid>
+						<Grid ColumnDefinitions="*,Auto" Margin="0,5">
+							<TextBlock Grid.Column="0" Text="阀门 DO 线圈" FontSize="11" Foreground="{DynamicResource Mute}" />
+							<TextBlock Grid.Column="1" Text="{Binding Reactor.Id, Converter={x:Static conv:RegConverter.DoCoil}}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
+						</Grid>
+					</StackPanel>
 
-        </StackPanel>
-      </ScrollViewer>
-    </Grid>
-  </Border>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
+	</Border>
 </UserControl>

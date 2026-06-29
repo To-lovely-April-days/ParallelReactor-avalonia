@@ -6,6 +6,10 @@
              x:CompileBindings="False"
              x:DataType="vm:SettingViewModel">
 
+  <UserControl.Resources>
+    <conv:EqualsConverter x:Key="Eq" />
+  </UserControl.Resources>
+
   <UserControl.Styles>
     <Style Selector="TextBlock.seth">
       <Setter Property="FontSize" Value="11" />
@@ -263,6 +267,122 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+
+            <!-- ===== 温控 / PID 自定义块（仅在 temppid 页显示）===== -->
+            <StackPanel IsVisible="{Binding Selected.Id, Converter={StaticResource Eq}, ConverterParameter=temppid}">
+              <Border Background="#14E0394C" BorderBrush="#3DE0394C" BorderThickness="1" CornerRadius="9"
+                      Padding="13,10" Margin="0,0,0,12">
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18"
+                           Text="每通道独立 PID。上方「温度档位」可为每个温区分别保存一组 PID——在某档位下点「自整定」整定一次即存入该档位，长期复用，跑反应时按目标温度选用对应档位。点击 P / I / D 数值可用屏幕键盘修改并即时下发；整定结束后自动回读新参数。" />
+              </Border>
+
+              <!-- 温度档位选择 -->
+              <StackPanel Orientation="Horizontal" Spacing="9" Margin="0,0,0,12" VerticalAlignment="Center">
+                <TextBlock Text="温度档位" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                <Border Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                        CornerRadius="10" Padding="3" ClipToBounds="True">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Classes="seg" MinWidth="128" Content="{Binding TempBands[0].Label}"
+                            Classes.on="{Binding TempBandIndex, Converter={StaticResource Eq}, ConverterParameter=0}"
+                            Command="{Binding SelectTempBandCommand}" CommandParameter="0" />
+                    <Button Classes="seg" MinWidth="128" Content="{Binding TempBands[1].Label}"
+                            Classes.on="{Binding TempBandIndex, Converter={StaticResource Eq}, ConverterParameter=1}"
+                            Command="{Binding SelectTempBandCommand}" CommandParameter="1" />
+                    <Button Classes="seg" MinWidth="128" Content="{Binding TempBands[2].Label}"
+                            Classes.on="{Binding TempBandIndex, Converter={StaticResource Eq}, ConverterParameter=2}"
+                            Command="{Binding SelectTempBandCommand}" CommandParameter="2" />
+                  </StackPanel>
+                </Border>
+
+                <!-- 档位边界（可点改）-->
+                <TextBlock Text="分界" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                  <Button Classes="numval" MinWidth="64" Command="{Binding EditBound1Command}">
+                    <TextBlock Text="{Binding TempBands[0].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  </Button>
+                </Border>
+                <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                  <Button Classes="numval" MinWidth="64" Command="{Binding EditBound2Command}">
+                    <TextBlock Text="{Binding TempBands[1].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  </Button>
+                </Border>
+              </StackPanel>
+
+              <!-- 列标题 -->
+              <Grid ColumnDefinitions="58,98,72,*,96" Margin="14,0,4,6">
+                <TextBlock Grid.Column="1" Text="测量 PV" Classes="seth" Margin="0" />
+                <TextBlock Grid.Column="2" Text="输出" Classes="seth" Margin="0" />
+                <TextBlock Grid.Column="3" Text="P  /  I  /  D" Classes="seth" Margin="0" />
+                <TextBlock Grid.Column="4" Text="自整定" Classes="seth" Margin="0" HorizontalAlignment="Right" />
+              </Grid>
+
+              <ItemsControl ItemsSource="{Binding Temp.Channels}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Border Classes="setcard" Padding="14,9" Margin="0,0,0,8">
+                      <Grid ColumnDefinitions="58,98,72,*,96" VerticalAlignment="Center">
+                        <!-- 通道 + 状态 -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                          <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+                          <TextBlock Text="整定中…" IsVisible="{Binding Autotuning}" FontSize="10" Foreground="#f0a830" Margin="0,2,0,0" />
+                          <TextBlock Text="就绪" IsVisible="{Binding !Autotuning}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                        </StackPanel>
+
+                        <!-- PV -->
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                          <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+                            <Run Text="{Binding Pv, StringFormat={}{0:0.0}}" /><Run Text=" ℃" FontSize="11" Foreground="{DynamicResource Body}" />
+                          </TextBlock>
+                        </StackPanel>
+
+                        <!-- 输出 -->
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource Body}" Text="{Binding OutputPct, StringFormat={}{0:0}%}" />
+
+                        <!-- P / I / D -->
+                        <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
+                          <StackPanel>
+                            <TextBlock Text="P" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                              <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
+                                      Command="{Binding DataContext.EditTempPCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <TextBlock Text="{Binding P, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                              </Button>
+                            </Border>
+                          </StackPanel>
+                          <StackPanel>
+                            <TextBlock Text="I (s)" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                              <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
+                                      Command="{Binding DataContext.EditTempICommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <TextBlock Text="{Binding I, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                              </Button>
+                            </Border>
+                          </StackPanel>
+                          <StackPanel>
+                            <TextBlock Text="D (s)" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                              <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
+                                      Command="{Binding DataContext.EditTempDCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                                <TextBlock Text="{Binding D, StringFormat={}{0:0.##}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                              </Button>
+                            </Border>
+                          </StackPanel>
+                        </StackPanel>
+
+                        <!-- 自整定 -->
+                        <Button Grid.Column="4" Classes="mfbtn" Height="34" Padding="0" MinWidth="92"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                IsEnabled="{Binding !Autotuning}" CommandParameter="{Binding}"
+                                Command="{Binding DataContext.AutotuneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
+                          <TextBlock Text="自整定" FontSize="12.5" />
+                        </Button>
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </Border>

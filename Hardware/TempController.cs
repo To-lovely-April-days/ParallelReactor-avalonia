@@ -26,6 +26,9 @@ public sealed class TempController
     private const ushort SvBase = 0x0480;
     private const ushort AtBase = 0x0300;
     private const ushort OpBase = 0x0360;
+    private const ushort PBase = 0x0060;    // 比例带 P（单位同 SP）
+    private const ushort IBase = 0x00C0;    // 积分时间 I（寄存器单位 0.1s）
+    private const ushort DBase = 0x0120;    // 微分时间 d（寄存器单位 0.01s，有符号）
     private const ushort SrunReg = 0x0845;
 
     private double Scale => Math.Pow(10, _dpt);
@@ -76,8 +79,65 @@ public sealed class TempController
     /// <summary>通道停止控制（关闭输出）。</summary>
     public Task StopAsync(int loop) => WriteAt(loop, 4);
 
-    /// <summary>启动通道自整定。</summary>
+    /// <summary>启动通道自整定（At=1）。整定结束后仪表会自动把 At 置回 0（APID）。</summary>
     public Task AutotuneAsync(int loop) => WriteAt(loop, 1);
+
+    // ===================== PID 参数（每通道独立）=====================
+
+    /// <summary>读比例带 P（工程量，单位同 SP）。</summary>
+    public async Task<double> ReadPAsync(int loop)
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, (ushort)(PBase + loop - 1), 1);
+        return (short)r[0] / Scale;
+    }
+
+    /// <summary>读积分时间 I（秒）。寄存器单位 0.1s。</summary>
+    public async Task<double> ReadIAsync(int loop)
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, (ushort)(IBase + loop - 1), 1);
+        return r[0] / 10.0;
+    }
+
+    /// <summary>读微分时间 D（秒）。寄存器单位 0.01s，有符号。</summary>
+    public async Task<double> ReadDAsync(int loop)
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, (ushort)(DBase + loop - 1), 1);
+        return (short)r[0] / 100.0;
+    }
+
+    /// <summary>一次性读通道 PID（P 工程量、I 秒、D 秒）。</summary>
+    public async Task<PidParams> ReadPidAsync(int loop)
+        => new(await ReadPAsync(loop), await ReadIAsync(loop), await ReadDAsync(loop));
+
+    /// <summary>写比例带 P（工程量，单位同 SP）。</summary>
+    public Task SetPAsync(int loop, double p)
+        => _bus.WriteSingleRegisterAsync(_slave, (ushort)(PBase + loop - 1), (ushort)Math.Round(p * Scale));
+
+    /// <summary>写积分时间 I（秒）。</summary>
+    public Task SetIAsync(int loop, double seconds)
+        => _bus.WriteSingleRegisterAsync(_slave, (ushort)(IBase + loop - 1), (ushort)Math.Round(seconds * 10));
+
+    /// <summary>写微分时间 D（秒，可负）。</summary>
+    public Task SetDAsync(int loop, double seconds)
+        => _bus.WriteSingleRegisterAsync(_slave, (ushort)(DBase + loop - 1), (ushort)(short)Math.Round(seconds * 100));
+
+    /// <summary>整组写 PID（P 工程量、I 秒、D 秒）。</summary>
+    public async Task SetPidAsync(int loop, double p, double i, double d)
+    {
+        await SetPAsync(loop, p);
+        await SetIAsync(loop, i);
+        await SetDAsync(loop, d);
+    }
+
+    /// <summary>读通道工作模式 At（0=APID,1=自整定中,2=ONOFF,3=手动,4=停止,5=PV变送）。</summary>
+    public async Task<int> ReadModeAsync(int loop)
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, (ushort)(AtBase + loop - 1), 1);
+        return r[0];
+    }
+
+    /// <summary>该通道是否正在自整定（At=1）。整定完成后仪表自动把 At 置回 0。</summary>
+    public async Task<bool> IsAutotuningAsync(int loop) => await ReadModeAsync(loop) == 1;
 
     /// <summary>一条指令停止本机全部通道（Srun=9655）。</summary>
     public Task StopAllAsync() => _bus.WriteSingleRegisterAsync(_slave, SrunReg, 9655);
@@ -88,3 +148,6 @@ public sealed class TempController
     private Task WriteAt(int loop, ushort mode)
         => _bus.WriteSingleRegisterAsync(_slave, (ushort)(AtBase + loop - 1), mode);
 }
+
+/// <summary>温控通道 PID 参数：P 为工程量（同 SP 单位），I/D 为秒。</summary>
+public readonly record struct PidParams(double P, double I, double D);

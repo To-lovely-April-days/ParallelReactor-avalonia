@@ -44,6 +44,53 @@ public partial class SettingViewModel : ViewModelBase
     [RelayCommand]
     private void ExitApp() => _main.OpenExitConfirm();
 
+    // ===== 温控 / PID（绑定到集中页）=====
+    public Services.TempService Temp => _main.Temp;
+
+    /// <summary>温度档位列表（界面顶部档位选择）。</summary>
+    public System.Collections.Generic.List<Services.TempBand> TempBands => _main.Temp.Bands;
+
+    /// <summary>当前选中的档位下标。切换时把界面 PID 存回旧档、载入新档。</summary>
+    [ObservableProperty] private int _tempBandIndex;
+
+    partial void OnTempBandIndexChanged(int value) => _main.Temp.SelectBand(value);
+
+    [RelayCommand]
+    private void SelectTempBand(string idx)
+    {
+        if (int.TryParse(idx, out var n)) TempBandIndex = n;
+    }
+
+    /// <summary>改「低温/中温」分界（=低温档上限=中温档下限）。</summary>
+    [RelayCommand]
+    private void EditBound1()
+        => _main.Keyboard.OpenNumeric("低温 / 中温 分界", TempBands[0].Hi, "℃", 10, TempBands[1].Hi - 10,
+            v => { TempBands[0].Hi = v; TempBands[1].Lo = v; });
+
+    /// <summary>改「中温/高温」分界（=中温档上限=高温档下限）。</summary>
+    [RelayCommand]
+    private void EditBound2()
+        => _main.Keyboard.OpenNumeric("中温 / 高温 分界", TempBands[1].Hi, "℃", TempBands[0].Hi + 10, 390,
+            v => { TempBands[1].Hi = v; TempBands[2].Lo = v; });
+
+    [RelayCommand]
+    private void Autotune(Services.TempChannel ch) => _ = _main.Temp.AutotuneAsync(ch.Id);
+
+    [RelayCommand]
+    private void EditTempP(Services.TempChannel ch)
+        => _main.Keyboard.OpenNumeric($"{ch.Name} 比例带 P", ch.P, "", 0, 3200,
+            v => _ = _main.Temp.SetPidAsync(ch.Id, v, ch.I, ch.D));
+
+    [RelayCommand]
+    private void EditTempI(Services.TempChannel ch)
+        => _main.Keyboard.OpenNumeric($"{ch.Name} 积分时间 I", ch.I, "s", 0, 3200,
+            v => _ = _main.Temp.SetPidAsync(ch.Id, ch.P, v, ch.D));
+
+    [RelayCommand]
+    private void EditTempD(Services.TempChannel ch)
+        => _main.Keyboard.OpenNumeric($"{ch.Name} 微分时间 D", ch.D, "s", 0, 327,
+            v => _ = _main.Temp.SetPidAsync(ch.Id, ch.P, ch.I, v));
+
     /// <summary>刷新「本机 IP 地址」（WiFi 优先）。由时钟 tick 每 5s 调一次；force=true 立即刷新。</summary>
     public void RefreshNetworkInfo(bool force = false)
     {
@@ -137,7 +184,10 @@ public partial class SettingViewModel : ViewModelBase
     {
         Pages.Add(new SetPage
         {
-            Id = "general", Name = "通用", Title = "通用", Sub = "界面、语言、单位",
+            Id = "general",
+            Name = "通用",
+            Title = "通用",
+            Sub = "界面、语言、单位",
             Icon = G("M12 1v6 M12 17v6 M4.22 4.22l4.24 4.24 M15.54 15.54l4.24 4.24 M1 12h6 M17 12h6 M4.22 19.78l4.24-4.24 M15.54 8.46l4.24-4.24 M15 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0"),
             Sections =
             {
@@ -153,7 +203,10 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "params", Name = "参数与报警", Title = "参数与报警", Sub = "可设置参数范围与报警阈值",
+            Id = "params",
+            Name = "参数与报警",
+            Title = "参数与报警",
+            Sub = "可设置参数范围与报警阈值",
             Icon = G("M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M2 14h4 M10 8h4 M18 16h4"),
             Sections =
             {
@@ -174,7 +227,20 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "channels", Name = "通道与气路", Title = "通道与气路", Sub = "8 路 RV · 3 路气源 + 1 路 Vent",
+            Id = "temppid",
+            Name = "温控 / PID",
+            Title = "温控 / PID",
+            Sub = "8 通道独立 PID · 自整定（宇电 AI-8 ×2）",
+            Icon = G("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
+            Sections = { },   // 自定义渲染：见 SettingView 的温控块
+        });
+
+        Pages.Add(new SetPage
+        {
+            Id = "channels",
+            Name = "通道与气路",
+            Title = "通道与气路",
+            Sub = "8 路 RV · 3 路气源 + 1 路 Vent",
             Icon = G("M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"),
             Sections =
             {
@@ -194,7 +260,10 @@ public partial class SettingViewModel : ViewModelBase
         _ipRow = SetRow.Val("本机 IP 地址", "获取中…", "WiFi / 以太网当前地址");
         Pages.Add(new SetPage
         {
-            Id = "comm", Name = "通讯设置", Title = "通讯设置", Sub = "3 路独立 RS485 · Modbus RTU",
+            Id = "comm",
+            Name = "通讯设置",
+            Title = "通讯设置",
+            Sub = "3 路独立 RS485 · Modbus RTU",
             Icon = G("M5 12.55a11 11 0 0 1 14 0 M1.42 9a16 16 0 0 1 21.16 0 M8.53 16.11a6 6 0 0 1 6.95 0 M12 20h.01"),
             Sections =
             {
@@ -213,7 +282,10 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "user", Name = "用户与权限", Title = "用户与权限", Sub = "管理员可控制阀门、改高级参数、停用通道",
+            Id = "user",
+            Name = "用户与权限",
+            Title = "用户与权限",
+            Sub = "管理员可控制阀门、改高级参数、停用通道",
             Icon = G("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M16 7a4 4 0 1 1-8 0 4 4 0 1 1 8 0"),
             Sections =
             {
@@ -230,7 +302,10 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "data", Name = "数据存储", Title = "数据存储", Sub = "自动归档、自动备份、可对接外部数据库",
+            Id = "data",
+            Name = "数据存储",
+            Title = "数据存储",
+            Sub = "自动归档、自动备份、可对接外部数据库",
             Icon = G("M21 5a9 3 0 1 1-18 0 9 3 0 1 1 18 0 M3 5v14a9 3 0 0 0 18 0V5 M3 12a9 3 0 0 0 18 0"),
             Sections =
             {
@@ -247,7 +322,10 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "about", Name = "关于", Title = "关于本系统", Sub = "霍桐仪器多通道平行反应仪控制系统",
+            Id = "about",
+            Name = "关于",
+            Title = "关于本系统",
+            Sub = "霍桐仪器多通道平行反应仪控制系统",
             Icon = G("M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0 M12 16v-4 M12 8h.01"),
             Sections =
             {

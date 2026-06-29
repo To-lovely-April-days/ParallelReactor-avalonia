@@ -2,7 +2,7 @@ using System;
 using System.IO.Ports;
 using ParallelReactor.Hardware;
 
-namespace ParallelReactor.Service;
+namespace ParallelReactor.Services;
 
 /// <summary>
 /// 硬件连接配置（搅拌驱动器所在串口）。决定业务跑在「真串口」还是「内存模拟」上。
@@ -37,6 +37,33 @@ public static class HardwareOptions
         => UseRealStir
             ? new ModbusRtuMaster(StirPort!, StirBaud, StirParity, StirDataBits, StirStopBits)
             : new MockModbusMaster();
+
+    // ===== 温控（宇电 AI-8 ×2，A 站 RV1-4、B 站 RV5-8，同一条 RS485 总线）=====
+
+    /// <summary>温控总线串口名（两台 AI-8 共用）。为空则用内存模拟。</summary>
+    public static string? TempPort { get; set; } = Env("PR_TEMP_PORT");
+
+    /// <summary>波特率（AI-8 出厂默认 19.2K）。</summary>
+    public static int TempBaud { get; set; } = EnvInt("PR_TEMP_BAUD", 19200);
+
+    /// <summary>A 站地址（管 RV1-4），出厂默认 1。</summary>
+    public static byte TempSlaveA { get; set; } = (byte)EnvInt("PR_TEMP_SLAVE_A", 1);
+
+    /// <summary>B 站地址（管 RV5-8）。</summary>
+    public static byte TempSlaveB { get; set; } = (byte)EnvInt("PR_TEMP_SLAVE_B", 2);
+
+    /// <summary>小数位 dPt（寄存器=实际值×10^dPt；默认 1 表示一位小数）。</summary>
+    public static int TempDpt { get; set; } = EnvInt("PR_TEMP_DPT", 1);
+
+    public static Parity TempParity { get; set; } = Parity.None;
+
+    public static bool UseRealTemp => !string.IsNullOrWhiteSpace(TempPort);
+
+    /// <summary>创建温控总线主站。mock 模式下预置两站地址，使 PV 能向 SP 漂移。</summary>
+    public static IModbusMaster CreateTempBus()
+        => UseRealTemp
+            ? new ModbusRtuMaster(TempPort!, TempBaud, TempParity, 8, StopBits.One)
+            : new MockModbusMaster { TempSlaves = new[] { TempSlaveA, TempSlaveB }, TempLoops = 4 };
 
     private static string? Env(string key)
     {

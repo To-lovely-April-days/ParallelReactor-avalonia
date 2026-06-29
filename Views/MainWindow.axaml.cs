@@ -21,6 +21,9 @@ public partial class MainWindow : Window
     private DispatcherTimer? _tickTimer;
     private DispatcherTimer? _clockTimer;
     private DispatcherTimer? _animTimer;
+    private DispatcherTimer? _warmTimer;
+    private int _warmIdx;
+    private static readonly string[] WarmTabs = { "program", "graph", "data", "alarm", "setting", "home" };
     private bool _closing;
     private double _phase;
 
@@ -28,9 +31,29 @@ public partial class MainWindow : Window
     {
         AvaloniaXamlLoader.Load(this);
         _schematic = this.FindControl<SchematicControl>("Schematic");
+        ApplyTextRenderingMode();
         DataContextChanged += OnDataContextChanged;
         Opened += OnOpened;
         Closed += OnClosed;
+    }
+
+    /// <summary>
+    /// 文本渲染模式：可用环境变量 PR_TEXT_MODE 切换以对比清晰度/粗细（改完重启即可，无需重编译）。
+    ///   alias      = 不抗锯齿（最细最锐，可能有锯齿）
+    ///   antialias  = 灰度抗锯齿（默认，较平滑）
+    ///   subpixel   = 次像素（类 ClearType，最平滑但可能偏粗/有彩边）
+    /// </summary>
+    private void ApplyTextRenderingMode()
+    {
+        var canvas = this.FindControl<Panel>("DesignCanvas");
+        if (canvas == null) return;
+        var mode = (Environment.GetEnvironmentVariable("PR_TEXT_MODE") ?? "antialias").Trim().ToLowerInvariant() switch
+        {
+            "alias" => Avalonia.Media.TextRenderingMode.Alias,
+            "subpixel" => Avalonia.Media.TextRenderingMode.SubpixelAntialias,
+            _ => Avalonia.Media.TextRenderingMode.Antialias,
+        };
+        Avalonia.Media.RenderOptions.SetTextRenderingMode(canvas, mode);
     }
 
     private void OnDataContextChanged(object? sender, EventArgs e)
@@ -82,13 +105,45 @@ public partial class MainWindow : Window
         _clockTimer.Tick += (_, _) => _vm?.ClockTick();
         _clockTimer.Start();
 
-        // 动画：33ms ≈ 30fps，Render 优先级保证稳定推进相位
+        // 动画：50ms ≈ 20fps，Background 优先级让触摸/输入优先处理，避免在弱板上卡顿
         _animTimer = new DispatcherTimer(
-            TimeSpan.FromMilliseconds(33), DispatcherPriority.Render, OnAnimTick);
+            TimeSpan.FromMilliseconds(50), DispatcherPriority.Background, OnAnimTick);
         _animTimer.Start();
+
+        StartWarmup();
     }
 
-    /// <summary>把无边框窗口铺满当前屏幕（先按屏幕实际像素/缩放手动铺满，再尝试 FullScreen 兜底）。</summary>
+    // ============ 启动预热：开机时把各页各渲染一次（JIT + 布局预热），消除首次进菜单卡顿 ============
+    private void StartWarmup()
+    {
+        if (_vm == null) { HideSplash(); return; }
+        _warmIdx = 0;
+        _warmTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _warmTimer.Tick += WarmStep;
+        _warmTimer.Start();
+    }
+
+    private void WarmStep(object? sender, EventArgs e)
+    {
+        if (_closing || _vm == null || _warmIdx >= WarmTabs.Length)
+        {
+            _warmTimer?.Stop();
+            _warmTimer = null;
+            _vm?.SwitchTab("home");   // 预热结束停在首页
+            HideSplash();
+            return;
+        }
+        _vm.SwitchTab(WarmTabs[_warmIdx]);   // 每拍切一页，让其首次布局/渲染发生（被遮罩盖住，用户看不到）
+        _warmIdx++;
+    }
+
+    private void HideSplash()
+    {
+        var splash = this.FindControl<Border>("Splash");
+        if (splash != null) splash.IsVisible = false;
+    }
+
+    /// <summary>把无边框窗口铺满当前屏幕（按屏幕实际像素/缩放手动铺满）。无放大变换，靠高 DPI 渲染保证锐利。</summary>
     private void GoFullScreen()
     {
         var screen = Screens.ScreenFromVisual(this) ?? Screens.Primary ?? Screens.All.FirstOrDefault();
@@ -102,12 +157,18 @@ public partial class MainWindow : Window
         Position = screen.Bounds.Position;            // 物理像素坐标，置于屏幕左上角
         Width = screen.Bounds.Width / scaling;        // 逻辑单位 = 物理像素 / 缩放
         Height = screen.Bounds.Height / scaling;
+
+        // 诊断：打印真实分辨率/缩放（看终端或 journalctl）
+        Console.WriteLine($"[Display] 屏幕物理像素={screen.Bounds.Width}x{screen.Bounds.Height} 系统缩放={scaling} " +
+                          $"窗口逻辑尺寸={Width:0}x{Height:0} 渲染缩放={RenderScaling} ClientSize={ClientSize.Width:0}x{ClientSize.Height:0}");
     }
 
     private void OnAnimTick(object? sender, EventArgs e)
     {
         if (_closing) return;
-        _phase += 0.033; // 每帧累加约 33ms（秒）
+        // 只在首页显示气路图、且没有模态弹窗时推进动画；其它页/弹窗时完全不重绘，省出 UI 线程给触摸
+        if (_vm == null || _vm.ActiveTab != "home" || _vm.Keyboard.IsOpen || _vm.IsExitConfirmOpen) return;
+        _phase += 0.05; // 50ms 一帧，保持约 1.0/秒 的相位速度
         if (_schematic != null) _schematic.Phase = _phase;
     }
 

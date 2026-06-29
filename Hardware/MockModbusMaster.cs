@@ -16,7 +16,9 @@ public sealed class MockModbusMaster : IModbusMaster
     private readonly Dictionary<int, ushort> _input = new();
     private readonly Dictionary<int, bool> _coil = new();
     private readonly Dictionary<int, bool> _di = new();
+    private readonly Dictionary<int, int> _tuneCount = new();   // 自整定模拟计时
     private readonly Random _rng = new();
+    private bool _seeded;
 
     /// <summary>AI-8 温控站地址（用于 PV 模拟），每台回路数见 <see cref="TempLoops"/>。</summary>
     public byte[] TempSlaves { get; init; } = Array.Empty<byte>();
@@ -32,15 +34,34 @@ public sealed class MockModbusMaster : IModbusMaster
     {
         lock (_lock)
         {
+            if (!_seeded) { SeedTemp(); _seeded = true; }
+
             foreach (var s in TempSlaves)
                 for (int i = 0; i < TempLoops; i++)
                 {
+                    // PV 向 SP 漂移
                     short sp = (short)_hold.GetValueOrDefault(Key(s, (ushort)(0x0000 + i)), (ushort)250); // 默认 25.0℃
                     int pvKey = Key(s, (ushort)(0x0600 + i));
                     short pv = (short)_hold.GetValueOrDefault(pvKey, (ushort)sp);
                     int step = Math.Sign(sp - pv) * Math.Min(Math.Abs(sp - pv), 5);
                     pv = (short)(pv + step + _rng.Next(-1, 2));
                     _hold[pvKey] = (ushort)pv;
+
+                    // 自整定模拟：At=1 持续若干周期后回 0，并写入一组 PID 结果
+                    int atKey = Key(s, (ushort)(0x0300 + i));
+                    if (_hold.GetValueOrDefault(atKey) == 1)
+                    {
+                        int n = _tuneCount.GetValueOrDefault(atKey) + 1;
+                        _tuneCount[atKey] = n;
+                        if (n >= 6)   // ≈ 7 秒（按 1.2s tick）
+                        {
+                            _tuneCount[atKey] = 0;
+                            _hold[atKey] = 0;   // 整定结束，回 APID
+                            _hold[Key(s, (ushort)(0x0060 + i))] = (ushort)(700 + _rng.Next(0, 200));    // P
+                            _hold[Key(s, (ushort)(0x00C0 + i))] = (ushort)(1000 + _rng.Next(0, 400));   // I（0.1s）
+                            _hold[Key(s, (ushort)(0x0120 + i))] = (ushort)(1500 + _rng.Next(0, 800));   // D（0.01s）
+                        }
+                    }
                 }
 
             if (AnalogSlave != 0)
@@ -51,6 +72,18 @@ public sealed class MockModbusMaster : IModbusMaster
                     _input[k] = (ushort)Math.Clamp(v, 3200, 16000);
                 }
         }
+    }
+
+    /// <summary>给温控站预置一组默认 PID，使界面初始就有合理数值（mock 演示用）。</summary>
+    private void SeedTemp()
+    {
+        foreach (var s in TempSlaves)
+            for (int i = 0; i < TempLoops; i++)
+            {
+                _hold.TryAdd(Key(s, (ushort)(0x0060 + i)), 600);    // P = 60.0
+                _hold.TryAdd(Key(s, (ushort)(0x00C0 + i)), 1200);   // I = 120.0s
+                _hold.TryAdd(Key(s, (ushort)(0x0120 + i)), 2000);   // D = 20.0s
+            }
     }
 
     public Task<bool[]> ReadCoilsAsync(byte s, ushort start, ushort count, CancellationToken ct = default)

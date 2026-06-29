@@ -211,6 +211,21 @@ public partial class DrawerViewModel : ViewModelBase
         OnPropertyChanged(nameof(TspRange));
         OnPropertyChanged(nameof(PspRange));
         OnPropertyChanged(nameof(VolRange));
+        OnPropertyChanged(nameof(TempCh));
+    }
+
+    /// <summary>当前反应釜对应的温控通道（用于显示/操作该路 PID 自整定）。</summary>
+    public Services.TempChannel? TempCh => Reactor is { } c ? _main.Temp.Channels[c.Id - 1] : null;
+
+    /// <summary>对当前反应釜所在温控通道启动一次 PID 自整定。</summary>
+    [RelayCommand]
+    private void Autotune()
+    {
+        if (Reactor is { } c)
+        {
+            _ = _main.Temp.AutotuneAsync(c.Id);
+            _main.Toast("ok", $"RV{c.Id} 已启动 PID 自整定 · 整定结束自动回读参数");
+        }
     }
 
     public string ManualValveHint => _main.ManualValve ? "手动可控" : "开启手动阀控后可手动操作";

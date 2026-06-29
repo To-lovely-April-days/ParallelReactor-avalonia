@@ -14,13 +14,13 @@ public class InverseBoolConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => v is bool b && !b;
 }
 
-/// <summary>bool → 不透明度（true=1, false=0），用于淡入淡出</summary>
-public class BoolToOpacityConverter : IValueConverter
-{
-    public static readonly BoolToOpacityConverter Instance = new();
-    public object Convert(object? v, Type t, object? p, CultureInfo c) => v is bool b && b ? 1.0 : 0.0;
-    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
-}
+///// <summary>bool → 不透明度（true=1, false=0），用于淡入淡出</summary>
+//public class BoolToOpacityConverter : IValueConverter
+//{
+//    public static readonly BoolToOpacityConverter Instance = new();
+//    public object Convert(object? v, Type t, object? p, CultureInfo c) => v is bool b && b ? 1.0 : 0.0;
+//    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
+//}
 
 /// <summary>bool → 平移变换：true=滑入(0)，false=藏到右侧屏外(392)。用于抽屉动画。</summary>
 public class BoolToTranslateConverter : IValueConverter
@@ -41,6 +41,26 @@ public class EqualsConverter : IValueConverter
     public static readonly EqualsConverter Instance = new();
     public object Convert(object? v, Type t, object? p, CultureInfo c)
         => v?.ToString() == p?.ToString();
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c)
+        => throw new NotSupportedException();
+}
+
+/// <summary>string 等于参数 → 1.0，否则 0.0（用于各页常驻、靠透明度切换，避免折叠重绘）</summary>
+public class EqualsToOpacityConverter : IValueConverter
+{
+    public static readonly EqualsToOpacityConverter Instance = new();
+    public object Convert(object? v, Type t, object? p, CultureInfo c)
+        => v?.ToString() == p?.ToString() ? 1.0 : 0.0;
+    public object ConvertBack(object? v, Type t, object? p, CultureInfo c)
+        => throw new NotSupportedException();
+}
+
+/// <summary>bool → 1.0/0.0（用于弹框常驻、靠透明度开关，避免首次打开时重建）</summary>
+public class BoolToOpacityConverter : IValueConverter
+{
+    public static readonly BoolToOpacityConverter Instance = new();
+    public object Convert(object? v, Type t, object? p, CultureInfo c)
+        => v is true ? 1.0 : 0.0;
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c)
         => throw new NotSupportedException();
 }

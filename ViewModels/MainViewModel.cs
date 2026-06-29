@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
-using ParallelReactor.Service;
 
 namespace ParallelReactor.ViewModels;
 
@@ -34,8 +33,12 @@ public partial class MainViewModel : ViewModelBase
     // ============ 全局搅拌（共用一台搅拌器：8 釜同开同关、同一转速）============
     // 通过 StirController 驱动雷赛 DM2C 步进驱动器。总线由 HardwareOptions 决定：
     // 配置了串口(PR_STIR_PORT) → 走真实 ModbusRtuMaster；否则用内存 mock 演示。
-    private readonly Hardware.IModbusMaster _bus = HardwareOptions.CreateStirBus();
+    private readonly Hardware.IModbusMaster _bus = Services.HardwareOptions.CreateStirBus();
     private readonly Services.StirController _stir;
+
+    // 温控：两台 AI-8（A 站 RV1-4、B 站 RV5-8），8 通道独立 PID + 自整定。挂在温控总线上（真机/mock）。
+    private readonly Hardware.IModbusMaster _tempBus = Services.HardwareOptions.CreateTempBus();
+    public Services.TempService Temp { get; }
 
     [ObservableProperty] private bool _stirOn = true;
     [ObservableProperty] private int _stirRpm = 600;
@@ -105,13 +108,18 @@ public partial class MainViewModel : ViewModelBase
     {
         // 搅拌驱动器（DM2C，站地址来自 HardwareOptions）。mock 与真机行为一致，仅总线实现不同。
         _stir = new Services.StirController(
-            new Hardware.StepperDriver(_bus, HardwareOptions.StirSlave));
+            new Hardware.StepperDriver(_bus, Services.HardwareOptions.StirSlave));
         _stir.FaultRaised += code =>
         {
             StirOn = false;
             Toast("err", $"搅拌驱动器报警（0x{code:X4}）· 已停止搅拌");
         };
         _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
+
+        // 温控服务（两台 AI-8）。开机读一次各通道 PID 填充界面。
+        Temp = new Services.TempService(_tempBus,
+            Services.HardwareOptions.TempSlaveA, Services.HardwareOptions.TempSlaveB, Services.HardwareOptions.TempDpt);
+        _ = Temp.InitAsync();
 
         Drawer = new DrawerViewModel(this);
         SeedData();
@@ -131,8 +139,8 @@ public partial class MainViewModel : ViewModelBase
         if (StirOn) _ = _stir.StartAsync(StirRpm);
 
         // 提示当前搅拌运行在真机还是模拟（开机一次）。延后到 View 订阅 Toast 之后再发。
-        var (k, m) = HardwareOptions.UseRealStir
-            ? ("ok", $"搅拌已连接真机 · {HardwareOptions.StirPort} @ {HardwareOptions.StirBaud} · 站{HardwareOptions.StirSlave}")
+        var (k, m) = Services.HardwareOptions.UseRealStir
+            ? ("ok", $"搅拌已连接真机 · {Services.HardwareOptions.StirPort} @ {Services.HardwareOptions.StirBaud} · 站{Services.HardwareOptions.StirSlave}")
             : ("warn", "搅拌运行于模拟模式 · 未配置串口（设 PR_STIR_PORT 连真机）");
         Avalonia.Threading.Dispatcher.UIThread.Post(() => Toast(k, m));
     }
@@ -286,7 +294,7 @@ public partial class MainViewModel : ViewModelBase
         _stir.Stop();   // 停掉搅拌 JOG 保活，驱动器随之停转，避免退出后电机仍按最后一帧维持
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
-            desktop.Shutdown();
+            desktop.Shutdown(0);   // 退出码 0：配合 systemd Restart=on-failure，正常退出不被重启
         else
             Environment.Exit(0);
     }
@@ -311,10 +319,14 @@ public partial class MainViewModel : ViewModelBase
         if (!StirOn) StirOn = true;   // setter 会触发 ApplyStir
         else ApplyStir();
 
+        // 自动套档：按各釜目标温度选用对应档位的 PID，连同 SP 一起下发到温控器
+        foreach (var c in Reactors.Where(r => r.State != ReactorState.Idle))
+            _ = Temp.ApplyBandForAsync(c.Id, c.TSp);
+
         RefreshSchematic();
         Drawer.RaiseAll();
         UpdateRunCount();
-        Toast("ok", $"预运行检查通过 · 已开始运行（{Reactors.Count(r => r.State != ReactorState.Idle)} 个通道）");
+        Toast("ok", $"预运行检查通过 · 已开始运行（{Reactors.Count(r => r.State != ReactorState.Idle)} 个通道）· PID 已按温区自动套档");
     }
 
     /// <summary>按当前设备状态生成预运行检查项。</summary>
@@ -398,6 +410,8 @@ public partial class MainViewModel : ViewModelBase
     // ============ 实时数据 tick（对应 HTML setInterval）============
     public void Tick()
     {
+        _ = Temp.PollAsync();   // 温控轮询：PV / 输出 / 自整定状态（mock 模式下推进 PV 漂移）
+
         foreach (var c in Reactors)
         {
             if (c.State is ReactorState.Idle or ReactorState.Done) continue;
