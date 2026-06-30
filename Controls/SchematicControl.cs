@@ -161,8 +161,8 @@ public class SchematicControl : Control
             DrawReactorInner(ctx, c);
         }
 
-        // 釜下方读数
-        if (c.State != ReactorState.Idle)
+        // 釜下方读数。真机模式下即使空闲也显示实测温压（传感器一直有读数）。
+        if (c.State != ReactorState.Idle || Services.HardwareOptions.AnyReal)
         {
             var tCol = c.State == ReactorState.React ? GreenBright
                 : c.State == ReactorState.Alarm ? AccentBright : OnDark;

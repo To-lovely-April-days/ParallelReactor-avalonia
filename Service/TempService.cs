@@ -17,8 +17,7 @@ namespace ParallelReactor.Services;
 /// </summary>
 public sealed class TempService
 {
-    private readonly TempController _a;   // RV1-4
-    private readonly TempController _b;   // RV5-8
+    private readonly TempController _ctrl;   // AI-8 一台 8 回路（RV1-8）
     private readonly MockModbusMaster? _mock;   // mock 模式下推进 PV 漂移
     private int _curBand;
 
@@ -34,16 +33,15 @@ public sealed class TempService
 
     public int CurrentBand => _curBand;
 
-    public TempService(IModbusMaster bus, byte slaveA, byte slaveB, int dpt)
+    public TempService(IModbusMaster bus, byte slave, int dpt)
     {
-        _a = new TempController(bus, slaveA, 4, dpt);
-        _b = new TempController(bus, slaveB, 4, dpt);
+        _ctrl = new TempController(bus, slave, 8, dpt);   // 1 拖 8
         _mock = bus as MockModbusMaster;
         for (int i = 1; i <= 8; i++) Channels.Add(new TempChannel(i, Bands.Count));
     }
 
-    /// <summary>通道号(1..8) → (对应温控器, 本机回路号 1..4)。</summary>
-    private (TempController c, int loop) Map(int ch) => ch <= 4 ? (_a, ch) : (_b, ch - 4);
+    /// <summary>通道号(1..8) → (温控器, 回路号 1..8)。一台 AI-8 直接对应。</summary>
+    private (TempController c, int loop) Map(int ch) => (_ctrl, ch);
 
     /// <summary>切换当前档位：把界面值存回旧档，再载入新档到界面。</summary>
     public void SelectBand(int idx)

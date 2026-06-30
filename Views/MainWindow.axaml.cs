@@ -8,9 +8,10 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
-using ParallelReactor.Controls;
 using ParallelReactor.ViewModels;
 using System.Linq;
+using ParallelReactor.Controls;
+
 
 namespace ParallelReactor.Views;
 

@@ -40,6 +40,15 @@ public partial class MainViewModel : ViewModelBase
     private readonly Hardware.IModbusMaster _tempBus = Services.HardwareOptions.CreateTempBus();
     public Services.TempService Temp { get; }
 
+    // 压力：艾莫迅 8AI（8 路 PT）。仅在配置了真实串口时启用真机采集，否则用首页 Random 模拟。
+    private readonly Hardware.IModbusMaster _pressBus = Services.HardwareOptions.CreateAnalogBus();
+    private readonly Services.PressureService _press;
+
+    // 阀门：艾莫迅 IO16R（线圈驱动电磁阀）。配置真实串口后，界面阀门操作会写线圈。
+    private readonly Hardware.IModbusMaster _ioBus = Services.HardwareOptions.CreateIoBus();
+    private readonly Services.ValveService _valves;
+    private static bool RealIo => Services.HardwareOptions.UseRealIo;
+
     [ObservableProperty] private bool _stirOn = true;
     [ObservableProperty] private int _stirRpm = 600;
 
@@ -109,17 +118,19 @@ public partial class MainViewModel : ViewModelBase
         // 搅拌驱动器（DM2C，站地址来自 HardwareOptions）。mock 与真机行为一致，仅总线实现不同。
         _stir = new Services.StirController(
             new Hardware.StepperDriver(_bus, Services.HardwareOptions.StirSlave));
-        _stir.FaultRaised += code =>
-        {
-            StirOn = false;
-            Toast("err", $"搅拌驱动器报警（0x{code:X4}）· 已停止搅拌");
-        };
         _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
 
-        // 温控服务（两台 AI-8）。开机读一次各通道 PID 填充界面。
+        // 温控服务（一台 AI-8，1 拖 8）。开机读一次各通道 PID 填充界面。
         Temp = new Services.TempService(_tempBus,
-            Services.HardwareOptions.TempSlaveA, Services.HardwareOptions.TempSlaveB, Services.HardwareOptions.TempDpt);
+            Services.HardwareOptions.TempSlave, Services.HardwareOptions.TempDpt);
         _ = Temp.InitAsync();
+
+        // 压力服务（8AI）
+        _press = new Services.PressureService(_pressBus, Services.HardwareOptions.AnalogSlave,
+            Services.HardwareOptions.PressFullScale, Services.HardwareOptions.Press4to20);
+
+        // 阀门服务（IO16R）。真机的状态读回放到 SeedData 之后（见下方真机初始态）。
+        _valves = new Services.ValveService(_ioBus, Services.HardwareOptions.IoSlave, Services.HardwareOptions.IoEnergizeOpens);
 
         Drawer = new DrawerViewModel(this);
         SeedData();
@@ -135,7 +146,22 @@ public partial class MainViewModel : ViewModelBase
         Leak = new LeakViewModel(this);
         RecipePicker = new RecipeViewModel(this);
 
-        // 初始 StirOn=true 由字段初始化设置，不会触发属性回调，这里显式启动搅拌。
+        // 真机模式：开机进入"实时查询"初始态 —— 不自动开搅拌、所有釜置为空闲（温/压/阀门由轮询与读回填充），
+        // 不沿用演示用的"全部运行"假数据。
+        if (Services.HardwareOptions.AnyReal)
+        {
+            StirOn = false;
+            foreach (var c in Reactors)
+            {
+                c.State = ReactorState.Idle;
+                c.Rpm = 0;
+                c.T = 0; c.P = 0; c.Gas = 0;   // 清演示假值；由轮询填充真实温压（没读到则显示 0）
+            }
+            UpdateRunCount();
+            if (RealIo) _ = SyncValvesFromHardware();   // 读回真实阀门状态，覆盖空闲默认
+        }
+
+        // 演示模式：初始 StirOn=true（字段初始化）不触发属性回调，这里显式启动搅拌。真机模式上面已置 false。
         if (StirOn) _ = _stir.StartAsync(StirRpm);
 
         // 提示当前搅拌运行在真机还是模拟（开机一次）。延后到 View 订阅 Toast 之后再发。
@@ -192,6 +218,7 @@ public partial class MainViewModel : ViewModelBase
             return;
         }
         c.Valve = !c.Valve;
+        if (RealIo) _ = _valves.SetReactorValveAsync(id, c.Valve);   // 写线圈
         RefreshSchematic();
         Drawer.RaiseAll();
         Toast(c.Valve ? "ok" : "warn", $"SV{id} {(c.Valve ? "已开" : "已关")}");
@@ -203,6 +230,7 @@ public partial class MainViewModel : ViewModelBase
         if (!ManualValve) { Toast("warn", "请先开启「手动阀控」"); return; }
         var g = GasInlets[index];
         g.On = !g.On;
+        if (RealIo) _ = _valves.SetGasAsync(index, g.On);
         RefreshSchematic();
         Toast(g.On ? "ok" : "warn", $"{g.Label} 进气阀 {(g.On ? "已开" : "已关")}");
     }
@@ -212,8 +240,23 @@ public partial class MainViewModel : ViewModelBase
         if (!IsAdmin) { Toast("err", "需要管理员权限"); return; }
         if (!ManualValve) { Toast("warn", "请先开启「手动阀控」"); return; }
         VentOn = !VentOn;
+        if (RealIo) _ = _valves.SetVentAsync(VentOn);
         RefreshSchematic();
         Toast(VentOn ? "warn" : "ok", $"排空阀 {(VentOn ? "已开" : "已关")}");
+    }
+
+    /// <summary>开机从 IO16R 读回 12 路阀门实际状态，回填界面，使显示与硬件一致。</summary>
+    private async System.Threading.Tasks.Task SyncValvesFromHardware()
+    {
+        try
+        {
+            var open = await _valves.ReadOpenStatesAsync();
+            for (int i = 0; i < Reactors.Count && i < 8; i++) Reactors[i].Valve = open[i];
+            for (int i = 0; i < GasInlets.Count && i < 3; i++) GasInlets[i].On = open[8 + i];
+            VentOn = open[11];
+            RefreshSchematic();
+        }
+        catch { /* 读取失败忽略 */ }
     }
 
     public void OpenDrawer(int id) => Drawer.Open(id);
@@ -262,6 +305,7 @@ public partial class MainViewModel : ViewModelBase
             c.State = ReactorState.Done;
             c.Valve = false;
             c.Rpm = 0;
+            if (RealIo) _ = _valves.SetReactorValveAsync(c.Id, false);   // 安全：停止即关进气阀
         }
         RefreshSchematic();
         Drawer.RaiseAll();
@@ -412,22 +456,30 @@ public partial class MainViewModel : ViewModelBase
     {
         _ = Temp.PollAsync();   // 温控轮询：PV / 输出 / 自整定状态（mock 模式下推进 PV 漂移）
 
+        bool realT = Services.HardwareOptions.UseRealTemp;
+        bool realP = Services.HardwareOptions.UseRealAnalog;
+        if (realP) _ = _press.PollAsync();   // 压力轮询（8AI）
+
         foreach (var c in Reactors)
         {
+            // 真机：温度用 AI-8 实测 PV、压力用 8AI 实测值（覆盖模拟）
+            if (realT) c.T = Temp.Channels[c.Id - 1].Pv;
+            if (realP) c.P = _press.Pressures[c.Id - 1];
+
             if (c.State is ReactorState.Idle or ReactorState.Done) continue;
-            c.T += (Random.Shared.NextDouble() - 0.5) * 0.3;
+            if (!realT) c.T += (Random.Shared.NextDouble() - 0.5) * 0.3;
             if (c.State == ReactorState.React)
             {
-                c.P += (Random.Shared.NextDouble() - 0.5) * 1.2;
+                if (!realP) c.P += (Random.Shared.NextDouble() - 0.5) * 1.2;
                 c.Gas += Random.Shared.NextDouble() * 0.02;
             }
             else if (c.State == ReactorState.Pressing)
             {
-                c.P = Math.Min(c.PSp, c.P + Random.Shared.NextDouble() * 2);
+                if (!realP) c.P = Math.Min(c.PSp, c.P + Random.Shared.NextDouble() * 2);
             }
             else if (c.State == ReactorState.Heating)
             {
-                c.T = Math.Min(c.TSp, c.T + Random.Shared.NextDouble() * 0.4);
+                if (!realT) c.T = Math.Min(c.TSp, c.T + Random.Shared.NextDouble() * 0.4);
             }
 
             // 超压 / 超温报警判定（阈值来自全局设置）
