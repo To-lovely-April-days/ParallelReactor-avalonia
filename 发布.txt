@@ -13,3 +13,21 @@ cd ~/ParallelReactorProject
 
 chmod +x ParallelReactor
 ./run.sh
+
+--CPU查询
+top -bn1 | grep -iE "ParallelReactor|Xorg|%Cpu"
+
+--发布完成之后 服务重新加载
+cd ~/ParallelReactorProject
+ls -l ParallelReactor                      # 看时间戳是不是你刚发布的，确认拷对了
+sudo systemctl stop reactor-hmi.service
+rm -rf ~/.cache/dotnet_bundle/*            # 清解包缓存，强制用新文件重新解包
+chmod +x ParallelReactor
+sudo systemctl start reactor-hmi.service
+systemctl status reactor-hmi.service       # active (running)
+
+journalctl -u reactor-hmi.service -n 40 --no-pager
+
+
+
+PR_UI_SCALE=1.5 ./run.sh

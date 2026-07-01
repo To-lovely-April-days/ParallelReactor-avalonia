@@ -54,6 +54,11 @@ public partial class MainViewModel : ViewModelBase
 
     public string StirStateText => StirOn ? "运行中" : "已停止";
 
+    /// <summary>是否有需要播放的动画（气路流动 / 桨叶旋转）。空闲时为 false，让动画停下省 CPU。</summary>
+    public bool AnimActive =>
+        Reactors.Any(r => r.Valve && (r.State == ReactorState.React || r.State == ReactorState.Pressing))
+        || (StirOn && Reactors.Any(r => r.IsRunning));
+
     // ============ 预运行检查 ============
     [ObservableProperty] private bool _isPreRunOpen;
     [ObservableProperty] private string _preRunSummary = "";
@@ -146,6 +151,9 @@ public partial class MainViewModel : ViewModelBase
         Leak = new LeakViewModel(this);
         RecipePicker = new RecipeViewModel(this);
 
+        // 压力单位切换（psi/bar）：刷新各釜压力显示 + 气路图（内部仍以 psi 存储/判定）
+        Models.Units.Changed += OnUnitsChanged;
+
         // 真机模式：开机进入"实时查询"初始态 —— 不自动开搅拌、所有釜置为空闲（温/压/阀门由轮询与读回填充），
         // 不沿用演示用的"全部运行"假数据。
         if (Services.HardwareOptions.AnyReal)
@@ -203,6 +211,13 @@ public partial class MainViewModel : ViewModelBase
     public Reactor? FindReactor(int id) => Reactors.FirstOrDefault(r => r.Id == id);
 
     public void RefreshSchematic() => SchematicInvalidated?.Invoke();
+
+    /// <summary>压力单位切换后：刷新每个釜的压力显示绑定 + 气路图读数。</summary>
+    private void OnUnitsChanged()
+    {
+        foreach (var r in Reactors) r.RefreshUnits();
+        RefreshSchematic();
+    }
     public void Toast(string kind, string msg) => ToastRequested?.Invoke(kind, msg);
 
     // ============ 阀门手动控制（带权限/状态守卫）============

@@ -71,8 +71,45 @@ public class SchematicControl : Control
         _ => Color.Parse("#66666f")
     };
 
-    private static Typeface SansFace => new("Inter, Noto Sans SC");
-    private static Typeface MonoFace => new("JetBrains Mono, monospace");
+    private static readonly Typeface SansFace = new("Inter, Noto Sans SC");
+    private static readonly Typeface MonoFace = new("JetBrains Mono, monospace");
+
+    // —— 资源缓存：避免每帧 new 画笔/字体，削减 GC 与 UI 线程重绘尖峰（弱 GPU 上很关键）——
+    private static readonly Dictionary<uint, SolidColorBrush> _brushCache = new();
+    private static readonly Dictionary<(string, FontWeight), Typeface> _tfCache = new();
+
+    /// <summary>按颜色取缓存的纯色画笔（只读复用，不可对外修改）。</summary>
+    private static SolidColorBrush Brush(Color c)
+    {
+        uint k = ((uint)c.A << 24) | ((uint)c.R << 16) | ((uint)c.G << 8) | c.B;
+        if (!_brushCache.TryGetValue(k, out var b)) { b = new SolidColorBrush(c); _brushCache[k] = b; }
+        return b;
+    }
+
+    /// <summary>按字族+字重取缓存的字体（避免每次 FormattedText 重新解析字族）。</summary>
+    private static Typeface Tf(FontFamily fam, FontWeight w = FontWeight.Normal)
+    {
+        var key = (fam.Name, w);
+        if (!_tfCache.TryGetValue(key, out var t)) { t = new Typeface(fam, FontStyle.Normal, w); _tfCache[key] = t; }
+        return t;
+    }
+
+    private static readonly Typeface InterFace = new("Inter");
+
+    // 玻璃内衬渐变为常量，建一次复用。
+    private static readonly LinearGradientBrush GlassFill = new()
+    {
+        StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+        GradientStops =
+        {
+            new GradientStop(Color.Parse("#fafbfc"), 0),
+            new GradientStop(Color.Parse("#eef0f3"), 0.8)
+        }
+    };
+
+    // 各状态液体渐变按状态缓存（每帧 8 个釜原本各 new 一个渐变刷+两个停靠点）。
+    private static readonly Dictionary<ReactorState, IBrush> _liquidCache = new();
 
     /// <summary>
     /// 管段画笔。flow=true 时返回会流动的虚线（dasharray 7,9，dashoffset 随相位移动），
@@ -144,8 +181,7 @@ public class SchematicControl : Control
         // RV 标号 + 状态点（整组水平居中于釜中心 cx，与釜体/读数同一竖直中线）
         var rvFt = new FormattedText($"RV{c.Id}", System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight,
-            new Typeface(SansFace.FontFamily, FontStyle.Normal, FontWeight.Bold), 14.5,
-            new SolidColorBrush(OnDark));
+            Tf(SansFace.FontFamily, FontWeight.Bold), 14.5, Brush(OnDark));
         const double dotR = 4, gap = 8;
         double groupW = dotR * 2 + gap + rvFt.Width;
         double gx = cx - groupW / 2;
@@ -171,7 +207,7 @@ public class SchematicControl : Control
             DrawText(ctx, "°C", cx + 26, RBot + 20 - 8, Body, 10.5, SansFace, TextAlignment.Left);
 
             var pCol = c.State == ReactorState.Alarm ? AccentBright : Color.Parse("#dfe2e8");
-            DrawText(ctx, $"{c.P:0.0} psi · {c.Gas:0.00} mmol", cx, RBot + 37 - 9,
+            DrawText(ctx, $"{Models.Units.FormatP(c.P)} · {c.Gas:0.00} mmol", cx, RBot + 37 - 9,
                 pCol, 11, SansFace, TextAlignment.Center, FontWeight.SemiBold);
 
             // 搅拌为全局共用，转速统一显示在主界面「搅拌总控」卡片，这里只显示状态
@@ -238,21 +274,10 @@ public class SchematicControl : Control
         ctx.DrawRectangle(heaterFill, heaterPen, new RoundedRect(new Rect(17, 52, 66, 130), 3));
         // 斜纹（仅非停用时叠加）
         if (!isOff) DrawHatch(ctx, new Rect(17, 52, 66, 130), Color.Parse("#dcd1b1"));
-        DrawText(ctx, isOff ? "OFF" : "HTR", 24, 64 - 8, Color.Parse("#65605a"), 8,
-            new Typeface("Inter"));
+        DrawText(ctx, isOff ? "OFF" : "HTR", 24, 64 - 8, Color.Parse("#65605a"), 8, InterFace);
 
-        // 5. 玻璃内衬
-        var glassFill = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-            GradientStops =
-            {
-                new GradientStop(Color.Parse("#fafbfc"), 0),
-                new GradientStop(Color.Parse("#eef0f3"), 0.8)
-            }
-        };
-        ctx.DrawRectangle(glassFill, new Pen(inkBrush, 1), new RoundedRect(new Rect(35, 58, 30, 118), 6));
+        // 5. 玻璃内衬（常量渐变，复用）
+        ctx.DrawRectangle(GlassFill, new Pen(inkBrush, 1), new RoundedRect(new Rect(35, 58, 30, 118), 6));
 
         // 6. 液体
         if (!isOff)
@@ -330,6 +355,7 @@ public class SchematicControl : Control
 
     private static IBrush StateLiquidBrush(ReactorState st)
     {
+        if (_liquidCache.TryGetValue(st, out var cached)) return cached;
         (Color a, Color b) = st switch
         {
             ReactorState.React => (Color.Parse("#9ee8b8"), Color.Parse("#2c8b56")),
@@ -339,12 +365,14 @@ public class SchematicControl : Control
             ReactorState.Done => (Color.Parse("#b8bcc4"), Color.Parse("#6b7079")),
             _ => (Colors.Transparent, Colors.Transparent)
         };
-        return new LinearGradientBrush
+        var brush = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
             EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
             GradientStops = { new GradientStop(a, 0), new GradientStop(b, 1) }
         };
+        _liquidCache[st] = brush;
+        return brush;
     }
 
     // 斜纹填充（45°）
@@ -452,7 +480,7 @@ public class SchematicControl : Control
     {
         var ft = new FormattedText(text, System.Globalization.CultureInfo.CurrentCulture,
             FlowDirection.LeftToRight,
-            new Typeface(face.FontFamily, FontStyle.Normal, weight), size, new SolidColorBrush(color));
+            Tf(face.FontFamily, weight), size, Brush(color));
         double dx = align switch
         {
             TextAlignment.Center => -ft.Width / 2,

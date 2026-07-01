@@ -14,13 +14,13 @@
     <Style Selector="TextBlock.seth">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+      <Setter Property="Foreground" Value="{StaticResource Mute}" />
       <Setter Property="LetterSpacing" Value="1.5" />
       <Setter Property="Margin" Value="0,14,0,6" />
     </Style>
     <Style Selector="Border.setcard">
-      <Setter Property="Background" Value="{DynamicResource Glass}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+      <Setter Property="Background" Value="{StaticResource Glass}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GlassLine}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="11" />
       <Setter Property="Padding" Value="16,4" />
@@ -35,14 +35,14 @@
       <Setter Property="CornerRadius" Value="0" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Foreground" Value="{DynamicResource Body}" />
+      <Setter Property="Foreground" Value="{StaticResource Body}" />
       <Setter Property="FontSize" Value="16" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.numstep:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Glass}" />
+      <Setter Property="Background" Value="{StaticResource Glass}" />
     </Style>
     <Style Selector="Button.numval">
       <Setter Property="MinWidth" Value="96" />
@@ -57,7 +57,7 @@
       <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="Button.numval:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource Glass}" />
+      <Setter Property="Background" Value="{StaticResource Glass}" />
     </Style>
   </UserControl.Styles>
 
@@ -66,9 +66,9 @@
     <!-- 标题 -->
     <Grid Grid.Row="0" Margin="20,14,20,6" ColumnDefinitions="*,Auto">
       <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
-        <TextBlock Text="系统设置" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+        <TextBlock Text="系统设置" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
         <TextBlock Text="SYSTEM SETTINGS" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
-                   Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
+                   Foreground="{StaticResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
       </StackPanel>
 
       <!-- 退出程序 -->
@@ -98,7 +98,7 @@
               <Setter Property="MinHeight" Value="0" />
               <Setter Property="Cursor" Value="Hand" />
               <Setter Property="Background" Value="Transparent" />
-              <Setter Property="Foreground" Value="{DynamicResource Body}" />
+              <Setter Property="Foreground" Value="{StaticResource Body}" />
               <Setter Property="Template">
                 <ControlTemplate>
                   <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="9" Padding="12,10"
@@ -108,14 +108,14 @@
                 </ControlTemplate>
               </Setter>
               <Style Selector="^:pointerover /template/ Border#bg">
-                <Setter Property="Background" Value="{DynamicResource Glass}" />
+                <Setter Property="Background" Value="{StaticResource Glass}" />
               </Style>
               <Style Selector="^:selected /template/ Border#bg">
                 <Setter Property="Background" Value="#26E0394C" />
                 <Setter Property="BorderBrush" Value="#e0394c" />
               </Style>
               <Style Selector="^:selected">
-                <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+                <Setter Property="Foreground" Value="{StaticResource OnDark}" />
                 <Setter Property="FontWeight" Value="SemiBold" />
               </Style>
             </ControlTheme>
@@ -139,10 +139,16 @@
       <Border Grid.Column="1" Classes="graphcol" Padding="22,18">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
           <StackPanel>
-            <TextBlock Text="{Binding Selected.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-            <TextBlock Text="{Binding Selected.Sub}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,4,0,16" />
+            <!-- 每个设置页常驻、切换只 toggle 可见（IsActive）：不再每次拆建整列 ItemsControl，
+                 切换从 100-360ms 降到 ~10ms。首次构建在开机预热时已完成。 -->
+            <ItemsControl ItemsSource="{Binding Pages}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                 <StackPanel IsVisible="{Binding IsActive}">
+                  <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
+                  <TextBlock Text="{Binding Sub}" FontSize="11.5" Foreground="{StaticResource Body}" Margin="0,4,0,16" />
 
-            <ItemsControl ItemsSource="{Binding Selected.Sections}">
+                  <ItemsControl ItemsSource="{Binding Sections}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <StackPanel>
@@ -154,61 +160,79 @@
                       <ItemsControl ItemsSource="{Binding Rows}">
                         <ItemsControl.ItemTemplate>
                           <DataTemplate>
-                            <Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="0,8">
+                            <Border BorderBrush="{StaticResource GlassLine}" BorderThickness="0,0,0,1" Padding="0,8">
                               <Grid ColumnDefinitions="*,Auto">
                                 <!-- 标签 -->
                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                   <TextBlock Text="{Binding Label}" FontSize="12.5"
                                              Foreground="{Binding LabelBrush}" FontWeight="{Binding LabelWeight}" />
                                   <TextBlock Text="{Binding Sub}" IsVisible="{Binding HasSub}" FontSize="10.5"
-                                             Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                                             Foreground="{StaticResource Mute}" Margin="0,2,0,0" />
                                 </StackPanel>
                                 <!-- 值 -->
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                   <TextBlock Text="{Binding ValText}" IsVisible="{Binding IsVal}" FontSize="12.5"
-                                             FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                                             FontWeight="SemiBold" Foreground="{StaticResource OnDark}" VerticalAlignment="Center" />
                                   <Border IsVisible="{Binding IsChip}" CornerRadius="999" Padding="9,3" VerticalAlignment="Center"
                                           Background="{Binding ChipBg}" BorderBrush="{Binding ChipBorder}" BorderThickness="1">
                                     <TextBlock Text="{Binding ChipText}" FontSize="10.5" FontWeight="SemiBold" Foreground="{Binding ChipFg}" />
                                   </Border>
                                   <TextBlock Text="{Binding Trail}" IsVisible="{Binding HasTrail}" FontSize="12.5"
-                                             FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
-                                  <!-- 开关 -->
-                                  <Button IsVisible="{Binding IsToggle}" Command="{Binding FlipCommand}" Padding="0"
-                                          Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
-                                    <Panel Width="38" Height="21">
-                                      <Border CornerRadius="999" Background="{DynamicResource GlassBright}"
-                                              BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
-                                              IsVisible="{Binding On, Converter={x:Static conv:InverseBoolConverter.Instance}}">
-                                        <Ellipse Width="15" Height="15" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
-                                      </Border>
-                                      <Border CornerRadius="999" IsVisible="{Binding On}">
-                                        <Border.Background>
-                                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                                            <GradientStop Color="#84cc16" Offset="0" />
-                                            <GradientStop Color="#a3e635" Offset="1" />
-                                          </LinearGradientBrush>
-                                        </Border.Background>
-                                        <Ellipse Width="15" Height="15" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
-                                      </Border>
-                                    </Panel>
-                                  </Button>
-                                  <!-- 数值步进（−/+ 调整，点中间数值弹键盘） -->
-                                  <Border IsVisible="{Binding IsNum}" CornerRadius="9" VerticalAlignment="Center" ClipToBounds="True"
-                                          Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1">
-                                    <StackPanel Orientation="Horizontal">
-                                      <Button Classes="numstep" Content="−" Command="{Binding DecCommand}" />
-                                      <Button Classes="numval" Command="{Binding EditCommand}">
-                                        <TextBlock Text="{Binding NumText}" FontSize="12.5" FontWeight="SemiBold"
-                                                   Foreground="{DynamicResource OnDark}" />
-                                      </Button>
-                                      <Button Classes="numstep" Content="+" Command="{Binding IncCommand}" />
-                                    </StackPanel>
-                                  </Border>
-                                  <!-- 下拉选择 -->
-                                  <ComboBox IsVisible="{Binding IsSel}" ItemsSource="{Binding Options}"
-                                            SelectedItem="{Binding SelValue, Mode=TwoWay}" MinWidth="160"
-                                            VerticalAlignment="Center" FontSize="12.5" />
+                                             FontWeight="SemiBold" Foreground="{StaticResource OnDark}" VerticalAlignment="Center" />
+                                  <!-- 开关（惰性：仅 toggle 行构建）-->
+                                  <ContentControl Content="{Binding ToggleSelf}" IsVisible="{Binding IsToggle}" VerticalAlignment="Center">
+                                    <ContentControl.ContentTemplate>
+                                      <DataTemplate>
+                                        <Button Command="{Binding FlipCommand}" Padding="0"
+                                                Background="Transparent" BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
+                                          <Panel Width="38" Height="21">
+                                            <Border CornerRadius="999" Background="{StaticResource GlassBright}"
+                                                    BorderBrush="{StaticResource GlassLine2}" BorderThickness="1"
+                                                    IsVisible="{Binding On, Converter={x:Static conv:InverseBoolConverter.Instance}}">
+                                              <Ellipse Width="15" Height="15" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
+                                            </Border>
+                                            <Border CornerRadius="999" IsVisible="{Binding On}">
+                                              <Border.Background>
+                                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                                                  <GradientStop Color="#84cc16" Offset="0" />
+                                                  <GradientStop Color="#a3e635" Offset="1" />
+                                                </LinearGradientBrush>
+                                              </Border.Background>
+                                              <Ellipse Width="15" Height="15" Fill="#fff" HorizontalAlignment="Right" Margin="0,0,2,0" />
+                                            </Border>
+                                          </Panel>
+                                        </Button>
+                                      </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                  </ContentControl>
+                                  <!-- 数值步进（惰性：仅 num 行构建；−/+ 调整，点中间数值弹键盘）-->
+                                  <ContentControl Content="{Binding NumSelf}" IsVisible="{Binding IsNum}" VerticalAlignment="Center">
+                                    <ContentControl.ContentTemplate>
+                                      <DataTemplate>
+                                        <Border CornerRadius="9" VerticalAlignment="Center" ClipToBounds="True"
+                                                Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1">
+                                          <StackPanel Orientation="Horizontal">
+                                            <Button Classes="numstep" Content="−" Command="{Binding DecCommand}" />
+                                            <Button Classes="numval" Command="{Binding EditCommand}">
+                                              <TextBlock Text="{Binding NumText}" FontSize="12.5" FontWeight="SemiBold"
+                                                         Foreground="{StaticResource OnDark}" />
+                                            </Button>
+                                            <Button Classes="numstep" Content="+" Command="{Binding IncCommand}" />
+                                          </StackPanel>
+                                        </Border>
+                                      </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                  </ContentControl>
+                                  <!-- 下拉选择（惰性：仅 sel 行构建 ComboBox，最贵控件不再每行白建）-->
+                                  <ContentControl Content="{Binding SelSelf}" IsVisible="{Binding IsSel}" VerticalAlignment="Center">
+                                    <ContentControl.ContentTemplate>
+                                      <DataTemplate>
+                                        <ComboBox ItemsSource="{Binding Options}"
+                                                  SelectedItem="{Binding SelValue, Mode=TwoWay}" MinWidth="160"
+                                                  VerticalAlignment="Center" FontSize="12.5" />
+                                      </DataTemplate>
+                                    </ContentControl.ContentTemplate>
+                                  </ContentControl>
                                 </StackPanel>
                               </Grid>
                             </Border>
@@ -218,33 +242,33 @@
                     </Border>
 
                     <!-- 提示框 -->
-                    <Border IsVisible="{Binding IsNote}" Background="{DynamicResource Glass}" CornerRadius="9" Padding="13,10" Margin="0,0,0,11">
-                      <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="18" />
+                    <Border IsVisible="{Binding IsNote}" Background="{StaticResource Glass}" CornerRadius="9" Padding="13,10" Margin="0,0,0,11">
+                      <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{StaticResource Mute}" TextWrapping="Wrap" LineHeight="18" />
                     </Border>
 
                     <!-- 关于公司 -->
-                    <Border IsVisible="{Binding IsAbout}" Background="{DynamicResource Glass}"
-                            BorderBrush="{DynamicResource GlassLine}" BorderThickness="1"
+                    <Border IsVisible="{Binding IsAbout}" Background="{StaticResource Glass}"
+                            BorderBrush="{StaticResource GlassLine}" BorderThickness="1"
                             CornerRadius="11" Padding="18,16" Margin="0,0,0,11">
                       <StackPanel>
-                        <TextBlock Text="{Binding AboutTitle}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-                        <TextBlock Text="{Binding Intro}" FontSize="12" Foreground="{DynamicResource Body}"
+                        <TextBlock Text="{Binding AboutTitle}" FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
+                        <TextBlock Text="{Binding Intro}" FontSize="12" Foreground="{StaticResource Body}"
                                    TextWrapping="Wrap" LineHeight="21" Margin="0,9,0,0" />
 
-                        <Border Height="1" Background="{DynamicResource GlassLine}" Margin="0,16,0,15" />
+                        <Border Height="1" Background="{StaticResource GlassLine}" Margin="0,16,0,15" />
 
                         <!-- 联系方式 + 二维码 -->
                         <Grid ColumnDefinitions="*,Auto">
                           <StackPanel Grid.Column="0" VerticalAlignment="Top">
                             <TextBlock Text="联系我们 · CONTACT" FontSize="10.5" FontWeight="Bold"
-                                       Foreground="{DynamicResource Mute}" LetterSpacing="1" Margin="0,0,0,12" />
+                                       Foreground="{StaticResource Mute}" LetterSpacing="1" Margin="0,0,0,12" />
                             <ItemsControl ItemsSource="{Binding Contacts}">
                               <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                   <Grid ColumnDefinitions="52,*" Margin="0,0,0,10">
-                                    <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="12" Foreground="{DynamicResource Mute}" />
+                                    <TextBlock Grid.Column="0" Text="{Binding Label}" FontSize="12" Foreground="{StaticResource Mute}" />
                                     <TextBlock Grid.Column="1" Text="{Binding Value}" FontSize="12.5"
-                                               Foreground="{DynamicResource OnDark}" TextWrapping="Wrap" />
+                                               Foreground="{StaticResource OnDark}" TextWrapping="Wrap" />
                                   </Grid>
                                 </DataTemplate>
                               </ItemsControl.ItemTemplate>
@@ -255,15 +279,19 @@
                             <Border Background="White" CornerRadius="8" Width="128" Height="128" ClipToBounds="True">
                               <Image Source="{Binding QrImage}" Stretch="Fill" />
                             </Border>
-                            <TextBlock Text="{Binding QrCaption}" FontSize="10.5" Foreground="{DynamicResource Mute}"
+                            <TextBlock Text="{Binding QrCaption}" FontSize="10.5" Foreground="{StaticResource Mute}"
                                        HorizontalAlignment="Center" Margin="0,8,0,0" />
                           </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="{Binding AboutCopyright}" FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,16,0,0" />
+                        <TextBlock Text="{Binding AboutCopyright}" FontSize="10.5" Foreground="{StaticResource Mute}" Margin="0,16,0,0" />
                       </StackPanel>
                     </Border>
                   </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                 </StackPanel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -272,14 +300,14 @@
             <StackPanel IsVisible="{Binding Selected.Id, Converter={StaticResource Eq}, ConverterParameter=temppid}">
               <Border Background="#14E0394C" BorderBrush="#3DE0394C" BorderThickness="1" CornerRadius="9"
                       Padding="13,10" Margin="0,0,0,12">
-                <TextBlock FontSize="11.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18"
+                <TextBlock FontSize="11.5" Foreground="{StaticResource Body}" TextWrapping="Wrap" LineHeight="18"
                            Text="每通道独立 PID。上方「温度档位」可为每个温区分别保存一组 PID——在某档位下点「自整定」整定一次即存入该档位，长期复用，跑反应时按目标温度选用对应档位。点击 P / I / D 数值可用屏幕键盘修改并即时下发；整定结束后自动回读新参数。" />
               </Border>
 
               <!-- 温度档位选择 -->
               <StackPanel Orientation="Horizontal" Spacing="9" Margin="0,0,0,12" VerticalAlignment="Center">
-                <TextBlock Text="温度档位" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-                <Border Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                <TextBlock Text="温度档位" FontSize="11.5" Foreground="{StaticResource Body}" VerticalAlignment="Center" />
+                <Border Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1"
                         CornerRadius="10" Padding="3" ClipToBounds="True">
                   <StackPanel Orientation="Horizontal" Spacing="2">
                     <Button Classes="seg" MinWidth="128" Content="{Binding TempBands[0].Label}"
@@ -295,15 +323,15 @@
                 </Border>
 
                 <!-- 档位边界（可点改）-->
-                <TextBlock Text="分界" FontSize="11.5" Foreground="{DynamicResource Body}" VerticalAlignment="Center" Margin="8,0,0,0" />
-                <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                <TextBlock Text="分界" FontSize="11.5" Foreground="{StaticResource Body}" VerticalAlignment="Center" Margin="8,0,0,0" />
+                <Border CornerRadius="8" Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
                   <Button Classes="numval" MinWidth="64" Command="{Binding EditBound1Command}">
-                    <TextBlock Text="{Binding TempBands[0].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                    <TextBlock Text="{Binding TempBands[0].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
                   </Button>
                 </Border>
-                <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                <Border CornerRadius="8" Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
                   <Button Classes="numval" MinWidth="64" Command="{Binding EditBound2Command}">
-                    <TextBlock Text="{Binding TempBands[1].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                    <TextBlock Text="{Binding TempBands[1].Hi, StringFormat={}{0:0}℃}" FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
                   </Button>
                 </Border>
               </StackPanel>
@@ -323,48 +351,48 @@
                       <Grid ColumnDefinitions="58,98,72,*,96" VerticalAlignment="Center">
                         <!-- 通道 + 状态 -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                          <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+                          <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource OnDark}" />
                           <TextBlock Text="整定中…" IsVisible="{Binding Autotuning}" FontSize="10" Foreground="#f0a830" Margin="0,2,0,0" />
-                          <TextBlock Text="就绪" IsVisible="{Binding !Autotuning}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                          <TextBlock Text="就绪" IsVisible="{Binding !Autotuning}" FontSize="10" Foreground="{StaticResource Mute}" Margin="0,2,0,0" />
                         </StackPanel>
 
                         <!-- PV -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                          <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                            <Run Text="{Binding Pv, StringFormat={}{0:0.0}}" /><Run Text=" ℃" FontSize="11" Foreground="{DynamicResource Body}" />
+                          <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource OnDark}">
+                            <Run Text="{Binding Pv, StringFormat={}{0:0.0}}" /><Run Text=" ℃" FontSize="11" Foreground="{StaticResource Body}" />
                           </TextBlock>
                         </StackPanel>
 
                         <!-- 输出 -->
                         <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource Body}" Text="{Binding OutputPct, StringFormat={}{0:0}%}" />
+                                   Foreground="{StaticResource Body}" Text="{Binding OutputPct, StringFormat={}{0:0}%}" />
 
                         <!-- P / I / D -->
                         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
                           <StackPanel>
-                            <TextBlock Text="P" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
-                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                            <TextBlock Text="P" FontSize="10" Foreground="{StaticResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
                               <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
                                       Command="{Binding DataContext.EditTempPCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <TextBlock Text="{Binding P, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                                <TextBlock Text="{Binding P, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
                               </Button>
                             </Border>
                           </StackPanel>
                           <StackPanel>
-                            <TextBlock Text="I (s)" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
-                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                            <TextBlock Text="I (s)" FontSize="10" Foreground="{StaticResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
                               <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
                                       Command="{Binding DataContext.EditTempICommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <TextBlock Text="{Binding I, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                                <TextBlock Text="{Binding I, StringFormat={}{0:0.#}}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
                               </Button>
                             </Border>
                           </StackPanel>
                           <StackPanel>
-                            <TextBlock Text="D (s)" FontSize="10" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
-                            <Border CornerRadius="8" Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+                            <TextBlock Text="D (s)" FontSize="10" Foreground="{StaticResource Mute}" HorizontalAlignment="Center" Margin="0,0,0,2" />
+                            <Border CornerRadius="8" Background="{StaticResource GlassSoft}" BorderBrush="{StaticResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
                               <Button Classes="numval" MinWidth="62" CommandParameter="{Binding}"
                                       Command="{Binding DataContext.EditTempDCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                                <TextBlock Text="{Binding D, StringFormat={}{0:0.##}}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                                <TextBlock Text="{Binding D, StringFormat={}{0:0.##}}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource OnDark}" />
                               </Button>
                             </Border>
                           </StackPanel>

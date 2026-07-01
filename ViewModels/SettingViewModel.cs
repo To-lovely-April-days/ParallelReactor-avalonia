@@ -55,6 +55,12 @@ public partial class SettingViewModel : ViewModelBase
 
     partial void OnTempBandIndexChanged(int value) => _main.Temp.SelectBand(value);
 
+    partial void OnSelectedChanged(SetPage? value)
+    {
+        // 维护各页 IsActive：右侧所有页常驻、只有选中页可见（切换=toggle，不再重建整列）
+        foreach (var p in Pages) p.IsActive = ReferenceEquals(p, value);
+    }
+
     [RelayCommand]
     private void SelectTempBand(string idx)
     {
@@ -91,12 +97,31 @@ public partial class SettingViewModel : ViewModelBase
         => _main.Keyboard.OpenNumeric($"{ch.Name} 微分时间 D", ch.D, "s", 0, 327,
             v => _ = _main.Temp.SetPidAsync(ch.Id, ch.P, ch.I, v));
 
-    /// <summary>刷新「本机 IP 地址」（WiFi 优先）。由时钟 tick 每 5s 调一次；force=true 立即刷新。</summary>
+    private volatile bool _netBusy;   // 防止上一次网卡枚举没回来又发起新的
+
+    /// <summary>刷新「本机 IP 地址」（WiFi 优先）。由时钟 tick 每 5s 调一次；force=true 立即刷新。
+    /// <para>
+    /// 关键：网卡枚举(GetAllNetworkInterfaces/GetIPProperties)在 Linux+WiFi 上可能同步阻塞数秒，
+    /// 绝不能在 UI 线程上跑——否则每 5s 就把界面冻住 2-3 秒（点击、菜单高亮全部卡住）。
+    /// 放到后台线程执行，取到结果再回主线程写值。
+    /// </para></summary>
     public void RefreshNetworkInfo(bool force = false)
     {
         if (_ipRow == null) return;
         if (!force && _netTick++ % 5 != 0) return;   // 1s 一次 tick，节流到约 5s 查一次
-        _ipRow.ValText = GetLocalIPv4() ?? "未连接";
+        if (_netBusy) return;
+        _netBusy = true;
+        Task.Run(() =>
+        {
+            string ip;
+            try { ip = GetLocalIPv4() ?? "未连接"; }
+            catch { ip = "未连接"; }
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_ipRow != null) _ipRow.ValText = ip;
+                _netBusy = false;
+            });
+        });
     }
 
     /// <summary>取当前在用网卡的 IPv4：优先无线网卡(WiFi)，否则取其它已连接网卡（排除回环/虚拟网卡）。</summary>
@@ -171,6 +196,14 @@ public partial class SettingViewModel : ViewModelBase
 
     private static Geometry G(string d) => Geometry.Parse(d);
 
+    /// <summary>压力单位选择行：切换 psi / bar 时更新全局单位（内部仍存 psi，仅换算显示）。</summary>
+    private SetRow PressureUnitRow()
+    {
+        var row = SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "psi", "bar" }, "Pressure Unit");
+        row.OnSelChanged = Models.Units.SetPressure;   // MainViewModel 订阅 Units.Changed 后刷新界面
+        return row;
+    }
+
     /// <summary>构造一行可编辑数值：双向回写全局设置，点数值弹键盘。</summary>
     private SetRow Num(string label, double value, string unit, double min, double max, double step, Action<double> apply, string? sub = null)
     {
@@ -193,7 +226,7 @@ public partial class SettingViewModel : ViewModelBase
             {
                 SetSection.Card(
                     SetRow.Sel("语言", "中文（简体）", new[] { "中文（简体）", "English" }, "Language"),
-                    SetRow.Sel("压力单位", "psi", new[] { "psi", "bar" }, "Pressure Unit"),
+                    PressureUnitRow(),
                     SetRow.Sel("温度单位", "°C", new[] { "°C", "°F" }),
                     SetRow.Val("主题", "深色（默认）")),
                 SetSection.Card(
@@ -351,7 +384,7 @@ public partial class SettingViewModel : ViewModelBase
 }
 
 /// <summary>一个设置分页。</summary>
-public class SetPage
+public partial class SetPage : ObservableObject
 {
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
@@ -359,6 +392,9 @@ public class SetPage
     public string Sub { get; set; } = "";
     public Geometry Icon { get; set; } = Geometry.Parse("M6 6h12v12H6z");
     public List<SetSection> Sections { get; } = new();
+
+    /// <summary>是否为当前选中页。右侧「每页建一次、切换只 toggle 可见」用它控制 IsVisible。</summary>
+    [ObservableProperty] private bool _isActive;
 }
 
 /// <summary>设置页内的一个区块：卡片 / 提示 / 关于公司。</summary>
@@ -439,7 +475,10 @@ public partial class SetRow : ObservableObject
     [ObservableProperty] private bool _on;
 
     private string _selValue = "";
-    public string SelValue { get => _selValue; set => SetProperty(ref _selValue, value); }
+    public string SelValue { get => _selValue; set { if (SetProperty(ref _selValue, value)) OnSelChanged?.Invoke(value); } }
+
+    /// <summary>下拉选项变化时回调（如切换压力单位）。</summary>
+    public Action<string>? OnSelChanged;
 
     /// <summary>数值变化时回写全局设置。</summary>
     public Action<double>? Apply;
@@ -465,6 +504,13 @@ public partial class SetRow : ObservableObject
     public bool IsToggle => Kind == "toggle";
     public bool IsNum => Kind == "num";
     public bool IsSel => Kind == "sel";
+
+    // 仅当本行为该类型时返回自身，否则 null。供 ContentControl 惰性实例化贵控件
+    // （下拉框/开关/步进器）：非该类型的行 Content=null → 模板不构建，切换设置分类时
+    // 少建大量隐藏控件（尤其每行原本都白建一个 ComboBox），消除左菜单点击卡顿。
+    public object? ToggleSelf => IsToggle ? this : null;
+    public object? NumSelf => IsNum ? this : null;
+    public object? SelSelf => IsSel ? this : null;
     public string NumText => Unit.Length > 0 ? $"{NumValue:0.#} {Unit}" : $"{NumValue:0.#}";
     public bool HasSub => !string.IsNullOrEmpty(Sub);
     public bool HasTrail => !string.IsNullOrEmpty(Trail);

@@ -286,21 +286,11 @@
     <Setter Property="Fill" Value="{DynamicResource AccentBright}" />
   </Style>
 
-  <!-- 未读角标 + 报警脉冲动效（用 Opacity 闪烁，避免 RenderTransform 动画需注册 animator）-->
+  <!-- 报警角标：静态高亮（已移除无限 Opacity 闪烁动画——它会驱动合成器满帧重绘，
+       在弱 GPU/Mali 上空闲也吃满一个核。改为纯状态变化：报警时角标更亮、描边更重）。-->
   <Style Selector="Border.nbadge.pulse">
-    <Style.Animations>
-      <Animation Duration="0:0:1.4" IterationCount="INFINITE" Easing="SineEaseInOut">
-        <KeyFrame Cue="0%">
-          <Setter Property="Opacity" Value="1" />
-        </KeyFrame>
-        <KeyFrame Cue="50%">
-          <Setter Property="Opacity" Value="0.45" />
-        </KeyFrame>
-        <KeyFrame Cue="100%">
-          <Setter Property="Opacity" Value="1" />
-        </KeyFrame>
-      </Animation>
-    </Style.Animations>
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="BorderBrush" Value="#66FFFFFF" />
   </Style>
 
   <!-- ============ 通知下拉列表项 .nli ============ -->

@@ -32,4 +32,6 @@ export PR_IO_SLAVE=1
 # export PR_UI_SCALE=1.5           # 高 DPI 渲染缩放（默认 1.5，适配 1080p）
 # export PR_TEXT_MODE=antialias    # 文本渲染：alias / antialias / subpixel
 
-./ParallelReactor
+# 从 Windows 拷贝的文件会丢失可执行位（systemd 报 203/EXEC），启动前自愈一次。
+chmod +x ./ParallelReactor 2>/dev/null
+exec ./ParallelReactor

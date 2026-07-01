@@ -383,7 +383,7 @@
       <!-- 拖拽幽灵预览：克制的悬浮卡片，无倾斜、无彩色辉光 -->
       <Border x:Name="DragGhost" IsVisible="False" Padding="11,8" CornerRadius="9"
               BorderThickness="1" BorderBrush="#5A5FA1E6"
-              Background="#F21E1E23" BoxShadow="0 10 26 0 #73000000" Opacity="0.97">
+              Background="#F21E1E23" Opacity="0.97">
         <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
           <Border Width="22" Height="22" CornerRadius="6" Background="#0AFFFFFF">
             <Viewbox Width="12" Height="12">

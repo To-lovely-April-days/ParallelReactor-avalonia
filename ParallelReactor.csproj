@@ -10,6 +10,9 @@
     <LangVersion>latest</LangVersion>
     <!-- 发布到带 RID 的目标时预编译为原生码，降低 ARM 上的首次 JIT 卡顿 -->
     <PublishReadyToRun>true</PublishReadyToRun>
+    <!-- 单文件发布时把原生库(libSkiaSharp/libHarfBuzzSharp)解包到磁盘，
+         否则 dlopen 找不到 .so，启动即崩(203/ABRT, libSkiaSharp not found)。 -->
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,6 +22,8 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />
+    <!-- DRM/KMS 直出后端（专用面板 kiosk，无需 X/Wayland）：提供 StartLinuxDrm -->
+    <PackageReference Include="Avalonia.LinuxFramebuffer" Version="11.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />

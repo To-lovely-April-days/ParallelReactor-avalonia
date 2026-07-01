@@ -29,7 +29,7 @@ public sealed class PressureService
     {
         try
         {
-            var v = await _ai.ReadScaledAsync(0, _engHi, _is4to20);
+            var v = await _ai.ReadScaledAsync(0, _engHi, _is4to20).ConfigureAwait(false);
             for (int i = 0; i < Pressures.Length && i < v.Length; i++) Pressures[i] = v[i];
             return true;
         }

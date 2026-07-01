@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ParallelReactor.Hardware;
 
@@ -75,42 +76,58 @@ public sealed class TempService
         catch { /* 通讯异常忽略 */ }
     }
 
-    /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。</summary>
+    /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。串口读在后台，结果批量回 UI。</summary>
     public async Task InitAsync()
     {
         _mock?.SimulateStep();   // mock：先触发种子 PID，再读取
+        var pids = new PidParams?[8];
         for (int ch = 1; ch <= 8; ch++)
         {
             var (c, loop) = Map(ch);
-            try
-            {
-                var pid = await c.ReadPidAsync(loop);
-                Channels[ch - 1].SetBand(_curBand, pid.P, pid.I, pid.D);
-            }
-            catch { /* 通讯异常忽略 */ }
+            try { pids[ch - 1] = await c.ReadPidAsync(loop).ConfigureAwait(false); }
+            catch { pids[ch - 1] = null; }
         }
-        foreach (var m in Channels) m.LoadBand(_curBand);
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            for (int i = 0; i < 8; i++)
+                if (pids[i] is { } p) Channels[i].SetBand(_curBand, p.P, p.I, p.D);
+            foreach (var m in Channels) m.LoadBand(_curBand);
+        });
     }
 
-    /// <summary>周期轮询：PV、输出百分比、自整定状态。</summary>
+    private bool _polling;   // 防止上一轮没读完又发起新一轮，造成堆积刷爆 UI 线程
+
+    /// <summary>周期轮询：用 3 次块读(PV/输出/模式各读 8 路)代替 24 次单读；后台读完一次性回 UI 批量刷新。</summary>
     public async Task PollAsync()
     {
-        _mock?.SimulateStep();
-        for (int ch = 1; ch <= 8; ch++)
+        if (_polling) return;
+        _polling = true;
+        try
         {
-            var (c, loop) = Map(ch);
-            var m = Channels[ch - 1];
+            _mock?.SimulateStep();
+            double[] pv, op;
+            int[] modes;
             try
             {
-                m.Pv = await c.ReadPvAsync(loop);
-                m.OutputPct = await c.ReadOutputAsync(loop);
-                var tuning = await c.IsAutotuningAsync(loop);
-                if (m.Autotuning && !tuning)   // 整定刚结束：回读新 PID 并存入当前档位
-                    await ReloadPidAsync(ch);
-                m.Autotuning = tuning;
+                pv = await _ctrl.ReadAllPvAsync().ConfigureAwait(false);
+                op = await _ctrl.ReadAllOutputsAsync().ConfigureAwait(false);
+                modes = await _ctrl.ReadAllModesAsync().ConfigureAwait(false);
             }
-            catch { }
+            catch { return; }   // 通讯异常：保留上次值，下个周期重试
+
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                for (int i = 0; i < 8 && i < pv.Length; i++)
+                {
+                    var m = Channels[i];
+                    bool tuning = modes[i] == 1;
+                    bool finished = m.Autotuning && !tuning;
+                    m.Pv = pv[i]; m.OutputPct = op[i]; m.Autotuning = tuning;
+                    if (finished) _ = ReloadPidAsync(i + 1);   // 整定刚结束：回读新 PID
+                }
+            });
         }
+        finally { _polling = false; }
     }
 
     public async Task SetSetpointAsync(int ch, double sp)
@@ -140,10 +157,17 @@ public sealed class TempService
     private async Task ReloadPidAsync(int ch)
     {
         var (c, loop) = Map(ch);
-        var pid = await c.ReadPidAsync(loop);
-        var m = Channels[ch - 1];
-        m.P = pid.P; m.I = pid.I; m.D = pid.D;
-        m.StoreBand(_curBand);
+        try
+        {
+            var pid = await c.ReadPidAsync(loop).ConfigureAwait(false);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                var m = Channels[ch - 1];
+                m.P = pid.P; m.I = pid.I; m.D = pid.D;
+                m.StoreBand(_curBand);
+            });
+        }
+        catch { }
     }
 }
 

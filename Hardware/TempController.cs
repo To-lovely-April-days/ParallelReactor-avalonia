@@ -62,6 +62,24 @@ public sealed class TempController
         return pv;
     }
 
+    /// <summary>一次性读全部回路输出百分比（0..100）。</summary>
+    public async Task<double[]> ReadAllOutputsAsync()
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, OpBase, (ushort)_loops);
+        var v = new double[_loops];
+        for (int i = 0; i < _loops; i++) v[i] = r[i] / 256.0;
+        return v;
+    }
+
+    /// <summary>一次性读全部回路工作模式 At（0=APID,1=自整定,...）。</summary>
+    public async Task<int[]> ReadAllModesAsync()
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, AtBase, (ushort)_loops);
+        var v = new int[_loops];
+        for (int i = 0; i < _loops; i++) v[i] = r[i];
+        return v;
+    }
+
     /// <summary>写通道给定值 SP（℃）。</summary>
     public Task SetSetpointAsync(int loop, double sp)
         => _bus.WriteSingleRegisterAsync(_slave, (ushort)(SpBase + loop - 1), (ushort)(short)Math.Round(sp * Scale));

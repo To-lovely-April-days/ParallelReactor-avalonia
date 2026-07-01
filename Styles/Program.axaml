@@ -7,12 +7,7 @@
 		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
 		<Setter Property="BorderThickness" Value="1" />
 		<Setter Property="CornerRadius" Value="11" />
-		<Setter Property="Transitions">
-			<Transitions>
-				<BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
-				<BrushTransition Property="Background" Duration="0:0:0.15" />
-			</Transitions>
-		</Setter>
+		<!-- 过渡动画已移除：改为即时状态变化，减少 G52 上的持续重绘 -->
 	</Style>
 	<!-- 拖拽悬停在时间线上时的高亮：用「选中态」蓝，克制不刺眼（红色会像报警）-->
 	<Style Selector="Border.progcol.dropactive">
@@ -377,7 +372,7 @@
 		<Setter Property="CornerRadius" Value="18" />
 		<Setter Property="BorderThickness" Value="1" />
 		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BoxShadow" Value="0 30 80 0 #99000000" />
+		<!-- BoxShadow 已移除：G52 上大半径阴影模糊是硬开销 -->
 		<Setter Property="Background">
 			<Setter.Value>
 				<LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">

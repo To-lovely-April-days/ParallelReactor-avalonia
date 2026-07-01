@@ -1,4 +1,5 @@
 [Unit]
+# 多通道平行反应仪 · 开机自启动（HMI 全屏看板）
 Description=Parallel Reactor HMI
 After=graphical.target
 Wants=graphical.target
@@ -6,14 +7,16 @@ Wants=graphical.target
 [Service]
 Type=simple
 User=teamhd
+# 工作目录 = 程序所在目录；run.sh 内 cd "$(dirname "$0")" 也会再保证一次
 WorkingDirectory=/home/teamhd/ParallelReactorProject
-Environment=DISPLAY=:0
-Environment=XAUTHORITY=/home/teamhd/.Xauthority
-Environment=DOTNET_BUNDLE_EXTRACT_BASE_DIR=/home/teamhd/.cache/reactor-hmi
-ExecStart=/home/teamhd/ParallelReactorProject/ParallelReactor
-SupplementaryGroups=video render input dialout
+# 入口走 run.sh：串口环境变量集中在脚本里，且启动前自愈可执行位（避免 203/EXEC）
+ExecStart=/bin/bash /home/teamhd/ParallelReactorProject/run.sh
 Restart=on-failure
 RestartSec=3
+# 单文件发布的解包缓存目录（避免每次解到临时目录）
+Environment=DOTNET_BUNDLE_EXTRACT_BASE_DIR=/home/teamhd/.cache/dotnet_bundle
+# 桌面/GPU 环境：连到本地 X 显示
+Environment=DISPLAY=:0
 
 [Install]
 WantedBy=graphical.target
