@@ -212,6 +212,13 @@ public partial class MainViewModel : ViewModelBase
 
     public void RefreshSchematic() => SchematicInvalidated?.Invoke();
 
+    /// <summary>安全写温度 SP 到 AI-8（定值编辑与曲线引擎共用；通讯异常忽略，下次变化重写）。</summary>
+    public async System.Threading.Tasks.Task WriteTempSpSafeAsync(int ch, double sp)
+    {
+        try { await Temp.SetSetpointAsync(ch, sp); }
+        catch { /* 串口异常：忽略，保持界面值，后续写入会重试 */ }
+    }
+
     /// <summary>压力单位切换后：刷新每个釜的压力显示绑定 + 气路图读数。</summary>
     private void OnUnitsChanged()
     {
@@ -500,6 +507,16 @@ public partial class MainViewModel : ViewModelBase
             // 超压 / 超温报警判定（阈值来自全局设置）
             if (c.P >= Settings.OverPressure || c.T >= Settings.OverTemp)
                 c.State = ReactorState.Alarm;
+        }
+
+        // —— 曲线升温引擎：AI-8 无原生多段程序，由上位机按分段线性插值周期下发 SP ——
+        foreach (var c in Reactors)
+        {
+            if (c.SpMode != "curve" || !c.Profile.Running) continue;
+            double target = c.Profile.CurrentTarget();
+            c.TSp = target;                       // 界面上的目标温度跟随曲线当前值
+            if (c.Profile.ShouldWrite(target))
+                _ = WriteTempSpSafeAsync(c.Id, target);
         }
         RefreshSchematic();
         if (Drawer.IsOpen) Drawer.RaiseAll();

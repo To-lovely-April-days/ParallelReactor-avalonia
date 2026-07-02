@@ -4,160 +4,149 @@
              x:Class="ParallelReactor.Controls.OnScreenKeyboard"
              x:DataType="vm:KeyboardViewModel">
 
-  <UserControl.Styles>
-    <!-- 普通键 -->
-    <Style Selector="Button.k">
-      <Setter Property="Height" Value="48" />
-      <Setter Property="MinWidth" Value="48" />
-      <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="HorizontalContentAlignment" Value="Center" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="FontSize" Value="18" />
-      <Setter Property="FontWeight" Value="Medium" />
-      <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-      <Setter Property="Background" Value="#1FFFFFFF" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="CornerRadius" Value="8" />
-      <Setter Property="Margin" Value="3" />
-    </Style>
-    <Style Selector="Button.k /template/ ContentPresenter">
-      <Setter Property="CornerRadius" Value="8" />
-    </Style>
-    <Style Selector="Button.k:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="#33FFFFFF" />
-    </Style>
-    <Style Selector="Button.k:pressed /template/ ContentPresenter">
-      <Setter Property="Background" Value="#4De0394c" />
-    </Style>
-    <!-- 功能键（深一点）-->
-    <Style Selector="Button.fn">
-      <Setter Property="Foreground" Value="{DynamicResource Body}" />
-      <Setter Property="FontSize" Value="14" />
-      <Setter Property="Background" Value="#14FFFFFF" />
-    </Style>
-    <!-- Shift 激活态 -->
-    <Style Selector="Button.shifton">
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="Background" Value="#59e0394c" />
-    </Style>
-    <!-- 确认键 -->
-    <Style Selector="Button.ok">
-      <Setter Property="Foreground" Value="White" />
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Background">
-        <Setter.Value>
-          <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-            <GradientStop Color="#A41626" Offset="0" />
-            <GradientStop Color="#d4435a" Offset="1" />
-          </LinearGradientBrush>
-        </Setter.Value>
-      </Setter>
-    </Style>
-  </UserControl.Styles>
+	<UserControl.Styles>
+		<!-- 普通键 -->
+		<Style Selector="Button.k">
+			<Setter Property="Height" Value="48" />
+			<Setter Property="MinWidth" Value="48" />
+			<Setter Property="HorizontalAlignment" Value="Stretch" />
+			<Setter Property="HorizontalContentAlignment" Value="Center" />
+			<Setter Property="VerticalContentAlignment" Value="Center" />
+			<Setter Property="FontSize" Value="18" />
+			<Setter Property="FontWeight" Value="Medium" />
+			<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+			<Setter Property="Background" Value="#1FFFFFFF" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="CornerRadius" Value="8" />
+			<Setter Property="Margin" Value="3" />
+		</Style>
+		<Style Selector="Button.k /template/ ContentPresenter">
+			<Setter Property="CornerRadius" Value="8" />
+		</Style>
+		<Style Selector="Button.k:pointerover /template/ ContentPresenter">
+			<Setter Property="Background" Value="#33FFFFFF" />
+		</Style>
+		<Style Selector="Button.k:pressed /template/ ContentPresenter">
+			<Setter Property="Background" Value="#4De0394c" />
+		</Style>
+		<!-- 功能键（深一点）-->
+		<Style Selector="Button.fn">
+			<Setter Property="Foreground" Value="{DynamicResource Body}" />
+			<Setter Property="FontSize" Value="14" />
+			<Setter Property="Background" Value="#14FFFFFF" />
+		</Style>
+		<!-- Shift 激活态 -->
+		<Style Selector="Button.shifton">
+			<Setter Property="Foreground" Value="White" />
+			<Setter Property="Background" Value="#59e0394c" />
+		</Style>
+		<!-- 确认键 -->
+		<Style Selector="Button.ok">
+			<Setter Property="Foreground" Value="White" />
+			<Setter Property="FontWeight" Value="Bold" />
+			<Setter Property="Background" Value="#bd2f43" />
+		</Style>
+	</UserControl.Styles>
 
-  <!-- 中央面板（可拖动）-->
-  <Border x:Name="Panel" Width="760" CornerRadius="16" HorizontalAlignment="Center" VerticalAlignment="Center"
-          BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1">
-    <Border.Background>
-      <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-        <GradientStop Color="#FA1E1E23" Offset="0" />
-        <GradientStop Color="#FC161619" Offset="1" />
-      </LinearGradientBrush>
-    </Border.Background>
+	<!-- 中央面板（可拖动）-->
+	<Border x:Name="Panel" Width="760" CornerRadius="16" HorizontalAlignment="Center" VerticalAlignment="Center"
+			BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" Background="#1c1c21">
 
-    <StackPanel Margin="16">
-      <!-- 回显区（同时是拖动手柄，按住此区可移动键盘）-->
-      <Border x:Name="DragHandle" Background="Transparent" Cursor="SizeAll" Margin="0,0,0,4">
-        <StackPanel>
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding FieldLabel}" FontSize="13" FontWeight="SemiBold"
-                       Foreground="{DynamicResource Body}" />
-            <TextBlock Grid.Column="1" Text="⠿ 按住拖动" FontSize="10" Foreground="{DynamicResource Mute}"
-                       VerticalAlignment="Center" />
-          </Grid>
-          <TextBlock Text="{Binding Hint}" FontSize="11" Foreground="{DynamicResource Mute}"
-                     Margin="0,2,0,8" />
-          <Border CornerRadius="10" Background="#1FFFFFFF" Padding="14,12" Margin="0,0,0,12">
-            <TextBlock VerticalAlignment="Center">
-              <Run Text="{Binding Display}" FontSize="26" FontWeight="Light"
-                   Foreground="{DynamicResource OnDark}" /><Run Text=" " /><Run Text="{Binding Unit}"
+		<StackPanel Margin="16">
+			<!-- 回显区（同时是拖动手柄，按住此区可移动键盘）-->
+			<Border x:Name="DragHandle" Background="Transparent" Cursor="SizeAll" Margin="0,0,0,4">
+				<StackPanel>
+					<Grid ColumnDefinitions="*,Auto">
+						<TextBlock Grid.Column="0" Text="{Binding FieldLabel}" FontSize="13" FontWeight="SemiBold"
+								   Foreground="{DynamicResource Body}" />
+						<TextBlock Grid.Column="1" Text="⠿ 按住拖动" FontSize="10" Foreground="{DynamicResource Mute}"
+								   VerticalAlignment="Center" />
+					</Grid>
+					<TextBlock Text="{Binding Hint}" FontSize="11" Foreground="{DynamicResource Mute}"
+							   Margin="0,2,0,8" />
+					<Border CornerRadius="10" Background="#1FFFFFFF" Padding="14,12" Margin="0,0,0,12">
+						<TextBlock VerticalAlignment="Center">
+							<Run Text="{Binding Display}" FontSize="26" FontWeight="Light"
+								 Foreground="{DynamicResource OnDark}" />
+							<Run Text=" " />
+							<Run Text="{Binding Unit}"
                    FontSize="14" Foreground="{DynamicResource Body}" />
-            </TextBlock>
-          </Border>
-        </StackPanel>
-      </Border>
+						</TextBlock>
+					</Border>
+				</StackPanel>
+			</Border>
 
-      <!-- 数字行 -->
-      <UniformGrid Rows="1" Columns="10">
-        <Button Classes="k" Content="1" Command="{Binding KeyCommand}" CommandParameter="1" />
-        <Button Classes="k" Content="2" Command="{Binding KeyCommand}" CommandParameter="2" />
-        <Button Classes="k" Content="3" Command="{Binding KeyCommand}" CommandParameter="3" />
-        <Button Classes="k" Content="4" Command="{Binding KeyCommand}" CommandParameter="4" />
-        <Button Classes="k" Content="5" Command="{Binding KeyCommand}" CommandParameter="5" />
-        <Button Classes="k" Content="6" Command="{Binding KeyCommand}" CommandParameter="6" />
-        <Button Classes="k" Content="7" Command="{Binding KeyCommand}" CommandParameter="7" />
-        <Button Classes="k" Content="8" Command="{Binding KeyCommand}" CommandParameter="8" />
-        <Button Classes="k" Content="9" Command="{Binding KeyCommand}" CommandParameter="9" />
-        <Button Classes="k" Content="0" Command="{Binding KeyCommand}" CommandParameter="0" />
-      </UniformGrid>
+			<!-- 数字行 -->
+			<UniformGrid Rows="1" Columns="10">
+				<Button Classes="k" Content="1" Command="{Binding KeyCommand}" CommandParameter="1" />
+				<Button Classes="k" Content="2" Command="{Binding KeyCommand}" CommandParameter="2" />
+				<Button Classes="k" Content="3" Command="{Binding KeyCommand}" CommandParameter="3" />
+				<Button Classes="k" Content="4" Command="{Binding KeyCommand}" CommandParameter="4" />
+				<Button Classes="k" Content="5" Command="{Binding KeyCommand}" CommandParameter="5" />
+				<Button Classes="k" Content="6" Command="{Binding KeyCommand}" CommandParameter="6" />
+				<Button Classes="k" Content="7" Command="{Binding KeyCommand}" CommandParameter="7" />
+				<Button Classes="k" Content="8" Command="{Binding KeyCommand}" CommandParameter="8" />
+				<Button Classes="k" Content="9" Command="{Binding KeyCommand}" CommandParameter="9" />
+				<Button Classes="k" Content="0" Command="{Binding KeyCommand}" CommandParameter="0" />
+			</UniformGrid>
 
-      <!-- 字母行 1：QWERTYUIOP -->
-      <UniformGrid Rows="1" Columns="10">
-        <Button Classes="k" Content="q" Command="{Binding KeyCommand}" CommandParameter="q" />
-        <Button Classes="k" Content="w" Command="{Binding KeyCommand}" CommandParameter="w" />
-        <Button Classes="k" Content="e" Command="{Binding KeyCommand}" CommandParameter="e" />
-        <Button Classes="k" Content="r" Command="{Binding KeyCommand}" CommandParameter="r" />
-        <Button Classes="k" Content="t" Command="{Binding KeyCommand}" CommandParameter="t" />
-        <Button Classes="k" Content="y" Command="{Binding KeyCommand}" CommandParameter="y" />
-        <Button Classes="k" Content="u" Command="{Binding KeyCommand}" CommandParameter="u" />
-        <Button Classes="k" Content="i" Command="{Binding KeyCommand}" CommandParameter="i" />
-        <Button Classes="k" Content="o" Command="{Binding KeyCommand}" CommandParameter="o" />
-        <Button Classes="k" Content="p" Command="{Binding KeyCommand}" CommandParameter="p" />
-      </UniformGrid>
+			<!-- 字母行 1：QWERTYUIOP -->
+			<UniformGrid Rows="1" Columns="10">
+				<Button Classes="k" Content="q" Command="{Binding KeyCommand}" CommandParameter="q" />
+				<Button Classes="k" Content="w" Command="{Binding KeyCommand}" CommandParameter="w" />
+				<Button Classes="k" Content="e" Command="{Binding KeyCommand}" CommandParameter="e" />
+				<Button Classes="k" Content="r" Command="{Binding KeyCommand}" CommandParameter="r" />
+				<Button Classes="k" Content="t" Command="{Binding KeyCommand}" CommandParameter="t" />
+				<Button Classes="k" Content="y" Command="{Binding KeyCommand}" CommandParameter="y" />
+				<Button Classes="k" Content="u" Command="{Binding KeyCommand}" CommandParameter="u" />
+				<Button Classes="k" Content="i" Command="{Binding KeyCommand}" CommandParameter="i" />
+				<Button Classes="k" Content="o" Command="{Binding KeyCommand}" CommandParameter="o" />
+				<Button Classes="k" Content="p" Command="{Binding KeyCommand}" CommandParameter="p" />
+			</UniformGrid>
 
-      <!-- 字母行 2：ASDFGHJKL（两侧留白）-->
-      <Grid ColumnDefinitions="0.5*,*,*,*,*,*,*,*,*,*,0.5*">
-        <Button Grid.Column="1" Classes="k" Content="a" Command="{Binding KeyCommand}" CommandParameter="a" />
-        <Button Grid.Column="2" Classes="k" Content="s" Command="{Binding KeyCommand}" CommandParameter="s" />
-        <Button Grid.Column="3" Classes="k" Content="d" Command="{Binding KeyCommand}" CommandParameter="d" />
-        <Button Grid.Column="4" Classes="k" Content="f" Command="{Binding KeyCommand}" CommandParameter="f" />
-        <Button Grid.Column="5" Classes="k" Content="g" Command="{Binding KeyCommand}" CommandParameter="g" />
-        <Button Grid.Column="6" Classes="k" Content="h" Command="{Binding KeyCommand}" CommandParameter="h" />
-        <Button Grid.Column="7" Classes="k" Content="j" Command="{Binding KeyCommand}" CommandParameter="j" />
-        <Button Grid.Column="8" Classes="k" Content="k" Command="{Binding KeyCommand}" CommandParameter="k" />
-        <Button Grid.Column="9" Classes="k" Content="l" Command="{Binding KeyCommand}" CommandParameter="l" />
-      </Grid>
+			<!-- 字母行 2：ASDFGHJKL（两侧留白）-->
+			<Grid ColumnDefinitions="0.5*,*,*,*,*,*,*,*,*,*,0.5*">
+				<Button Grid.Column="1" Classes="k" Content="a" Command="{Binding KeyCommand}" CommandParameter="a" />
+				<Button Grid.Column="2" Classes="k" Content="s" Command="{Binding KeyCommand}" CommandParameter="s" />
+				<Button Grid.Column="3" Classes="k" Content="d" Command="{Binding KeyCommand}" CommandParameter="d" />
+				<Button Grid.Column="4" Classes="k" Content="f" Command="{Binding KeyCommand}" CommandParameter="f" />
+				<Button Grid.Column="5" Classes="k" Content="g" Command="{Binding KeyCommand}" CommandParameter="g" />
+				<Button Grid.Column="6" Classes="k" Content="h" Command="{Binding KeyCommand}" CommandParameter="h" />
+				<Button Grid.Column="7" Classes="k" Content="j" Command="{Binding KeyCommand}" CommandParameter="j" />
+				<Button Grid.Column="8" Classes="k" Content="k" Command="{Binding KeyCommand}" CommandParameter="k" />
+				<Button Grid.Column="9" Classes="k" Content="l" Command="{Binding KeyCommand}" CommandParameter="l" />
+			</Grid>
 
-      <!-- 字母行 3：Shift ZXCVBNM Backspace -->
-      <Grid ColumnDefinitions="1.5*,*,*,*,*,*,*,*,1.5*">
-        <Button Grid.Column="0" Classes="k fn" Content="⇧" Command="{Binding ToggleShiftCommand}"
-                Classes.shifton="{Binding Shift}" />
-        <Button Grid.Column="1" Classes="k" Content="z" Command="{Binding KeyCommand}" CommandParameter="z" />
-        <Button Grid.Column="2" Classes="k" Content="x" Command="{Binding KeyCommand}" CommandParameter="x" />
-        <Button Grid.Column="3" Classes="k" Content="c" Command="{Binding KeyCommand}" CommandParameter="c" />
-        <Button Grid.Column="4" Classes="k" Content="v" Command="{Binding KeyCommand}" CommandParameter="v" />
-        <Button Grid.Column="5" Classes="k" Content="b" Command="{Binding KeyCommand}" CommandParameter="b" />
-        <Button Grid.Column="6" Classes="k" Content="n" Command="{Binding KeyCommand}" CommandParameter="n" />
-        <Button Grid.Column="7" Classes="k" Content="m" Command="{Binding KeyCommand}" CommandParameter="m" />
-        <Button Grid.Column="8" Classes="k fn" Content="⌫" Command="{Binding BackspaceCommand}" />
-      </Grid>
+			<!-- 字母行 3：Shift ZXCVBNM Backspace -->
+			<Grid ColumnDefinitions="1.5*,*,*,*,*,*,*,*,1.5*">
+				<Button Grid.Column="0" Classes="k fn" Content="⇧" Command="{Binding ToggleShiftCommand}"
+						Classes.shifton="{Binding Shift}" />
+				<Button Grid.Column="1" Classes="k" Content="z" Command="{Binding KeyCommand}" CommandParameter="z" />
+				<Button Grid.Column="2" Classes="k" Content="x" Command="{Binding KeyCommand}" CommandParameter="x" />
+				<Button Grid.Column="3" Classes="k" Content="c" Command="{Binding KeyCommand}" CommandParameter="c" />
+				<Button Grid.Column="4" Classes="k" Content="v" Command="{Binding KeyCommand}" CommandParameter="v" />
+				<Button Grid.Column="5" Classes="k" Content="b" Command="{Binding KeyCommand}" CommandParameter="b" />
+				<Button Grid.Column="6" Classes="k" Content="n" Command="{Binding KeyCommand}" CommandParameter="n" />
+				<Button Grid.Column="7" Classes="k" Content="m" Command="{Binding KeyCommand}" CommandParameter="m" />
+				<Button Grid.Column="8" Classes="k fn" Content="⌫" Command="{Binding BackspaceCommand}" />
+			</Grid>
 
-      <!-- 符号 + 空格 行 -->
-      <Grid ColumnDefinitions="*,*,*,4*,*,*">
-        <Button Grid.Column="0" Classes="k" Content="." Command="{Binding KeyCommand}" CommandParameter="." />
-        <Button Grid.Column="1" Classes="k" Content="-" Command="{Binding KeyCommand}" CommandParameter="-" />
-        <Button Grid.Column="2" Classes="k" Content="_" Command="{Binding KeyCommand}" CommandParameter="_" />
-        <Button Grid.Column="3" Classes="k fn" Content="空格" Command="{Binding SpaceCommand}" />
-        <Button Grid.Column="4" Classes="k" Content="/" Command="{Binding KeyCommand}" CommandParameter="/" />
-        <Button Grid.Column="5" Classes="k" Content="@" Command="{Binding KeyCommand}" CommandParameter="@" />
-      </Grid>
+			<!-- 符号 + 空格 行 -->
+			<Grid ColumnDefinitions="*,*,*,4*,*,*">
+				<Button Grid.Column="0" Classes="k" Content="." Command="{Binding KeyCommand}" CommandParameter="." />
+				<Button Grid.Column="1" Classes="k" Content="-" Command="{Binding KeyCommand}" CommandParameter="-" />
+				<Button Grid.Column="2" Classes="k" Content="_" Command="{Binding KeyCommand}" CommandParameter="_" />
+				<Button Grid.Column="3" Classes="k fn" Content="空格" Command="{Binding SpaceCommand}" />
+				<Button Grid.Column="4" Classes="k" Content="/" Command="{Binding KeyCommand}" CommandParameter="/" />
+				<Button Grid.Column="5" Classes="k" Content="@" Command="{Binding KeyCommand}" CommandParameter="@" />
+			</Grid>
 
-      <!-- 操作行 -->
-      <Grid ColumnDefinitions="*,*,2*" Margin="0,8,0,0">
-        <Button Grid.Column="0" Classes="k fn" Content="清空" Command="{Binding ClearCommand}" />
-        <Button Grid.Column="1" Classes="k fn" Content="取消" Command="{Binding CancelCommand}" />
-        <Button Grid.Column="2" Classes="k ok" Content="确认" Command="{Binding ConfirmCommand}" />
-      </Grid>
-    </StackPanel>
-  </Border>
+			<!-- 操作行 -->
+			<Grid ColumnDefinitions="*,*,2*" Margin="0,8,0,0">
+				<Button Grid.Column="0" Classes="k fn" Content="清空" Command="{Binding ClearCommand}" />
+				<Button Grid.Column="1" Classes="k fn" Content="取消" Command="{Binding CancelCommand}" />
+				<Button Grid.Column="2" Classes="k ok" Content="确认" Command="{Binding ConfirmCommand}" />
+			</Grid>
+		</StackPanel>
+	</Border>
 </UserControl>

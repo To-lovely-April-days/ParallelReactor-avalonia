@@ -200,14 +200,7 @@
 	<Style Selector="Button.pbtn.pri">
 		<Setter Property="BorderBrush" Value="Transparent" />
 		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-					<GradientStop Color="#e0394c" Offset="0" />
-					<GradientStop Color="#A41626" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Background" Value="#c62a3b" />
 	</Style>
 
 	<!-- ===== 检查器字段 ===== -->
@@ -315,14 +308,7 @@
 		<Setter Property="Foreground" Value="White" />
 	</Style>
 	<Style Selector="Button.modebtn.on /template/ Border#bg">
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-					<GradientStop Color="#f0a830" Offset="0" />
-					<GradientStop Color="#c47d1c" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Background" Value="#d9922a" />
 	</Style>
 
 	<!-- 曲线卡片 -->
@@ -372,15 +358,8 @@
 		<Setter Property="CornerRadius" Value="18" />
 		<Setter Property="BorderThickness" Value="1" />
 		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<!-- BoxShadow 已移除：G52 上大半径阴影模糊是硬开销 -->
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-					<GradientStop Color="#F71E1E23" Offset="0" />
-					<GradientStop Color="#FA16161A" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<!-- BoxShadow 与渐变已移除：改纯色实底，去 G52 上的阴影模糊与渐变着色开销 -->
+		<Setter Property="Background" Value="#1c1c21" />
 	</Style>
 
 	<!-- 大曲线容器 -->
@@ -531,26 +510,12 @@
 	<Style Selector="Button.mfbtn.danger">
 		<Setter Property="BorderBrush" Value="#f06b78" />
 		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-					<GradientStop Color="#e0394c" Offset="0" />
-					<GradientStop Color="#A41626" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Background" Value="#c62a3b" />
 	</Style>
 	<Style Selector="Button.mfbtn.pri">
 		<Setter Property="BorderBrush" Value="Transparent" />
 		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-					<GradientStop Color="#2b7fd6" Offset="0" />
-					<GradientStop Color="#1668c5" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Background" Value="#2074cd" />
 	</Style>
 
 	<Style Selector="Button.mfbtn:disabled">
@@ -560,14 +525,7 @@
 	<Style Selector="Button.mfbtn.go">
 		<Setter Property="BorderBrush" Value="Transparent" />
 		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background">
-			<Setter.Value>
-				<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-					<GradientStop Color="#e0394c" Offset="0" />
-					<GradientStop Color="#A41626" Offset="1" />
-				</LinearGradientBrush>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Background" Value="#c62a3b" />
 	</Style>
 
 	<!-- 快捷选择按钮 -->

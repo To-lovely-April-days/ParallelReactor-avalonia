@@ -43,6 +43,12 @@ public partial class Reactor : ObservableObject
 
     public PidParams Pid { get; } = new();
 
+    // —— 温度设定方式：fixed=定值升温（直接写 SP），curve=曲线升温（16 段程序，上位机下发）——
+    [ObservableProperty] private string _spMode = "fixed";
+
+    /// <summary>16 段曲线升温程序（curve 模式下由 MainViewModel.Tick 驱动下发）。</summary>
+    public TempProfile Profile { get; } = new();
+
     // —— 压力显示（按全局单位换算；内部 P 恒为 psi，不影响报警/SP 判定）——
     public double PShown => Units.P(P);
     public string PUnit => Units.PLabel;

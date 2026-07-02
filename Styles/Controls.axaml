@@ -41,25 +41,11 @@
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="FontSize" Value="11.5" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
-    <Setter Property="Background">
-      <Setter.Value>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Color="#e0394c" Offset="0" />
-          <GradientStop Color="#A41626" Offset="1" />
-        </LinearGradientBrush>
-      </Setter.Value>
-    </Setter>
+    <Setter Property="Background" Value="#c62a3b" />
   </Style>
   <Style Selector="Button.estop:pointerover /template/ ContentPresenter">
     <Setter Property="CornerRadius" Value="8" />
-    <Setter Property="Background">
-      <Setter.Value>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Color="#f04a5d" Offset="0" />
-          <GradientStop Color="#b51a2c" Offset="1" />
-        </LinearGradientBrush>
-      </Setter.Value>
-    </Setter>
+    <Setter Property="Background" Value="#d43647" />
   </Style>
   <Style Selector="Button.estop /template/ ContentPresenter">
     <Setter Property="CornerRadius" Value="8" />
@@ -100,14 +86,7 @@
   <Style Selector="Button.dbtn.pri">
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="Foreground" Value="White" />
-    <Setter Property="Background">
-      <Setter.Value>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Color="#A41626" Offset="0" />
-          <GradientStop Color="#d4435a" Offset="1" />
-        </LinearGradientBrush>
-      </Setter.Value>
-    </Setter>
+    <Setter Property="Background" Value="#bd2f43" />
   </Style>
   <Style Selector="Button.dbtn.go">
     <Setter Property="Background" Value="#2484cc16" />
@@ -163,14 +142,7 @@
     <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector="Button.seg.on /template/ Border#sb">
-    <Setter Property="Background">
-      <Setter.Value>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="85%,100%">
-          <GradientStop Color="#A41626" Offset="0" />
-          <GradientStop Color="#d4435a" Offset="1" />
-        </LinearGradientBrush>
-      </Setter.Value>
-    </Setter>
+    <Setter Property="Background" Value="#bd2f43" />
   </Style>
   <!-- 导航项线框图标 -->
   <Style Selector="Path.navico">
