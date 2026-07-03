@@ -121,7 +121,9 @@ public partial class DrawerViewModel : ViewModelBase
     private void StartProfile()
     {
         if (Reactor is not { } c) return;
-        c.Profile.Start(c.T);
+        // PV 异常（温控通讯未就绪时读数为 0）则从室温起步，避免段 1 从 0℃ 开始爬
+        double startPv = c.T > 1 ? c.T : 25;
+        c.Profile.Start(startPv);
         _main.Toast("ok", $"RV{c.Id} 曲线升温已启动 · 共 {c.Profile.SegCount} 段");
         RaiseAll();
     }

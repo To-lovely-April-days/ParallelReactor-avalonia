@@ -218,9 +218,9 @@ public partial class LeakCell : ObservableObject
     }
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
-    public IBrush CellBg => Status == "bad" ? B("#12E0394C") : B("#73303037");
-    public IBrush CellBorder => Status == "ok" ? B("#5984CC16") : Status == "bad" ? B("#6BE0394C") : B("#14FFFFFF");
-    public IBrush DetailBrush => Status == "ok" ? B("#a3e635") : Status == "bad" ? B("#e0394c") : B("#a4a4b0");
+    public IBrush CellBg => Status == "bad" ? B("#12E0394C") : B("#FFF1F2F4");
+    public IBrush CellBorder => Status == "ok" ? B("#5984CC16") : Status == "bad" ? B("#6BE0394C") : B("#14000000");
+    public IBrush DetailBrush => Status == "ok" ? B("#5fae14") : Status == "bad" ? B("#e0394c") : B("#54545e");
 }
 
 /// <summary>泄漏测试阶段指示。</summary>
@@ -235,8 +235,8 @@ public partial class LeakStage : ObservableObject
         OnPropertyChanged(nameof(Weight));
     }
 
-    public IBrush Brush => State == "cur" ? new SolidColorBrush(Color.Parse("#a3e635"))
-        : State == "done" ? new SolidColorBrush(Color.Parse("#a4a4b0"))
+    public IBrush Brush => State == "cur" ? new SolidColorBrush(Color.Parse("#5fae14"))
+        : State == "done" ? new SolidColorBrush(Color.Parse("#7d8694"))
         : new SolidColorBrush(Color.Parse("#66666f"));
     public FontWeight Weight => State == "cur" ? FontWeight.SemiBold : FontWeight.Normal;
 }

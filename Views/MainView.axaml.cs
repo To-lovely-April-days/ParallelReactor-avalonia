@@ -227,14 +227,14 @@ public partial class MainView : UserControl
 
         Color border = kind switch
         {
-            "ok" => Color.Parse("#a3e635"),
-            "warn" => Color.Parse("#f0a830"),
+            "ok" => Color.Parse("#5fae14"),
+            "warn" => Color.Parse("#c9820f"),
             _ => Color.Parse("#e0394c")
         };
 
         var toast = new Border
         {
-            Background = new SolidColorBrush(Color.Parse("#F21E1E23")),
+            Background = new SolidColorBrush(Color.Parse("#F2FFFFFF")),
             BorderBrush = new SolidColorBrush(border),
             BorderThickness = new Thickness(1),
             CornerRadius = new CornerRadius(11),
@@ -243,7 +243,7 @@ public partial class MainView : UserControl
             {
                 Text = msg,
                 FontSize = 12.5,
-                Foreground = new SolidColorBrush(Color.Parse("#f6f6f8")),
+                Foreground = new SolidColorBrush(Color.Parse("#17171c")),
                 FontWeight = FontWeight.Medium
             }
         };

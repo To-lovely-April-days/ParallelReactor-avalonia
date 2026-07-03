@@ -1,623 +1,623 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-	<!-- ===== 三栏容器 ===== -->
-	<Style Selector="Border.progcol">
-		<Setter Property="Background" Value="#05FFFFFF" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="11" />
-		<!-- 过渡动画已移除：改为即时状态变化，减少 G52 上的持续重绘 -->
-	</Style>
-	<!-- 拖拽悬停在时间线上时的高亮：用「选中态」蓝，克制不刺眼（红色会像报警）-->
-	<Style Selector="Border.progcol.dropactive">
-		<Setter Property="BorderBrush" Value="#805FA1E6" />
-		<Setter Property="Background" Value="#0D5FA1E6" />
-	</Style>
+  <!-- ===== 三栏容器 ===== -->
+  <Style Selector="Border.progcol">
+    <Setter Property="Background" Value="#05000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="11" />
+    <!-- 过渡动画已移除：改为即时状态变化，减少 G52 上的持续重绘 -->
+  </Style>
+  <!-- 拖拽悬停在时间线上时的高亮：用「选中态」蓝，克制不刺眼（红色会像报警）-->
+  <Style Selector="Border.progcol.dropactive">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+    <Setter Property="Background" Value="#0D5FA1E6" />
+  </Style>
 
-	<!-- 步骤库卡片：拖拽中的源卡片淡化 -->
-	<Style Selector="Button.pstep.dragsrc">
-		<Setter Property="Opacity" Value="0.45" />
-	</Style>
-	<Style Selector="ListBoxItem.dragsrc">
-		<Setter Property="Opacity" Value="0.45" />
-	</Style>
+  <!-- 步骤库卡片：拖拽中的源卡片淡化 -->
+  <Style Selector="Button.pstep.dragsrc">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
+  <Style Selector="ListBoxItem.dragsrc">
+    <Setter Property="Opacity" Value="0.45" />
+  </Style>
 
-	<!-- ===== 通道选择条 chip ===== -->
-	<Style Selector="Button.pch">
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="11.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Padding" Value="11,5" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine}" Padding="{TemplateBinding Padding}">
-						<ContentPresenter Content="{TemplateBinding Content}"
-										  TextElement.Foreground="{TemplateBinding Foreground}"
-										  VerticalAlignment="Center" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.pch:pointerover /template/ Border#bg">
-		<Setter Property="Background" Value="#08FFFFFF" />
-	</Style>
-	<Style Selector="Button.pch.on /template/ Border#bg">
-		<Setter Property="Background" Value="#1Fe0394c" />
-		<Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
-	</Style>
-	<Style Selector="Button.pch.on">
-		<Setter Property="Foreground" Value="White" />
-	</Style>
-	<Style Selector="Button.pch:disabled">
-		<Setter Property="Opacity" Value="0.35" />
-	</Style>
-	<Style Selector="TextBlock.pchsmall">
-		<Setter Property="FontSize" Value="10" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="Button.pch.on TextBlock.pchsmall">
-		<Setter Property="Foreground" Value="#A6FFFFFF" />
-	</Style>
+  <!-- ===== 通道选择条 chip ===== -->
+  <Style Selector="Button.pch">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="11,5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.pch:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="#07000000" />
+  </Style>
+  <Style Selector="Button.pch.on /template/ Border#bg">
+    <Setter Property="Background" Value="#1Fe0394c" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
+  </Style>
+  <Style Selector="Button.pch.on">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.pch:disabled">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
+  <Style Selector="TextBlock.pchsmall">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="Button.pch.on TextBlock.pchsmall">
+    <Setter Property="Foreground" Value="#99000000" />
+  </Style>
 
-	<!-- ===== 步骤库 ===== -->
-	<Style Selector="TextBlock.sidehd">
-		<Setter Property="FontSize" Value="10" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-		<Setter Property="LetterSpacing" Value="1.5" />
-		<Setter Property="Margin" Value="4,2,4,8" />
-	</Style>
-	<Style Selector="Border.sidetip">
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="BorderThickness" Value="0,1,0,0" />
-		<Setter Property="Padding" Value="5,10,5,2" />
-	</Style>
-	<Style Selector="Button.pstep">
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="HorizontalContentAlignment" Value="Left" />
-		<Setter Property="Padding" Value="10,8" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="#06FFFFFF" CornerRadius="8" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine}" Padding="{TemplateBinding Padding}">
-						<ContentPresenter Content="{TemplateBinding Content}" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.pstep:pointerover /template/ Border#bg">
-		<Setter Property="Background" Value="#0DFFFFFF" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-	</Style>
+  <!-- ===== 步骤库 ===== -->
+  <Style Selector="TextBlock.sidehd">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+    <Setter Property="LetterSpacing" Value="1.5" />
+    <Setter Property="Margin" Value="4,2,4,8" />
+  </Style>
+  <Style Selector="Border.sidetip">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="Padding" Value="5,10,5,2" />
+  </Style>
+  <Style Selector="Button.pstep">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#06000000" CornerRadius="8" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.pstep:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="#0A000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+  </Style>
 
-	<!-- ===== 时间线列表 ===== -->
-	<Style Selector="ListBox.timeline">
-		<Setter Property="Background" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="0" />
-		<Setter Property="Padding" Value="0" />
-	</Style>
-	<Style Selector="ListBox.timeline ListBoxItem">
-		<Setter Property="Padding" Value="0" />
-		<Setter Property="Margin" Value="0,0,0,8" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<ContentPresenter Content="{TemplateBinding Content}"
-									  ContentTemplate="{TemplateBinding ContentTemplate}" />
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Border.pblk">
-		<Setter Property="Background" Value="#06FFFFFF" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="9" />
-		<Setter Property="Padding" Value="12,10" />
-	</Style>
-	<Style Selector="ListBox.timeline ListBoxItem:pointerover Border.pblk">
-		<Setter Property="Background" Value="#0BFFFFFF" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-	</Style>
-	<Style Selector="ListBox.timeline ListBoxItem:selected Border.pblk">
-		<Setter Property="Background" Value="#125FA1E6" />
-		<Setter Property="BorderBrush" Value="#805FA1E6" />
-	</Style>
-	<Style Selector="TextBlock.pidx">
-		<Setter Property="FontSize" Value="11" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="Border.ptag">
-		<Setter Property="Background" Value="#0AFFFFFF" />
-		<Setter Property="CornerRadius" Value="3" />
-		<Setter Property="Padding" Value="6,1" />
-		<Setter Property="Margin" Value="6,0,0,0" />
-	</Style>
-	<!-- 操作按钮：默认隐藏，悬停/选中时显示 -->
-	<Style Selector="StackPanel.pact">
-		<Setter Property="Opacity" Value="0" />
-	</Style>
-	<Style Selector="ListBox.timeline ListBoxItem:pointerover StackPanel.pact">
-		<Setter Property="Opacity" Value="1" />
-	</Style>
-	<Style Selector="ListBox.timeline ListBoxItem:selected StackPanel.pact">
-		<Setter Property="Opacity" Value="1" />
-	</Style>
-	<Style Selector="Button.pactbtn">
-		<Setter Property="Width" Value="22" />
-		<Setter Property="Height" Value="22" />
-		<Setter Property="Padding" Value="0" />
-		<Setter Property="Background" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="0" />
-		<Setter Property="CornerRadius" Value="5" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-	</Style>
-	<Style Selector="Button.pactbtn:pointerover /template/ ContentPresenter">
-		<Setter Property="Background" Value="#12FFFFFF" />
-	</Style>
+  <!-- ===== 时间线列表 ===== -->
+  <Style Selector="ListBox.timeline">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="ListBox.timeline ListBoxItem">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Border.pblk">
+    <Setter Property="Background" Value="#06000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
+  <Style Selector="ListBox.timeline ListBoxItem:pointerover Border.pblk">
+    <Setter Property="Background" Value="#09000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+  </Style>
+  <Style Selector="ListBox.timeline ListBoxItem:selected Border.pblk">
+    <Setter Property="Background" Value="#125FA1E6" />
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+  </Style>
+  <Style Selector="TextBlock.pidx">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="Border.ptag">
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="6,1" />
+    <Setter Property="Margin" Value="6,0,0,0" />
+  </Style>
+  <!-- 操作按钮：默认隐藏，悬停/选中时显示 -->
+  <Style Selector="StackPanel.pact">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="ListBox.timeline ListBoxItem:pointerover StackPanel.pact">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ListBox.timeline ListBoxItem:selected StackPanel.pact">
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="Button.pactbtn">
+    <Setter Property="Width" Value="22" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.pactbtn:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#0F000000" />
+  </Style>
 
-	<!-- ===== 空程序占位 ===== -->
-	<Style Selector="Border.progempty">
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="1.5" />
-		<Setter Property="CornerRadius" Value="9" />
-		<Setter Property="Padding" Value="20" />
-		<Setter Property="MinHeight" Value="160" />
-	</Style>
+  <!-- ===== 空程序占位 ===== -->
+  <Style Selector="Border.progempty">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="MinHeight" Value="160" />
+  </Style>
 
-	<!-- ===== 底部操作按钮 ===== -->
-	<Style Selector="Button.pbtn">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="Padding" Value="14,0" />
-		<Setter Property="CornerRadius" Value="8" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="Background" Value="{DynamicResource GlassSoft}" />
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="12" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-	</Style>
-	<Style Selector="Button.pbtn /template/ ContentPresenter">
-		<Setter Property="CornerRadius" Value="8" />
-	</Style>
-	<Style Selector="Button.pbtn:pointerover /template/ ContentPresenter">
-		<Setter Property="Background" Value="{DynamicResource GlassBright}" />
-	</Style>
-	<Style Selector="Button.pbtn.pri">
-		<Setter Property="BorderBrush" Value="Transparent" />
-		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background" Value="#c62a3b" />
-	</Style>
+  <!-- ===== 底部操作按钮 ===== -->
+  <Style Selector="Button.pbtn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.pbtn /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+  <Style Selector="Button.pbtn:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+  <Style Selector="Button.pbtn.pri">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background" Value="#c62a3b" />
+  </Style>
 
-	<!-- ===== 检查器字段 ===== -->
-	<Style Selector="TextBlock.flab">
-		<Setter Property="FontSize" Value="10.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="TextBlock.funit">
-		<Setter Property="FontSize" Value="10.5" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="TextBox.ipt">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="MinHeight" Value="32" />
-		<Setter Property="Padding" Value="10,0" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-		<Setter Property="CornerRadius" Value="7" />
-		<Setter Property="Background" Value="#40000000" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="12.5" />
-	</Style>
-	<Style Selector="ComboBox.ipt">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="MinHeight" Value="32" />
-		<Setter Property="Padding" Value="10,0" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-		<Setter Property="CornerRadius" Value="7" />
-		<Setter Property="Background" Value="#40000000" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="12.5" />
-	</Style>
-	<!-- 检查器数值字段：外观同输入框，点按调起屏幕键盘 -->
-	<Style Selector="Button.iptbtn">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="12.5" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="#40000000" CornerRadius="7" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
-						<Grid ColumnDefinitions="*,Auto">
-							<ContentPresenter Content="{TemplateBinding Content}"
-											  TextElement.Foreground="{TemplateBinding Foreground}"
-											  VerticalAlignment="Center" HorizontalAlignment="Left" />
-							<!-- 右侧小键盘提示图标 -->
-							<Viewbox Grid.Column="1" Width="14" Height="14" Opacity="0.5">
-								<Canvas Width="24" Height="24">
-									<Path Data="M3 6h18v12H3z M7 10h0.01 M11 10h0.01 M15 10h0.01 M7 14h10"
-										  Stroke="{DynamicResource Mute}" StrokeThickness="2"
-										  StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-								</Canvas>
-							</Viewbox>
-						</Grid>
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.iptbtn:pointerover /template/ Border#bg">
-		<Setter Property="BorderBrush" Value="#805FA1E6" />
-	</Style>
+  <!-- ===== 检查器字段 ===== -->
+  <Style Selector="TextBlock.flab">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="TextBlock.funit">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="TextBox.ipt">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <Style Selector="ComboBox.ipt">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <!-- 检查器数值字段：外观同输入框，点按调起屏幕键盘 -->
+  <Style Selector="Button.iptbtn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#08000000" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
+            <Grid ColumnDefinitions="*,Auto">
+              <ContentPresenter Content="{TemplateBinding Content}"
+                                TextElement.Foreground="{TemplateBinding Foreground}"
+                                VerticalAlignment="Center" HorizontalAlignment="Left" />
+              <!-- 右侧小键盘提示图标 -->
+              <Viewbox Grid.Column="1" Width="14" Height="14" Opacity="0.5">
+                <Canvas Width="24" Height="24">
+                  <Path Data="M3 6h18v12H3z M7 10h0.01 M11 10h0.01 M15 10h0.01 M7 14h10"
+                        Stroke="{DynamicResource Mute}" StrokeThickness="2"
+                        StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                </Canvas>
+              </Viewbox>
+            </Grid>
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.iptbtn:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+  </Style>
 
-	<Style Selector="Border.ichip">
-		<Setter Property="Background" Value="#0AFFFFFF" />
-		<Setter Property="CornerRadius" Value="5" />
-		<Setter Property="Padding" Value="7,2" />
-	</Style>
+  <Style Selector="Border.ichip">
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="7,2" />
+  </Style>
 
-	<!-- 升温方式分段 -->
-	<Style Selector="Border.modeseg">
-		<Setter Property="Background" Value="#40000000" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="7" />
-		<Setter Property="Padding" Value="2" />
-	</Style>
-	<Style Selector="Button.modebtn">
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="11.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="Transparent" CornerRadius="5" Padding="4,6">
-						<ContentPresenter Content="{TemplateBinding Content}"
-										  TextElement.Foreground="{TemplateBinding Foreground}"
-										  HorizontalAlignment="Center" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.modebtn.on">
-		<Setter Property="Foreground" Value="White" />
-	</Style>
-	<Style Selector="Button.modebtn.on /template/ Border#bg">
-		<Setter Property="Background" Value="#d9922a" />
-	</Style>
+  <!-- 升温方式分段 -->
+  <Style Selector="Border.modeseg">
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Padding" Value="2" />
+  </Style>
+  <Style Selector="Button.modebtn">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="5" Padding="4,6">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              HorizontalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.modebtn.on">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.modebtn.on /template/ Border#bg">
+    <Setter Property="Background" Value="#d9922a" />
+  </Style>
 
-	<!-- 曲线卡片 -->
-	<Style Selector="Button.curvecard">
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Padding" Value="10" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="#40000000" CornerRadius="8" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine2}" Padding="{TemplateBinding Padding}">
-						<ContentPresenter Content="{TemplateBinding Content}" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.curvecard:pointerover /template/ Border#bg">
-		<Setter Property="BorderBrush" Value="#80f0a830" />
-	</Style>
-	<Style Selector="Border.curvemini">
-		<Setter Property="Background" Value="#05FFFFFF" />
-		<Setter Property="CornerRadius" Value="6" />
-		<Setter Property="ClipToBounds" Value="True" />
-	</Style>
-	<Style Selector="TextBlock.cvk">
-		<Setter Property="FontSize" Value="9.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="TextBlock.cvv">
-		<Setter Property="FontSize" Value="12.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-	</Style>
-	<Style Selector="Border.curveeditbtn">
-		<Setter Property="BorderBrush" Value="#66f0a830" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="6" />
-		<Setter Property="Padding" Value="10,5" />
-	</Style>
+  <!-- 曲线卡片 -->
+  <Style Selector="Button.curvecard">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#08000000" CornerRadius="8" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.curvecard:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="#80f0a830" />
+  </Style>
+  <Style Selector="Border.curvemini">
+    <Setter Property="Background" Value="#05000000" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="TextBlock.cvk">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="TextBlock.cvv">
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+  </Style>
+  <Style Selector="Border.curveeditbtn">
+    <Setter Property="BorderBrush" Value="#66f0a830" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="10,5" />
+  </Style>
 
-	<!-- ===== 弹窗 ===== -->
-	<Style Selector="Border.pmodal">
-		<Setter Property="CornerRadius" Value="18" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<!-- BoxShadow 与渐变已移除：改纯色实底，去 G52 上的阴影模糊与渐变着色开销 -->
-		<Setter Property="Background" Value="#1c1c21" />
-	</Style>
+  <!-- ===== 弹窗 ===== -->
+  <Style Selector="Border.pmodal">
+    <Setter Property="CornerRadius" Value="18" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <!-- BoxShadow 与渐变已移除：改纯色实底，去 G52 上的阴影模糊与渐变着色开销 -->
+    <Setter Property="Background" Value="#ffffff" />
+  </Style>
 
-	<!-- 大曲线容器 -->
-	<Style Selector="Border.curvebig">
-		<Setter Property="Background" Value="#4D000000" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="10" />
-		<Setter Property="Height" Value="240" />
-		<Setter Property="Padding" Value="2" />
-		<Setter Property="ClipToBounds" Value="True" />
-	</Style>
-	<Style Selector="TextBlock.ctlabel">
-		<Setter Property="FontSize" Value="10.5" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
+  <!-- 大曲线容器 -->
+  <Style Selector="Border.curvebig">
+    <Setter Property="Background" Value="#0A000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="Height" Value="240" />
+    <Setter Property="Padding" Value="2" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="TextBlock.ctlabel">
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
 
-	<!-- 段表 -->
-	<Style Selector="TextBlock.seghd">
-		<Setter Property="FontSize" Value="10" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="TextBlock.segno">
-		<Setter Property="FontSize" Value="11" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-	</Style>
-	<Style Selector="TextBox.sinp">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="MinHeight" Value="32" />
-		<Setter Property="Padding" Value="10,0" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-		<Setter Property="TextAlignment" Value="Right" />
-		<Setter Property="CornerRadius" Value="7" />
-		<Setter Property="Background" Value="#4D000000" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="12.5" />
-	</Style>
-	<!-- 曲线段数值：外观同 sinp 输入框，点按调起屏幕键盘（右对齐）-->
-	<Style Selector="Button.sinpbtn">
-		<Setter Property="Height" Value="32" />
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="12.5" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="#4D000000" CornerRadius="7" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
-						<ContentPresenter Content="{TemplateBinding Content}"
-										  TextElement.Foreground="{TemplateBinding Foreground}"
-										  VerticalAlignment="Center" HorizontalAlignment="Right" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.sinpbtn:pointerover /template/ Border#bg">
-		<Setter Property="BorderBrush" Value="#805FA1E6" />
-	</Style>
+  <!-- 段表 -->
+  <Style Selector="TextBlock.seghd">
+    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="TextBlock.segno">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+  </Style>
+  <Style Selector="TextBox.sinp">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="Background" Value="#0A000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+  </Style>
+  <!-- 曲线段数值：外观同 sinp 输入框，点按调起屏幕键盘（右对齐）-->
+  <Style Selector="Button.sinpbtn">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="#0A000000" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="10,0">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              VerticalAlignment="Center" HorizontalAlignment="Right" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.sinpbtn:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="#805FA1E6" />
+  </Style>
 
-	<Style Selector="Button.segdel">
-		<Setter Property="Width" Value="30" />
-		<Setter Property="Height" Value="30" />
-		<Setter Property="Padding" Value="0" />
-		<Setter Property="CornerRadius" Value="6" />
-		<Setter Property="Background" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-	</Style>
-	<Style Selector="Button.segdel:pointerover /template/ ContentPresenter">
-		<Setter Property="Background" Value="#15e0394c" />
-	</Style>
-	<Style Selector="Button.segadd">
-		<Setter Property="Height" Value="36" />
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="CornerRadius" Value="8" />
-		<Setter Property="Background" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="1.5" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="12" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-	</Style>
-	<Style Selector="Button.segadd:disabled">
-		<Setter Property="Opacity" Value="0.35" />
-	</Style>
+  <Style Selector="Button.segdel">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.segdel:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="#15e0394c" />
+  </Style>
+  <Style Selector="Button.segadd">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1.5" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+  </Style>
+  <Style Selector="Button.segadd:disabled">
+    <Setter Property="Opacity" Value="0.35" />
+  </Style>
 
-	<!-- 作用域按钮 -->
-	<Style Selector="Button.scopebtn">
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="11.5" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine2}" Padding="14,6">
-						<ContentPresenter Content="{TemplateBinding Content}"
-										  TextElement.Foreground="{TemplateBinding Foreground}" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.scopebtn.on">
-		<Setter Property="Foreground" Value="White" />
-	</Style>
-	<Style Selector="Button.scopebtn.on /template/ Border#bg">
-		<Setter Property="Background" Value="#2Ee0394c" />
-		<Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
-	</Style>
+  <!-- 作用域按钮 -->
+  <Style Selector="Button.scopebtn">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine2}" Padding="14,6">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.scopebtn.on">
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.scopebtn.on /template/ Border#bg">
+    <Setter Property="Background" Value="#2Ee0394c" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
+  </Style>
 
-	<!-- 弹窗底部按钮 -->
-	<Style Selector="Button.mfbtn">
-		<Setter Property="Height" Value="40" />
-		<Setter Property="MinWidth" Value="96" />
-		<Setter Property="Padding" Value="18,0" />
-		<Setter Property="CornerRadius" Value="11" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="Background" Value="{DynamicResource GlassSoft}" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="FontSize" Value="13" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-	</Style>
-	<Style Selector="Button.mfbtn /template/ ContentPresenter">
-		<Setter Property="CornerRadius" Value="11" />
-		<Setter Property="HorizontalContentAlignment" Value="Center" />
-		<Setter Property="VerticalContentAlignment" Value="Center" />
-	</Style>
-	<Style Selector="Button.mfbtn:pointerover /template/ ContentPresenter">
-		<Setter Property="Background" Value="{DynamicResource GlassBright}" />
-	</Style>
-	<Style Selector="Button.mfbtn.danger">
-		<Setter Property="BorderBrush" Value="#f06b78" />
-		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background" Value="#c62a3b" />
-	</Style>
-	<Style Selector="Button.mfbtn.pri">
-		<Setter Property="BorderBrush" Value="Transparent" />
-		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background" Value="#2074cd" />
-	</Style>
+  <!-- 弹窗底部按钮 -->
+  <Style Selector="Button.mfbtn">
+    <Setter Property="Height" Value="40" />
+    <Setter Property="MinWidth" Value="96" />
+    <Setter Property="Padding" Value="18,0" />
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.mfbtn /template/ ContentPresenter">
+    <Setter Property="CornerRadius" Value="11" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.mfbtn:pointerover /template/ ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource GlassBright}" />
+  </Style>
+  <Style Selector="Button.mfbtn.danger">
+    <Setter Property="BorderBrush" Value="#f06b78" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background" Value="#c62a3b" />
+  </Style>
+  <Style Selector="Button.mfbtn.pri">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background" Value="#2074cd" />
+  </Style>
 
-	<Style Selector="Button.mfbtn:disabled">
-		<Setter Property="Opacity" Value="0.4" />
-	</Style>
-	<!-- 弹窗底部主操作按钮：主题红 -->
-	<Style Selector="Button.mfbtn.go">
-		<Setter Property="BorderBrush" Value="Transparent" />
-		<Setter Property="Foreground" Value="White" />
-		<Setter Property="Background" Value="#c62a3b" />
-	</Style>
+  <Style Selector="Button.mfbtn:disabled">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+  <!-- 弹窗底部主操作按钮：主题红 -->
+  <Style Selector="Button.mfbtn.go">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Background" Value="#c62a3b" />
+  </Style>
 
-	<!-- 快捷选择按钮 -->
-	<Style Selector="Button.qbtn">
-		<Setter Property="Foreground" Value="{DynamicResource Body}" />
-		<Setter Property="FontSize" Value="11" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine}" Padding="11,5">
-						<ContentPresenter Content="{TemplateBinding Content}"
-										  TextElement.Foreground="{TemplateBinding Foreground}" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.qbtn:pointerover /template/ Border#bg">
-		<Setter Property="Background" Value="#08FFFFFF" />
-	</Style>
+  <!-- 快捷选择按钮 -->
+  <Style Selector="Button.qbtn">
+    <Setter Property="Foreground" Value="{DynamicResource Body}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="Transparent" CornerRadius="7" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="11,5">
+            <ContentPresenter Content="{TemplateBinding Content}"
+                              TextElement.Foreground="{TemplateBinding Foreground}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.qbtn:pointerover /template/ Border#bg">
+    <Setter Property="Background" Value="#07000000" />
+  </Style>
 
-	<!-- 配方参数预览小卡 -->
-	<Style Selector="Border.rvcard">
-		<Setter Property="Background" Value="{DynamicResource GlassSoft}" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="9" />
-		<Setter Property="Padding" Value="8" />
-		<Setter Property="Margin" Value="3" />
-	</Style>
-	<Style Selector="TextBlock.rvk">
-		<Setter Property="FontSize" Value="9.5" />
-		<Setter Property="Foreground" Value="{DynamicResource Mute}" />
-		<Setter Property="HorizontalAlignment" Value="Center" />
-	</Style>
-	<Style Selector="TextBlock.rvv">
-		<Setter Property="FontSize" Value="12" />
-		<Setter Property="FontWeight" Value="SemiBold" />
-		<Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-		<Setter Property="HorizontalAlignment" Value="Center" />
-		<Setter Property="Margin" Value="0,3,0,0" />
-	</Style>
+  <!-- 配方参数预览小卡 -->
+  <Style Selector="Border.rvcard">
+    <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="8" />
+    <Setter Property="Margin" Value="3" />
+  </Style>
+  <Style Selector="TextBlock.rvk">
+    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="Foreground" Value="{DynamicResource Mute}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.rvv">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,3,0,0" />
+  </Style>
 
-	<!-- 应用通道行 -->
-	<Style Selector="Button.applyrow">
-		<Setter Property="HorizontalAlignment" Value="Stretch" />
-		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate>
-					<Border x:Name="bg" Background="{DynamicResource GlassSoft}" CornerRadius="9" BorderThickness="1"
-							BorderBrush="{DynamicResource GlassLine}" Padding="12,9">
-						<ContentPresenter Content="{TemplateBinding Content}" />
-					</Border>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-	<Style Selector="Button.applyrow:pointerover /template/ Border#bg">
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-	</Style>
-	<Style Selector="Button.applyrow.cur /template/ Border#bg">
-		<Setter Property="Background" Value="#14e0394c" />
-		<Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
-	</Style>
-	<Style Selector="Button.applyrow.dis">
-		<Setter Property="Opacity" Value="0.4" />
-	</Style>
-	<Style Selector="Border.srctag">
-		<Setter Property="Background" Value="{DynamicResource Accent}" />
-		<Setter Property="CornerRadius" Value="5" />
-		<Setter Property="Padding" Value="7,2" />
-	</Style>
-	<Style Selector="Border.applynote">
-		<Setter Property="Background" Value="#145b96e4" />
-		<Setter Property="BorderBrush" Value="#405b96e4" />
-		<Setter Property="BorderThickness" Value="1" />
-		<Setter Property="CornerRadius" Value="9" />
-		<Setter Property="Padding" Value="12,10" />
-	</Style>
+  <!-- 应用通道行 -->
+  <Style Selector="Button.applyrow">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate>
+          <Border x:Name="bg" Background="{DynamicResource GlassSoft}" CornerRadius="9" BorderThickness="1"
+                  BorderBrush="{DynamicResource GlassLine}" Padding="12,9">
+            <ContentPresenter Content="{TemplateBinding Content}" />
+          </Border>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style Selector="Button.applyrow:pointerover /template/ Border#bg">
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+  </Style>
+  <Style Selector="Button.applyrow.cur /template/ Border#bg">
+    <Setter Property="Background" Value="#14e0394c" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBright}" />
+  </Style>
+  <Style Selector="Button.applyrow.dis">
+    <Setter Property="Opacity" Value="0.4" />
+  </Style>
+  <Style Selector="Border.srctag">
+    <Setter Property="Background" Value="{DynamicResource Accent}" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="Padding" Value="7,2" />
+  </Style>
+  <Style Selector="Border.applynote">
+    <Setter Property="Background" Value="#145b96e4" />
+    <Setter Property="BorderBrush" Value="#405b96e4" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Padding" Value="12,10" />
+  </Style>
 
-	<!-- 帮助框 -->
-	<Style Selector="Border.phelp">
-		<Setter Property="Background" Value="#06FFFFFF" />
-		<Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
-		<Setter Property="BorderThickness" Value="2,0,0,0" />
-		<Setter Property="CornerRadius" Value="0,7,7,0" />
-		<Setter Property="Padding" Value="11,9" />
-	</Style>
+  <!-- 帮助框 -->
+  <Style Selector="Border.phelp">
+    <Setter Property="Background" Value="#06000000" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
+    <Setter Property="BorderThickness" Value="2,0,0,0" />
+    <Setter Property="CornerRadius" Value="0,7,7,0" />
+    <Setter Property="Padding" Value="11,9" />
+  </Style>
 
 </Styles>

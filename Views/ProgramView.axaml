@@ -83,7 +83,7 @@
                         Command="{Binding $parent[ItemsControl].DataContext.AddStepCommand}"
                         CommandParameter="{Binding}">
                   <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-                    <Border Width="22" Height="22" CornerRadius="6" Background="#0AFFFFFF">
+                    <Border Width="22" Height="22" CornerRadius="6" Background="#08000000">
                       <Viewbox Width="12" Height="12">
                         <Canvas Width="24" Height="24">
                           <Path Data="{Binding Icon}" Stroke="{Binding IconBrush}" StrokeThickness="2"
@@ -262,7 +262,7 @@
           <DockPanel IsVisible="{Binding HasSelection}">
             <!-- 头 -->
             <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
-              <Border Width="24" Height="24" CornerRadius="6" Background="#0AFFFFFF">
+              <Border Width="24" Height="24" CornerRadius="6" Background="#08000000">
                 <Viewbox Width="13" Height="13">
                   <Canvas Width="24" Height="24">
                     <Path Data="{Binding SelectedStep.Icon}" Stroke="{Binding SelectedStep.IconBrush}"
@@ -329,7 +329,7 @@
                     <Button Classes="curvecard" Command="{Binding EditCommand}" Margin="0,0,0,11">
                       <StackPanel>
                         <Border Classes="curvemini" Height="90">
-                          <Polyline Points="{Binding Points}" Stroke="#f0a830" StrokeThickness="1.6"
+                          <Polyline Points="{Binding Points}" Stroke="#c9820f" StrokeThickness="1.6"
                                     StrokeLineCap="Round" StrokeJoin="Round" />
                         </Border>
                         <Grid ColumnDefinitions="*,Auto" Margin="0,9,0,0">
@@ -383,9 +383,9 @@
       <!-- 拖拽幽灵预览：克制的悬浮卡片，无倾斜、无彩色辉光 -->
       <Border x:Name="DragGhost" IsVisible="False" Padding="11,8" CornerRadius="9"
               BorderThickness="1" BorderBrush="#5A5FA1E6"
-              Background="#F21E1E23" Opacity="0.97">
+              Background="#F2FFFFFF" Opacity="0.97">
         <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-          <Border Width="22" Height="22" CornerRadius="6" Background="#0AFFFFFF">
+          <Border Width="22" Height="22" CornerRadius="6" Background="#08000000">
             <Viewbox Width="12" Height="12">
               <Canvas Width="24" Height="24">
                 <Path x:Name="GhostPath" StrokeThickness="2"

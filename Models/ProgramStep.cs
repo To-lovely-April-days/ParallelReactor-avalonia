@@ -125,7 +125,7 @@ public class StepDef
             },
             [StepType.Wait] = new StepDef
             {
-                Type = StepType.Wait, Name = "等待", Chip = "WAIT", Brush = B("#a4a4b0"),
+                Type = StepType.Wait, Name = "等待", Chip = "WAIT", Brush = B("#6b7079"),
                 Icon = G("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2"),
                 Help = "用「等待温度/压力到位」可让程序自适应实际耗时，比固定时长更稳健。",
                 Fields = new()

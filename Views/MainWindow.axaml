@@ -6,8 +6,8 @@
         CanResize="True"
         WindowStartupLocation="CenterScreen"
         Title="霍桐多通道平行反应仪控制系统"
-        Background="#0c0c0f"
+        Background="#eef0f3"
         Width="1280" Height="720">
-	<!-- X11/桌面外壳：铺满屏幕在 code-behind 完成，内容托管 MainView（与 DRM 单视图共用同一 MainView）。 -->
-	<v:MainView />
+  <!-- X11/桌面外壳：铺满屏幕在 code-behind 完成，内容托管 MainView（与 DRM 单视图共用同一 MainView）。 -->
+  <v:MainView />
 </Window>

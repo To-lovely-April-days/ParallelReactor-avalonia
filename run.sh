@@ -27,7 +27,7 @@ export PR_PRESS_SLAVE=1
 export PR_IO_PORT=/dev/ttyS8
 export PR_IO_SLAVE=1
 # export PR_IO_ENERGIZE=close      # 若点"开"反而关（常开阀），取消本行注释翻转方向
-
+export PR_STIR_TRACE=1
 # ---------- 显示 / 字体（可选，按需开启）----------
 # export PR_UI_SCALE=1.5           # 高 DPI 渲染缩放（默认 1.5，适配 1080p）
 # export PR_TEXT_MODE=antialias    # 文本渲染：alias / antialias / subpixel

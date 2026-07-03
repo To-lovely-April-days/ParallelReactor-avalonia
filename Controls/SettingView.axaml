@@ -189,7 +189,7 @@
                                             <Border CornerRadius="999" Background="{StaticResource GlassBright}"
                                                     BorderBrush="{StaticResource GlassLine2}" BorderThickness="1"
                                                     IsVisible="{Binding On, Converter={x:Static conv:InverseBoolConverter.Instance}}">
-                                              <Ellipse Width="15" Height="15" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
+                                              <Ellipse Width="15" Height="15" Fill="#b8bcc8" HorizontalAlignment="Left" Margin="2,0,0,0" />
                                             </Border>
                                             <Border CornerRadius="999" IsVisible="{Binding On}">
                                               <Border.Background>
@@ -352,7 +352,7 @@
                         <!-- 通道 + 状态 -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                           <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource OnDark}" />
-                          <TextBlock Text="整定中…" IsVisible="{Binding Autotuning}" FontSize="10" Foreground="#f0a830" Margin="0,2,0,0" />
+                          <TextBlock Text="整定中…" IsVisible="{Binding Autotuning}" FontSize="10" Foreground="#c9820f" Margin="0,2,0,0" />
                           <TextBlock Text="就绪" IsVisible="{Binding !Autotuning}" FontSize="10" Foreground="{StaticResource Mute}" Margin="0,2,0,0" />
                         </StackPanel>
 

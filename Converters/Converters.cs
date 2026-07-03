@@ -14,13 +14,7 @@ public class InverseBoolConverter : IValueConverter
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => v is bool b && !b;
 }
 
-///// <summary>bool → 不透明度（true=1, false=0），用于淡入淡出</summary>
-//public class BoolToOpacityConverter : IValueConverter
-//{
-//    public static readonly BoolToOpacityConverter Instance = new();
-//    public object Convert(object? v, Type t, object? p, CultureInfo c) => v is bool b && b ? 1.0 : 0.0;
-//    public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
-//}
+
 
 /// <summary>bool → 平移变换：true=滑入(0)，false=藏到右侧屏外(392)。用于抽屉动画。</summary>
 public class BoolToTranslateConverter : IValueConverter
@@ -30,7 +24,7 @@ public class BoolToTranslateConverter : IValueConverter
     {
         bool open = v is bool b && b;
         return Avalonia.Media.Transformation.TransformOperations.Parse(
-            open ? "translateX(0px)" : "translateX(392px)");
+            open ? "translateX(0px)" : "translateX(460px)");
     }
     public object ConvertBack(object? v, Type t, object? p, CultureInfo c) => throw new NotSupportedException();
 }
@@ -74,10 +68,10 @@ public class StateColorConverter : IValueConverter
         var st = v is ReactorState s ? s : ReactorState.Idle;
         var color = st switch
         {
-            ReactorState.React => Color.Parse("#a3e635"),
+            ReactorState.React => Color.Parse("#5fae14"),
             ReactorState.Alarm => Color.Parse("#e0394c"),
-            ReactorState.Heating or ReactorState.Pressing => Color.Parse("#f0a830"),
-            ReactorState.Done => Color.Parse("#a4a4b0"),
+            ReactorState.Heating or ReactorState.Pressing => Color.Parse("#c9820f"),
+            ReactorState.Done => Color.Parse("#7d8694"),
             _ => Color.Parse("#66666f")
         };
         return new SolidColorBrush(color);

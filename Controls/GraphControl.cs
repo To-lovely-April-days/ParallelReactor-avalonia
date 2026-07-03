@@ -18,8 +18,8 @@ public class GraphControl : Control
     public GraphViewModel? Vm { get; set; }
 
     private static readonly Typeface Face = new("Inter, Noto Sans SC");
-    private static readonly Color Mute = Color.Parse("#66666f");
-    private static readonly Color Body = Color.Parse("#a4a4b0");
+    private static readonly Color Mute = Color.Parse("#55555f");
+    private static readonly Color Body = Color.Parse("#3a3a44");
 
     public override void Render(DrawingContext ctx)
     {
@@ -29,8 +29,8 @@ public class GraphControl : Control
 
         double W = b.Width, H = b.Height, pl = 52, pr = 16, pt = 16, pb = 30;
 
-        // 背景
-        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(110, 12, 12, 15)),
+        // 背景（浅色主题：极淡灰绘图区）
+        ctx.FillRectangle(new SolidColorBrush(Color.FromArgb(6, 0, 0, 0)),
             new Rect(0, 0, W, H), 10);
 
         var on = vm.Channels.Where(c => c.IsOn && !c.Reactor.IsIdle).ToList();
@@ -80,7 +80,7 @@ public class GraphControl : Control
         double Y(double v) => H - pb - (H - pt - pb) * (v - yLo) / (yHi - yLo <= 0 ? 1 : yHi - yLo);
 
         // —— y 网格 + 刻度 ——
-        var gpenY = new Pen(new SolidColorBrush(Color.FromArgb(14, 255, 255, 255)), 1);
+        var gpenY = new Pen(new SolidColorBrush(Color.FromArgb(16, 0, 0, 0)), 1);
         string fmt = "0." + new string('0', vm.Decimals);
         for (int i = 0; i <= 5; i++)
         {
@@ -91,7 +91,7 @@ public class GraphControl : Control
         }
 
         // —— x 网格 + 刻度（相对“现在”的时间）——
-        var gpenX = new Pen(new SolidColorBrush(Color.FromArgb(10, 255, 255, 255)), 1);
+        var gpenX = new Pen(new SolidColorBrush(Color.FromArgb(11, 0, 0, 0)), 1);
         for (int i = 0; i <= 6; i++)
         {
             double x = pl + (W - pl - pr) * i / 6;

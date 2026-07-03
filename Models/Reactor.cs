@@ -51,15 +51,21 @@ public partial class Reactor : ObservableObject
 
     // —— 压力显示（按全局单位换算；内部 P 恒为 psi，不影响报警/SP 判定）——
     public double PShown => Units.P(P);
+    public string PText => Units.PValue(P);   // 按单位取合适小数位（MPa 三位 / bar 两位 / psi 一位）
     public string PUnit => Units.PLabel;
 
     /// <summary>P 变化时刷新换算后的显示值。</summary>
-    partial void OnPChanged(double value) => OnPropertyChanged(nameof(PShown));
+    partial void OnPChanged(double value)
+    {
+        OnPropertyChanged(nameof(PShown));
+        OnPropertyChanged(nameof(PText));
+    }
 
     /// <summary>全局单位切换后调用，刷新压力显示（值 + 单位标签）。</summary>
     public void RefreshUnits()
     {
         OnPropertyChanged(nameof(PShown));
+        OnPropertyChanged(nameof(PText));
         OnPropertyChanged(nameof(PUnit));
     }
 

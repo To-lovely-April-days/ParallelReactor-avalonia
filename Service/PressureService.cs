@@ -11,8 +11,10 @@ namespace ParallelReactor.Services;
 public sealed class PressureService
 {
     private readonly AnalogModule _ai;
-    private readonly double _engHi;
     private readonly bool _is4to20;
+
+    /// <summary>变送器满量程（工程量 psi，原码满程对应该值）。可运行时修改（设置页改量程后即时生效）。</summary>
+    public double FullScalePsi { get; set; }
 
     /// <summary>最近一次读到的 8 路压力（psi）。</summary>
     public double[] Pressures { get; } = new double[8];
@@ -20,7 +22,7 @@ public sealed class PressureService
     public PressureService(IModbusMaster bus, byte slave, double fullScale, bool is4to20)
     {
         _ai = new AnalogModule(bus, slave);
-        _engHi = fullScale;
+        FullScalePsi = fullScale;
         _is4to20 = is4to20;
     }
 
@@ -29,7 +31,7 @@ public sealed class PressureService
     {
         try
         {
-            var v = await _ai.ReadScaledAsync(0, _engHi, _is4to20).ConfigureAwait(false);
+            var v = await _ai.ReadScaledAsync(0, FullScalePsi, _is4to20).ConfigureAwait(false);
             for (int i = 0; i < Pressures.Length && i < v.Length; i++) Pressures[i] = v[i];
             return true;
         }

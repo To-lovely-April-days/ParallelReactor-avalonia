@@ -37,7 +37,8 @@ public partial class KeyboardViewModel : ViewModelBase
         Unit = unit;
         _min = min;
         _max = max;
-        Hint = $"范围 {min:0} – {max:0} {unit}";
+        // 范围提示：有小数时按小数显示（如 0.3 – 3.2），整数则不带小数点，避免把 0.3 显示成 0
+        Hint = $"范围 {min:0.##} – {max:0.##} {unit}";
         Buffer = current == Math.Floor(current) ? ((long)current).ToString() : current.ToString();
         _onConfirmNumber = onConfirm;
         _onConfirmText = null;

@@ -10,1039 +10,994 @@
              x:Class="ParallelReactor.Views.MainView"
              x:DataType="vm:MainViewModel"
              d:DesignWidth="1280" d:DesignHeight="720"
-             Background="#0c0c0f"
+             Background="#eef0f3"
              FontFamily="Inter, Noto Sans CJK SC, Source Han Sans CN, Noto Sans SC, Microsoft YaHei, WenQuanYi Micro Hei, sans-serif">
 
-	<UserControl.Resources>
-		<conv:InverseBoolConverter x:Key="InvBool" />
-		<conv:EqualsConverter x:Key="Eq" />
-		<conv:EqualsToOpacityConverter x:Key="EqOp" />
-		<conv:BoolToOpacityConverter x:Key="BoolOp" />
-		<conv:StateColorConverter x:Key="StColor" />
-	</UserControl.Resources>
+  <UserControl.Resources>
+    <conv:InverseBoolConverter x:Key="InvBool" />
+    <conv:EqualsConverter x:Key="Eq" />
+    <conv:EqualsToOpacityConverter x:Key="EqOp" />
+    <conv:BoolToOpacityConverter x:Key="BoolOp" />
+    <conv:StateColorConverter x:Key="StColor" />
+  </UserControl.Resources>
 
-	<!-- 设计画布：逻辑 1280×720，靠 1.5× 高 DPI 直接渲染到 1920×1080 物理像素。
+  <!-- 设计画布：逻辑 1280×720，靠 1.5× 高 DPI 直接渲染到 1920×1080 物理像素。
        不使用任何放大变换（无 Viewbox / 无 LayoutTransform）→ 1:1 像素、文字最锐利。-->
-	<Panel x:Name="DesignCanvas" Background="#0d0c0f">
-		<!-- 背景改为纯色实底：原来的全屏渐变 + 两层全屏半透明红光晕是纯过度绘制，
+  <Panel x:Name="DesignCanvas" Background="#eef0f3">
+    <!-- 背景改为纯色实底：原来的全屏渐变 + 两层全屏半透明红光晕是纯过度绘制，
          在 G52 上是每帧的填充/混合开销，已移除以降低 frame time。 -->
 
-		<Grid RowDefinitions="64,46,*,66">
+    <Grid RowDefinitions="64,46,*,66">
 
-			<!-- ============ 顶栏 ============ -->
-			<Grid Grid.Row="0" Margin="22,0">
-				<!-- 左：品牌（logo 用图片，放 Assets/logo.png 替换）-->
-				<StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
-							HorizontalAlignment="Left">
-					<Image Source="avares://ParallelReactor/Assets/logo.png" Height="32"
-						   Stretch="Uniform" VerticalAlignment="Center" />
-					<StackPanel VerticalAlignment="Center">
-						<TextBlock Text="霍桐仪器" FontSize="15" FontWeight="Bold"
-								   Foreground="{DynamicResource OnDark}" LetterSpacing="2" />
-						<TextBlock Text="HUOTONG INSTRUMENT" FontSize="8.5" FontWeight="Medium"
-								   Foreground="{DynamicResource Body}" LetterSpacing="1.8" Margin="0,3,0,0" />
-					</StackPanel>
-				</StackPanel>
+      <!-- ============ 顶栏 ============ -->
+      <Grid Grid.Row="0" Margin="22,0">
+        <!-- 左：品牌（logo 用图片，放 Assets/logo.png 替换）-->
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center"
+                    HorizontalAlignment="Left">
+          <Image Source="avares://ParallelReactor/Assets/logo.png" Height="32"
+                 Stretch="Uniform" VerticalAlignment="Center" />
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="霍桐仪器" FontSize="15" FontWeight="Bold"
+                       Foreground="{DynamicResource OnDark}" LetterSpacing="2" />
+            <TextBlock Text="HUOTONG INSTRUMENT" FontSize="8.5" FontWeight="Medium"
+                       Foreground="{DynamicResource Body}" LetterSpacing="1.8" Margin="0,3,0,0" />
+          </StackPanel>
+        </StackPanel>
 
-				<!-- 中：标题（绝对居中）-->
-				<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-					<TextBlock Text="多通道平行反应仪" FontSize="20" FontWeight="SemiBold"
-							   Foreground="{DynamicResource OnDark}" LetterSpacing="6"
-							   HorizontalAlignment="Center" />
-					<TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR · 8CH" FontSize="9" FontWeight="Medium"
-							   Foreground="{DynamicResource Body}" LetterSpacing="3.5" Margin="0,4,0,0"
-							   HorizontalAlignment="Center" />
-				</StackPanel>
+        <!-- 中：标题（绝对居中）-->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+          <TextBlock Text="多通道平行反应仪" FontSize="20" FontWeight="SemiBold"
+                     Foreground="{DynamicResource OnDark}" LetterSpacing="6"
+                     HorizontalAlignment="Center" />
+          <TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR · 8CH" FontSize="9" FontWeight="Medium"
+                     Foreground="{DynamicResource Body}" LetterSpacing="3.5" Margin="0,4,0,0"
+                     HorizontalAlignment="Center" />
+        </StackPanel>
 
-				<!-- 右：信息区 -->
-				<StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
-							HorizontalAlignment="Right">
-					<!-- WiFi（SVG 矢量还原：三段弧 + 底部圆点，红色）-->
-					<Canvas Width="18" Height="18" VerticalAlignment="Center">
-						<Canvas.RenderTransform>
-							<ScaleTransform ScaleX="0.75" ScaleY="0.75" />
-						</Canvas.RenderTransform>
-						<Path Data="M1.42 9a16 16 0 0 1 21.16 0" Stroke="{DynamicResource AccentBright}"
-							  StrokeThickness="2.2" StrokeLineCap="Round" />
-						<Path Data="M5 12.55a11 11 0 0 1 14 0" Stroke="{DynamicResource AccentBright}"
-							  StrokeThickness="2.2" StrokeLineCap="Round" />
-						<Path Data="M8.53 16.11a6 6 0 0 1 6.95 0" Stroke="{DynamicResource AccentBright}"
-							  StrokeThickness="2.2" StrokeLineCap="Round" />
-						<Ellipse Canvas.Left="11" Canvas.Top="19" Width="2" Height="2"
-								 Fill="{DynamicResource AccentBright}" />
-					</Canvas>
-					<Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
-					<!-- 服务热线 -->
-					<StackPanel VerticalAlignment="Center">
-						<TextBlock Text="服务热线" FontSize="9" Foreground="{DynamicResource Mute}"
-								   LetterSpacing="3" HorizontalAlignment="Right" />
-						<TextBlock Text="021-67230701" FontSize="13" FontWeight="Bold"
-								   Foreground="{DynamicResource OnDark}" LetterSpacing="0.5"
-								   HorizontalAlignment="Right" Margin="0,1,0,0" />
-					</StackPanel>
-					<Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
-					<!-- 时钟 -->
-					<StackPanel VerticalAlignment="Center">
-						<TextBlock Text="{Binding ClockTime}" FontSize="14" FontWeight="SemiBold"
-								   Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
-						<TextBlock Text="{Binding ClockDate}" FontSize="9.5" Foreground="{DynamicResource Body}"
-								   HorizontalAlignment="Right" Margin="0,1,0,0" />
-					</StackPanel>
-					<Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
-					<!-- 通知铃（SVG 矢量 + 报警脉冲动效 + 点击下拉列表）-->
-					<Panel VerticalAlignment="Center">
-						<Button x:Name="BellToggle" Classes="bell"
-								Classes.hasalarm="{Binding HasAlarm}"
-								Click="OnBellClick" ToolTip.Tip="通知">
-							<!-- 内层 Panel 撑满整个 34×34 按钮，角标才会落在按钮右上角而不是盖住铃铛 -->
-							<Panel Width="34" Height="34">
-								<Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
-									<Canvas Width="1024" Height="1024">
-										<Path Classes="bellfill" Data="M512.64 0a42.666667 42.666667 0 0 1 42.56 39.466667l0.128 3.2-0.021333 49.92c173.226667 15.573333 307.584 176.576 307.584 370.773333v126.72c0 54.954667 18.176 107.733333 50.602666 147.733333l17.408 21.482667c37.738667 46.549333 8.277333 121.706667-53.610666 121.706667h-188.202667a180.074667 180.074667 0 0 1-345.109333 0H155.733333c-61.888 0-91.349333-75.178667-53.589333-121.706667l17.408-21.504c32.426667-39.978667 50.581333-92.757333 50.581333-147.712v-126.72c0-191.296 130.389333-350.357333 299.84-369.962667V42.666667a42.666667 42.666667 0 0 1 42.666667-42.666667z m83.413333 881.002667h-159.082666a94.656 94.656 0 0 0 159.104 0zM527.765333 176.704H512.64l-0.469333-0.021333h-6.890667c-134.741333 0-246.485333 123.605333-249.728 279.68l-0.085333 7.018666v126.698667c0 74.261333-24.704 146.048-69.610667 201.429333l-3.392 4.138667h668.074667l-3.328-4.117333c-43.2-53.269333-67.712-121.685333-69.546667-192.896l-0.106667-8.554667v-126.72c0-159.36-113.045333-286.656-249.813333-286.656z" />
-									</Canvas>
-								</Viewbox>
-								<!-- 未读角标：锚定按钮右上角，轻微外探 -->
-								<Border Classes="nbadge" Classes.pulse="{Binding HasAlarm}"
-										IsVisible="{Binding HasNotif}"
-										MinWidth="16" Height="16" CornerRadius="8" Padding="3,0"
-										BorderBrush="#0e0e11" BorderThickness="1.5"
-										HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0">
-									<Border.Background>
-										<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-											<GradientStop Color="#e0394c" Offset="0" />
-											<GradientStop Color="#A41626" Offset="1" />
-										</LinearGradientBrush>
-									</Border.Background>
-									<TextBlock Text="{Binding NotifCountText}" FontSize="10" FontWeight="Bold"
-											   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-								</Border>
-							</Panel>
-						</Button>
+        <!-- 右：信息区 -->
+        <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center"
+                    HorizontalAlignment="Right">
+          <!-- WiFi（SVG 矢量还原：三段弧 + 底部圆点，红色）-->
+          <Canvas Width="18" Height="18" VerticalAlignment="Center">
+            <Canvas.RenderTransform>
+              <ScaleTransform ScaleX="0.75" ScaleY="0.75" />
+            </Canvas.RenderTransform>
+            <Path Data="M1.42 9a16 16 0 0 1 21.16 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Path Data="M5 12.55a11 11 0 0 1 14 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Path Data="M8.53 16.11a6 6 0 0 1 6.95 0" Stroke="{DynamicResource AccentBright}"
+                  StrokeThickness="2.2" StrokeLineCap="Round" />
+            <Ellipse Canvas.Left="11" Canvas.Top="19" Width="2" Height="2"
+                     Fill="{DynamicResource AccentBright}" />
+          </Canvas>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 服务热线 -->
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="服务热线" FontSize="9" Foreground="{DynamicResource Mute}"
+                       LetterSpacing="3" HorizontalAlignment="Right" />
+            <TextBlock Text="021-67230701" FontSize="13" FontWeight="Bold"
+                       Foreground="{DynamicResource OnDark}" LetterSpacing="0.5"
+                       HorizontalAlignment="Right" Margin="0,1,0,0" />
+          </StackPanel>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 时钟 -->
+          <StackPanel VerticalAlignment="Center">
+            <TextBlock Text="{Binding ClockTime}" FontSize="14" FontWeight="SemiBold"
+                       Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
+            <TextBlock Text="{Binding ClockDate}" FontSize="9.5" Foreground="{DynamicResource Body}"
+                       HorizontalAlignment="Right" Margin="0,1,0,0" />
+          </StackPanel>
+          <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 通知铃（SVG 矢量 + 报警脉冲动效 + 点击下拉列表）-->
+          <Panel VerticalAlignment="Center">
+            <Button x:Name="BellToggle" Classes="bell"
+                    Classes.hasalarm="{Binding HasAlarm}"
+                    Click="OnBellClick" ToolTip.Tip="通知">
+              <!-- 内层 Panel 撑满整个 34×34 按钮，角标才会落在按钮右上角而不是盖住铃铛 -->
+              <Panel Width="34" Height="34">
+                <Viewbox Width="19" Height="19" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <Canvas Width="1024" Height="1024">
+                    <Path Classes="bellfill" Data="M512.64 0a42.666667 42.666667 0 0 1 42.56 39.466667l0.128 3.2-0.021333 49.92c173.226667 15.573333 307.584 176.576 307.584 370.773333v126.72c0 54.954667 18.176 107.733333 50.602666 147.733333l17.408 21.482667c37.738667 46.549333 8.277333 121.706667-53.610666 121.706667h-188.202667a180.074667 180.074667 0 0 1-345.109333 0H155.733333c-61.888 0-91.349333-75.178667-53.589333-121.706667l17.408-21.504c32.426667-39.978667 50.581333-92.757333 50.581333-147.712v-126.72c0-191.296 130.389333-350.357333 299.84-369.962667V42.666667a42.666667 42.666667 0 0 1 42.666667-42.666667z m83.413333 881.002667h-159.082666a94.656 94.656 0 0 0 159.104 0zM527.765333 176.704H512.64l-0.469333-0.021333h-6.890667c-134.741333 0-246.485333 123.605333-249.728 279.68l-0.085333 7.018666v126.698667c0 74.261333-24.704 146.048-69.610667 201.429333l-3.392 4.138667h668.074667l-3.328-4.117333c-43.2-53.269333-67.712-121.685333-69.546667-192.896l-0.106667-8.554667v-126.72c0-159.36-113.045333-286.656-249.813333-286.656z" />
+                  </Canvas>
+                </Viewbox>
+                <!-- 未读角标：锚定按钮右上角，轻微外探 -->
+                <Border Classes="nbadge" Classes.pulse="{Binding HasAlarm}"
+                        IsVisible="{Binding HasNotif}"
+                        MinWidth="16" Height="16" CornerRadius="8" Padding="3,0"
+                        BorderBrush="#ffffff" BorderThickness="1.5"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0">
+                  <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                      <GradientStop Color="#e0394c" Offset="0" />
+                      <GradientStop Color="#A41626" Offset="1" />
+                    </LinearGradientBrush>
+                  </Border.Background>
+                  <TextBlock Text="{Binding NotifCountText}" FontSize="10" FontWeight="Bold"
+                             Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+              </Panel>
+            </Button>
 
-						<!-- 通知下拉已移到根层 NotifOverlay（随 Viewbox 缩放）-->
-					</Panel>
-					<!-- 头像（用图片，放 Assets/user-avatar.png 替换）-->
-					<Border Width="34" Height="34" CornerRadius="17"
-							BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
-						<Image Source="avares://ParallelReactor/Assets/user-avatar.png" Width="30" Height="30"
-							   Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" />
-					</Border>
-				</StackPanel>
-			</Grid>
+            <!-- 通知下拉已移到根层 NotifOverlay（随 Viewbox 缩放）-->
+          </Panel>
+          <!-- 头像（用图片，放 Assets/user-avatar.png 替换）-->
+          <Border Width="34" Height="34" CornerRadius="17"
+                  BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1" ClipToBounds="True">
+            <Image Source="avares://ParallelReactor/Assets/user-avatar.png" Width="30" Height="30"
+                   Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+        </StackPanel>
+      </Grid>
 
-			<!-- ============ 工具栏 ============ -->
-			<Border Grid.Row="1" Margin="22,0" Height="36" VerticalAlignment="Center"
-					CornerRadius="11" Background="{DynamicResource GlassSoft}"
-					BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="7,0">
-				<Grid ColumnDefinitions="Auto,*,Auto">
-					<StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-						<Button Classes="tbtn go" Command="{Binding RunAllCommand}" IsVisible="{Binding NotRunning}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<Viewbox Width="16" Height="16" VerticalAlignment="Center">
-									<Canvas Width="24" Height="24">
-										<Path Classes="tico" Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
-										<Path Classes="tico-fill" Data="M10 8l6 4-6 4z" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="开始运行" VerticalAlignment="Center" />
-							</StackPanel>
-						</Button>
-						<Button Classes="tbtn" Command="{Binding StopAllCommand}" IsVisible="{Binding AnyRunning}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<Viewbox Width="16" Height="16" VerticalAlignment="Center">
-									<Canvas Width="24" Height="24">
-										<Path Classes="tico" Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
-										<Path Classes="tico-fill" Data="M9 9h6v6H9z" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="全部停止" VerticalAlignment="Center" />
-							</StackPanel>
-						</Button>
-						<Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
-						<Button Classes="tbtn" Command="{Binding RecipePicker.OpenCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<Viewbox Width="16" Height="16" VerticalAlignment="Center">
-									<Canvas Width="24" Height="24">
-										<Path Classes="tico" Data="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 3h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M9 12h6 M9 16h4" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="配方模板" VerticalAlignment="Center" />
-							</StackPanel>
-						</Button>
-						<Button Classes="tbtn" Command="{Binding Leak.OpenCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<Viewbox Width="16" Height="16" VerticalAlignment="Center">
-									<Canvas Width="24" Height="24">
-										<Path Classes="tico" Data="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="泄漏测试" VerticalAlignment="Center" />
-							</StackPanel>
-						</Button>
-						<Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
-						<Button Classes="tbtn man" Classes.on="{Binding ManualValve}"
-								Command="{Binding ToggleManualCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="6">
-								<Viewbox Width="16" Height="16" VerticalAlignment="Center">
-									<Canvas Width="24" Height="24">
-										<Path Classes="tico" Data="M5 8l7 4-7 4z M19 8l-7 4 7 4z M12 8V4 M9 4h6" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="手动阀控" VerticalAlignment="Center" />
-							</StackPanel>
-						</Button>
-					</StackPanel>
+      <!-- ============ 工具栏 ============ -->
+      <Border Grid.Row="1" Margin="22,0" Height="36" VerticalAlignment="Center"
+              CornerRadius="11" Background="{DynamicResource GlassSoft}"
+              BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="7,0">
+        <Grid ColumnDefinitions="Auto,*,Auto">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Button Classes="tbtn go" Command="{Binding RunAllCommand}" IsVisible="{Binding NotRunning}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+                    <Path Classes="tico-fill" Data="M10 8l6 4-6 4z" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="开始运行" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="tbtn" Command="{Binding StopAllCommand}" IsVisible="{Binding AnyRunning}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+                    <Path Classes="tico-fill" Data="M9 9h6v6H9z" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="全部停止" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
+            <Button Classes="tbtn" Command="{Binding RecipePicker.OpenCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 3h6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z M9 12h6 M9 16h4" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="配方模板" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Button Classes="tbtn" Command="{Binding Leak.OpenCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="泄漏测试" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
+            <Button Classes="tbtn man" Classes.on="{Binding ManualValve}"
+                    Command="{Binding ToggleManualCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M5 8l7 4-7 4z M19 8l-7 4 7 4z M12 8V4 M9 4h6" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="手动阀控" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
 
-					<StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
-						<TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource Body}">
-							<Run Text="运行 " />
-							<Run Text="{Binding RunCountText}" Foreground="{DynamicResource OnDark}" FontWeight="Bold" />
-							<Run Text=" 通道" />
-						</TextBlock>
-						<Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" />
-						<Button Classes="estop" Command="{Binding EstopCommand}">
-							<StackPanel Orientation="Horizontal" Spacing="7">
-								<Viewbox Width="15" Height="15" VerticalAlignment="Center">
-									<Canvas Width="1024" Height="1024">
-										<Path Classes="tico-fill estop-ico" Data="M512 960A448 448 0 1 1 512 64a448 448 0 0 1 0 896zM256 448a64 64 0 1 0 0 128h512a64 64 0 0 0 0-128H256z" />
-									</Canvas>
-								</Viewbox>
-								<TextBlock Text="急停" VerticalAlignment="Center" LetterSpacing="1.6" />
-							</StackPanel>
-						</Button>
-					</StackPanel>
-				</Grid>
-			</Border>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+            <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource Body}">
+              <Run Text="运行 " /><Run Text="{Binding RunCountText}" Foreground="{DynamicResource OnDark}" FontWeight="Bold" /><Run Text=" 通道" />
+            </TextBlock>
+            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" />
+            <Button Classes="estop" Command="{Binding EstopCommand}">
+              <StackPanel Orientation="Horizontal" Spacing="7">
+                <Viewbox Width="15" Height="15" VerticalAlignment="Center">
+                  <Canvas Width="1024" Height="1024">
+                    <Path Classes="tico-fill estop-ico" Data="M512 960A448 448 0 1 1 512 64a448 448 0 0 1 0 896zM256 448a64 64 0 1 0 0 128h512a64 64 0 0 0 0-128H256z" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="急停" VerticalAlignment="Center" LetterSpacing="1.6" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+        </Grid>
+      </Border>
 
-			<!-- ============ 首页面板 ============ -->
-			<Border Grid.Row="2" Margin="22,6" CornerRadius="18"
-					Background="{DynamicResource Glass}"
-					BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" ClipToBounds="True">
-				<Panel>
-					<!-- ===== 首页 ===== -->
-					<Grid RowDefinitions="Auto,*"
-						  IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=home}">
-						<!-- 面板头 -->
-						<Grid Grid.Row="0" Margin="20,16,20,8" ColumnDefinitions="Auto,*,Auto">
-							<StackPanel Grid.Column="0">
-								<TextBlock Text="反应器与气路系统" FontSize="16" FontWeight="SemiBold"
-										   Foreground="{DynamicResource OnDark}" />
-								<TextBlock Text="Reactor &amp; Gas Network" FontSize="9.5"
-										   Foreground="{DynamicResource Body}" LetterSpacing="1.5" Margin="0,2,0,0" />
-							</StackPanel>
-							<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14"
-										HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
-								<StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-									<Border Width="14" Height="4" CornerRadius="2">
-										<Border.Background>
-											<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-												<GradientStop Color="#84cc16" Offset="0" />
-												<GradientStop Color="#a3e635" Offset="1" />
-											</LinearGradientBrush>
-										</Border.Background>
-									</Border>
-									<TextBlock Text="气体流通" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-								</StackPanel>
-								<StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-									<Border Width="14" Height="4" CornerRadius="2" Background="#38FFFFFF" />
-									<TextBlock Text="共用总管" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-								</StackPanel>
-								<TextBlock Text="点击反应釜可控制 · 阀门需开启手动阀控"
-										   FontSize="11" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
-							</StackPanel>
+      <!-- ============ 首页面板 ============ -->
+      <Border Grid.Row="2" Margin="22,6" CornerRadius="18"
+              Background="{DynamicResource Glass}"
+              BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" ClipToBounds="True">
+        <Panel>
+        <!-- ===== 首页 ===== -->
+        <Grid RowDefinitions="Auto,*"
+              IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=home}">
+          <!-- 面板头 -->
+          <Grid Grid.Row="0" Margin="20,16,20,8" ColumnDefinitions="Auto,*,Auto">
+            <StackPanel Grid.Column="0">
+              <TextBlock Text="反应器与气路系统" FontSize="16" FontWeight="SemiBold"
+                         Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="Reactor &amp; Gas Network" FontSize="9.5"
+                         Foreground="{DynamicResource Body}" LetterSpacing="1.5" Margin="0,2,0,0" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14"
+                        HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,16,0">
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <Border Width="14" Height="4" CornerRadius="2">
+                  <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                      <GradientStop Color="#84cc16" Offset="0" />
+                      <GradientStop Color="#a3e635" Offset="1" />
+                    </LinearGradientBrush>
+                  </Border.Background>
+                </Border>
+                <TextBlock Text="气体流通" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                <Border Width="14" Height="4" CornerRadius="2" Background="#22000000" />
+                <TextBlock Text="共用总管" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="点击反应釜可控制 · 阀门需开启手动阀控"
+                         FontSize="11" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+            </StackPanel>
 
-							<!-- 搅拌总控（全局共用一台搅拌器：8 釜同开同关、同一转速）-->
-							<Border Grid.Column="2" CornerRadius="11" Background="{DynamicResource GlassSoft}"
-									BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="11,6" VerticalAlignment="Center">
-								<StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
-									<Viewbox Width="26" Height="26" VerticalAlignment="Center">
-										<Canvas Width="1024" Height="1024">
-											<Path Fill="#e0394c"
-												  Data="M544 421.44V448a32 32 0 1 1-64 0v-64a32 32 0 0 1 32-32 160 160 0 0 1 160 160 32 32 0 1 1-64 0 96.032 96.032 0 0 0-64-90.56z m-64 181.12V576a32 32 0 0 1 64 0v64a32 32 0 0 1-32 32 160 160 0 0 1-160-160 32 32 0 1 1 64 0c0 41.792 26.72 77.344 64 90.56zM512 800a288 288 0 1 1 0-576 288 288 0 0 1 0 576z m0-512a224 224 0 1 0 0 448 224 224 0 0 0 0-448z" />
-										</Canvas>
-									</Viewbox>
-									<StackPanel VerticalAlignment="Center">
-										<TextBlock Text="搅拌总控" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-										<TextBlock Text="全部反应釜共用" FontSize="9" Foreground="{DynamicResource Mute}" Margin="0,1,0,0" />
-									</StackPanel>
-									<!-- 转速（点击调起数字键盘）-->
-									<Button Command="{Binding EditStirRpmCommand}" Padding="10,4" CornerRadius="8"
-											Background="#40000000" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
-											VerticalAlignment="Center" Cursor="Hand">
-										<TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-											<Run Text="{Binding StirRpm}" />
-											<Run Text=" rpm" FontSize="9" Foreground="{DynamicResource Body}" />
-										</TextBlock>
-									</Button>
-									<!-- 开关 -->
-									<Button Command="{Binding ToggleStirCommand}" Padding="0" Background="Transparent"
-											BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
-										<Panel Width="46" Height="25">
-											<Border CornerRadius="999" Background="{DynamicResource GlassBright}"
-													BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
-													IsVisible="{Binding StirOn, Converter={x:Static conv:InverseBoolConverter.Instance}}">
-												<Ellipse Width="19" Height="19" Fill="#d8dcf0" HorizontalAlignment="Left" Margin="2,0,0,0" />
-											</Border>
-											<Border CornerRadius="999" IsVisible="{Binding StirOn}">
-												<Border.Background>
-													<LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-														<GradientStop Color="#e0394c" Offset="0" />
-														<GradientStop Color="#A41626" Offset="1" />
-													</LinearGradientBrush>
-												</Border.Background>
-												<Ellipse Width="19" Height="19" Fill="#f4f4f6" HorizontalAlignment="Right" Margin="0,0,2,0" />
-											</Border>
-										</Panel>
-									</Button>
-								</StackPanel>
-							</Border>
-						</Grid>
+            <!-- 搅拌总控（全局共用一台搅拌器：8 釜同开同关、同一转速）-->
+            <Border Grid.Column="2" CornerRadius="11" Background="{DynamicResource GlassSoft}"
+                    BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="11,6" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="11" VerticalAlignment="Center">
+                <Viewbox Width="26" Height="26" VerticalAlignment="Center">
+                  <Canvas Width="1024" Height="1024">
+                    <Path Fill="#e0394c"
+                          Data="M544 421.44V448a32 32 0 1 1-64 0v-64a32 32 0 0 1 32-32 160 160 0 0 1 160 160 32 32 0 1 1-64 0 96.032 96.032 0 0 0-64-90.56z m-64 181.12V576a32 32 0 0 1 64 0v64a32 32 0 0 1-32 32 160 160 0 0 1-160-160 32 32 0 1 1 64 0c0 41.792 26.72 77.344 64 90.56zM512 800a288 288 0 1 1 0-576 288 288 0 0 1 0 576z m0-512a224 224 0 1 0 0 448 224 224 0 0 0 0-448z" />
+                  </Canvas>
+                </Viewbox>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="搅拌总控" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  <TextBlock FontSize="9" Foreground="{DynamicResource Mute}" Margin="0,1,0,0">
+                    <Run Text="全部反应釜共用 · 电机电流 " /><Run Text="{Binding StirMotorCurrentText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
+                  </TextBlock>
+                </StackPanel>
+                <!-- 转速（点击调起数字键盘）-->
+                <Button Command="{Binding EditStirRpmCommand}" Padding="10,4" CornerRadius="8"
+                        Background="#0A000000" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                        VerticalAlignment="Center" Cursor="Hand">
+                  <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
+                    <Run Text="{Binding StirRpm}" /><Run Text=" rpm" FontSize="9" Foreground="{DynamicResource Body}" />
+                  </TextBlock>
+                </Button>
+                <!-- 开关 -->
+                <Button Command="{Binding ToggleStirCommand}" Padding="0" Background="Transparent"
+                        BorderThickness="0" VerticalAlignment="Center" Cursor="Hand">
+                  <Panel Width="46" Height="25">
+                    <Border CornerRadius="999" Background="{DynamicResource GlassBright}"
+                            BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
+                            IsVisible="{Binding StirOn, Converter={x:Static conv:InverseBoolConverter.Instance}}">
+                      <Ellipse Width="19" Height="19" Fill="#b8bcc8" HorizontalAlignment="Left" Margin="2,0,0,0" />
+                    </Border>
+                    <Border CornerRadius="999" IsVisible="{Binding StirOn}">
+                      <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                          <GradientStop Color="#e0394c" Offset="0" />
+                          <GradientStop Color="#A41626" Offset="1" />
+                        </LinearGradientBrush>
+                      </Border.Background>
+                      <Ellipse Width="19" Height="19" Fill="#f4f4f6" HorizontalAlignment="Right" Margin="0,0,2,0" />
+                    </Border>
+                  </Panel>
+                </Button>
+                <!-- 电机故障（DM2C 报警码 0x2203）：仅有故障时显示 + 一键清除 -->
+                <Border IsVisible="{Binding StirHasFault}" VerticalAlignment="Center" CornerRadius="8"
+                        Background="#1AE0394C" BorderBrush="#59E0394C" BorderThickness="1" Padding="9,4">
+                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#e0394c" VerticalAlignment="Center">
+                      <Run Text="⚠ 电机故障：" /><Run Text="{Binding StirFaultText}" />
+                    </TextBlock>
+                    <Button Command="{Binding ClearStirFaultCommand}" Content="清除" FontSize="10.5"
+                            Padding="8,2" CornerRadius="6" Background="#bd2f43" Foreground="White"
+                            BorderThickness="0" Cursor="Hand" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </Border>
+          </Grid>
 
-						<!-- 气路图 -->
-						<ctl:SchematicControl Grid.Row="1" x:Name="Schematic" Margin="14,0,14,12" />
-					</Grid>
+          <!-- 气路图 -->
+          <ctl:SchematicControl Grid.Row="1" x:Name="Schematic" Margin="14,0,14,12" />
+        </Grid>
 
-					<!-- ===== 程序界面 ===== -->
-					<ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=program}">
-						<ctl:ProgramView DataContext="{Binding Program}" />
-					</ContentControl>
+        <!-- ===== 程序界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=program}">
+          <ctl:ProgramView DataContext="{Binding Program}" />
+        </ContentControl>
 
-					<!-- ===== 实时曲线界面 ===== -->
-					<ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=graph}">
-						<ctl:GraphView DataContext="{Binding Graph}" />
-					</ContentControl>
+        <!-- ===== 实时曲线界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=graph}">
+          <ctl:GraphView DataContext="{Binding Graph}" />
+        </ContentControl>
 
-					<!-- ===== 运行记录界面 ===== -->
-					<ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=data}">
-						<ctl:DataView DataContext="{Binding Data}" />
-					</ContentControl>
+        <!-- ===== 运行记录界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=data}">
+          <ctl:DataView DataContext="{Binding Data}" />
+        </ContentControl>
 
-					<!-- ===== 报警与事件界面 ===== -->
-					<ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=alarm}">
-						<ctl:AlarmView DataContext="{Binding Alarm}" />
-					</ContentControl>
+        <!-- ===== 报警与事件界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=alarm}">
+          <ctl:AlarmView DataContext="{Binding Alarm}" />
+        </ContentControl>
 
-					<!-- ===== 系统设置界面 ===== -->
-					<ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=setting}">
-						<ctl:SettingView DataContext="{Binding Setting}" />
-					</ContentControl>
-				</Panel>
-			</Border>
+        <!-- ===== 系统设置界面 ===== -->
+        <ContentControl IsVisible="{Binding ActiveTab, Converter={StaticResource Eq}, ConverterParameter=setting}">
+          <ctl:SettingView DataContext="{Binding Setting}" />
+        </ContentControl>
+        </Panel>
+      </Border>
 
-			<!-- ============ 底栏导航菜单（全宽暗色条，图标+中文，选中=主题红）============ -->
-			<!-- 背景改纯色（原横向渐变→常驻表面的渐变着色开销去掉）-->
-			<Border Grid.Row="3" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource GlassLine2}"
-					Background="#201a1e">
-				<Grid Margin="16,0" ColumnDefinitions="Auto,*,Auto">
-					<Button Grid.Column="0" Classes="tbtn" Background="Transparent"
-							Command="{Binding LogoutCommand}" Foreground="{DynamicResource Mute}">
-						<TextBlock Text="← 退出" FontSize="12" />
-					</Button>
+      <!-- ============ 底栏导航菜单（全宽暗色条，图标+中文，选中=主题红）============ -->
+      <!-- 背景改纯色（原横向渐变→常驻表面的渐变着色开销去掉）-->
+      <Border Grid.Row="3" BorderThickness="0,1,0,0" BorderBrush="{DynamicResource GlassLine2}"
+              Background="#f6f7f9">
+        <Grid Margin="16,0" ColumnDefinitions="Auto,*,Auto">
+          <Button Grid.Column="0" Classes="tbtn" Background="Transparent"
+                  Command="{Binding LogoutCommand}" Foreground="{DynamicResource Mute}">
+            <TextBlock Text="← 退出" FontSize="12" />
+          </Button>
 
-					<UniformGrid Grid.Column="1" x:Name="Pills" Rows="1" Margin="8,0">
-						<Button Classes="nav active" Command="{Binding SwitchTabCmdCommand}" CommandParameter="home">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M3 12l9-9 9 9 M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" />
-								<TextBlock Classes="zh" Text="主页" />
-							</StackPanel>
-						</Button>
-						<Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="program">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M3 3h18v6H3z M3 15h18v6H3z M7 9v6 M17 9v6" />
-								<TextBlock Classes="zh" Text="程序" />
-							</StackPanel>
-						</Button>
-						<Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="graph">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M3 3v18h18 M7 14l4-4 4 3 5-6" />
-								<TextBlock Classes="zh" Text="曲线" />
-							</StackPanel>
-						</Button>
-						<Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="data">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M6 2h8l4 4v16H6z M14 2v4h4 M9 12h6 M9 16h6" />
-								<TextBlock Classes="zh" Text="记录" />
-							</StackPanel>
-						</Button>
-						<Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="alarm">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M5 20h14 M8 20v-6a4 4 0 0 1 8 0v6 M12 4v2.5 M4.5 8l1.6 1.3 M19.5 8l-1.6 1.3" />
-								<TextBlock Classes="zh" Text="报警" />
-							</StackPanel>
-						</Button>
-						<Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="setting">
-							<StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
-								<Path Classes="navico" Data="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-								<TextBlock Classes="zh" Text="设置" />
-							</StackPanel>
-						</Button>
-					</UniformGrid>
+          <UniformGrid Grid.Column="1" x:Name="Pills" Rows="1" Margin="8,0">
+            <Button Classes="nav active" Command="{Binding SwitchTabCmdCommand}" CommandParameter="home">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 12l9-9 9 9 M5 10v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V10" />
+                <TextBlock Classes="zh" Text="主页" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="program">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 3h18v6H3z M3 15h18v6H3z M7 9v6 M17 9v6" />
+                <TextBlock Classes="zh" Text="程序" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="graph">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M3 3v18h18 M7 14l4-4 4 3 5-6" />
+                <TextBlock Classes="zh" Text="曲线" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="data">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M6 2h8l4 4v16H6z M14 2v4h4 M9 12h6 M9 16h6" />
+                <TextBlock Classes="zh" Text="记录" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="alarm">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M5 20h14 M8 20v-6a4 4 0 0 1 8 0v6 M12 4v2.5 M4.5 8l1.6 1.3 M19.5 8l-1.6 1.3" />
+                <TextBlock Classes="zh" Text="报警" />
+              </StackPanel>
+            </Button>
+            <Button Classes="nav" Command="{Binding SwitchTabCmdCommand}" CommandParameter="setting">
+              <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Path Classes="navico" Data="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                <TextBlock Classes="zh" Text="设置" />
+              </StackPanel>
+            </Button>
+          </UniformGrid>
 
-					<StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
-						<TextBlock Text="MODEL" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource Mute}"
-								   LetterSpacing="2" HorizontalAlignment="Right" />
-						<TextBlock Text="HT-PR8" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource OnDark}"
-								   LetterSpacing="1" HorizontalAlignment="Right" Margin="0,2,0,0" />
-					</StackPanel>
-				</Grid>
-			</Border>
-		</Grid>
+          <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+            <TextBlock Text="MODEL" FontSize="8.5" FontWeight="SemiBold" Foreground="{DynamicResource Mute}"
+                       LetterSpacing="2" HorizontalAlignment="Right" />
+            <TextBlock Text="HT-PR8" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource OnDark}"
+                       LetterSpacing="1" HorizontalAlignment="Right" Margin="0,2,0,0" />
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
 
-		<!-- ============ 抽屉遮罩 ============ -->
-		<Border x:Name="Backdrop" Background="#80060609"
-				Opacity="{Binding Drawer.IsOpen, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
-				IsHitTestVisible="{Binding Drawer.IsOpen}"
-				PointerPressed="OnBackdropPressed">
-			<!-- 遮罩淡入过渡已移除：即时显隐 -->
-		</Border>
+    <!-- ============ 抽屉遮罩 ============ -->
+    <Border x:Name="Backdrop" Background="#80060609"
+            Opacity="{Binding Drawer.IsOpen, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
+            IsHitTestVisible="{Binding Drawer.IsOpen}"
+            PointerPressed="OnBackdropPressed">
+      <!-- 遮罩淡入过渡已移除：即时显隐 -->
+    </Border>
 
-		<!-- ============ 抽屉（即时显隐，无滑入动画）============ -->
-		<ctl:DrawerView x:Name="Drawer" DataContext="{Binding Drawer}"
-						HorizontalAlignment="Right" Width="392"
-						RenderTransform="{Binding IsOpen, Converter={x:Static conv:BoolToTranslateConverter.Instance}}">
-			<!-- 滑入过渡已移除：抽屉直接就位，减少 G52 上的连续动画重绘 -->
-		</ctl:DrawerView>
-		<!-- ============ Toast 容器 ============ -->
-		<StackPanel x:Name="ToastHost" HorizontalAlignment="Center" VerticalAlignment="Bottom"
-					Margin="0,0,0,80" Spacing="8" />
+    <!-- ============ 抽屉（即时显隐，无滑入动画）============ -->
+    <ctl:DrawerView x:Name="Drawer" DataContext="{Binding Drawer}"
+                    HorizontalAlignment="Right" Width="460"
+                    RenderTransform="{Binding IsOpen, Converter={x:Static conv:BoolToTranslateConverter.Instance}}">
+      <!-- 滑入过渡已移除：抽屉直接就位，减少 G52 上的连续动画重绘 -->
+    </ctl:DrawerView>
+    <!-- ============ Toast 容器 ============ -->
+    <StackPanel x:Name="ToastHost" HorizontalAlignment="Center" VerticalAlignment="Bottom"
+                Margin="0,0,0,80" Spacing="8" />
 
-		<!-- ============ 程序界面弹窗（DataContext = Program）============ -->
-		<Panel x:CompileBindings="False" DataContext="{Binding Program}">
+    <!-- ============ 程序界面弹窗（DataContext = Program）============ -->
+    <Panel x:CompileBindings="False" DataContext="{Binding Program}">
 
-			<!-- 16 段升温曲线编辑器 -->
-			<Panel IsVisible="{Binding IsCurveEditorOpen}">
-				<Border Background="#99060609" />
-				<Border Classes="pmodal" Width="840" HorizontalAlignment="Center" VerticalAlignment="Center">
-					<DockPanel>
-						<!-- 头 -->
-						<Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
-							<Border Width="36" Height="36" CornerRadius="11" Background="#2Ef0a830" VerticalAlignment="Center">
-								<Viewbox Width="18" Height="18">
-									<Canvas Width="24" Height="24">
-										<Path Data="M3 17l5-5 4 4 8-9 M14 7h7v7" Stroke="{DynamicResource Amber}"
-											  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-									</Canvas>
-								</Viewbox>
-							</Border>
-							<StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
-								<TextBlock Text="16 段升温曲线" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-								<TextBlock Text="{Binding CurveSub}" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
-							</StackPanel>
-						</Grid>
-						<!-- 底 -->
-						<DockPanel DockPanel.Dock="Bottom" Margin="22,4,22,20">
-							<StackPanel Orientation="Horizontal" Spacing="7" DockPanel.Dock="Left" VerticalAlignment="Center">
-								<Button Classes="scopebtn" Classes.on="{Binding CurveScopeIsAll}" Command="{Binding CurveScopeAllCommand}" Content="应用：全部通道" />
-								<Button Classes="scopebtn" Classes.on="{Binding CurveScopeIsCur}" Command="{Binding CurveScopeCurCommand}" Content="仅当前通道" />
-							</StackPanel>
-							<StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
-								<Button Classes="mfbtn" Command="{Binding CancelCurveCommand}" Content="取消" />
-								<Button Classes="mfbtn danger" Command="{Binding ApplyCurveCommand}" Content="应用曲线" />
-							</StackPanel>
-						</DockPanel>
-						<!-- 主体 -->
-						<StackPanel Margin="22,0">
-							<Border Classes="curvebig">
-								<Panel>
-									<Viewbox Stretch="Fill">
-										<Canvas Width="800" Height="240">
-											<Path Data="{Binding CurveGridGeo}" Stroke="#10FFFFFF" StrokeThickness="1" />
-											<Path Data="{Binding CurveAreaGeo}" Fill="#2Bf0a830" />
-											<Path Data="{Binding CurveLineGeo}" Stroke="#f0a830" StrokeThickness="2"
-												  StrokeLineCap="Round" StrokeJoin="Round" />
-										</Canvas>
-									</Viewbox>
-									<TextBlock Text="{Binding CurveTotalLabel}" Classes="ctlabel"
-											   HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,10" />
-								</Panel>
-							</Border>
-							<!-- 段表头 -->
-							<Grid ColumnDefinitions="36,*,*,*,32" Margin="0,14,0,6">
-								<TextBlock Grid.Column="0" Text="段" Classes="seghd" HorizontalAlignment="Center" />
-								<TextBlock Grid.Column="1" Text="目标温度 (°C)" Classes="seghd" Margin="0,0,7,0" />
-								<TextBlock Grid.Column="2" Text="升温斜率 (°C/min)" Classes="seghd" Margin="0,0,7,0" />
-								<TextBlock Grid.Column="3" Text="保温时长 (min)" Classes="seghd" Margin="0,0,7,0" />
-							</Grid>
-							<ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto">
-								<ItemsControl ItemsSource="{Binding CurveSegs}">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<StackPanel Spacing="7" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate x:DataType="models:HeatSeg">
-											<Grid ColumnDefinitions="36,*,*,*,32">
-												<TextBlock Grid.Column="0" Text="{Binding No}" Classes="segno"
-														   HorizontalAlignment="Center" VerticalAlignment="Center" />
-												<Button Grid.Column="1" Classes="sinpbtn" Content="{Binding Temp}" Margin="0,0,7,0"
-														Command="{Binding $parent[ItemsControl].DataContext.EditSegTempCommand}" CommandParameter="{Binding}" />
-												<Button Grid.Column="2" Classes="sinpbtn" Content="{Binding Rate}" Margin="0,0,7,0"
-														Command="{Binding $parent[ItemsControl].DataContext.EditSegRateCommand}" CommandParameter="{Binding}" />
-												<Button Grid.Column="3" Classes="sinpbtn" Content="{Binding Hold}" Margin="0,0,7,0"
-														Command="{Binding $parent[ItemsControl].DataContext.EditSegHoldCommand}" CommandParameter="{Binding}" />
-												<Button Grid.Column="4" Classes="segdel"
-														Command="{Binding $parent[ItemsControl].DataContext.DelSegCommand}"
-														CommandParameter="{Binding}">
-													<Viewbox Width="11" Height="11">
-														<Canvas Width="24" Height="24">
-															<Path Data="M18 6L6 18 M6 6l12 12" Stroke="{DynamicResource Mute}" StrokeThickness="2.2" StrokeLineCap="Round" />
-														</Canvas>
-													</Viewbox>
-												</Button>
-											</Grid>
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
-							</ScrollViewer>
-							<Button Classes="segadd" Command="{Binding AddSegCommand}" IsEnabled="{Binding CanAddSeg}" Margin="0,10,0,0">
-								<StackPanel Orientation="Horizontal" Spacing="6">
-									<Viewbox Width="13" Height="13">
-										<Canvas Width="24" Height="24">
-											<Path Data="M12 5v14 M5 12h14" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" />
-										</Canvas>
-									</Viewbox>
-									<TextBlock Text="添加段（最多 16）" VerticalAlignment="Center" />
-								</StackPanel>
-							</Button>
-						</StackPanel>
-					</DockPanel>
-				</Border>
-			</Panel>
+      <!-- 16 段升温曲线编辑器 -->
+      <Panel IsVisible="{Binding IsCurveEditorOpen}">
+        <Border Background="#99060609" />
+        <Border Classes="pmodal" Width="840" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <DockPanel>
+            <!-- 头 -->
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*" Margin="22,18,22,12">
+              <Border Width="36" Height="36" CornerRadius="11" Background="#2Ef0a830" VerticalAlignment="Center">
+                <Viewbox Width="18" Height="18">
+                  <Canvas Width="24" Height="24">
+                    <Path Data="M3 17l5-5 4 4 8-9 M14 7h7v7" Stroke="{DynamicResource Amber}"
+                          StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                  </Canvas>
+                </Viewbox>
+              </Border>
+              <StackPanel Grid.Column="1" Margin="11,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="16 段升温曲线" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+                <TextBlock Text="{Binding CurveSub}" FontSize="11" Foreground="{DynamicResource Body}" Margin="0,2,0,0" />
+              </StackPanel>
+            </Grid>
+            <!-- 底 -->
+            <DockPanel DockPanel.Dock="Bottom" Margin="22,4,22,20">
+              <StackPanel Orientation="Horizontal" Spacing="7" DockPanel.Dock="Left" VerticalAlignment="Center">
+                <Button Classes="scopebtn" Classes.on="{Binding CurveScopeIsAll}" Command="{Binding CurveScopeAllCommand}" Content="应用：全部通道" />
+                <Button Classes="scopebtn" Classes.on="{Binding CurveScopeIsCur}" Command="{Binding CurveScopeCurCommand}" Content="仅当前通道" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right">
+                <Button Classes="mfbtn" Command="{Binding CancelCurveCommand}" Content="取消" />
+                <Button Classes="mfbtn danger" Command="{Binding ApplyCurveCommand}" Content="应用曲线" />
+              </StackPanel>
+            </DockPanel>
+            <!-- 主体 -->
+            <StackPanel Margin="22,0">
+              <Border Classes="curvebig">
+                <Panel>
+                  <Viewbox Stretch="Fill">
+                    <Canvas Width="800" Height="240">
+                      <Path Data="{Binding CurveGridGeo}" Stroke="#0D000000" StrokeThickness="1" />
+                      <Path Data="{Binding CurveAreaGeo}" Fill="#2Bf0a830" />
+                      <Path Data="{Binding CurveLineGeo}" Stroke="{DynamicResource Amber}" StrokeThickness="2"
+                            StrokeLineCap="Round" StrokeJoin="Round" />
+                    </Canvas>
+                  </Viewbox>
+                  <TextBlock Text="{Binding CurveTotalLabel}" Classes="ctlabel"
+                             HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,10" />
+                </Panel>
+              </Border>
+              <!-- 段表头 -->
+              <Grid ColumnDefinitions="36,*,*,*,32" Margin="0,14,0,6">
+                <TextBlock Grid.Column="0" Text="段" Classes="seghd" HorizontalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="目标温度 (°C)" Classes="seghd" Margin="0,0,7,0" />
+                <TextBlock Grid.Column="2" Text="升温斜率 (°C/min)" Classes="seghd" Margin="0,0,7,0" />
+                <TextBlock Grid.Column="3" Text="保温时长 (min)" Classes="seghd" Margin="0,0,7,0" />
+              </Grid>
+              <ScrollViewer MaxHeight="170" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding CurveSegs}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Spacing="7" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:HeatSeg">
+                      <Grid ColumnDefinitions="36,*,*,*,32">
+                        <TextBlock Grid.Column="0" Text="{Binding No}" Classes="segno"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Button Grid.Column="1" Classes="sinpbtn" Content="{Binding Temp}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegTempCommand}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="2" Classes="sinpbtn" Content="{Binding Rate}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegRateCommand}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="3" Classes="sinpbtn" Content="{Binding Hold}" Margin="0,0,7,0"
+                                Command="{Binding $parent[ItemsControl].DataContext.EditSegHoldCommand}" CommandParameter="{Binding}" />
+                        <Button Grid.Column="4" Classes="segdel"
+                                Command="{Binding $parent[ItemsControl].DataContext.DelSegCommand}"
+                                CommandParameter="{Binding}">
+                          <Viewbox Width="11" Height="11"><Canvas Width="24" Height="24"><Path Data="M18 6L6 18 M6 6l12 12" Stroke="{DynamicResource Mute}" StrokeThickness="2.2" StrokeLineCap="Round" /></Canvas></Viewbox>
+                        </Button>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              <Button Classes="segadd" Command="{Binding AddSegCommand}" IsEnabled="{Binding CanAddSeg}" Margin="0,10,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Viewbox Width="13" Height="13"><Canvas Width="24" Height="24"><Path Data="M12 5v14 M5 12h14" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" /></Canvas></Viewbox>
+                  <TextBlock Text="添加段（最多 16）" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </Panel>
 
-			<!-- 应用到其他通道 -->
-			<Panel IsVisible="{Binding IsApplyOpen}">
-				<Border Background="#99060609" />
-				<Border Classes="pmodal" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
-					<StackPanel>
-						<!-- 头 -->
-						<StackPanel Margin="24,20,24,14">
-							<TextBlock Text="{Binding ApplyTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-							<TextBlock Text="{Binding ApplySub}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
-						</StackPanel>
-						<!-- 主体 -->
-						<StackPanel Margin="22,0,22,4">
-							<StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
-								<Button Classes="qbtn" Command="{Binding ApplyQuickActiveCommand}" Content="所有运行中" />
-								<Button Classes="qbtn" Command="{Binding ApplyQuickAllCommand}" Content="全部" />
-								<Button Classes="qbtn" Command="{Binding ApplyQuickNoneCommand}" Content="清空" />
-							</StackPanel>
-							<ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
-								<ItemsControl ItemsSource="{Binding ApplyRows}">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<StackPanel Spacing="6" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate x:DataType="vm:ApplyRow">
-											<Button Classes="applyrow" Classes.cur="{Binding IsCurrent}"
-													Classes.dis="{Binding Channel.Reactor.IsIdle}"
-													Command="{Binding ToggleCommand}">
-												<Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
-													<Border Grid.Column="0" Width="18" Height="18" CornerRadius="5" VerticalAlignment="Center"
-															Margin="0,0,10,0" IsVisible="{Binding CanPick}"
-															Background="{Binding CheckBg}" BorderBrush="{Binding CheckBorder}" BorderThickness="1.5">
-														<Viewbox Width="11" Height="11" IsVisible="{Binding IsPicked}">
-															<Canvas Width="24" Height="24">
-																<Path Data="M5 12l4 4 9-10" Stroke="White" StrokeThickness="3"
-																	  StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-															</Canvas>
-														</Viewbox>
-													</Border>
-													<TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
-															   Width="46" VerticalAlignment="Center" Foreground="{DynamicResource OnDark}" />
-													<TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="11"
-															   Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
-													<TextBlock Grid.Column="3" Text="{Binding StepsText}" FontSize="10.5"
-															   Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
-													<Border Grid.Column="4" Classes="srctag" IsVisible="{Binding IsCurrent}" Margin="8,0,0,0">
-														<TextBlock Text="源" FontSize="10" FontWeight="SemiBold" Foreground="White" />
-													</Border>
-												</Grid>
-											</Button>
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
-							</ScrollViewer>
-							<Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1"
-									CornerRadius="9" Padding="13,11" Margin="0,12,0,0">
-								<TextBlock FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17"
-										   Text="注意：勾选的通道将被完整覆盖当前程序。被覆盖的程序如未保存模板将丢失。" />
-							</Border>
-						</StackPanel>
-						<!-- 底 -->
-						<StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,16,22,20">
-							<Button Classes="mfbtn" Command="{Binding CancelApplyCommand}" Content="取消" />
-							<Button Classes="mfbtn go" Command="{Binding ApplyDoCommand}" Content="应用" />
-						</StackPanel>
-					</StackPanel>
-				</Border>
-			</Panel>
-		</Panel>
+      <!-- 应用到其他通道 -->
+      <Panel IsVisible="{Binding IsApplyOpen}">
+        <Border Background="#99060609" />
+        <Border Classes="pmodal" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel>
+            <!-- 头 -->
+            <StackPanel Margin="24,20,24,14">
+              <TextBlock Text="{Binding ApplyTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="{Binding ApplySub}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+            </StackPanel>
+            <!-- 主体 -->
+            <StackPanel Margin="22,0,22,4">
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,10">
+                <Button Classes="qbtn" Command="{Binding ApplyQuickActiveCommand}" Content="所有运行中" />
+                <Button Classes="qbtn" Command="{Binding ApplyQuickAllCommand}" Content="全部" />
+                <Button Classes="qbtn" Command="{Binding ApplyQuickNoneCommand}" Content="清空" />
+              </StackPanel>
+              <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding ApplyRows}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ApplyRow">
+                      <Button Classes="applyrow" Classes.cur="{Binding IsCurrent}"
+                              Classes.dis="{Binding Channel.Reactor.IsIdle}"
+                              Command="{Binding ToggleCommand}">
+                        <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto">
+                          <Border Grid.Column="0" Width="18" Height="18" CornerRadius="5" VerticalAlignment="Center"
+                                  Margin="0,0,10,0" IsVisible="{Binding CanPick}"
+                                  Background="{Binding CheckBg}" BorderBrush="{Binding CheckBorder}" BorderThickness="1.5">
+                            <Viewbox Width="11" Height="11" IsVisible="{Binding IsPicked}">
+                              <Canvas Width="24" Height="24">
+                                <Path Data="M5 12l4 4 9-10" Stroke="White" StrokeThickness="3"
+                                      StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                              </Canvas>
+                            </Viewbox>
+                          </Border>
+                          <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                                     Width="46" VerticalAlignment="Center" Foreground="{DynamicResource OnDark}" />
+                          <TextBlock Grid.Column="2" Text="{Binding StateText}" FontSize="11"
+                                     Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+                          <TextBlock Grid.Column="3" Text="{Binding StepsText}" FontSize="10.5"
+                                     Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                          <Border Grid.Column="4" Classes="srctag" IsVisible="{Binding IsCurrent}" Margin="8,0,0,0">
+                            <TextBlock Text="源" FontSize="10" FontWeight="SemiBold" Foreground="White" />
+                          </Border>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </ScrollViewer>
+              <Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1"
+                      CornerRadius="9" Padding="13,11" Margin="0,12,0,0">
+                <TextBlock FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17"
+                           Text="注意：勾选的通道将被完整覆盖当前程序。被覆盖的程序如未保存模板将丢失。" />
+              </Border>
+            </StackPanel>
+            <!-- 底 -->
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,16,22,20">
+              <Button Classes="mfbtn" Command="{Binding CancelApplyCommand}" Content="取消" />
+              <Button Classes="mfbtn go" Command="{Binding ApplyDoCommand}" Content="应用" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Panel>
+    </Panel>
 
-		<!-- ============ 预运行检查 ============ -->
-		<Panel IsVisible="{Binding IsPreRunOpen}">
-			<Border Background="#99060609" />
-			<Border Classes="pmodal" Width="560" MaxHeight="660" HorizontalAlignment="Center" VerticalAlignment="Center">
-				<DockPanel>
-					<!-- 头 -->
-					<StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
-						<TextBlock Text="预运行检查" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-						<TextBlock Text="{Binding PreRunSummary}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
-					</StackPanel>
-					<!-- 底 -->
-					<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
-								HorizontalAlignment="Right" Margin="22,6,22,20">
-						<Button Classes="mfbtn" Command="{Binding CancelPreRunCommand}" Content="取消" />
-						<Button Classes="mfbtn go" Command="{Binding ConfirmRunCommand}"
-								IsEnabled="{Binding PreRunCanRun}" Content="确认开始运行" />
-					</StackPanel>
-					<!-- 检查项列表 -->
-					<ScrollViewer MaxHeight="440" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
-						<ItemsControl ItemsSource="{Binding PreRunChecks}">
-							<ItemsControl.ItemTemplate>
-								<DataTemplate x:DataType="vm:PreRunCheck">
-									<Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="2,12">
-										<Grid ColumnDefinitions="Auto,*,Auto">
-											<Border Width="22" Height="22" CornerRadius="11" Background="{Binding TintBg}" VerticalAlignment="Center">
-												<Viewbox Width="12" Height="12">
-													<Canvas Width="24" Height="24">
-														<Path Data="{Binding Icon}" Stroke="{Binding Tint}" StrokeThickness="2.4"
-															  StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
-													</Canvas>
-												</Viewbox>
-											</Border>
-											<StackPanel Grid.Column="1" Margin="13,0,12,0" VerticalAlignment="Center">
-												<TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
-														   Foreground="{DynamicResource OnDark}" />
-												<TextBlock Text="{Binding Detail}" FontSize="10.5" Foreground="{DynamicResource Body}"
-														   Margin="0,2,0,0" TextWrapping="Wrap" LineHeight="15" />
-											</StackPanel>
-											<TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
-													   Foreground="{Binding Tint}" VerticalAlignment="Center" />
-										</Grid>
-									</Border>
-								</DataTemplate>
-							</ItemsControl.ItemTemplate>
-						</ItemsControl>
-					</ScrollViewer>
-				</DockPanel>
-			</Border>
-		</Panel>
+    <!-- ============ 预运行检查 ============ -->
+    <Panel IsVisible="{Binding IsPreRunOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="560" MaxHeight="660" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <!-- 头 -->
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="预运行检查" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="{Binding PreRunSummary}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
+          <!-- 底 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10"
+                      HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn" Command="{Binding CancelPreRunCommand}" Content="取消" />
+            <Button Classes="mfbtn go" Command="{Binding ConfirmRunCommand}"
+                    IsEnabled="{Binding PreRunCanRun}" Content="确认开始运行" />
+          </StackPanel>
+          <!-- 检查项列表 -->
+          <ScrollViewer MaxHeight="440" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding PreRunChecks}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:PreRunCheck">
+                  <Border BorderBrush="{DynamicResource GlassLine}" BorderThickness="0,0,0,1" Padding="2,12">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Width="22" Height="22" CornerRadius="11" Background="{Binding TintBg}" VerticalAlignment="Center">
+                        <Viewbox Width="12" Height="12">
+                          <Canvas Width="24" Height="24">
+                            <Path Data="{Binding Icon}" Stroke="{Binding Tint}" StrokeThickness="2.4"
+                                  StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
+                          </Canvas>
+                        </Viewbox>
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="13,0,12,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource OnDark}" />
+                        <TextBlock Text="{Binding Detail}" FontSize="10.5" Foreground="{DynamicResource Body}"
+                                   Margin="0,2,0,0" TextWrapping="Wrap" LineHeight="15" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold"
+                                 Foreground="{Binding Tint}" VerticalAlignment="Center" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Panel>
 
-		<!-- ============ 应用配方 ============ -->
-		<Panel IsVisible="{Binding RecipePicker.IsOpen}">
-			<Border Background="#99060609" />
-			<Border Classes="pmodal" Width="800" MaxHeight="700" HorizontalAlignment="Center" VerticalAlignment="Center">
-				<DockPanel>
-					<!-- 头 -->
-					<StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
-						<TextBlock Text="应用配方" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-						<TextBlock Text="选择配方模板与目标通道" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
-					</StackPanel>
-					<!-- 底 -->
-					<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
-						<Button Classes="mfbtn" Command="{Binding RecipePicker.CloseCommand}" Content="取消" />
-						<Button Classes="mfbtn go" Command="{Binding RecipePicker.ApplyCommand}"
-								Content="{Binding RecipePicker.ApplyText}" IsEnabled="{Binding RecipePicker.CanApply}" />
-					</StackPanel>
-					<!-- 主体：配方列表 + 应用面板 -->
-					<Grid Margin="22,0,22,4" ColumnDefinitions="252,*">
-						<!-- 配方列表 -->
-						<Border Grid.Column="0" Background="{DynamicResource GlassSoft}" CornerRadius="11"
-								BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="6" Margin="0,0,12,0">
-							<ListBox Background="Transparent" BorderThickness="0" Padding="0"
-									 ItemsSource="{Binding RecipePicker.Recipes}" SelectedItem="{Binding RecipePicker.SelectedRecipe, Mode=TwoWay}">
-								<ListBox.ItemContainerTheme>
-									<ControlTheme TargetType="ListBoxItem">
-										<Setter Property="Padding" Value="0" />
-										<Setter Property="Margin" Value="0,0,0,3" />
-										<Setter Property="MinHeight" Value="0" />
-										<Setter Property="Cursor" Value="Hand" />
-										<Setter Property="Background" Value="Transparent" />
-										<Setter Property="Template">
-											<ControlTemplate>
-												<Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="9" Padding="9"
-														BorderBrush="Transparent" BorderThickness="1">
-													<ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
-												</Border>
-											</ControlTemplate>
-										</Setter>
-										<Style Selector="^:pointerover /template/ Border#bg">
-											<Setter Property="Background" Value="#7E26262C" />
-										</Style>
-										<Style Selector="^:selected /template/ Border#bg">
-											<Setter Property="Background" Value="#22E0394C" />
-											<Setter Property="BorderBrush" Value="#e0394c" />
-										</Style>
-									</ControlTheme>
-								</ListBox.ItemContainerTheme>
-								<ListBox.ItemTemplate>
-									<DataTemplate x:DataType="models:Recipe">
-										<StackPanel>
-											<TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-											<TextBlock Text="{Binding Sub}" FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" TextWrapping="Wrap" />
-											<Border HorizontalAlignment="Left" Margin="0,5,0,0" CornerRadius="6" Padding="6,2"
-													Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
-												<TextBlock Text="{Binding Tag}" FontSize="9.5" Foreground="{DynamicResource Body}" />
-											</Border>
-										</StackPanel>
-									</DataTemplate>
-								</ListBox.ItemTemplate>
-							</ListBox>
-						</Border>
+    <!-- ============ 应用配方 ============ -->
+    <Panel IsVisible="{Binding RecipePicker.IsOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="800" MaxHeight="700" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <!-- 头 -->
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="应用配方" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="选择配方模板与目标通道" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
+          <!-- 底 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn" Command="{Binding RecipePicker.CloseCommand}" Content="取消" />
+            <Button Classes="mfbtn go" Command="{Binding RecipePicker.ApplyCommand}"
+                    Content="{Binding RecipePicker.ApplyText}" IsEnabled="{Binding RecipePicker.CanApply}" />
+          </StackPanel>
+          <!-- 主体：配方列表 + 应用面板 -->
+          <Grid Margin="22,0,22,4" ColumnDefinitions="252,*">
+            <!-- 配方列表 -->
+            <Border Grid.Column="0" Background="{DynamicResource GlassSoft}" CornerRadius="11"
+                    BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" Padding="6" Margin="0,0,12,0">
+              <ListBox Background="Transparent" BorderThickness="0" Padding="0"
+                       ItemsSource="{Binding RecipePicker.Recipes}" SelectedItem="{Binding RecipePicker.SelectedRecipe, Mode=TwoWay}">
+                <ListBox.ItemContainerTheme>
+                  <ControlTheme TargetType="ListBoxItem">
+                    <Setter Property="Padding" Value="0" />
+                    <Setter Property="Margin" Value="0,0,0,3" />
+                    <Setter Property="MinHeight" Value="0" />
+                    <Setter Property="Cursor" Value="Hand" />
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Template">
+                      <ControlTemplate>
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="9" Padding="9"
+                                BorderBrush="Transparent" BorderThickness="1">
+                          <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" />
+                        </Border>
+                      </ControlTemplate>
+                    </Setter>
+                    <Style Selector="^:pointerover /template/ Border#bg">
+                      <Setter Property="Background" Value="#08000000" />
+                    </Style>
+                    <Style Selector="^:selected /template/ Border#bg">
+                      <Setter Property="Background" Value="#22E0394C" />
+                      <Setter Property="BorderBrush" Value="#e0394c" />
+                    </Style>
+                  </ControlTheme>
+                </ListBox.ItemContainerTheme>
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="models:Recipe">
+                    <StackPanel>
+                      <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                      <TextBlock Text="{Binding Sub}" FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                      <Border HorizontalAlignment="Left" Margin="0,5,0,0" CornerRadius="6" Padding="6,2"
+                              Background="{DynamicResource GlassSoft}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1">
+                        <TextBlock Text="{Binding Tag}" FontSize="9.5" Foreground="{DynamicResource Body}" />
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Border>
 
-						<!-- 应用面板 -->
-						<ScrollViewer Grid.Column="1" MaxHeight="430" VerticalScrollBarVisibility="Auto"
-									  IsVisible="{Binding RecipePicker.HasRecipe}">
-							<StackPanel>
-								<!-- 参数预览 -->
-								<UniformGrid Columns="3">
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="温度" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.TSp, StringFormat='{}{0} °C'}" />
-										</StackPanel>
-									</Border>
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="压力" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.PSp, StringFormat='{}{0} psi'}" />
-										</StackPanel>
-									</Border>
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="搅拌" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.RpmSp, StringFormat='{}{0} rpm'}" />
-										</StackPanel>
-									</Border>
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="体积" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Vol, StringFormat='{}{0} mL'}" />
-										</StackPanel>
-									</Border>
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="桨叶" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Blade}" />
-										</StackPanel>
-									</Border>
-									<Border Classes="rvcard">
-										<StackPanel>
-											<TextBlock Classes="rvk" Text="结束" />
-											<TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.End}" />
-										</StackPanel>
-									</Border>
-								</UniformGrid>
+            <!-- 应用面板 -->
+            <ScrollViewer Grid.Column="1" MaxHeight="430" VerticalScrollBarVisibility="Auto"
+                          IsVisible="{Binding RecipePicker.HasRecipe}">
+              <StackPanel>
+                <!-- 参数预览 -->
+                <UniformGrid Columns="3">
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="温度" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.TSp, StringFormat='{}{0} °C'}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="压力" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.PSp, StringFormat='{}{0} psi'}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="搅拌" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.RpmSp, StringFormat='{}{0} rpm'}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="体积" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Vol, StringFormat='{}{0} mL'}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="桨叶" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Blade}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="结束" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.End}" /></StackPanel></Border>
+                </UniformGrid>
 
-								<!-- 通道选择 -->
-								<TextBlock Text="应用到通道" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Mute}"
-										   LetterSpacing="1.5" Margin="0,16,0,8" />
-								<StackPanel Orientation="Horizontal" Spacing="7">
-									<Button Classes="qbtn" Content="全部" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="all" />
-									<Button Classes="qbtn" Content="所有运行中" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="active" />
-									<Button Classes="qbtn" Content="RV1-4" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="1-4" />
-									<Button Classes="qbtn" Content="RV5-8" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="5-8" />
-									<Button Classes="qbtn" Content="清空" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="none" />
-								</StackPanel>
+                <!-- 通道选择 -->
+                <TextBlock Text="应用到通道" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource Mute}"
+                           LetterSpacing="1.5" Margin="0,16,0,8" />
+                <StackPanel Orientation="Horizontal" Spacing="7">
+                  <Button Classes="qbtn" Content="全部" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="all" />
+                  <Button Classes="qbtn" Content="所有运行中" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="active" />
+                  <Button Classes="qbtn" Content="RV1-4" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="1-4" />
+                  <Button Classes="qbtn" Content="RV5-8" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="5-8" />
+                  <Button Classes="qbtn" Content="清空" Command="{Binding RecipePicker.QuickPickCommand}" CommandParameter="none" />
+                </StackPanel>
 
-								<ItemsControl ItemsSource="{Binding RecipePicker.Channels}" Margin="0,10,0,0">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<UniformGrid Columns="4" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate x:DataType="vm:ChannelPick">
-											<Button Command="{Binding ToggleCommand}" Padding="0" Background="Transparent" BorderThickness="0"
-													HorizontalAlignment="Stretch" Margin="3" Cursor="Hand">
-												<Border Background="{Binding PickBg}" BorderBrush="{Binding PickBorder}" BorderThickness="1.5"
-														CornerRadius="10" Padding="10,9" Opacity="{Binding CellOpacity}">
-													<StackPanel>
-														<TextBlock Text="{Binding RvName}" FontSize="12.5" FontWeight="SemiBold" Foreground="{Binding NameBrush}" />
-														<TextBlock Text="{Binding StateText}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
-													</StackPanel>
-												</Border>
-											</Button>
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
-							</StackPanel>
-						</ScrollViewer>
-					</Grid>
-				</DockPanel>
-			</Border>
-		</Panel>
+                <ItemsControl ItemsSource="{Binding RecipePicker.Channels}" Margin="0,10,0,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:ChannelPick">
+                      <Button Command="{Binding ToggleCommand}" Padding="0" Background="Transparent" BorderThickness="0"
+                              HorizontalAlignment="Stretch" Margin="3" Cursor="Hand">
+                        <Border Background="{Binding PickBg}" BorderBrush="{Binding PickBorder}" BorderThickness="1.5"
+                                CornerRadius="10" Padding="10,9" Opacity="{Binding CellOpacity}">
+                          <StackPanel>
+                            <TextBlock Text="{Binding RvName}" FontSize="12.5" FontWeight="SemiBold" Foreground="{Binding NameBrush}" />
+                            <TextBlock Text="{Binding StateText}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                          </StackPanel>
+                        </Border>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Grid>
+        </DockPanel>
+      </Border>
+    </Panel>
 
-		<!-- ============ 泄漏测试 ============ -->
-		<Panel IsVisible="{Binding Leak.IsOpen}">
-			<Border Background="#99060609" />
-			<Border Classes="pmodal" Width="640" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
-				<DockPanel>
-					<!-- 头 -->
-					<StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
-						<TextBlock Text="自动泄漏测试" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-						<TextBlock Text="Auto Leak Test · 充氮 510 psi · 阈值 &lt; 2 psi/hr" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
-					</StackPanel>
-					<!-- 底 -->
-					<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
-						<Button Classes="mfbtn" Command="{Binding Leak.CloseCommand}" Content="关闭" />
-						<Button Classes="mfbtn go" Command="{Binding Leak.StartCommand}" Content="开始测试" IsVisible="{Binding Leak.ShowStartBtn}" />
-						<Button Classes="mfbtn go" Command="{Binding Leak.ShowDiagCommand}" Content="查看维修指南" IsVisible="{Binding Leak.ShowDiagBtn}" />
-					</StackPanel>
-					<!-- 主体 -->
-					<ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
-						<StackPanel>
-							<!-- 说明（未开始） -->
-							<StackPanel IsVisible="{Binding Leak.ShowStartBtn}">
-								<TextBlock Text="系统将按以下流程自动执行泄漏测试，无需人工读取数据：" FontSize="12.5"
-										   Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="20" />
-								<StackPanel Margin="2,10,0,12" Spacing="8">
-									<TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-										<Run Text="1.  使用 Gas A 切换为 " />
-										<Run Text="N₂" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-										<Run Text="，将 8 路 RV 同时充压到 " />
-										<Run Text="500 psi" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-									</TextBlock>
-									<TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-										<Run Text="2.  等待 " />
-										<Run Text="10 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-										<Run Text=" 平衡（消除温度波动）" />
-									</TextBlock>
-									<TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-										<Run Text="3.  密封后 " />
-										<Run Text="30 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-										<Run Text=" 持续记录压力" />
-									</TextBlock>
-									<TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-										<Run Text="4.  自动判读：压降 ≥ 2 psi/hr 为不通过" />
-									</TextBlock>
-								</StackPanel>
-								<Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" CornerRadius="9" Padding="13,11">
-									<TextBlock Text="取代原 Endeavor 中必须人工点 Listen → 等 40 分钟 → 人工读图的流程。系统会同时记录全部 8 路并给出每路的结论。"
-											   FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17" />
-								</Border>
-							</StackPanel>
+    <!-- ============ 泄漏测试 ============ -->
+    <Panel IsVisible="{Binding Leak.IsOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="640" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <!-- 头 -->
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="自动泄漏测试" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="Auto Leak Test · 充氮 510 psi · 阈值 &lt; 2 psi/hr" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
+          <!-- 底 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn" Command="{Binding Leak.CloseCommand}" Content="关闭" />
+            <Button Classes="mfbtn go" Command="{Binding Leak.StartCommand}" Content="开始测试" IsVisible="{Binding Leak.ShowStartBtn}" />
+            <Button Classes="mfbtn go" Command="{Binding Leak.ShowDiagCommand}" Content="查看维修指南" IsVisible="{Binding Leak.ShowDiagBtn}" />
+          </StackPanel>
+          <!-- 主体 -->
+          <ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <!-- 说明（未开始） -->
+              <StackPanel IsVisible="{Binding Leak.ShowStartBtn}">
+                <TextBlock Text="系统将按以下流程自动执行泄漏测试，无需人工读取数据：" FontSize="12.5"
+                           Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="20" />
+                <StackPanel Margin="2,10,0,12" Spacing="8">
+                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
+                    <Run Text="1.  使用 Gas A 切换为 " /><Run Text="N₂" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text="，将 8 路 RV 同时充压到 " /><Run Text="500 psi" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  </TextBlock>
+                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
+                    <Run Text="2.  等待 " /><Run Text="10 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text=" 平衡（消除温度波动）" />
+                  </TextBlock>
+                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
+                    <Run Text="3.  密封后 " /><Run Text="30 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text=" 持续记录压力" />
+                  </TextBlock>
+                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
+                    <Run Text="4.  自动判读：压降 ≥ 2 psi/hr 为不通过" />
+                  </TextBlock>
+                </StackPanel>
+                <Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" CornerRadius="9" Padding="13,11">
+                  <TextBlock Text="取代原 Endeavor 中必须人工点 Listen → 等 40 分钟 → 人工读图的流程。系统会同时记录全部 8 路并给出每路的结论。"
+                             FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17" />
+                </Border>
+              </StackPanel>
 
-							<!-- 进度（已开始） -->
-							<StackPanel IsVisible="{Binding Leak.Started}">
-								<ItemsControl ItemsSource="{Binding Leak.Stages}" Margin="0,0,0,8">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<UniformGrid Columns="4" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate x:DataType="vm:LeakStage">
-											<TextBlock Text="{Binding Name}" FontSize="10.5" Foreground="{Binding Brush}"
-													   FontWeight="{Binding Weight}" TextAlignment="Center" TextWrapping="Wrap" Margin="3,0" />
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
+              <!-- 进度（已开始） -->
+              <StackPanel IsVisible="{Binding Leak.Started}">
+                <ItemsControl ItemsSource="{Binding Leak.Stages}" Margin="0,0,0,8">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LeakStage">
+                      <TextBlock Text="{Binding Name}" FontSize="10.5" Foreground="{Binding Brush}"
+                                 FontWeight="{Binding Weight}" TextAlignment="Center" TextWrapping="Wrap" Margin="3,0" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-								<ProgressBar Minimum="0" Maximum="100" Value="{Binding Leak.Progress}" Height="6" MinHeight="6"
-											 ShowProgressText="False" Foreground="#a3e635" Background="{DynamicResource GlassSoft}" Margin="0,0,0,8" />
-								<TextBlock Text="{Binding Leak.PhaseText}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,0,0,4" />
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Leak.Progress}" Height="6" MinHeight="6"
+                             ShowProgressText="False" Foreground="{DynamicResource GreenBright}" Background="{DynamicResource GlassSoft}" Margin="0,0,0,8" />
+                <TextBlock Text="{Binding Leak.PhaseText}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,0,0,4" />
 
-								<ItemsControl ItemsSource="{Binding Leak.Cells}" Margin="0,6,0,0">
-									<ItemsControl.ItemsPanel>
-										<ItemsPanelTemplate>
-											<UniformGrid Columns="8" />
-										</ItemsPanelTemplate>
-									</ItemsControl.ItemsPanel>
-									<ItemsControl.ItemTemplate>
-										<DataTemplate x:DataType="vm:LeakCell">
-											<Border Opacity="{Binding CellOpacity}" Background="{Binding CellBg}" BorderBrush="{Binding CellBorder}"
-													BorderThickness="1" CornerRadius="9" Padding="6,8" Margin="3">
-												<StackPanel>
-													<TextBlock Text="{Binding RvName}" FontSize="10" FontWeight="SemiBold"
-															   Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
-													<TextBlock HorizontalAlignment="Center" FontSize="13" FontWeight="SemiBold"
-															   Foreground="{DynamicResource OnDark}" Margin="0,2,0,0">
-														<Run Text="{Binding PressureText}" />
-														<Run Text=" psi" FontSize="8" Foreground="{DynamicResource Mute}" />
-													</TextBlock>
-													<TextBlock Text="{Binding Detail}" FontSize="9" Foreground="{Binding DetailBrush}"
-															   HorizontalAlignment="Center" Margin="0,1,0,0" />
-												</StackPanel>
-											</Border>
-										</DataTemplate>
-									</ItemsControl.ItemTemplate>
-								</ItemsControl>
+                <ItemsControl ItemsSource="{Binding Leak.Cells}" Margin="0,6,0,0">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LeakCell">
+                      <Border Opacity="{Binding CellOpacity}" Background="{Binding CellBg}" BorderBrush="{Binding CellBorder}"
+                              BorderThickness="1" CornerRadius="9" Padding="6,8" Margin="3">
+                        <StackPanel>
+                          <TextBlock Text="{Binding RvName}" FontSize="10" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+                          <TextBlock HorizontalAlignment="Center" FontSize="13" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource OnDark}" Margin="0,2,0,0">
+                            <Run Text="{Binding PressureText}" /><Run Text=" psi" FontSize="8" Foreground="{DynamicResource Mute}" />
+                          </TextBlock>
+                          <TextBlock Text="{Binding Detail}" FontSize="9" Foreground="{Binding DetailBrush}"
+                                     HorizontalAlignment="Center" Margin="0,1,0,0" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-								<!-- 结果 -->
-								<Border IsVisible="{Binding Leak.Done}" Background="{Binding Leak.ResultBg}" BorderBrush="{Binding Leak.ResultBorder}"
-										BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,12,0,0">
-									<StackPanel>
-										<TextBlock Text="{Binding Leak.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Leak.ResultBrush}" />
-										<TextBlock Text="{Binding Leak.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
-												   TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
-									</StackPanel>
-								</Border>
-							</StackPanel>
-						</StackPanel>
-					</ScrollViewer>
-				</DockPanel>
-			</Border>
-		</Panel>
+                <!-- 结果 -->
+                <Border IsVisible="{Binding Leak.Done}" Background="{Binding Leak.ResultBg}" BorderBrush="{Binding Leak.ResultBorder}"
+                        BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,12,0,0">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Leak.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Leak.ResultBrush}" />
+                    <TextBlock Text="{Binding Leak.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
+                               TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Panel>
 
-		<!-- ============ 泄漏诊断与维修建议 ============ -->
-		<Panel IsVisible="{Binding Leak.IsDiagOpen}">
-			<Border Background="#99060609" />
-			<Border Classes="pmodal" Width="600" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
-				<DockPanel>
-					<StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
-						<TextBlock Text="泄漏诊断与维修建议" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-						<TextBlock Text="Leak Diagnosis &amp; Repair" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
-					</StackPanel>
-					<StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
-						<Button Classes="mfbtn go" Command="{Binding Leak.CloseDiagCommand}" Content="关闭" />
-					</StackPanel>
-					<ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
-						<StackPanel>
-							<TextBlock Text="检测到通道压降超过 2 psi/hr 阈值，按优先级排查："
-									   FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" />
-							<ItemsControl ItemsSource="{Binding Leak.DiagSteps}">
-								<ItemsControl.ItemTemplate>
-									<DataTemplate x:DataType="vm:DiagStep">
-										<Grid ColumnDefinitions="24,*" Margin="0,0,0,12">
-											<Border Width="20" Height="20" CornerRadius="10" Background="{DynamicResource GlassBright}" VerticalAlignment="Top">
-												<TextBlock Text="{Binding NoText}" FontSize="11" FontWeight="Bold"
-														   Foreground="{DynamicResource OnDark}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-											</Border>
-											<StackPanel Grid.Column="1" Margin="11,0,0,0">
-												<TextBlock Text="{Binding Lead}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-												<TextBlock Text="{Binding Body}" FontSize="11.5" Foreground="{DynamicResource Body}"
-														   TextWrapping="Wrap" LineHeight="17" Margin="0,2,0,0" />
-											</StackPanel>
-										</Grid>
-									</DataTemplate>
-								</ItemsControl.ItemTemplate>
-							</ItemsControl>
-							<StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-								<Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="查看 O 圈更换视频" Content="查看 O 圈更换视频" />
-								<Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="联系工程师" Content="联系工程师" />
-								<Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="下载维修单" Content="下载维修单" />
-							</StackPanel>
-						</StackPanel>
-					</ScrollViewer>
-				</DockPanel>
-			</Border>
-		</Panel>
+    <!-- ============ 泄漏诊断与维修建议 ============ -->
+    <Panel IsVisible="{Binding Leak.IsDiagOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="600" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="泄漏诊断与维修建议" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="Leak Diagnosis &amp; Repair" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+          </StackPanel>
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn go" Command="{Binding Leak.CloseDiagCommand}" Content="关闭" />
+          </StackPanel>
+          <ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <TextBlock Text="检测到通道压降超过 2 psi/hr 阈值，按优先级排查："
+                         FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" />
+              <ItemsControl ItemsSource="{Binding Leak.DiagSteps}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:DiagStep">
+                    <Grid ColumnDefinitions="24,*" Margin="0,0,0,12">
+                      <Border Width="20" Height="20" CornerRadius="10" Background="{DynamicResource GlassBright}" VerticalAlignment="Top">
+                        <TextBlock Text="{Binding NoText}" FontSize="11" FontWeight="Bold"
+                                   Foreground="{DynamicResource OnDark}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="11,0,0,0">
+                        <TextBlock Text="{Binding Lead}" FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                        <TextBlock Text="{Binding Body}" FontSize="11.5" Foreground="{DynamicResource Body}"
+                                   TextWrapping="Wrap" LineHeight="17" Margin="0,2,0,0" />
+                      </StackPanel>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="查看 O 圈更换视频" Content="查看 O 圈更换视频" />
+                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="联系工程师" Content="联系工程师" />
+                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="下载维修单" Content="下载维修单" />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Panel>
 
-		<!-- ============ 通知下拉（根层浮层：随 Viewbox 缩放；点击空白处关闭）============ -->
-		<Panel x:Name="NotifOverlay" IsVisible="False">
-			<Border Background="Transparent" PointerPressed="OnNotifDismiss" />
-			<Border Width="340" CornerRadius="13" BorderThickness="1"
-					HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,58,68,0"
-					BorderBrush="{DynamicResource GlassLine2}" ClipToBounds="True"
-					Background="#1c1c21">
-				<StackPanel>
-					<!-- 头部 -->
-					<Grid ColumnDefinitions="*,Auto" Margin="14,12,14,10">
-						<TextBlock Grid.Column="0" Text="通知" FontSize="12.5" FontWeight="SemiBold"
-								   Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
-						<TextBlock Grid.Column="1" Text="{Binding NotifSummary}" FontSize="10.5"
-								   Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
-					</Grid>
-					<Border Height="1" Background="{DynamicResource GlassLine}" />
-					<!-- 列表 -->
-					<ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
-						<ItemsControl ItemsSource="{Binding Notifications}" Margin="0,4">
-							<ItemsControl.ItemTemplate>
-								<DataTemplate x:DataType="models:Notification">
-									<Border Classes="nli" Padding="14,10">
-										<Grid ColumnDefinitions="22,*,Auto">
-											<Border Grid.Column="0" Width="22" Height="22" CornerRadius="11"
-													Background="{Binding IconBackground}" VerticalAlignment="Top">
-												<Viewbox Width="12" Height="12">
-													<Canvas Width="24" Height="24">
-														<Path Data="{Binding Icon}" Stroke="{Binding IconForeground}"
-															  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
-															  Fill="Transparent" />
-													</Canvas>
-												</Viewbox>
-											</Border>
-											<StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
-												<TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
-														   Foreground="{DynamicResource OnDark}" TextWrapping="Wrap" />
-												<TextBlock Text="{Binding Message}" FontSize="10.5"
-														   Foreground="{DynamicResource Body}" Margin="0,2,0,0"
-														   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-											</StackPanel>
-											<TextBlock Grid.Column="2" Text="{Binding Tag}" FontSize="10"
-													   Foreground="{DynamicResource Mute}" VerticalAlignment="Top" />
-										</Grid>
-									</Border>
-								</DataTemplate>
-							</ItemsControl.ItemTemplate>
-						</ItemsControl>
-					</ScrollViewer>
-					<Border Height="1" Background="{DynamicResource GlassLine}" />
-					<!-- 底部 -->
-					<Grid ColumnDefinitions="*,Auto" Margin="12,8">
-						<TextBlock Grid.Column="0" Text="{Binding NotifTotalText}" FontSize="11"
-								   Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
-						<Button Grid.Column="1" Classes="nlflink"
-								Command="{Binding SwitchTabCmdCommand}" CommandParameter="alarm"
-								Click="OnNotifLinkClick">
-							<TextBlock Text="查看历史 →" FontSize="11" Foreground="{DynamicResource Body}" />
-						</Button>
-					</Grid>
-				</StackPanel>
-			</Border>
-		</Panel>
+    <!-- ============ 通知下拉（根层浮层：随 Viewbox 缩放；点击空白处关闭）============ -->
+    <Panel x:Name="NotifOverlay" IsVisible="False">
+      <Border Background="Transparent" PointerPressed="OnNotifDismiss" />
+      <Border Width="340" CornerRadius="13" BorderThickness="1"
+              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,58,68,0"
+              BorderBrush="{DynamicResource GlassLine2}" ClipToBounds="True"
+              Background="#ffffff">
+        <StackPanel>
+          <!-- 头部 -->
+          <Grid ColumnDefinitions="*,Auto" Margin="14,12,14,10">
+            <TextBlock Grid.Column="0" Text="通知" FontSize="12.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Text="{Binding NotifSummary}" FontSize="10.5"
+                       Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+          </Grid>
+          <Border Height="1" Background="{DynamicResource GlassLine}" />
+          <!-- 列表 -->
+          <ScrollViewer MaxHeight="300" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Notifications}" Margin="0,4">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="models:Notification">
+                  <Border Classes="nli" Padding="14,10">
+                    <Grid ColumnDefinitions="22,*,Auto">
+                      <Border Grid.Column="0" Width="22" Height="22" CornerRadius="11"
+                              Background="{Binding IconBackground}" VerticalAlignment="Top">
+                        <Viewbox Width="12" Height="12">
+                          <Canvas Width="24" Height="24">
+                            <Path Data="{Binding Icon}" Stroke="{Binding IconForeground}"
+                                  StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                                  Fill="Transparent" />
+                          </Canvas>
+                        </Viewbox>
+                      </Border>
+                      <StackPanel Grid.Column="1" Margin="10,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource OnDark}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Message}" FontSize="10.5"
+                                   Foreground="{DynamicResource Body}" Margin="0,2,0,0"
+                                   TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="2" Text="{Binding Tag}" FontSize="10"
+                                 Foreground="{DynamicResource Mute}" VerticalAlignment="Top" />
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <Border Height="1" Background="{DynamicResource GlassLine}" />
+          <!-- 底部 -->
+          <Grid ColumnDefinitions="*,Auto" Margin="12,8">
+            <TextBlock Grid.Column="0" Text="{Binding NotifTotalText}" FontSize="11"
+                       Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="nlflink"
+                    Command="{Binding SwitchTabCmdCommand}" CommandParameter="alarm"
+                    Click="OnNotifLinkClick">
+              <TextBlock Text="查看历史 →" FontSize="11" Foreground="{DynamicResource Body}" />
+            </Button>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Panel>
 
-		<!-- ============ 退出程序确认 ============ -->
-		<Border Background="#B3000000" IsVisible="{Binding IsExitConfirmOpen}">
-			<Border Width="384" CornerRadius="16" BorderThickness="1" Padding="24,22"
-					HorizontalAlignment="Center" VerticalAlignment="Center"
-					BorderBrush="{DynamicResource GlassLine2}" Background="#1c1c21">
-				<StackPanel>
-					<StackPanel Orientation="Horizontal" Spacing="11">
-						<Border Width="40" Height="40" CornerRadius="20" Background="#1AE0394C"
-								BorderBrush="#59E0394C" BorderThickness="1">
-							<Path Data="M16 17l5-5-5-5 M21 12H9 M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
-								  Stroke="#e0394c" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
-								  Width="19" Height="19" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
-						</Border>
-						<StackPanel VerticalAlignment="Center">
-							<TextBlock Text="退出程序" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-							<TextBlock Text="EXIT APPLICATION" FontSize="9" FontWeight="Medium"
-									   Foreground="{DynamicResource Mute}" LetterSpacing="2" Margin="0,2,0,0" />
-						</StackPanel>
-					</StackPanel>
+    <!-- ============ 退出程序确认 ============ -->
+    <Border Background="#B3000000" IsVisible="{Binding IsExitConfirmOpen}">
+      <Border Width="384" CornerRadius="16" BorderThickness="1" Padding="24,22"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              BorderBrush="{DynamicResource GlassLine2}" Background="#ffffff">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="11">
+            <Border Width="40" Height="40" CornerRadius="20" Background="#1AE0394C"
+                    BorderBrush="#59E0394C" BorderThickness="1">
+              <Path Data="M16 17l5-5-5-5 M21 12H9 M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+                    Stroke="#e0394c" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                    Width="19" Height="19" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="退出程序" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="EXIT APPLICATION" FontSize="9" FontWeight="Medium"
+                         Foreground="{DynamicResource Mute}" LetterSpacing="2" Margin="0,2,0,0" />
+            </StackPanel>
+          </StackPanel>
 
-					<TextBlock Text="确定要退出控制系统吗？退出后界面将关闭，正在进行的搅拌保活会停止。"
-							   FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap"
-							   LineHeight="20" Margin="0,16,0,20" />
+          <TextBlock Text="确定要退出控制系统吗？退出后界面将关闭，正在进行的搅拌保活会停止。"
+                     FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap"
+                     LineHeight="20" Margin="0,16,0,20" />
 
-					<Grid ColumnDefinitions="*,*">
-						<Button Grid.Column="0" Classes="mfbtn" Content="取消" HorizontalAlignment="Stretch"
-								Margin="0,0,6,0" Command="{Binding CancelExitCommand}" />
-						<Button Grid.Column="1" Classes="mfbtn danger" Content="退出" HorizontalAlignment="Stretch"
-								Margin="6,0,0,0" Command="{Binding ConfirmExitCommand}" />
-					</Grid>
-				</StackPanel>
-			</Border>
-		</Border>
+          <Grid ColumnDefinitions="*,*">
+            <Button Grid.Column="0" Classes="mfbtn" Content="取消" HorizontalAlignment="Stretch"
+                    Margin="0,0,6,0" Command="{Binding CancelExitCommand}" />
+            <Button Grid.Column="1" Classes="mfbtn danger" Content="退出" HorizontalAlignment="Stretch"
+                    Margin="6,0,0,0" Command="{Binding ConfirmExitCommand}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Border>
 
-		<!-- ============ 屏幕全键盘（中央模态，置于最顶层，确保在所有弹窗之上）============ -->
-		<Border Background="#A6000000" IsVisible="{Binding Keyboard.IsOpen}">
-			<ctl:OnScreenKeyboard DataContext="{Binding Keyboard}" />
-		</Border>
+    <!-- ============ 屏幕全键盘（中央模态，置于最顶层，确保在所有弹窗之上）============ -->
+    <Border Background="#A6000000" IsVisible="{Binding Keyboard.IsOpen}">
+      <ctl:OnScreenKeyboard DataContext="{Binding Keyboard}" />
+    </Border>
 
-		<!-- ============ 启动预热遮罩（开机时盖住，预热各页后隐藏，避免首次进菜单卡顿）============ -->
-		<Border x:Name="Splash" Background="#0b0b0e">
-			<StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-				<Image Source="avares://ParallelReactor/Assets/logo.png" Height="56" Stretch="Uniform" HorizontalAlignment="Center" />
-				<TextBlock Text="多通道平行反应仪控制系统" FontSize="18" FontWeight="SemiBold"
-						   Foreground="{DynamicResource OnDark}" LetterSpacing="3" HorizontalAlignment="Center" />
-				<TextBlock Text="系统加载中…" FontSize="12" Foreground="{DynamicResource Body}"
-						   LetterSpacing="2" HorizontalAlignment="Center" />
-			</StackPanel>
-		</Border>
-	</Panel>
+    <!-- ============ 启动预热遮罩（开机时盖住，预热各页后隐藏，避免首次进菜单卡顿）============ -->
+    <Border x:Name="Splash" Background="#eef0f3">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
+        <Image Source="avares://ParallelReactor/Assets/logo.png" Height="56" Stretch="Uniform" HorizontalAlignment="Center" />
+        <TextBlock Text="多通道平行反应仪控制系统" FontSize="18" FontWeight="SemiBold"
+                   Foreground="{DynamicResource OnDark}" LetterSpacing="3" HorizontalAlignment="Center" />
+        <TextBlock Text="系统加载中…" FontSize="12" Foreground="{DynamicResource Body}"
+                   LetterSpacing="2" HorizontalAlignment="Center" />
+      </StackPanel>
+    </Border>
+  </Panel>
 </UserControl>

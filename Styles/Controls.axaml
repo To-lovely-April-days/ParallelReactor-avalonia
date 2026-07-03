@@ -71,6 +71,8 @@
     <Setter Property="Height" Value="38" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="0" />
     <Setter Property="CornerRadius" Value="11" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
@@ -150,7 +152,7 @@
     <Setter Property="Height" Value="21" />
     <Setter Property="Stretch" Value="Uniform" />
     <Setter Property="Fill" Value="Transparent" />
-    <Setter Property="Stroke" Value="#c8c8d0" />
+    <Setter Property="Stroke" Value="#7a7a84" />
     <Setter Property="StrokeThickness" Value="1.8" />
     <Setter Property="StrokeLineCap" Value="Round" />
     <Setter Property="StrokeJoin" Value="Round" />
@@ -160,7 +162,7 @@
   <Style Selector="Button.nav TextBlock.zh">
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="Medium" />
-    <Setter Property="Foreground" Value="#d4d4dc" />
+    <Setter Property="Foreground" Value="#54545e" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <!-- 悬停 -->
@@ -262,7 +264,7 @@
        在弱 GPU/Mali 上空闲也吃满一个核。改为纯状态变化：报警时角标更亮、描边更重）。-->
   <Style Selector="Border.nbadge.pulse">
     <Setter Property="BorderThickness" Value="1.5" />
-    <Setter Property="BorderBrush" Value="#66FFFFFF" />
+    <Setter Property="BorderBrush" Value="#FFFFFF" />
   </Style>
 
   <!-- ============ 通知下拉列表项 .nli ============ -->

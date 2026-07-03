@@ -122,7 +122,7 @@
                   </ControlTemplate>
                 </Setter>
                 <Style Selector="^:pointerover">
-                  <Setter Property="Background" Value="#7E26262C" />
+                  <Setter Property="Background" Value="#08000000" />
                 </Style>
                 <!-- 选中：主题红（半透明，保证内容仍清晰可读） -->
                 <Style Selector="^:selected">
@@ -177,7 +177,7 @@
                 <TextBlock Text="{Binding Selected.NoteTag}" FontSize="10.5" FontWeight="Bold" LetterSpacing="0.5"
                            Foreground="{Binding Selected.NoteBar}" VerticalAlignment="Center" />
                 <Rectangle Width="1" Height="11" Fill="{DynamicResource GlassLine2}" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding Selected.Note}" FontSize="12" Foreground="#cdced6"
+                <TextBlock Text="{Binding Selected.Note}" FontSize="12" Foreground="#54545e"
                            VerticalAlignment="Center" TextWrapping="Wrap" />
               </StackPanel>
             </Border>
@@ -217,7 +217,7 @@
               <Border Grid.Row="1" Grid.Column="1" Classes="rkv" Margin="5,0,0,0">
                 <StackPanel>
                   <TextBlock Text="反应压力" Classes="rkvk" />
-                  <TextBlock Classes="rkvv"><Run Text="{Binding Selected.PText}" /><Run Text=" psi" FontSize="10" Foreground="{DynamicResource Mute}" /></TextBlock>
+                  <TextBlock Classes="rkvv"><Run Text="{Binding Selected.PText}" /><Run Text="{Binding Selected.PUnit, StringFormat=' {0}'}" FontSize="10" Foreground="{DynamicResource Mute}" /></TextBlock>
                 </StackPanel>
               </Border>
             </Grid>

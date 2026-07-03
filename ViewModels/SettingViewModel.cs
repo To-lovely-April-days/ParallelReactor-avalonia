@@ -199,7 +199,7 @@ public partial class SettingViewModel : ViewModelBase
     /// <summary>压力单位选择行：切换 psi / bar 时更新全局单位（内部仍存 psi，仅换算显示）。</summary>
     private SetRow PressureUnitRow()
     {
-        var row = SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "psi", "bar" }, "Pressure Unit");
+        var row = SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "MPa", "bar", "psi" }, "Pressure Unit");
         row.OnSelChanged = Models.Units.SetPressure;   // MainViewModel 订阅 Units.Changed 后刷新界面
         return row;
     }
@@ -217,10 +217,7 @@ public partial class SettingViewModel : ViewModelBase
     {
         Pages.Add(new SetPage
         {
-            Id = "general",
-            Name = "通用",
-            Title = "通用",
-            Sub = "界面、语言、单位",
+            Id = "general", Name = "通用", Title = "通用", Sub = "界面、语言、单位",
             Icon = G("M12 1v6 M12 17v6 M4.22 4.22l4.24 4.24 M15.54 15.54l4.24 4.24 M1 12h6 M17 12h6 M4.22 19.78l4.24-4.24 M15.54 8.46l4.24-4.24 M15 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0"),
             Sections =
             {
@@ -236,10 +233,7 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "params",
-            Name = "参数与报警",
-            Title = "参数与报警",
-            Sub = "可设置参数范围与报警阈值",
+            Id = "params", Name = "参数与报警", Title = "参数与报警", Sub = "可设置参数范围与报警阈值",
             Icon = G("M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M2 14h4 M10 8h4 M18 16h4"),
             Sections =
             {
@@ -255,25 +249,36 @@ public partial class SettingViewModel : ViewModelBase
                     Num("压力偏离 SP 报警", _main.Settings.PressDeviation, "psi", 1, 50, 1, v => _main.Settings.PressDeviation = v, "稳压后偏离超过此值时提示"),
                     Num("泄漏率阈值", _main.Settings.LeakRate, "psi/hr", 0.5, 10, 0.5, v => _main.Settings.LeakRate = v, "泄漏测试判定不通过的阈值"),
                     Num("泄漏测试提醒周期", _main.Settings.LeakReminderDays, "天", 1, 30, 1, v => _main.Settings.LeakReminderDays = v, "超过此天数未测试则提醒")),
+                SetSection.Card("搅拌电机电流（雷赛 DM2C · 即时写入驱动器并存 EEPROM）",
+                    Num("峰值电流", _main.Settings.StirCurrent, "A", 0.3, 3.2, 0.1,
+                        v => _ = _main.ApplyStirCurrentAsync(v),
+                        "按电机铭牌额定电流设：带负载卡顿调大、发烫调小（驱动器硬限 0.3–3.2A）"),
+                    Num("待机电流", _main.Settings.StirStandbyPct, "%", 0, 100, 5,
+                        v => _ = _main.ApplyStirStandbyPctAsync((int)v),
+                        "停转后自动降到此百分比，减少电机发热"),
+                    Num("加减速时间", _main.Settings.StirRampMs, "ms/1000rpm", 50, 10000, 50,
+                        v => _main.ApplyStirRampMs(v),
+                        "起停平缓度：越大越缓。值小起停顿挫/像“起飞”，值大更柔和（1000≈300rpm 用 0.3s 升起）"),
+                    Num("细分", _main.Settings.StirMicrostep, "脉冲/转", 200, 51200, 200,
+                        v => _ = _main.ApplyStirMicrostepAsync(v),
+                        "指令脉冲数/转：越高低速越平顺、越能压共振。常用 10000 / 20000 / 25600")),
+                SetSection.Card("压力变送器（8AI）",
+                    Num("变送器满量程", _main.Settings.PressFullScaleMPa, "MPa", 0.1, 60, 0.1,
+                        v => _main.ApplyPressFullScaleMPa(v),
+                        "必须与变送器铭牌量程一致（如 0–10MPa 填 10），否则压力读数按比例偏")),
             },
         });
 
         Pages.Add(new SetPage
         {
-            Id = "temppid",
-            Name = "温控 / PID",
-            Title = "温控 / PID",
-            Sub = "8 通道独立 PID · 自整定（宇电 AI-8 ×2）",
+            Id = "temppid", Name = "温控 / PID", Title = "温控 / PID", Sub = "8 通道独立 PID · 自整定（宇电 AI-8 1 拖 8）",
             Icon = G("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
             Sections = { },   // 自定义渲染：见 SettingView 的温控块
         });
 
         Pages.Add(new SetPage
         {
-            Id = "channels",
-            Name = "通道与气路",
-            Title = "通道与气路",
-            Sub = "8 路 RV · 3 路气源 + 1 路 Vent",
+            Id = "channels", Name = "通道与气路", Title = "通道与气路", Sub = "8 路 RV · 3 路气源 + 1 路 Vent",
             Icon = G("M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z"),
             Sections =
             {
@@ -293,10 +298,7 @@ public partial class SettingViewModel : ViewModelBase
         _ipRow = SetRow.Val("本机 IP 地址", "获取中…", "WiFi / 以太网当前地址");
         Pages.Add(new SetPage
         {
-            Id = "comm",
-            Name = "通讯设置",
-            Title = "通讯设置",
-            Sub = "3 路独立 RS485 · Modbus RTU",
+            Id = "comm", Name = "通讯设置", Title = "通讯设置", Sub = "3 路独立 RS485 · Modbus RTU",
             Icon = G("M5 12.55a11 11 0 0 1 14 0 M1.42 9a16 16 0 0 1 21.16 0 M8.53 16.11a6 6 0 0 1 6.95 0 M12 20h.01"),
             Sections =
             {
@@ -315,10 +317,7 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "user",
-            Name = "用户与权限",
-            Title = "用户与权限",
-            Sub = "管理员可控制阀门、改高级参数、停用通道",
+            Id = "user", Name = "用户与权限", Title = "用户与权限", Sub = "管理员可控制阀门、改高级参数、停用通道",
             Icon = G("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M16 7a4 4 0 1 1-8 0 4 4 0 1 1 8 0"),
             Sections =
             {
@@ -335,10 +334,7 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "data",
-            Name = "数据存储",
-            Title = "数据存储",
-            Sub = "自动归档、自动备份、可对接外部数据库",
+            Id = "data", Name = "数据存储", Title = "数据存储", Sub = "自动归档、自动备份、可对接外部数据库",
             Icon = G("M21 5a9 3 0 1 1-18 0 9 3 0 1 1 18 0 M3 5v14a9 3 0 0 0 18 0V5 M3 12a9 3 0 0 0 18 0"),
             Sections =
             {
@@ -355,10 +351,7 @@ public partial class SettingViewModel : ViewModelBase
 
         Pages.Add(new SetPage
         {
-            Id = "about",
-            Name = "关于",
-            Title = "关于本系统",
-            Sub = "霍桐仪器多通道平行反应仪控制系统",
+            Id = "about", Name = "关于", Title = "关于本系统", Sub = "霍桐仪器多通道平行反应仪控制系统",
             Icon = G("M22 12a10 10 0 1 1-20 0 10 10 0 1 1 20 0 M12 16v-4 M12 8h.01"),
             Sections =
             {
@@ -515,7 +508,7 @@ public partial class SetRow : ObservableObject
     public bool HasSub => !string.IsNullOrEmpty(Sub);
     public bool HasTrail => !string.IsNullOrEmpty(Trail);
 
-    public IBrush LabelBrush => LabelBold ? B("#f6f6f8") : B("#a4a4b0");
+    public IBrush LabelBrush => LabelBold ? B("#17171c") : B("#54545e");
     public FontWeight LabelWeight => LabelBold ? FontWeight.Bold : FontWeight.Normal;
 
     public IBrush ChipBg => ChipWarn ? B("#24F0A830") : B("#2484CC16");

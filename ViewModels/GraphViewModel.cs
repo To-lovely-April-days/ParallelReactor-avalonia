@@ -22,8 +22,8 @@ public partial class GraphViewModel : ViewModelBase
     // 8 通道配色（对应 HTML colors 映射）
     private static readonly Dictionary<int, string> Palette = new()
     {
-        [1] = "#a3e635", [2] = "#5fa1e6", [3] = "#d4a8ff", [4] = "#f0a830",
-        [5] = "#e0394c", [6] = "#62d4c2", [7] = "#f5d76e", [8] = "#9d978d",
+        [1] = "#5fae14", [2] = "#2f7fd6", [3] = "#9b59d0", [4] = "#d68910",
+        [5] = "#e0394c", [6] = "#1fa595", [7] = "#c79a1e", [8] = "#6b665e",
     };
 
     public ObservableCollection<GraphChannel> Channels { get; } = new();
@@ -45,6 +45,17 @@ public partial class GraphViewModel : ViewModelBase
         foreach (var r in _main.Reactors)
             Channels.Add(new GraphChannel(this, r, Palette[r.Id], on: !r.IsIdle && r.Id <= 7));
         BuildHistory();
+        Models.Units.Changed += OnUnitChanged;   // 全局压力单位切换后刷新压力曲线的轴/读数
+    }
+
+    /// <summary>全局压力单位变化：压力视图下刷新单位标签、小数位、图例与曲线。</summary>
+    private void OnUnitChanged()
+    {
+        if (Metric != "P") return;
+        OnPropertyChanged(nameof(YUnit));
+        OnPropertyChanged(nameof(Decimals));
+        foreach (var ch in Channels) ch.RaiseVal();
+        Refresh();
     }
 
     // —— 派生（工具栏高亮）——
@@ -56,13 +67,14 @@ public partial class GraphViewModel : ViewModelBase
     public bool RangeIs60 => Range == "60";
     public bool RangeIsAll => Range == "all";
 
-    public string YUnit => Metric == "T" ? "°C" : Metric == "P" ? "psi" : "mmol";
+    public string YUnit => Metric == "T" ? "°C" : Metric == "P" ? Models.Units.PLabel : "mmol";
     public string YTitle => Metric == "T" ? "温度" : Metric == "P" ? "压力" : "气体消耗";
-    public int Decimals => Metric == "gas" ? 2 : 0;
+    // 压力小数位随单位（MPa 3 / bar 2 / psi 1，取自 Units）；温度 0 位、气体 2 位
+    public int Decimals => Metric == "gas" ? 2 : Metric == "P" ? Models.Units.PDecimals : 0;
     public double RangeSeconds => Range == "all" ? double.MaxValue : double.Parse(Range) * 60;
 
-    /// <summary>取某采样点当前变量的值。</summary>
-    public double Val(GSample s) => Metric == "T" ? s.T : Metric == "P" ? s.P : s.Gas;
+    /// <summary>取某采样点当前变量的值（压力按全局显示单位换算）。</summary>
+    public double Val(GSample s) => Metric == "T" ? s.T : Metric == "P" ? Models.Units.P(s.P) : s.Gas;
 
     partial void OnMetricChanged(string value)
     {
@@ -95,7 +107,7 @@ public partial class GraphViewModel : ViewModelBase
     public string ChannelValue(Reactor r) => Metric switch
     {
         "T" => $"{r.T:0.0} °C",
-        "P" => $"{r.P:0.0} psi",
+        "P" => Models.Units.FormatP(r.P),
         _ => $"{r.Gas:0.00} mmol",
     };
 

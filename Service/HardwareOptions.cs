@@ -35,15 +35,21 @@ public static class HardwareOptions
     /// <summary>是否配置了任一真机串口（决定开机是否进入"真机初始态"而非演示数据）。</summary>
     public static bool AnyReal => UseRealStir || UseRealTemp || UseRealAnalog || UseRealIo;
 
+    /// <summary>搅拌总线追踪（PR_STIR_TRACE=1 时把每笔事务记入 stir-trace.log，用于排查转速波动是否软件所致）。</summary>
+    public static bool StirTrace { get; set; } = (Env("PR_STIR_TRACE") ?? "0") == "1";
+
     /// <summary>按当前配置创建搅拌所在总线的 Modbus 主站（真串口或内存模拟）。</summary>
     public static IModbusMaster CreateStirBus()
-        => UseRealStir
+    {
+        IModbusMaster bus = UseRealStir
             ? new ModbusRtuMaster(StirPort!, StirBaud, StirParity, StirDataBits, StirStopBits)
             : new MockModbusMaster();
+        return StirTrace ? new TracingModbusMaster(bus, "stir-trace.log") : bus;
+    }
 
-    // ===== 温控（宇电 AI-8 ×2，A 站 RV1-4、B 站 RV5-8，同一条 RS485 总线）=====
+    // ===== 温控（宇电 AI-8，1 拖 8，一台管 RV1-8，RS485）=====
 
-    /// <summary>温控总线串口名（两台 AI-8 共用）。为空则用内存模拟。</summary>
+    /// <summary>温控总线串口名（AI-8）。为空则用内存模拟。</summary>
     public static string? TempPort { get; set; } = Env("PR_TEMP_PORT");
 
     /// <summary>波特率（现场 AI-8 为 9600，8-N-1）。</summary>

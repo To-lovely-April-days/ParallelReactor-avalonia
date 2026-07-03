@@ -38,7 +38,11 @@ public partial class TempProfile : ObservableObject
     // —— 运行态 ——
     private double _startTemp;      // 启动时 PV（段 1 起点）
     private DateTime _startUtc;
-    private double _lastWritten = double.NaN;   // 上次下发的 SP（去抖：变化≥0.1 才写）
+    private double _lastWritten = double.NaN;        // 上次「成功下发」的 SP（写失败不记录，下周期重试）
+    private DateTime _lastWriteUtc = DateTime.MinValue;
+
+    /// <summary>强制重写周期：即使目标没变也定期重发 SP，自愈串口偶发失败、仪表面板被改、仪表重启等脱节。</summary>
+    private static readonly TimeSpan ForceRewriteEvery = TimeSpan.FromSeconds(30);
 
     public TempProfile()
     {
@@ -61,6 +65,7 @@ public partial class TempProfile : ObservableObject
         _startTemp = currentPv;
         _startUtc = DateTime.UtcNow;
         _lastWritten = double.NaN;
+        _lastWriteUtc = DateTime.MinValue;
         Running = true;
         StatusText = "第 1/" + SegCount + " 段";
     }
@@ -105,11 +110,22 @@ public partial class TempProfile : ObservableObject
         return from;
     }
 
-    /// <summary>去抖判断：目标与上次写入相差 ≥0.1℃ 才需要下发。</summary>
+    /// <summary>
+    /// 去抖判断（纯查询，不改状态）：目标与上次成功下发相差 ≥0.1℃，
+    /// 或距上次成功下发已超过 <see cref="ForceRewriteEvery"/>（强制刷新兜底）时需要下发。
+    /// 写串口成功后必须调 <see cref="MarkWritten"/>；失败不标记，下个周期自动重试。
+    /// </summary>
     public bool ShouldWrite(double target)
     {
-        if (!double.IsNaN(_lastWritten) && Math.Abs(target - _lastWritten) < 0.1) return false;
+        if (double.IsNaN(_lastWritten)) return true;
+        if (Math.Abs(target - _lastWritten) >= 0.1) return true;
+        return DateTime.UtcNow - _lastWriteUtc >= ForceRewriteEvery;
+    }
+
+    /// <summary>记录一次「成功」下发（写失败不要调用，这样平台段的失败写会在下周期重试）。</summary>
+    public void MarkWritten(double target)
+    {
         _lastWritten = target;
-        return true;
+        _lastWriteUtc = DateTime.UtcNow;
     }
 }

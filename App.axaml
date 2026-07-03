@@ -1,7 +1,7 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="ParallelReactor.App"
-             RequestedThemeVariant="Dark">
+             RequestedThemeVariant="Light">
 
 	<Application.Styles>
 		<FluentTheme />
@@ -13,36 +13,43 @@
 
 	<Application.Resources>
 		<ResourceDictionary>
-			<!-- ============ 颜色（对应 HTML :root 变量）============ -->
+			<!-- ============ 颜色（亮色主题：浅灰底 + 白卡片 + 深色文字）============ -->
+			<!-- 品牌强调色沿用红系；文字/表面翻为浅色系。键名保持不变，避免全局改引用 -->
 			<Color x:Key="AccentColor">#A41626</Color>
-			<Color x:Key="AccentBrightColor">#e0394c</Color>
-			<Color x:Key="VioletColor">#d4435a</Color>
-			<Color x:Key="GreenColor">#84cc16</Color>
-			<Color x:Key="GreenBrightColor">#a3e635</Color>
-			<Color x:Key="AmberColor">#f0a830</Color>
-			<Color x:Key="OnDarkColor">#f6f6f8</Color>
-			<Color x:Key="BodyColor">#a4a4b0</Color>
-			<Color x:Key="MuteColor">#66666f</Color>
+			<Color x:Key="AccentBrightColor">#C11B2E</Color>
+			<Color x:Key="VioletColor">#b83350</Color>
+			<Color x:Key="GreenColor">#4d9a12</Color>
+			<Color x:Key="GreenBrightColor">#5fae14</Color>
+			<Color x:Key="AmberColor">#b5750a</Color>
+			<!-- OnDark = 主文字（亮主题下为近黑）；Body = 次级；Mute = 三级 -->
+			<Color x:Key="OnDarkColor">#0a0a0e</Color>
+			<Color x:Key="BodyColor">#3a3a44</Color>
+			<Color x:Key="MuteColor">#63636e</Color>
 
 			<!-- 画刷 -->
 			<SolidColorBrush x:Key="Accent" Color="#A41626" />
-			<SolidColorBrush x:Key="AccentBright" Color="#e0394c" />
-			<SolidColorBrush x:Key="Violet" Color="#d4435a" />
-			<SolidColorBrush x:Key="Green" Color="#84cc16" />
-			<SolidColorBrush x:Key="GreenBright" Color="#a3e635" />
-			<SolidColorBrush x:Key="GreenGlow" Color="#66a3e635" />
-			<SolidColorBrush x:Key="Amber" Color="#f0a830" />
-			<SolidColorBrush x:Key="OnDark" Color="#f6f6f8" />
-			<SolidColorBrush x:Key="Body" Color="#a4a4b0" />
-			<SolidColorBrush x:Key="Mute" Color="#66666f" />
-			<SolidColorBrush x:Key="AccentGlow" Color="#66e0394c" />
+			<SolidColorBrush x:Key="AccentBright" Color="#C11B2E" />
+			<SolidColorBrush x:Key="Violet" Color="#b83350" />
+			<SolidColorBrush x:Key="Green" Color="#4d9a12" />
+			<SolidColorBrush x:Key="GreenBright" Color="#5fae14" />
+			<SolidColorBrush x:Key="GreenGlow" Color="#3384cc16" />
+			<SolidColorBrush x:Key="Amber" Color="#b5750a" />
+			<SolidColorBrush x:Key="OnDark" Color="#0a0a0e" />
+			<SolidColorBrush x:Key="Body" Color="#3a3a44" />
+			<SolidColorBrush x:Key="Mute" Color="#63636e" />
+			<SolidColorBrush x:Key="AccentGlow" Color="#33A41626" />
 
-			<!-- 玻璃拟态 -->
-			<SolidColorBrush x:Key="Glass" Color="#9E26262C" />
-			<SolidColorBrush x:Key="GlassSoft" Color="#73303037" />
-			<SolidColorBrush x:Key="GlassBright" Color="#9942424A" />
-			<SolidColorBrush x:Key="GlassLine" Color="#14FFFFFF" />
-			<SolidColorBrush x:Key="GlassLine2" Color="#21FFFFFF" />
+			<!-- 表面（原「玻璃拟态」键名保留）：白卡片 + 浅灰内嵌 + 黑色描边 -->
+			<SolidColorBrush x:Key="Glass" Color="#FFFFFFFF" />
+			<SolidColorBrush x:Key="GlassSoft" Color="#FFF1F2F4" />
+			<SolidColorBrush x:Key="GlassBright" Color="#FFE7E9EC" />
+			<SolidColorBrush x:Key="GlassLine" Color="#20000000" />
+			<SolidColorBrush x:Key="GlassLine2" Color="#30000000" />
+
+			<!-- 应用底色与面板底色（供各界面引用，替代写死的深色）-->
+			<SolidColorBrush x:Key="AppBg" Color="#FFEEF0F3" />
+			<SolidColorBrush x:Key="PanelBg" Color="#FFFFFFFF" />
+			<SolidColorBrush x:Key="PanelBg2" Color="#FFF6F7F9" />
 
 			<FontFamily x:Key="Sans">Inter, Noto Sans CJK SC, Source Han Sans CN, Noto Sans SC, Microsoft YaHei, WenQuanYi Micro Hei, sans-serif</FontFamily>
 		</ResourceDictionary>

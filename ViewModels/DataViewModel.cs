@@ -19,7 +19,7 @@ public partial class DataViewModel : ViewModelBase
     // 详情区汇总曲线（逻辑斯蒂 S 曲线）
     public List<Point> SparkLine { get; private set; } = new();
     public List<Point> SparkArea { get; private set; } = new();
-    [ObservableProperty] private IBrush _sparkColor = new SolidColorBrush(Color.Parse("#a3e635"));
+    [ObservableProperty] private IBrush _sparkColor = new SolidColorBrush(Color.Parse("#5fae14"));
 
     public bool HasSelection => Selected != null;
 
@@ -56,7 +56,7 @@ public partial class DataViewModel : ViewModelBase
         }
         SparkLine = line;
         SparkArea = new List<Point>(line) { new Point(W, H - 8), new Point(0, H - 8) };
-        SparkColor = new SolidColorBrush(Color.Parse(r?.Status == "err" ? "#e0394c" : "#a3e635"));
+        SparkColor = new SolidColorBrush(Color.Parse(r?.Status == "err" ? "#e0394c" : "#5fae14"));
     }
 
     private void Seed()
@@ -94,10 +94,11 @@ public class RunRecord
     public string FileMeta => $"{Id}.ear · {Start} · {Dur}";
     public string MmolText => Mmol.ToString("0.#");
     public string TText => T.ToString();
-    public string PText => P.ToString();
+    public string PText => Models.Units.PValue(P);   // 按全局压力单位换算
+    public string PUnit => Models.Units.PLabel;
     public string NoteFull => $"备注：{Note}";
 
-    public IBrush StatusBrush => Status switch { "warn" => B("#f0a830"), "err" => B("#e0394c"), _ => B("#a3e635") };
+    public IBrush StatusBrush => Status switch { "warn" => B("#c9820f"), "err" => B("#e0394c"), _ => B("#5fae14") };
     public IBrush RsdBrush => StatusBrush;
     public string StatusText => Status switch { "ok" => "✓ 完成", "warn" => "⚠ 警告", _ => "✕ 中止" };
     public IBrush NoteBg => Status == "err" ? B("#12e0394c") : B("#12f0a830");

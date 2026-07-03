@@ -654,7 +654,7 @@ public partial class ApplyRow : ObservableObject
     }
     private static IBrush PB(string hex) => new SolidColorBrush(Color.Parse(hex));
     public IBrush CheckBg => IsPicked ? PB("#e0394c") : PB("#00000000");
-    public IBrush CheckBorder => IsPicked ? PB("#e0394c") : PB("#3DFFFFFF");
+    public IBrush CheckBorder => IsPicked ? PB("#e0394c") : PB("#3D000000");
 
     [RelayCommand]
     private void Toggle() { if (CanPick) IsPicked = !IsPicked; }

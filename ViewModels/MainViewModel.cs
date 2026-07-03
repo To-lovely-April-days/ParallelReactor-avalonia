@@ -52,6 +52,71 @@ public partial class MainViewModel : ViewModelBase
     [ObservableProperty] private bool _stirOn = true;
     [ObservableProperty] private int _stirRpm = 600;
 
+    /// <summary>搅拌电机当前运行电流（A）——即驱动器设定的峰值电流（步进恒流，无实时负载电流反馈）。</summary>
+    [ObservableProperty] private double _stirMotorCurrent;
+    public string StirMotorCurrentText => $"{StirMotorCurrent:0.0} A";
+    partial void OnStirMotorCurrentChanged(double value) => OnPropertyChanged(nameof(StirMotorCurrentText));
+
+    /// <summary>搅拌电机故障文本（空=无故障）。由 Tick 周期轮询驱动器报警码 0x2203。</summary>
+    [ObservableProperty] private string _stirFaultText = "";
+    public bool StirHasFault => !string.IsNullOrEmpty(StirFaultText);
+    partial void OnStirFaultTextChanged(string value) => OnPropertyChanged(nameof(StirHasFault));
+
+    /// <summary>雷赛 DM2C 报警码 → 中文（见手册 §5.4.2）。</summary>
+    private static string StirFaultName(ushort code) => code switch
+    {
+        0 => "",
+        0x01 => "过流",
+        0x02 => "过压",
+        0x40 => "电流采样故障",
+        0x80 => "锁轴/缺相（堵转）",
+        0x100 => "参数自整定故障",
+        0x200 => "EEPROM 故障",
+        _ => $"故障 0x{code:X}"
+    };
+
+    /// <summary>从驱动器读回当前设定电流并刷新显示（通讯失败/为 0 时保留原值）。</summary>
+    public async System.Threading.Tasks.Task RefreshStirCurrentAsync()
+    {
+        var a = await _stir.ReadCurrentAsync();
+        if (a is { } v && v > 0) StirMotorCurrent = v;
+    }
+
+    /// <summary>轮询搅拌电机报警码并刷新故障提示（在 Tick 里按节流调用）。</summary>
+    public async System.Threading.Tasks.Task RefreshStirFaultAsync()
+    {
+        var c = await _stir.ReadAlarmAsync();
+        if (c is { } code) StirFaultText = StirFaultName(code);
+    }
+
+    /// <summary>开机从驱动器回填当前细分到设置显示（读不到则保留默认）。</summary>
+    private async System.Threading.Tasks.Task InitStirMicrostepAsync()
+    {
+        var m = await _stir.ReadMicrostepAsync();
+        if (m is { } n && n >= 200) Settings.StirMicrostep = n;
+    }
+
+    /// <summary>一键清除搅拌电机报警。</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task ClearStirFault()
+    {
+        await _stir.ClearAlarmAsync();
+        await RefreshStirFaultAsync();
+        Toast(StirHasFault ? "warn" : "ok", StirHasFault ? $"报警仍在：{StirFaultText}（过流需排查后才能清）" : "已清除搅拌电机报警");
+    }
+
+    /// <summary>设置细分（指令脉冲数/转），写入 DM2C 并存 EEPROM；运行中改则重新触发使其生效。</summary>
+    public async System.Threading.Tasks.Task ApplyStirMicrostepAsync(double ppr)
+    {
+        Settings.StirMicrostep = ppr;
+        var v = await _stir.SetMicrostepAsync((int)ppr);
+        if (v is { } n)
+        {
+            if (StirOn) _ = _stir.SetRpmAsync(StirRpm);   // 让新细分立即生效
+            Toast("ok", $"细分已设为 {n} 脉冲/转 并保存");
+        }
+    }
+
     public string StirStateText => StirOn ? "运行中" : "已停止";
 
     /// <summary>是否有需要播放的动画（气路流动 / 桨叶旋转）。空闲时为 false，让动画停下省 CPU。</summary>
@@ -91,6 +156,40 @@ public partial class MainViewModel : ViewModelBase
         if (Drawer.IsOpen) Drawer.RaiseAll();
     }
 
+    /// <summary>设置搅拌电机峰值电流（A），写入 DM2C 并存 EEPROM；反馈实际生效值（驱动器硬夹 0.3–3.2A）。</summary>
+    public async System.Threading.Tasks.Task ApplyStirCurrentAsync(double amps)
+    {
+        Settings.StirCurrent = amps;
+        var a = await _stir.SetCurrentAsync(amps);
+        if (a is { } v) { StirMotorCurrent = v; Toast("ok", $"搅拌电机峰值电流已设为 {v:0.0} A 并保存"); }
+    }
+
+    /// <summary>设置搅拌待机电流百分比（0–100），写入 DM2C 并存 EEPROM。</summary>
+    public async System.Threading.Tasks.Task ApplyStirStandbyPctAsync(int pct)
+    {
+        Settings.StirStandbyPct = pct;
+        var p = await _stir.SetStandbyPctAsync(pct);
+        if (p is { } v) Toast("ok", $"搅拌待机电流已设为 {v}% 并保存");
+    }
+
+    /// <summary>设置搅拌起停平缓度（加减速时间 ms/1000rpm）：运行中改则立即以新斜率重新下发。</summary>
+    public void ApplyStirRampMs(double ms)
+    {
+        Settings.StirRampMs = ms;
+        _stir.RampMs = (int)ms;
+        if (StirOn) _ = _stir.SetRpmAsync(StirRpm);   // 重新触发速度路径，让新加减速立即生效
+        Toast("ok", $"搅拌加减速时间已设为 {ms:0} ms/1000rpm");
+    }
+
+    /// <summary>设置压力变送器满量程（MPa）：即时生效到 8AI 换算，压力读数随之修正。</summary>
+    public void ApplyPressFullScaleMPa(double mpa)
+    {
+        Settings.PressFullScaleMPa = mpa;
+        _press.FullScalePsi = Models.Units.MpaToPsi(mpa);
+        RefreshSchematic();
+        Toast("ok", $"压力变送器满量程已设为 {mpa:0.###} MPa");
+    }
+
     [ObservableProperty] private string _runCountText = "6 / 8";
     [ObservableProperty] private string _clockTime = "14:33:00";
     [ObservableProperty] private string _clockDate = "2026-06-02 周二";
@@ -124,15 +223,21 @@ public partial class MainViewModel : ViewModelBase
         _stir = new Services.StirController(
             new Hardware.StepperDriver(_bus, Services.HardwareOptions.StirSlave));
         _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
+        _stir.RampMs = (int)Settings.StirRampMs;    // 起停平缓度（加减速时间）
+        StirMotorCurrent = Settings.StirCurrent;   // 先用设置值占位，随后从驱动器读回真实设定
+        _ = RefreshStirCurrentAsync();
+        _ = RefreshStirFaultAsync();
+        _ = InitStirMicrostepAsync();
 
         // 温控服务（一台 AI-8，1 拖 8）。开机读一次各通道 PID 填充界面。
         Temp = new Services.TempService(_tempBus,
             Services.HardwareOptions.TempSlave, Services.HardwareOptions.TempDpt);
         _ = Temp.InitAsync();
 
-        // 压力服务（8AI）
+        // 压力服务（8AI）。用当前内部 psi 满程回填设置页的 MPa 量程显示值。
         _press = new Services.PressureService(_pressBus, Services.HardwareOptions.AnalogSlave,
             Services.HardwareOptions.PressFullScale, Services.HardwareOptions.Press4to20);
+        Settings.PressFullScaleMPa = System.Math.Round(Models.Units.PsiToMpa(_press.FullScalePsi), 3);
 
         // 阀门服务（IO16R）。真机的状态读回放到 SeedData 之后（见下方真机初始态）。
         _valves = new Services.ValveService(_ioBus, Services.HardwareOptions.IoSlave, Services.HardwareOptions.IoEnergizeOpens);
@@ -212,11 +317,18 @@ public partial class MainViewModel : ViewModelBase
 
     public void RefreshSchematic() => SchematicInvalidated?.Invoke();
 
-    /// <summary>安全写温度 SP 到 AI-8（定值编辑与曲线引擎共用；通讯异常忽略，下次变化重写）。</summary>
-    public async System.Threading.Tasks.Task WriteTempSpSafeAsync(int ch, double sp)
+    /// <summary>安全写温度 SP 到 AI-8（定值编辑与曲线引擎共用）。返回是否写成功，失败由调用方决定重试。</summary>
+    public async System.Threading.Tasks.Task<bool> WriteTempSpSafeAsync(int ch, double sp)
     {
-        try { await Temp.SetSetpointAsync(ch, sp); }
-        catch { /* 串口异常：忽略，保持界面值，后续写入会重试 */ }
+        try { await Temp.SetSetpointAsync(ch, sp); return true; }
+        catch { return false; /* 串口异常：曲线引擎靠"成功才标记"机制在下个周期重试 */ }
+    }
+
+    /// <summary>曲线引擎的一次 SP 下发：仅在写成功后标记去抖状态，失败下个周期重试。</summary>
+    private async System.Threading.Tasks.Task WriteCurveSpAsync(Models.Reactor c, double target)
+    {
+        if (await WriteTempSpSafeAsync(c.Id, target))
+            c.Profile.MarkWritten(target);
     }
 
     /// <summary>压力单位切换后：刷新每个釜的压力显示绑定 + 气路图读数。</summary>
@@ -474,9 +586,15 @@ public partial class MainViewModel : ViewModelBase
     }
 
     // ============ 实时数据 tick（对应 HTML setInterval）============
+    private int _stirFaultTick;
+
     public void Tick()
     {
         _ = Temp.PollAsync();   // 温控轮询：PV / 输出 / 自整定状态（mock 模式下推进 PV 漂移）
+
+        // 搅拌电机故障轮询（约每 3 秒，只在真机上查报警码 0x2203）
+        if (Services.HardwareOptions.UseRealStir && _stirFaultTick++ % 3 == 0)
+            _ = RefreshStirFaultAsync();
 
         bool realT = Services.HardwareOptions.UseRealTemp;
         bool realP = Services.HardwareOptions.UseRealAnalog;
@@ -513,10 +631,19 @@ public partial class MainViewModel : ViewModelBase
         foreach (var c in Reactors)
         {
             if (c.SpMode != "curve" || !c.Profile.Running) continue;
+
+            // 超温/超压报警：自动停止曲线，不再继续抬 SP（仪表保持最后成功下发的给定值）
+            if (c.State == ReactorState.Alarm)
+            {
+                c.Profile.Stop();
+                Toast("err", $"RV{c.Id} 报警，曲线升温已自动停止");
+                continue;
+            }
+
             double target = c.Profile.CurrentTarget();
             c.TSp = target;                       // 界面上的目标温度跟随曲线当前值
             if (c.Profile.ShouldWrite(target))
-                _ = WriteTempSpSafeAsync(c.Id, target);
+                _ = WriteCurveSpAsync(c, target);
         }
         RefreshSchematic();
         if (Drawer.IsOpen) Drawer.RaiseAll();
@@ -546,7 +673,7 @@ public class PreRunCheck
     public IBrush Tint => Kind switch
     {
         "err" => new SolidColorBrush(Color.Parse("#e0394c")),
-        "warn" => new SolidColorBrush(Color.Parse("#f0a830")),
+        "warn" => new SolidColorBrush(Color.Parse("#c9820f")),
         _ => new SolidColorBrush(Color.Parse("#7aa86a")),
     };
 

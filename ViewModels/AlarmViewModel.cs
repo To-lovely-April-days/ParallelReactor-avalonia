@@ -86,5 +86,5 @@ public class AlarmItem
     });
 
     public string StatusText => Stat switch { "active" => "未处理", "ack" => "已确认", _ => "已完成" };
-    public IBrush StatusBrush => Stat switch { "active" => B("#e0394c"), "ack" => B("#f0a830"), _ => B("#a4a4b0") };
+    public IBrush StatusBrush => Stat switch { "active" => B("#e0394c"), "ack" => B("#c9820f"), _ => B("#7d8694") };
 }
