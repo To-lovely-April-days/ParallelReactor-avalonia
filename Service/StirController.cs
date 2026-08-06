@@ -100,6 +100,13 @@ public sealed class StirController
         catch { return null; }
     }
 
+    /// <summary>读母线电压（V）；失败静默返回 null。带载电压塌陷=电源容量不足的直接证据。</summary>
+    public async Task<double?> ReadBusVoltageAsync()
+    {
+        try { return await _drive.ReadBusVoltageAsync(); }
+        catch { return null; }
+    }
+
     /// <summary>读报警码（0=无故障）。用于周期轮询，失败时静默返回 null（不弹通讯错，避免刷屏）。</summary>
     public async Task<ushort?> ReadAlarmAsync()
     {

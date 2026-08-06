@@ -120,7 +120,7 @@ public partial class ProgramViewModel : ViewModelBase
     public string GlobalStirText => $"{_main.StirRpm} rpm";
 
     public void EditGlobalStir()
-        => _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, 2000, v =>
+        => _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, _main.Settings.RpmMax, v =>
         {
             _main.StirRpm = (int)v;
             _stirRow?.Refresh();

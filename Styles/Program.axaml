@@ -9,10 +9,10 @@
     <Setter Property="CornerRadius" Value="11" />
     <!-- 过渡动画已移除：改为即时状态变化，减少 G52 上的持续重绘 -->
   </Style>
-  <!-- 拖拽悬停在时间线上时的高亮：用「选中态」蓝，克制不刺眼（红色会像报警）-->
+  <!-- 拖拽悬停在时间线上时的高亮：与主界面统一用品牌红弱底-->
   <Style Selector="Border.progcol.dropactive">
-    <Setter Property="BorderBrush" Value="#805FA1E6" />
-    <Setter Property="Background" Value="#0D5FA1E6" />
+    <Setter Property="BorderBrush" Value="#80C11B2E" />
+    <Setter Property="Background" Value="#0DE0394C" />
   </Style>
 
   <!-- 步骤库卡片：拖拽中的源卡片淡化 -->
@@ -26,9 +26,9 @@
   <!-- ===== 通道选择条 chip ===== -->
   <Style Selector="Button.pch">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Padding" Value="11,5" />
+    <Setter Property="Padding" Value="14,8" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -57,7 +57,7 @@
     <Setter Property="Opacity" Value="0.35" />
   </Style>
   <Style Selector="TextBlock.pchsmall">
-    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="Button.pch.on TextBlock.pchsmall">
@@ -66,7 +66,7 @@
 
   <!-- ===== 步骤库 ===== -->
   <Style Selector="TextBlock.sidehd">
-    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
     <Setter Property="LetterSpacing" Value="1.5" />
@@ -80,7 +80,7 @@
   <Style Selector="Button.pstep">
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
-    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="Padding" Value="12,10" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -106,7 +106,7 @@
   </Style>
   <Style Selector="ListBox.timeline ListBoxItem">
     <Setter Property="Padding" Value="0" />
-    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Margin" Value="0,0,0,10" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -122,18 +122,18 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="9" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Padding" Value="14,12" />
   </Style>
   <Style Selector="ListBox.timeline ListBoxItem:pointerover Border.pblk">
     <Setter Property="Background" Value="#09000000" />
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
   </Style>
   <Style Selector="ListBox.timeline ListBoxItem:selected Border.pblk">
-    <Setter Property="Background" Value="#125FA1E6" />
-    <Setter Property="BorderBrush" Value="#805FA1E6" />
+    <Setter Property="Background" Value="#14E0394C" />
+    <Setter Property="BorderBrush" Value="#80C11B2E" />
   </Style>
   <Style Selector="TextBlock.pidx">
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
@@ -154,8 +154,8 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
   <Style Selector="Button.pactbtn">
-    <Setter Property="Width" Value="22" />
-    <Setter Property="Height" Value="22" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="44" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -179,14 +179,14 @@
 
   <!-- ===== 底部操作按钮 ===== -->
   <Style Selector="Button.pbtn">
-    <Setter Property="Height" Value="32" />
+    <Setter Property="Height" Value="40" />
     <Setter Property="Padding" Value="14,0" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -205,17 +205,17 @@
 
   <!-- ===== 检查器字段 ===== -->
   <Style Selector="TextBlock.flab">
-    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="TextBlock.funit">
-    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="TextBox.ipt">
-    <Setter Property="Height" Value="32" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="MinHeight" Value="40" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="CornerRadius" Value="7" />
@@ -223,11 +223,11 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
   </Style>
   <Style Selector="ComboBox.ipt">
-    <Setter Property="Height" Value="32" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="MinHeight" Value="40" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="CornerRadius" Value="7" />
@@ -235,14 +235,14 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
   </Style>
   <!-- 检查器数值字段：外观同输入框，点按调起屏幕键盘 -->
   <Style Selector="Button.iptbtn">
-    <Setter Property="Height" Value="32" />
+    <Setter Property="Height" Value="40" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -268,7 +268,7 @@
     </Setter>
   </Style>
   <Style Selector="Button.iptbtn:pointerover /template/ Border#bg">
-    <Setter Property="BorderBrush" Value="#805FA1E6" />
+    <Setter Property="BorderBrush" Value="#80C11B2E" />
   </Style>
 
   <Style Selector="Border.ichip">
@@ -287,7 +287,7 @@
   </Style>
   <Style Selector="Button.modebtn">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
@@ -295,7 +295,7 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate>
-          <Border x:Name="bg" Background="Transparent" CornerRadius="5" Padding="4,6">
+          <Border x:Name="bg" Background="Transparent" CornerRadius="5" Padding="4,9">
             <ContentPresenter Content="{TemplateBinding Content}"
                               TextElement.Foreground="{TemplateBinding Foreground}"
                               HorizontalAlignment="Center" />
@@ -308,7 +308,7 @@
     <Setter Property="Foreground" Value="White" />
   </Style>
   <Style Selector="Button.modebtn.on /template/ Border#bg">
-    <Setter Property="Background" Value="#d9922a" />
+    <Setter Property="Background" Value="#bd2f43" />
   </Style>
 
   <!-- 曲线卡片 -->
@@ -337,12 +337,12 @@
     <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="TextBlock.cvk">
-    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="TextBlock.cvv">
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
   </Style>
@@ -373,24 +373,24 @@
     <Setter Property="ClipToBounds" Value="True" />
   </Style>
   <Style Selector="TextBlock.ctlabel">
-    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
 
   <!-- 段表 -->
   <Style Selector="TextBlock.seghd">
-    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="TextBlock.segno">
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
   </Style>
   <Style Selector="TextBox.sinp">
-    <Setter Property="Height" Value="32" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="MinHeight" Value="40" />
     <Setter Property="Padding" Value="10,0" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="TextAlignment" Value="Right" />
@@ -399,14 +399,14 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
   </Style>
   <!-- 曲线段数值：外观同 sinp 输入框，点按调起屏幕键盘（右对齐）-->
   <Style Selector="Button.sinpbtn">
-    <Setter Property="Height" Value="32" />
+    <Setter Property="Height" Value="40" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -422,12 +422,12 @@
     </Setter>
   </Style>
   <Style Selector="Button.sinpbtn:pointerover /template/ Border#bg">
-    <Setter Property="BorderBrush" Value="#805FA1E6" />
+    <Setter Property="BorderBrush" Value="#80C11B2E" />
   </Style>
 
   <Style Selector="Button.segdel">
-    <Setter Property="Width" Value="30" />
-    <Setter Property="Height" Value="30" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="44" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="CornerRadius" Value="6" />
     <Setter Property="Background" Value="Transparent" />
@@ -441,7 +441,7 @@
     <Setter Property="Background" Value="#15e0394c" />
   </Style>
   <Style Selector="Button.segadd">
-    <Setter Property="Height" Value="36" />
+    <Setter Property="Height" Value="44" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="CornerRadius" Value="8" />
@@ -449,7 +449,7 @@
     <Setter Property="BorderThickness" Value="1.5" />
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
   </Style>
@@ -460,7 +460,7 @@
   <!-- 作用域按钮 -->
   <Style Selector="Button.scopebtn">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
@@ -485,15 +485,15 @@
 
   <!-- 弹窗底部按钮 -->
   <Style Selector="Button.mfbtn">
-    <Setter Property="Height" Value="40" />
-    <Setter Property="MinWidth" Value="96" />
+    <Setter Property="Height" Value="46" />
+    <Setter Property="MinWidth" Value="104" />
     <Setter Property="Padding" Value="18,0" />
     <Setter Property="CornerRadius" Value="11" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="14.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -515,7 +515,7 @@
   <Style Selector="Button.mfbtn.pri">
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="Foreground" Value="White" />
-    <Setter Property="Background" Value="#2074cd" />
+    <Setter Property="Background" Value="#c62a3b" />
   </Style>
 
   <Style Selector="Button.mfbtn:disabled">
@@ -531,7 +531,7 @@
   <!-- 快捷选择按钮 -->
   <Style Selector="Button.qbtn">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
@@ -560,12 +560,12 @@
     <Setter Property="Margin" Value="3" />
   </Style>
   <Style Selector="TextBlock.rvk">
-    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontSize" Value="15" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
     <Setter Property="HorizontalAlignment" Value="Center" />
   </Style>
   <Style Selector="TextBlock.rvv">
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
     <Setter Property="HorizontalAlignment" Value="Center" />
@@ -604,11 +604,11 @@
     <Setter Property="Padding" Value="7,2" />
   </Style>
   <Style Selector="Border.applynote">
-    <Setter Property="Background" Value="#145b96e4" />
-    <Setter Property="BorderBrush" Value="#405b96e4" />
+    <Setter Property="Background" Value="#08000000" />
+    <Setter Property="BorderBrush" Value="#30000000" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="9" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Padding" Value="14,12" />
   </Style>
 
   <!-- 帮助框 -->
@@ -617,7 +617,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="BorderThickness" Value="2,0,0,0" />
     <Setter Property="CornerRadius" Value="0,7,7,0" />
-    <Setter Property="Padding" Value="11,9" />
+    <Setter Property="Padding" Value="13,11" />
   </Style>
 
 </Styles>

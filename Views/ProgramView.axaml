@@ -17,11 +17,11 @@
     <!-- ===== 标题 ===== -->
     <Grid Grid.Row="0" Margin="20,14,20,2" ColumnDefinitions="Auto,*,Auto">
       <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
-        <TextBlock Text="实验程序" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-        <TextBlock Text="EXPERIMENT PROGRAM" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+        <TextBlock Text="实验程序" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+        <TextBlock Text="EXPERIMENT PROGRAM" FontSize="12" FontWeight="Medium" VerticalAlignment="Bottom"
                    Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
       </StackPanel>
-      <TextBlock Grid.Column="2" Text="每通道独立编辑 · 上/下按钮排序" FontSize="11"
+      <TextBlock Grid.Column="2" Text="每通道独立编辑 · 上/下按钮排序" FontSize="12.5"
                  Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
     </Grid>
 
@@ -47,7 +47,7 @@
                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding SmallText}" Classes="pchsmall" VerticalAlignment="Center" />
                   </StackPanel>
-                  <Ellipse Width="6" Height="6" Fill="#3aa6ff" HorizontalAlignment="Right" VerticalAlignment="Top"
+                  <Ellipse Width="6" Height="6" Fill="#b5750a" HorizontalAlignment="Right" VerticalAlignment="Top"
                            Margin="0,-6,-5,0" IsVisible="{Binding IsModified}" />
                 </Panel>
               </Button>
@@ -57,13 +57,13 @@
       </ScrollViewer>
       <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center"
                   Margin="12,0,22,8">
-        <Ellipse Width="6" Height="6" Fill="#3aa6ff" VerticalAlignment="Center" />
-        <TextBlock Text="已独立修改" FontSize="10.5" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+        <Ellipse Width="6" Height="6" Fill="#b5750a" VerticalAlignment="Center" />
+        <TextBlock Text="已独立修改" FontSize="12" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
       </StackPanel>
     </Grid>
 
     <!-- ===== 三栏：步骤库 / 时间线 / 检查器 ===== -->
-    <Grid Grid.Row="2" Margin="18,0,18,14" ColumnDefinitions="200,*,290">
+    <Grid Grid.Row="2" Margin="18,0,18,14" ColumnDefinitions="230,*,330">
 
       <!-- 左：步骤库 -->
       <Border Grid.Column="0" Classes="progcol" Padding="10">
@@ -71,11 +71,11 @@
           <TextBlock DockPanel.Dock="Top" Text="步骤库" Classes="sidehd" />
           <Border DockPanel.Dock="Bottom" Classes="sidetip">
             <TextBlock Text="点击步骤添加到末尾，或拖拽到右侧时间线的指定位置"
-                       FontSize="10.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="15" />
+                       FontSize="12" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="19" />
           </Border>
           <ItemsControl ItemsSource="{Binding Palette}" Margin="0,6,0,8" IsEnabled="{Binding CanEdit}">
             <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+              <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:PaletteItem">
@@ -83,15 +83,15 @@
                         Command="{Binding $parent[ItemsControl].DataContext.AddStepCommand}"
                         CommandParameter="{Binding}">
                   <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-                    <Border Width="22" Height="22" CornerRadius="6" Background="#08000000">
-                      <Viewbox Width="12" Height="12">
+                    <Border Width="28" Height="28" CornerRadius="7" Background="#08000000">
+                      <Viewbox Width="14" Height="14">
                         <Canvas Width="24" Height="24">
                           <Path Data="{Binding Icon}" Stroke="{Binding IconBrush}" StrokeThickness="2"
                                 StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
                         </Canvas>
                       </Viewbox>
                     </Border>
-                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Medium"
+                    <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="Medium"
                                Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
@@ -107,11 +107,11 @@
           <!-- 头 -->
           <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="0" Margin="16,11"
                       VerticalAlignment="Center">
-            <TextBlock Text="{Binding ProgTitle}" FontSize="13.5" FontWeight="SemiBold"
+            <TextBlock Text="{Binding ProgTitle}" FontSize="16" FontWeight="SemiBold"
                        Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding ProgSub}" FontSize="11" Foreground="{DynamicResource Mute}"
+            <TextBlock Text="{Binding ProgSub}" FontSize="12.5" Foreground="{DynamicResource Mute}"
                        VerticalAlignment="Center" Margin="8,0,0,0" />
-            <TextBlock VerticalAlignment="Center" Margin="14,0,0,0" FontSize="11"
+            <TextBlock VerticalAlignment="Center" Margin="14,0,0,0" FontSize="12.5"
                        Foreground="{DynamicResource Body}" HorizontalAlignment="Right">
               <Run Text="共 " /><Run Text="{Binding StepCountText}" Foreground="{DynamicResource OnDark}" FontWeight="SemiBold" /><Run Text=" 步 · 估计 " /><Run Text="{Binding DurText}" Foreground="{DynamicResource OnDark}" FontWeight="SemiBold" />
             </TextBlock>
@@ -130,7 +130,7 @@
                           StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
                   </Canvas>
                 </Viewbox>
-                <TextBlock Text="{Binding LockHint}" FontSize="11.5" FontWeight="SemiBold"
+                <TextBlock Text="{Binding LockHint}" FontSize="13" FontWeight="SemiBold"
                            Foreground="#e0394c" VerticalAlignment="Center" />
               </StackPanel>
             </Border>
@@ -146,8 +146,8 @@
                     </Canvas>
                   </Viewbox>
                   <StackPanel Spacing="2" HorizontalAlignment="Center">
-                    <TextBlock Text="空程序" FontSize="12" Foreground="{DynamicResource Body}" HorizontalAlignment="Center" />
-                    <TextBlock Text="从左侧步骤库点击步骤开始构建" FontSize="11"
+                    <TextBlock Text="空程序" FontSize="14" Foreground="{DynamicResource Body}" HorizontalAlignment="Center" />
+                    <TextBlock Text="从左侧步骤库点击步骤开始构建" FontSize="12.5"
                                Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
                   </StackPanel>
                 </StackPanel>
@@ -160,25 +160,25 @@
                 <ListBox.ItemTemplate>
                   <DataTemplate x:DataType="models:ProgramStep">
                     <Border Classes="pblk">
-                      <Grid ColumnDefinitions="24,*,Auto">
+                      <Grid ColumnDefinitions="28,*,Auto">
                         <TextBlock Grid.Column="0" Text="{Binding IndexText}" Classes="pidx"
                                    VerticalAlignment="Center" HorizontalAlignment="Center" />
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-                            <Viewbox Width="13" Height="13" VerticalAlignment="Center">
+                            <Viewbox Width="16" Height="16" VerticalAlignment="Center">
                               <Canvas Width="24" Height="24">
                                 <Path Data="{Binding Icon}" Stroke="{Binding IconBrush}" StrokeThickness="2"
                                       StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
                               </Canvas>
                             </Viewbox>
-                            <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="SemiBold"
+                            <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
                                        Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
                             <Border Classes="ptag" VerticalAlignment="Center">
-                              <TextBlock Text="{Binding Chip}" FontSize="9" FontWeight="SemiBold"
+                              <TextBlock Text="{Binding Chip}" FontSize="10.5" FontWeight="SemiBold"
                                          Foreground="{DynamicResource Mute}" LetterSpacing="1" />
                             </Border>
                           </StackPanel>
-                          <TextBlock Text="{Binding Detail}" FontSize="11" Foreground="{DynamicResource Body}"
+                          <TextBlock Text="{Binding Detail}" FontSize="12.5" Foreground="{DynamicResource Body}"
                                      Margin="0,3,0,0" TextWrapping="Wrap" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Classes="pact" Orientation="Horizontal" Spacing="2"
@@ -187,17 +187,17 @@
                           <Button Classes="pactbtn" ToolTip.Tip="上移"
                                   Command="{Binding $parent[ListBox].DataContext.MoveUpCommand}"
                                   CommandParameter="{Binding}">
-                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M18 15l-6-6-6 6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                            <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M18 15l-6-6-6 6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                           </Button>
                           <Button Classes="pactbtn" ToolTip.Tip="下移"
                                   Command="{Binding $parent[ListBox].DataContext.MoveDownCommand}"
                                   CommandParameter="{Binding}">
-                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M6 9l6 6 6-6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                            <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M6 9l6 6 6-6" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                           </Button>
                           <Button Classes="pactbtn" ToolTip.Tip="删除"
                                   Command="{Binding $parent[ListBox].DataContext.DeleteStepCommand}"
                                   CommandParameter="{Binding}">
-                            <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M18 6L6 18 M6 6l12 12" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
+                            <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M18 6L6 18 M6 6l12 12" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                           </Button>
                         </StackPanel>
                       </Grid>
@@ -214,25 +214,25 @@
           <DockPanel Grid.Row="2" Margin="14,10" LastChildFill="False">
             <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}" IsEnabled="{Binding CanEdit}">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M10 9l5 3-5 3z" Fill="White" /></Canvas></Viewbox>
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M10 9l5 3-5 3z" Fill="White" /></Canvas></Viewbox>
                 <TextBlock Text="下发并运行" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
             <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding ApplyOthersCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
                 <TextBlock Text="应用到其他通道" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
             <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding InsertLeakCommand}" IsEnabled="{Binding CanEdit}">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
                 <TextBlock Text="插入泄漏测试" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
             <Button Classes="pbtn" Command="{Binding SaveTemplateCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
                 <TextBlock Text="保存为模板" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
@@ -252,9 +252,9 @@
                 <Path Data="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" Stroke="{DynamicResource Mute}" StrokeThickness="1.5" Fill="Transparent" />
               </Canvas>
             </Viewbox>
-            <TextBlock Text="选择左侧步骤" FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
-            <TextBlock Text="查看并编辑参数" FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
-            <TextBlock Text="{Binding EmptyHint}" FontSize="10.5" Foreground="{DynamicResource Mute}"
+            <TextBlock Text="选择左侧步骤" FontSize="14" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+            <TextBlock Text="查看并编辑参数" FontSize="14" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding EmptyHint}" FontSize="12" Foreground="{DynamicResource Mute}"
                        HorizontalAlignment="Center" Margin="0,8,0,0" />
           </StackPanel>
 
@@ -262,8 +262,8 @@
           <DockPanel IsVisible="{Binding HasSelection}">
             <!-- 头 -->
             <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="0,0,0,12">
-              <Border Width="24" Height="24" CornerRadius="6" Background="#08000000">
-                <Viewbox Width="13" Height="13">
+              <Border Width="28" Height="28" CornerRadius="7" Background="#08000000">
+                <Viewbox Width="16" Height="16">
                   <Canvas Width="24" Height="24">
                     <Path Data="{Binding SelectedStep.Icon}" Stroke="{Binding SelectedStep.IconBrush}"
                           StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
@@ -273,7 +273,7 @@
               <TextBlock Grid.Column="1" Text="{Binding SelectedStep.Name}" FontSize="13" FontWeight="SemiBold"
                          Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" Margin="8,0,0,0" />
               <Border Grid.Column="2" Classes="ichip" VerticalAlignment="Center">
-                <TextBlock Text="{Binding SelInfo}" FontSize="10" FontWeight="SemiBold"
+                <TextBlock Text="{Binding SelInfo}" FontSize="11.5" FontWeight="SemiBold"
                            Foreground="{DynamicResource Body}" />
               </Border>
             </Grid>
@@ -285,8 +285,8 @@
 
                   <!-- 普通字段 num/sel -->
                   <DataTemplate DataType="models:StepField">
-                    <StackPanel Margin="0,0,0,11">
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                    <StackPanel Margin="0,0,0,14">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
                         <TextBlock Text="{Binding Label}" Classes="flab" />
                         <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="funit" />
                       </Grid>
@@ -300,8 +300,8 @@
 
                   <!-- 搅拌：全局共用转速（点按调起键盘）-->
                   <DataTemplate DataType="vm:StirRow">
-                    <StackPanel Margin="0,0,0,11">
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,5">
+                    <StackPanel Margin="0,0,0,14">
+                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
                         <TextBlock Text="搅拌转速（全局共用）" Classes="flab" />
                         <TextBlock Text="rpm" Classes="funit" />
                       </Grid>
@@ -311,7 +311,7 @@
 
                   <!-- 升温方式切换 -->
                   <DataTemplate DataType="vm:HeatModeRow">
-                    <StackPanel Margin="0,0,0,11">
+                    <StackPanel Margin="0,0,0,14">
                       <TextBlock Text="升温方式" Classes="flab" Margin="0,0,0,5" />
                       <Border Classes="modeseg">
                         <Grid ColumnDefinitions="*,*">
@@ -326,7 +326,7 @@
 
                   <!-- 曲线卡片 -->
                   <DataTemplate DataType="vm:CurveRow">
-                    <Button Classes="curvecard" Command="{Binding EditCommand}" Margin="0,0,0,11">
+                    <Button Classes="curvecard" Command="{Binding EditCommand}" Margin="0,0,0,14">
                       <StackPanel>
                         <Border Classes="curvemini" Height="90">
                           <Polyline Points="{Binding Points}" Stroke="#c9820f" StrokeThickness="1.6"
@@ -344,7 +344,7 @@
                             </StackPanel>
                           </StackPanel>
                           <Border Grid.Column="1" Classes="curveeditbtn" VerticalAlignment="Center">
-                            <TextBlock Text="编辑曲线 →" FontSize="11" FontWeight="SemiBold"
+                            <TextBlock Text="编辑曲线 →" FontSize="12.5" FontWeight="SemiBold"
                                        Foreground="{DynamicResource Amber}" />
                           </Border>
                         </Grid>
@@ -355,8 +355,8 @@
                   <!-- 帮助 -->
                   <DataTemplate DataType="vm:HelpRow">
                     <Border Classes="phelp" Margin="0,2,0,0">
-                      <TextBlock Text="{Binding Text}" FontSize="10.5" Foreground="{DynamicResource Body}"
-                                 TextWrapping="Wrap" LineHeight="16" />
+                      <TextBlock Text="{Binding Text}" FontSize="12" Foreground="{DynamicResource Body}"
+                                 TextWrapping="Wrap" LineHeight="19" />
                     </Border>
                   </DataTemplate>
 
@@ -371,29 +371,29 @@
     <!-- ===== 拖拽浮层：插入指示线 + 幽灵预览（覆盖全部行，不参与命中测试）===== -->
     <Canvas x:Name="DragOverlay" Grid.RowSpan="3" IsHitTestVisible="False" ZIndex="100">
 
-      <!-- 插入位置指示线（用「选中态」蓝，语义=定位，避免红色的报警感）-->
+      <!-- 插入位置指示线（深中性色，语义=定位）-->
       <Panel x:Name="DropIndicator" IsVisible="False">
-        <Border Height="2" CornerRadius="1" VerticalAlignment="Center" Background="#5FA1E6" />
-        <Ellipse Width="7" Height="7" Fill="#5FA1E6"
+        <Border Height="2" CornerRadius="1" VerticalAlignment="Center" Background="#3a3a44" />
+        <Ellipse Width="7" Height="7" Fill="#3a3a44"
                  HorizontalAlignment="Left" VerticalAlignment="Center" />
-        <Ellipse Width="7" Height="7" Fill="#5FA1E6"
+        <Ellipse Width="7" Height="7" Fill="#3a3a44"
                  HorizontalAlignment="Right" VerticalAlignment="Center" />
       </Panel>
 
       <!-- 拖拽幽灵预览：克制的悬浮卡片，无倾斜、无彩色辉光 -->
       <Border x:Name="DragGhost" IsVisible="False" Padding="11,8" CornerRadius="9"
-              BorderThickness="1" BorderBrush="#5A5FA1E6"
+              BorderThickness="1" BorderBrush="#66C11B2E"
               Background="#F2FFFFFF" Opacity="0.97">
         <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">
-          <Border Width="22" Height="22" CornerRadius="6" Background="#08000000">
-            <Viewbox Width="12" Height="12">
+          <Border Width="28" Height="28" CornerRadius="7" Background="#08000000">
+            <Viewbox Width="14" Height="14">
               <Canvas Width="24" Height="24">
                 <Path x:Name="GhostPath" StrokeThickness="2"
                       StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" />
               </Canvas>
             </Viewbox>
           </Border>
-          <TextBlock x:Name="GhostText" FontSize="12" FontWeight="SemiBold"
+          <TextBlock x:Name="GhostText" FontSize="14" FontWeight="SemiBold"
                      Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
         </StackPanel>
       </Border>

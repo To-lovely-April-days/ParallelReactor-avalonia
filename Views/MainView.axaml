@@ -262,7 +262,7 @@
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="搅拌总控" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
                   <TextBlock FontSize="9" Foreground="{DynamicResource Mute}" Margin="0,1,0,0">
-                    <Run Text="全部反应釜共用 · 电机电流 " /><Run Text="{Binding StirMotorCurrentText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
+                    <Run Text="全部反应釜共用 · 电机电流 " /><Run Text="{Binding StirMotorCurrentText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" /><Run Text="{Binding StirBusVoltageText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
                   </TextBlock>
                 </StackPanel>
                 <!-- 转速（点击调起数字键盘）-->
@@ -991,12 +991,16 @@
 
     <!-- ============ 启动预热遮罩（开机时盖住，预热各页后隐藏，避免首次进菜单卡顿）============ -->
     <Border x:Name="Splash" Background="#eef0f3">
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="16">
-        <Image Source="avares://ParallelReactor/Assets/logo.png" Height="56" Stretch="Uniform" HorizontalAlignment="Center" />
-        <TextBlock Text="多通道平行反应仪控制系统" FontSize="18" FontWeight="SemiBold"
-                   Foreground="{DynamicResource OnDark}" LetterSpacing="3" HorizontalAlignment="Center" />
-        <TextBlock Text="系统加载中…" FontSize="12" Foreground="{DynamicResource Body}"
-                   LetterSpacing="2" HorizontalAlignment="Center" />
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="26">
+        <Image Source="avares://ParallelReactor/Assets/logo.png" Height="120" Stretch="Uniform" HorizontalAlignment="Center" />
+        <StackPanel Spacing="10">
+          <TextBlock Text="多通道平行反应仪控制系统" FontSize="30" FontWeight="SemiBold"
+                     Foreground="{DynamicResource OnDark}" LetterSpacing="4" HorizontalAlignment="Center" />
+          <TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR CONTROL SYSTEM" FontSize="12.5" FontWeight="Medium"
+                     Foreground="{DynamicResource Mute}" LetterSpacing="3" HorizontalAlignment="Center" />
+        </StackPanel>
+        <TextBlock Text="系统加载中…" FontSize="16" Foreground="{DynamicResource Body}"
+                   LetterSpacing="2" HorizontalAlignment="Center" Margin="0,10,0,0" />
       </StackPanel>
     </Border>
   </Panel>

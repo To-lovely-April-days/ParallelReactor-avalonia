@@ -6,7 +6,7 @@ public class AppSettings
     // 可设置参数范围（上限）
     public double TMaxSp { get; set; } = 200;     // 温度 SP 上限 °C
     public double PMaxSp { get; set; } = 500;     // 压力 SP 上限 psi
-    public double RpmMax { get; set; } = 2000;    // 搅拌转速上限 rpm
+    public double RpmMax { get; set; } = 1000;    // 搅拌转速上限 rpm
     public double VolMax { get; set; } = 50;      // 溶液体积上限 mL
 
     // 搅拌电机（雷赛 DM2C）电流 —— 写入驱动器 Pr5.00 / Pr5.33 并存 EEPROM

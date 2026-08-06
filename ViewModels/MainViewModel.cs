@@ -50,7 +50,7 @@ public partial class MainViewModel : ViewModelBase
     private static bool RealIo => Services.HardwareOptions.UseRealIo;
 
     [ObservableProperty] private bool _stirOn = true;
-    [ObservableProperty] private int _stirRpm = 600;
+    [ObservableProperty] private int _stirRpm = 200;
 
     /// <summary>搅拌电机当前运行电流（A）——即驱动器设定的峰值电流（步进恒流，无实时负载电流反馈）。</summary>
     [ObservableProperty] private double _stirMotorCurrent;
@@ -82,11 +82,18 @@ public partial class MainViewModel : ViewModelBase
         if (a is { } v && v > 0) StirMotorCurrent = v;
     }
 
-    /// <summary>轮询搅拌电机报警码并刷新故障提示（在 Tick 里按节流调用）。</summary>
+    /// <summary>驱动器母线电压（V）。带载时若周期性塌陷 → 供电容量不足（转速波动的电源侧证据）。</summary>
+    [ObservableProperty] private double _stirBusVoltage;
+    public string StirBusVoltageText => StirBusVoltage > 0 ? $" · 母线 {StirBusVoltage:0.0} V" : "";
+    partial void OnStirBusVoltageChanged(double value) => OnPropertyChanged(nameof(StirBusVoltageText));
+
+    /// <summary>轮询搅拌电机报警码 + 母线电压并刷新显示（在 Tick 里按节流调用）。</summary>
     public async System.Threading.Tasks.Task RefreshStirFaultAsync()
     {
         var c = await _stir.ReadAlarmAsync();
         if (c is { } code) StirFaultText = StirFaultName(code);
+        var v = await _stir.ReadBusVoltageAsync();
+        if (v is { } bv) StirBusVoltage = bv;
     }
 
     /// <summary>开机从驱动器回填当前细分到设置显示（读不到则保留默认）。</summary>
@@ -592,7 +599,7 @@ public partial class MainViewModel : ViewModelBase
     {
         _ = Temp.PollAsync();   // 温控轮询：PV / 输出 / 自整定状态（mock 模式下推进 PV 漂移）
 
-        // 搅拌电机故障轮询（约每 3 秒，只在真机上查报警码 0x2203）
+        // 搅拌电机故障/母线电压轮询（约每 3 秒，只在真机上跑）
         if (Services.HardwareOptions.UseRealStir && _stirFaultTick++ % 3 == 0)
             _ = RefreshStirFaultAsync();
 

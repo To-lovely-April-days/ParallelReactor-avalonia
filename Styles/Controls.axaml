@@ -1,6 +1,20 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!-- ============ 触屏即时按压反馈 ============
+       触屏不会触发 :pointerover，而按钮在"松手"才执行动作——没有按压态时，
+       从手指按下到松开界面毫无变化，会被感知为"点击延迟"。
+       用 Opacity 做全局按压反馈：不依赖各自定义模板、渲染开销最低、按下立刻可见。-->
+  <Style Selector="Button:pressed">
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+  <Style Selector="ListBoxItem:pressed">
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+  <Style Selector="ComboBox:pressed">
+    <Setter Property="Opacity" Value="0.7" />
+  </Style>
+
   <!-- ============ 工具栏按钮 .tbtn ============ -->
   <Style Selector="Button.tbtn">
     <Setter Property="Height" Value="30" />

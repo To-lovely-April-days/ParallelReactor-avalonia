@@ -25,7 +25,7 @@ public class SchematicControl : Control
     private const double Scale = 0.82, RTop = 52;
     private static readonly double RBot = RTop + 222 * Scale;     // ≈ 222
     private const double HdrY = 470, CheckY = 360, ValY = 406;
-    private static readonly double[] GasX = { 110, 160, 210 };
+    private static readonly double[] GasX = { 100, 160, 220 };
     private const double VentX = 1340;
 
     // —— 数据源 ——
@@ -440,8 +440,8 @@ public class SchematicControl : Control
             ctx.DrawLine(pen, new Point(x, HdrY), new Point(x, HdrY + 38));
             DrawCtrlValve(ctx, x, HdrY + 56, g.On);
             DrawText(ctx, g.Label, x, HdrY + 86 - 12, Body, 12, SansFace, TextAlignment.Center, FontWeight.SemiBold);
-            // 进气阀间距 50，热区取 44 宽避免相邻重叠
-            _hits.Add(new Hit(new Rect(x - 22, HdrY + 32, 44, 48), "gas", i));
+            // 进气阀间距 60，热区取 56 宽避免相邻重叠
+            _hits.Add(new Hit(new Rect(x - 28, HdrY + 32, 56, 48), "gas", i));
         }
     }
 
