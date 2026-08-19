@@ -79,8 +79,43 @@ public partial class SettingViewModel : ViewModelBase
         => _main.Keyboard.OpenNumeric("中温 / 高温 分界", TempBands[1].Hi, "℃", TempBands[0].Hi + 10, 390,
             v => { TempBands[1].Hi = v; TempBands[2].Lo = v; });
 
+    /// <summary>自整定按钮（再次点击=取消并停止输出）。SP 未设时先弹键盘设整定目标温度——
+    /// AI-8 整定是在 SP 附近振荡，SP=0 时加热不会开、仪表会永远卡在「整定中」。</summary>
     [RelayCommand]
-    private void Autotune(Services.TempChannel ch) => _ = _main.Temp.AutotuneAsync(ch.Id);
+    private async System.Threading.Tasks.Task Autotune(Services.TempChannel ch)
+    {
+        if (ch.Autotuning)
+        {
+            await _main.Temp.CancelAutotuneAsync(ch.Id);
+            _main.Toast("ok", $"{ch.Name} 已取消自整定并停止输出");
+            return;
+        }
+        var err = await _main.Temp.AutotuneAsync(ch.Id);
+        if (err == null)
+            _main.Toast("ok", $"{ch.Name} 自整定已启动：将在目标温度附近振荡，结束后自动写入 PID");
+        else if (err == Services.TempService.NoSetpoint)
+            _main.Keyboard.OpenNumeric($"{ch.Name} 整定目标温度（整定在此温度附近振荡）", 150, "℃", 40, _main.Settings.TMaxSp,
+                v => _ = StartTuneWithSpAsync(ch, v));
+        else
+            _main.Toast("err", err);
+    }
+
+    /// <summary>一键把启用回路数 Ctn 设为 8（红色徽章点击触发）。</summary>
+    [RelayCommand]
+    private async System.Threading.Tasks.Task FixCtn()
+    {
+        var err = await _main.Temp.FixCtnAsync();
+        _main.Toast(err == null ? "ok" : "err", err ?? "已把启用回路数 Ctn 设为 8，全部 8 通道受控");
+    }
+
+    private async System.Threading.Tasks.Task StartTuneWithSpAsync(Services.TempChannel ch, double sp)
+    {
+        try { await _main.Temp.SetSetpointAsync(ch.Id, sp); }
+        catch { _main.Toast("err", "SP 下发失败，未启动整定"); return; }
+        var err = await _main.Temp.AutotuneAsync(ch.Id);
+        _main.Toast(err == null ? "ok" : "err",
+            err == null ? $"{ch.Name} 已设目标 {sp:0}℃ 并启动自整定" : err);
+    }
 
     [RelayCommand]
     private void EditTempP(Services.TempChannel ch)

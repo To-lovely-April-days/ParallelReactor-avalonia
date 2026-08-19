@@ -78,12 +78,16 @@ public sealed class MockModbusMaster : IModbusMaster
     private void SeedTemp()
     {
         foreach (var s in TempSlaves)
+        {
             for (int i = 0; i < TempLoops; i++)
             {
                 _hold.TryAdd(Key(s, (ushort)(0x0060 + i)), 600);    // P = 60.0
                 _hold.TryAdd(Key(s, (ushort)(0x00C0 + i)), 1200);   // I = 120.0s
                 _hold.TryAdd(Key(s, (ushort)(0x0120 + i)), 2000);   // D = 20.0s
             }
+            _hold.TryAdd(Key(s, 0x0844), (ushort)TempLoops);        // Ctn 启用回路数
+            _hold.TryAdd(Key(s, 0x0845), 0);                        // Srun 运行
+        }
     }
 
     public Task<bool[]> ReadCoilsAsync(byte s, ushort start, ushort count, CancellationToken ct = default)

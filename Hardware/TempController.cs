@@ -84,6 +84,33 @@ public sealed class TempController
     public Task SetSetpointAsync(int loop, double sp)
         => _bus.WriteSingleRegisterAsync(_slave, (ushort)(SpBase + loop - 1), (ushort)(short)Math.Round(sp * Scale));
 
+    /// <summary>读通道给定值 SP（℃）。</summary>
+    public async Task<double> ReadSetpointAsync(int loop)
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, (ushort)(SpBase + loop - 1), 1);
+        return (short)r[0] / Scale;
+    }
+
+    /// <summary>读全局运行/停止状态 Srun（0x0845）：0=运行；15=运行但断电重启后自动进入全局停止；
+    /// 9655=全局停止（所有通道输出被闸死，任何模式都不出力）。现场排查"输出100%却不加热"时先看它。</summary>
+    public async Task<int> ReadSrunAsync()
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, SrunReg, 1);
+        return r[0];
+    }
+
+    /// <summary>读启用的控制回路数量 Ctn（0x0844）。小于 8 时后面的通道完全不受控
+    /// （出厂可能按 4 路配置）。每回路占 10ms 处理时间。</summary>
+    public async Task<int> ReadCtnAsync()
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, 0x0844, 1);
+        return r[0];
+    }
+
+    /// <summary>写启用的控制回路数量 Ctn（0x0844）。</summary>
+    public Task SetCtnAsync(int loops)
+        => _bus.WriteSingleRegisterAsync(_slave, 0x0844, (ushort)loops);
+
     /// <summary>读输出百分比（0..100）。</summary>
     public async Task<double> ReadOutputAsync(int loop)
     {

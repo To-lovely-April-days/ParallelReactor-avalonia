@@ -336,6 +336,33 @@
                 </Border>
               </StackPanel>
 
+              <!-- 仪表全局运行状态（Srun 0x0845，随温控轮询实时刷新）：
+                   电气排查判据——这里显示「运行」而 SSR 灯不亮 = 驱动接线问题，与仪表无关 -->
+              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,10">
+                <Border CornerRadius="8" Padding="10,5" Background="#145FAE14" BorderBrush="#4D5FAE14"
+                        BorderThickness="1" IsVisible="{Binding Temp.SrunOk}">
+                  <TextBlock Text="{Binding Temp.SrunText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#5fae14" />
+                </Border>
+                <Border CornerRadius="8" Padding="10,5" Background="#14E0394C" BorderBrush="#4DE0394C"
+                        BorderThickness="1" IsVisible="{Binding Temp.SrunBad}">
+                  <TextBlock Text="{Binding Temp.SrunText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#e0394c" />
+                </Border>
+                <Border CornerRadius="8" Padding="10,5" Background="#14F0A830" BorderBrush="#4DF0A830"
+                        BorderThickness="1" IsVisible="{Binding Temp.SrunOther}">
+                  <TextBlock Text="{Binding Temp.SrunText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#c9820f" />
+                </Border>
+
+                <!-- 启用回路数 Ctn（0x0844）：<8 时后面的通道不受控；红色徽章可点击一键改为 8 -->
+                <Border CornerRadius="8" Padding="10,5" Background="#145FAE14" BorderBrush="#4D5FAE14"
+                        BorderThickness="1" IsVisible="{Binding Temp.CtnOk}">
+                  <TextBlock Text="{Binding Temp.CtnText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#5fae14" />
+                </Border>
+                <Button CornerRadius="8" Padding="10,5" Background="#14E0394C" BorderBrush="#4DE0394C"
+                        BorderThickness="1" IsVisible="{Binding Temp.CtnBad}" Command="{Binding FixCtnCommand}">
+                  <TextBlock Text="{Binding Temp.CtnText}" FontSize="11.5" FontWeight="SemiBold" Foreground="#e0394c" />
+                </Button>
+              </StackPanel>
+
               <!-- 列标题 -->
               <Grid ColumnDefinitions="58,98,72,*,96" Margin="14,0,4,6">
                 <TextBlock Grid.Column="1" Text="测量 PV" Classes="seth" Margin="0" />
@@ -398,12 +425,15 @@
                           </StackPanel>
                         </StackPanel>
 
-                        <!-- 自整定 -->
+                        <!-- 自整定（整定中变「取消整定」，卡住时可退出并停止输出） -->
                         <Button Grid.Column="4" Classes="mfbtn" Height="34" Padding="0" MinWidth="92"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
-                                IsEnabled="{Binding !Autotuning}" CommandParameter="{Binding}"
+                                CommandParameter="{Binding}"
                                 Command="{Binding DataContext.AutotuneCommand, RelativeSource={RelativeSource AncestorType=UserControl}}">
-                          <TextBlock Text="自整定" FontSize="12.5" />
+                          <Panel>
+                            <TextBlock Text="自整定" FontSize="12.5" IsVisible="{Binding !Autotuning}" />
+                            <TextBlock Text="取消整定" FontSize="12.5" Foreground="#c9820f" IsVisible="{Binding Autotuning}" />
+                          </Panel>
                         </Button>
                       </Grid>
                     </Border>

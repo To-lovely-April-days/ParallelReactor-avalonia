@@ -16,7 +16,7 @@ namespace ParallelReactor.Services;
 /// </para>
 /// 当前总线由 <see cref="HardwareOptions.CreateTempBus"/> 决定（真串口或内存 mock）。
 /// </summary>
-public sealed class TempService
+public sealed partial class TempService : ObservableObject
 {
     private readonly TempController _ctrl;   // AI-8 一台 8 回路（RV1-8）
     private readonly MockModbusMaster? _mock;   // mock 模式下推进 PV 漂移
@@ -69,6 +69,8 @@ public sealed class TempService
         var (c, loop) = Map(ch);
         try
         {
+            await c.RunAllAsync();     // 解除可能的 Srun 全局停止（9655/断电后 15→9655），否则输出被闸死
+            await c.StartAsync(loop);  // At=0 回到 APID 自动控制——通道可能因「取消整定」被置于停止态(At=4)
             await c.SetSetpointAsync(loop, targetTemp);
             await c.SetPidAsync(loop, p, i, d);
             Channels[ch - 1].Sp = targetTemp;
@@ -76,10 +78,24 @@ public sealed class TempService
         catch { /* 通讯异常忽略 */ }
     }
 
-    /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。串口读在后台，结果批量回 UI。</summary>
+    /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。串口读在后台，结果批量回 UI。
+    /// 同时自愈启用回路数：Ctn&lt;8 时自动写 8（出厂可能按 4 路配置，会导致 RV5-8 完全不受控）。</summary>
     public async Task InitAsync()
     {
         _mock?.SimulateStep();   // mock：先触发种子 PID，再读取
+
+        try
+        {
+            int ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
+            if (ctn >= 0 && ctn < 8)
+            {
+                await _ctrl.SetCtnAsync(8);
+                ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
+            }
+            int v = ctn;
+            await Dispatcher.UIThread.InvokeAsync(() => Ctn = v);
+        }
+        catch { /* 通讯没通：徽章保持"未读到"，轮询恢复后会刷新 */ }
         var pids = new PidParams?[8];
         for (int ch = 1; ch <= 8; ch++)
         {
@@ -107,16 +123,21 @@ public sealed class TempService
             _mock?.SimulateStep();
             double[] pv, op;
             int[] modes;
+            int srun, ctn;
             try
             {
                 pv = await _ctrl.ReadAllPvAsync().ConfigureAwait(false);
                 op = await _ctrl.ReadAllOutputsAsync().ConfigureAwait(false);
                 modes = await _ctrl.ReadAllModesAsync().ConfigureAwait(false);
+                srun = await _ctrl.ReadSrunAsync().ConfigureAwait(false);
+                ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
             }
             catch { return; }   // 通讯异常：保留上次值，下个周期重试
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                Srun = srun;
+                Ctn = ctn;
                 for (int i = 0; i < 8 && i < pv.Length; i++)
                 {
                     var m = Channels[i];
@@ -146,12 +167,111 @@ public sealed class TempService
         m.StoreBand(_curBand);
     }
 
-    /// <summary>对该通道启动自整定（At=1）。整定结束后轮询会自动回读并存入当前档位。</summary>
-    public async Task AutotuneAsync(int ch)
+    /// <summary>AutotuneAsync 的返回值：需要先设定目标温度（SP 未设或过低）。</summary>
+    public const string NoSetpoint = "SP_NOT_SET";
+
+    /// <summary>
+    /// 对该通道启动自整定（At=1）。整定结束后轮询会自动回读并存入当前档位。
+    /// <para>
+    /// AI-8 整定原理 = 在 SP 附近做 ON/OFF 振荡后写出 PID。若 SP 未设（≈0℃，低于室温），
+    /// 加热输出永远不开、振荡不起来，仪表会停在 At=1 出不来——界面表现为「整定中」但温度不动。
+    /// 因此启动前先回读 SP 把关；同时写 Srun=0 确保仪表处于全局运行态（Srun=15 的仪表断电重启后
+    /// 会自动进入 9655 全局停止，输出被闸死，同样表现为不加热，见手册 §6.1）。
+    /// </para>
+    /// 返回 null=已启动；<see cref="NoSetpoint"/>=需先设 SP；其他=错误文本。
+    /// </summary>
+    public async Task<string?> AutotuneAsync(int ch)
     {
         var (c, loop) = Map(ch);
-        await c.AutotuneAsync(loop);
-        Channels[ch - 1].Autotuning = true;
+        try
+        {
+            double sp = await c.ReadSetpointAsync(loop).ConfigureAwait(false);
+            if (sp < 35) return NoSetpoint;   // 必须明显高于室温，加热振荡才可能发生
+            await c.RunAllAsync();
+            await c.AutotuneAsync(loop);
+            await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = true);
+            return null;
+        }
+        catch { return "通讯失败，未能启动整定"; }
+    }
+
+    /// <summary>取消自整定：At 写 4（停止控制、关闭输出），解除「整定中」。
+    /// 注意不能写回 0（APID）——那是恢复自动控温，SP 还在，通道会继续朝目标温度输出
+    /// （表现为取消后输出仍有百分之几十）。取消的语义应当是"停下来"。</summary>
+    public async Task CancelAutotuneAsync(int ch)
+    {
+        var (c, loop) = Map(ch);
+        try { await c.StopAsync(loop); } catch { /* 通讯失败也要把界面状态解开 */ }
+        await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = false);
+    }
+
+    /// <summary>停止该通道的温控输出（At=4，停止控制、关闭输出）。
+    /// 停止/停用反应釜时必须调用——否则仪表带着旧 SP 继续加热，界面上看着停了、加热器还在全力工作。</summary>
+    public async Task StopChannelAsync(int ch)
+    {
+        var (c, loop) = Map(ch);
+        try { await c.StopAsync(loop); } catch { /* 通讯异常：轮询恢复后仍会按界面状态兜底 */ }
+    }
+
+    /// <summary>停止全部 8 路温控输出（逐路 At=4）。「全部停止」时调用。
+    /// 不用 Srun=9655 全局闸——那会把状态徽章打红，且语义上属于急停级别。</summary>
+    public async Task StopAllChannelsAsync()
+    {
+        for (int ch = 1; ch <= 8; ch++) await StopChannelAsync(ch);
+    }
+
+    // ===== 仪表全局运行状态（Srun 0x0845），随轮询刷新：现场排查「输出100%却不加热」用 =====
+    /// <summary>-1=尚未读到；0=运行；15=运行(断电重启后自动全停)；9655=全局停止。</summary>
+    [ObservableProperty] private int _srun = -1;
+
+    public string SrunText => Srun switch
+    {
+        -1 => "Srun 状态：未读到（通讯未通）",
+        0 => "Srun：运行（全局输出已放行）",
+        15 => "Srun：运行 · 断电重启后会自动全停（建议改为 0）",
+        9655 => "Srun：全局停止（所有输出被闸死）",
+        _ => $"Srun：{Srun}（非常规值）"
+    };
+    public bool SrunOk => Srun == 0;
+    public bool SrunBad => Srun == 9655;
+    public bool SrunOther => !SrunOk && !SrunBad;
+
+    partial void OnSrunChanged(int value)
+    {
+        OnPropertyChanged(nameof(SrunText));
+        OnPropertyChanged(nameof(SrunOk));
+        OnPropertyChanged(nameof(SrunBad));
+        OnPropertyChanged(nameof(SrunOther));
+    }
+
+    // ===== 启用回路数 Ctn（0x0844）：<8 时后面的通道完全不受控（出厂可能按 4 路配） =====
+    /// <summary>-1=尚未读到。</summary>
+    [ObservableProperty] private int _ctn = -1;
+
+    public string CtnText => Ctn < 0 ? "" : Ctn >= 8
+        ? $"启用回路 Ctn={Ctn}"
+        : $"启用回路 Ctn={Ctn}（不足 8：RV{Ctn + 1}~RV8 不受控！点此修复）";
+    public bool CtnOk => Ctn >= 8;
+    public bool CtnBad => Ctn >= 0 && Ctn < 8;
+
+    partial void OnCtnChanged(int value)
+    {
+        OnPropertyChanged(nameof(CtnText));
+        OnPropertyChanged(nameof(CtnOk));
+        OnPropertyChanged(nameof(CtnBad));
+    }
+
+    /// <summary>把 Ctn 设为 8（修复"部分通道不受控"）。返回 null=成功，否则错误文本。</summary>
+    public async Task<string?> FixCtnAsync()
+    {
+        try
+        {
+            await _ctrl.SetCtnAsync(8);
+            int v = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
+            await Dispatcher.UIThread.InvokeAsync(() => Ctn = v);
+            return v >= 8 ? null : $"写入后回读 Ctn={v}，未生效（可能需在仪表面板解锁参数）";
+        }
+        catch { return "通讯失败，未能写入 Ctn"; }
     }
 
     private async Task ReloadPidAsync(int ch)

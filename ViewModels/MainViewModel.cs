@@ -448,10 +448,11 @@ public partial class MainViewModel : ViewModelBase
             c.Rpm = 0;
             if (RealIo) _ = _valves.SetReactorValveAsync(c.Id, false);   // 安全：停止即关进气阀
         }
+        _ = Temp.StopAllChannelsAsync();   // 停全部温控输出(逐路 At=4)——界面停了仪表也必须停
         RefreshSchematic();
         Drawer.RaiseAll();
         UpdateRunCount();
-        Toast("warn", "已停止全部通道");
+        Toast("warn", "已停止全部通道（含加热输出）");
     }
 
     [RelayCommand]

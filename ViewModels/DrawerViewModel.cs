@@ -175,8 +175,9 @@ public partial class DrawerViewModel : ViewModelBase
         c.Valve = false;
         c.Rpm = 0;
         if (c.Profile.Running) c.Profile.Stop();
+        _ = _main.Temp.StopChannelAsync(c.Id);   // 停温控输出(At=4)——否则仪表带着旧 SP 继续加热
         _main.RefreshSchematic();
-        _main.Toast("ok", $"RV{c.Id} 已停止");
+        _main.Toast("ok", $"RV{c.Id} 已停止（含加热输出）");
         RaiseAll();
     }
 
@@ -188,6 +189,7 @@ public partial class DrawerViewModel : ViewModelBase
         c.Valve = false;
         c.Rpm = 0;
         if (c.Profile.Running) c.Profile.Stop();
+        _ = _main.Temp.StopChannelAsync(c.Id);   // 停用同样要停温控输出
         _main.RefreshSchematic();
         _main.Toast("warn", $"RV{c.Id} 已停用，不参与运行");
         RaiseAll();
