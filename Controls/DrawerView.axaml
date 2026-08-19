@@ -159,6 +159,13 @@
               </Border>
             </Grid>
 
+            <!-- 定值升温：显式启停（设温度 ≠ 启动加热；开机所有通道默认停止） -->
+            <Grid ColumnDefinitions="*,10,*" Margin="0,0,0,14"
+                  IsVisible="{Binding Reactor.SpMode, Converter={StaticResource Eq}, ConverterParameter=fixed}">
+              <Button Grid.Column="0" Classes="dbtn go" Content="启动加热" Command="{Binding StartHeatCommand}" />
+              <Button Grid.Column="2" Classes="dbtn" Content="停止加热" Command="{Binding StopHeatCommand}" />
+            </Grid>
+
             <!-- 曲线升温：16 段编辑器 -->
             <StackPanel IsVisible="{Binding Reactor.SpMode, Converter={StaticResource Eq}, ConverterParameter=curve}">
               <!-- 段数 + 运行状态 -->

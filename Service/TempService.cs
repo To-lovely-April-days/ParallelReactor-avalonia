@@ -62,18 +62,25 @@ public sealed partial class TempService : ObservableObject
     }
 
     /// <summary>按目标温度为某通道选用对应档位的 PID，并连同 SP 一起下发到仪表（跑反应前调用）。</summary>
-    public async Task ApplyBandForAsync(int ch, double targetTemp)
+    public Task ApplyBandForAsync(int ch, double targetTemp) => StartChannelAsync(ch, targetTemp, targetTemp);
+
+    /// <summary>
+    /// 显式启动单通道加热（全链：Srun=0 + At=0 + 按 bandTemp 套档 PID + 写 initialSp）。
+    /// 定值恒温：bandTemp = initialSp = 目标温度；曲线：bandTemp 用最高段温度选 PID 档，
+    /// initialSp 用起点 PV（避免启动瞬间先朝高温冲一下，随后曲线引擎逐周期接管 SP）。
+    /// </summary>
+    public async Task StartChannelAsync(int ch, double bandTemp, double initialSp)
     {
-        int band = BandIndexForTemp(targetTemp);
+        int band = BandIndexForTemp(bandTemp);
         var (p, i, d) = Channels[ch - 1].GetBand(band);
         var (c, loop) = Map(ch);
         try
         {
             await c.RunAllAsync();     // 解除可能的 Srun 全局停止（9655/断电后 15→9655），否则输出被闸死
-            await c.StartAsync(loop);  // At=0 回到 APID 自动控制——通道可能因「取消整定」被置于停止态(At=4)
-            await c.SetSetpointAsync(loop, targetTemp);
+            await c.StartAsync(loop);  // At=0 回到 APID 自动控制——开机/停止/取消整定都会把通道置于 At=4
             await c.SetPidAsync(loop, p, i, d);
-            Channels[ch - 1].Sp = targetTemp;
+            await c.SetSetpointAsync(loop, initialSp);
+            Channels[ch - 1].Sp = initialSp;
         }
         catch { /* 通讯异常忽略 */ }
     }
@@ -96,6 +103,16 @@ public sealed partial class TempService : ObservableObject
             await Dispatcher.UIThread.InvokeAsync(() => Ctn = v);
         }
         catch { /* 通讯没通：徽章保持"未读到"，轮询恢复后会刷新 */ }
+
+        // 安全：开机把 8 路全部置停止（At=4）——「设温度 ≠ 启动加热」，加热只能由
+        // 「开始运行」/ 抽屉「启动加热」/ 曲线「启动」显式发起。仪表上电默认是运行态，
+        // 不停的话改个 SP 数字就会开始发热。
+        for (int ch = 1; ch <= 8; ch++)
+        {
+            var (c, loop) = Map(ch);
+            try { await c.StopAsync(loop).ConfigureAwait(false); }
+            catch { break; }   // 通讯没通：别再空试剩下的通道
+        }
         var pids = new PidParams?[8];
         for (int ch = 1; ch <= 8; ch++)
         {

@@ -116,15 +116,42 @@ public partial class DrawerViewModel : ViewModelBase
             v => seg.Minutes = v);
     }
 
-    /// <summary>启动曲线升温：以当前实测 PV 为段 1 起点，逐周期下发 SP。</summary>
+    /// <summary>启动曲线升温：以当前实测 PV 为段 1 起点，逐周期下发 SP。
+    /// 同时做全链启动（Srun=0 + At=0 + PID 套档）——开机/停止后通道处于 At=4 停止态，
+    /// 只写 SP 曲线会"空转"（引擎在跑、仪表不出力）。PID 档按曲线最高段温度选。</summary>
     [RelayCommand]
     private void StartProfile()
     {
         if (Reactor is not { } c) return;
         // PV 异常（温控通讯未就绪时读数为 0）则从室温起步，避免段 1 从 0℃ 开始爬
         double startPv = c.T > 1 ? c.T : 25;
+        double bandTemp = startPv;
+        foreach (var s in c.Profile.Segments)
+            if (s.Enabled) bandTemp = Math.Max(bandTemp, s.Temp);
+        _ = _main.Temp.StartChannelAsync(c.Id, bandTemp, startPv);
         c.Profile.Start(startPv);
         _main.Toast("ok", $"RV{c.Id} 曲线升温已启动 · 共 {c.Profile.SegCount} 段");
+        RaiseAll();
+    }
+
+    /// <summary>启动本通道加热（定值恒温，全链：Srun=0 + At=0 + PID 套档 + SP）。</summary>
+    [RelayCommand]
+    private void StartHeat()
+    {
+        if (Reactor is not { } c) return;
+        if (c.TSp < 35) { _main.Toast("err", "请先设置目标温度（≥35℃）再启动加热"); return; }
+        _ = _main.Temp.StartChannelAsync(c.Id, c.TSp, c.TSp);
+        _main.Toast("ok", $"RV{c.Id} 加热已启动 · 目标 {c.TSp:0}℃");
+    }
+
+    /// <summary>停止本通道加热（At=4，输出关闭）。只停加热，不改通道运行状态/阀门。</summary>
+    [RelayCommand]
+    private void StopHeat()
+    {
+        if (Reactor is not { } c) return;
+        if (c.Profile.Running) c.Profile.Stop();   // 曲线在跑也一并停，避免引擎继续抬 SP
+        _ = _main.Temp.StopChannelAsync(c.Id);
+        _main.Toast("warn", $"RV{c.Id} 加热已停止（输出关闭）");
         RaiseAll();
     }
 
