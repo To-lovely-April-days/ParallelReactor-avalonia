@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -21,6 +22,12 @@ public sealed partial class TempService : ObservableObject
     private readonly TempController _ctrl;   // AI-8 一台 8 回路（RV1-8）
     private readonly MockModbusMaster? _mock;   // mock 模式下推进 PV 漂移
     private int _curBand;
+    // 每通道整定发起时所在的档位（-1=无进行中的整定）。整定期间用户可能切档，
+    // 完成回读必须存回"发起时"的档，而不是"完成时"正显示的档。
+    private readonly int[] _tuneBand = { -1, -1, -1, -1, -1, -1, -1, -1 };
+
+    /// <summary>档位 PID / 档位边界发生变化（整定完成、手改、切档落存）——上层据此持久化。</summary>
+    public event Action? PidsChanged;
 
     public ObservableCollection<TempChannel> Channels { get; } = new();
 
@@ -51,6 +58,7 @@ public sealed partial class TempService : ObservableObject
         foreach (var ch in Channels) ch.StoreBand(_curBand);
         _curBand = idx;
         foreach (var ch in Channels) ch.LoadBand(_curBand);
+        PidsChanged?.Invoke();
     }
 
     /// <summary>给定温度落在哪个档位（超出上限归最高档）。</summary>
@@ -87,7 +95,7 @@ public sealed partial class TempService : ObservableObject
 
     /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。串口读在后台，结果批量回 UI。
     /// 同时自愈启用回路数：Ctn&lt;8 时自动写 8（出厂可能按 4 路配置，会导致 RV5-8 完全不受控）。</summary>
-    public async Task InitAsync()
+    public async Task InitAsync(bool seedFromInstrument = true)
     {
         _mock?.SimulateStep();   // mock：先触发种子 PID，再读取
 
@@ -113,19 +121,53 @@ public sealed partial class TempService : ObservableObject
             try { await c.StopAsync(loop).ConfigureAwait(false); }
             catch { break; }   // 通讯没通：别再空试剩下的通道
         }
-        var pids = new PidParams?[8];
-        for (int ch = 1; ch <= 8; ch++)
+        // 仪表 PID 只有"一组当前值"、不知道属于哪个档：只有首次运行（无本地存档）才用它
+        // 作当前档种子；有存档时用存档，绝不能把仪表里残留的上次整定值（可能属于高温档）
+        // 盲写进开机默认的低温档。
+        if (seedFromInstrument)
         {
-            var (c, loop) = Map(ch);
-            try { pids[ch - 1] = await c.ReadPidAsync(loop).ConfigureAwait(false); }
-            catch { pids[ch - 1] = null; }
+            var pids = new PidParams?[8];
+            for (int ch = 1; ch <= 8; ch++)
+            {
+                var (c, loop) = Map(ch);
+                try { pids[ch - 1] = await c.ReadPidAsync(loop).ConfigureAwait(false); }
+                catch { pids[ch - 1] = null; }
+            }
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                for (int i = 0; i < 8; i++)
+                    if (pids[i] is { } p) Channels[i].SetBand(_curBand, p.P, p.I, p.D);
+                foreach (var m in Channels) m.LoadBand(_curBand);
+            });
         }
-        await Dispatcher.UIThread.InvokeAsync(() =>
+    }
+
+    /// <summary>导出 8 通道 × 3 档 PID（持久化快照用）。先把界面当前值落回当前档。</summary>
+    public double[][][] ExportBandPids()
+    {
+        var all = new double[8][][];
+        for (int ch = 0; ch < 8; ch++)
         {
-            for (int i = 0; i < 8; i++)
-                if (pids[i] is { } p) Channels[i].SetBand(_curBand, p.P, p.I, p.D);
-            foreach (var m in Channels) m.LoadBand(_curBand);
-        });
+            Channels[ch].StoreBand(_curBand);
+            all[ch] = new double[Bands.Count][];
+            for (int b = 0; b < Bands.Count; b++)
+            {
+                var (p, i, d) = Channels[ch].GetBand(b);
+                all[ch][b] = new[] { p, i, d };
+            }
+        }
+        return all;
+    }
+
+    /// <summary>从持久化数据恢复 8 通道 × 3 档 PID（开机调用，早于/替代仪表种子）。</summary>
+    public void ImportBandPids(double[][][]? data)
+    {
+        if (data == null) return;
+        for (int ch = 0; ch < 8 && ch < data.Length; ch++)
+            for (int b = 0; b < Bands.Count && b < (data[ch]?.Length ?? 0); b++)
+                if (data[ch][b] is { Length: 3 } v)
+                    Channels[ch].SetBand(b, v[0], v[1], v[2]);
+        foreach (var m in Channels) m.LoadBand(_curBand);
     }
 
     private bool _polling;   // 防止上一轮没读完又发起新一轮，造成堆积刷爆 UI 线程
@@ -182,6 +224,7 @@ public sealed partial class TempService : ObservableObject
         var m = Channels[ch - 1];
         m.P = p; m.I = i; m.D = d;
         m.StoreBand(_curBand);
+        PidsChanged?.Invoke();
     }
 
     /// <summary>AutotuneAsync 的返回值：需要先设定目标温度（SP 未设或过低）。</summary>
@@ -206,6 +249,7 @@ public sealed partial class TempService : ObservableObject
             if (sp < 35) return NoSetpoint;   // 必须明显高于室温，加热振荡才可能发生
             await c.RunAllAsync();
             await c.AutotuneAsync(loop);
+            _tuneBand[ch - 1] = _curBand;   // 记住发起整定时的档位，完成后存回该档
             await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = true);
             return null;
         }
@@ -300,8 +344,11 @@ public sealed partial class TempService : ObservableObject
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 var m = Channels[ch - 1];
-                m.P = pid.P; m.I = pid.I; m.D = pid.D;
-                m.StoreBand(_curBand);
+                int band = _tuneBand[ch - 1] >= 0 ? _tuneBand[ch - 1] : _curBand;
+                _tuneBand[ch - 1] = -1;
+                m.SetBand(band, pid.P, pid.I, pid.D);
+                if (band == _curBand) m.LoadBand(band);   // 正显示该档才刷新界面 P/I/D
+                PidsChanged?.Invoke();
             });
         }
         catch { }

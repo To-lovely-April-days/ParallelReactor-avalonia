@@ -236,10 +236,26 @@ public partial class MainViewModel : ViewModelBase
         _ = RefreshStirFaultAsync();
         _ = InitStirMicrostepAsync();
 
-        // 温控服务（一台 AI-8，1 拖 8）。开机读一次各通道 PID 填充界面。
+        // 温控服务（一台 AI-8，1 拖 8）。
         Temp = new Services.TempService(_tempBus,
             Services.HardwareOptions.TempSlave, Services.HardwareOptions.TempDpt);
-        _ = Temp.InitAsync();
+
+        // 本地持久化：恢复全局设置、温度档位边界、8 通道 × 3 档 PID。
+        // 有存档时不再用仪表 PID 作种子——仪表里残留的是上次整定值（可能属于高温档），
+        // 盲写进开机默认的低温档会串档。
+        var persisted = Services.SettingsStore.Load();
+        if (persisted != null)
+        {
+            if (persisted.Settings is { } ps) Services.SettingsStore.CopySettings(ps, Settings);
+            if (persisted.BandBounds is { Length: 2 } bb)
+            {
+                Temp.Bands[0].Hi = bb[0]; Temp.Bands[1].Lo = bb[0];
+                Temp.Bands[1].Hi = bb[1]; Temp.Bands[2].Lo = bb[1];
+            }
+            Temp.ImportBandPids(persisted.BandPids);
+        }
+        Temp.PidsChanged += PersistSoon;
+        _ = Temp.InitAsync(seedFromInstrument: persisted?.BandPids == null);
 
         // 压力服务（8AI）。用当前内部 psi 满程回填设置页的 MPa 量程显示值。
         _press = new Services.PressureService(_pressBus, Services.HardwareOptions.AnalogSlave,
@@ -473,10 +489,22 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void CancelExit() => IsExitConfirmOpen = false;
 
+    /// <summary>持久化快照：全局设置 + 档位边界 + 8×3 档 PID。</summary>
+    private Services.SettingsStore.PersistedState BuildPersistState() => new()
+    {
+        Settings = Settings,
+        BandBounds = new[] { Temp.Bands[0].Hi, Temp.Bands[1].Hi },
+        BandPids = Temp.ExportBandPids(),
+    };
+
+    /// <summary>防抖持久化（整定完成/手改 PID/切档/改档位边界时调用）。</summary>
+    public void PersistSoon() => Services.SettingsStore.SaveSoon(BuildPersistState);
+
     [RelayCommand]
     private void ConfirmExit()
     {
         IsExitConfirmOpen = false;
+        Services.SettingsStore.SaveNow(BuildPersistState());   // 设置页的修改统一在退出时落盘
         _stir.Stop();   // 停掉搅拌 JOG 保活，驱动器随之停转，避免退出后电机仍按最后一帧维持
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)

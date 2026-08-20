@@ -71,13 +71,13 @@ public partial class SettingViewModel : ViewModelBase
     [RelayCommand]
     private void EditBound1()
         => _main.Keyboard.OpenNumeric("低温 / 中温 分界", TempBands[0].Hi, "℃", 10, TempBands[1].Hi - 10,
-            v => { TempBands[0].Hi = v; TempBands[1].Lo = v; });
+            v => { TempBands[0].Hi = v; TempBands[1].Lo = v; _main.PersistSoon(); });
 
     /// <summary>改「中温/高温」分界（=中温档上限=高温档下限）。</summary>
     [RelayCommand]
     private void EditBound2()
         => _main.Keyboard.OpenNumeric("中温 / 高温 分界", TempBands[1].Hi, "℃", TempBands[0].Hi + 10, 390,
-            v => { TempBands[1].Hi = v; TempBands[2].Lo = v; });
+            v => { TempBands[1].Hi = v; TempBands[2].Lo = v; _main.PersistSoon(); });
 
     /// <summary>自整定按钮（再次点击=取消并停止输出）。SP 未设时先弹键盘设整定目标温度——
     /// AI-8 整定是在 SP 附近振荡，SP=0 时加热不会开、仪表会永远卡在「整定中」。</summary>
