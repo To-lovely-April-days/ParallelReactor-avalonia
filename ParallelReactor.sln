@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11716.220 stable
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelReactor", "ParallelReactor.csproj", "{45DB169D-962B-ADA6-2B7C-FB39195E4E30}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45DB169D-962B-ADA6-2B7C-FB39195E4E30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45DB169D-962B-ADA6-2B7C-FB39195E4E30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45DB169D-962B-ADA6-2B7C-FB39195E4E30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45DB169D-962B-ADA6-2B7C-FB39195E4E30}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3F986DE1-A682-4E76-9AA8-667175B40984}
+	EndGlobalSection
+EndGlobal

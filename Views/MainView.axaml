@@ -39,7 +39,7 @@
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="霍桐仪器" FontSize="15" FontWeight="Bold"
                        Foreground="{DynamicResource OnDark}" LetterSpacing="2" />
-            <TextBlock Text="HUOTONG INSTRUMENT" FontSize="8.5" FontWeight="Medium"
+            <TextBlock Text="HUOTONG INSTRUMENT" FontSize="10" FontWeight="Medium"
                        Foreground="{DynamicResource Body}" LetterSpacing="1.8" Margin="0,3,0,0" />
           </StackPanel>
         </StackPanel>
@@ -49,7 +49,7 @@
           <TextBlock Text="多通道平行反应仪" FontSize="20" FontWeight="SemiBold"
                      Foreground="{DynamicResource OnDark}" LetterSpacing="6"
                      HorizontalAlignment="Center" />
-          <TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR · 8CH" FontSize="9" FontWeight="Medium"
+          <TextBlock Text="MULTI-CHANNEL PARALLEL REACTOR · 8CH" FontSize="10.5" FontWeight="Medium"
                      Foreground="{DynamicResource Body}" LetterSpacing="3.5" Margin="0,4,0,0"
                      HorizontalAlignment="Center" />
         </StackPanel>
@@ -74,7 +74,7 @@
           <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
           <!-- 服务热线 -->
           <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="服务热线" FontSize="9" Foreground="{DynamicResource Mute}"
+            <TextBlock Text="服务热线" FontSize="10.5" Foreground="{DynamicResource Mute}"
                        LetterSpacing="3" HorizontalAlignment="Right" />
             <TextBlock Text="021-67230701" FontSize="13" FontWeight="Bold"
                        Foreground="{DynamicResource OnDark}" LetterSpacing="0.5"
@@ -85,7 +85,7 @@
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="{Binding ClockTime}" FontSize="14" FontWeight="SemiBold"
                        Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
-            <TextBlock Text="{Binding ClockDate}" FontSize="9.5" Foreground="{DynamicResource Body}"
+            <TextBlock Text="{Binding ClockDate}" FontSize="10.5" Foreground="{DynamicResource Body}"
                        HorizontalAlignment="Right" Margin="0,1,0,0" />
           </StackPanel>
           <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
@@ -179,18 +179,7 @@
                 <TextBlock Text="泄漏测试" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
-            <Border Width="1" Height="20" Background="{DynamicResource GlassLine2}" Margin="3,0" />
-            <Button Classes="tbtn man" Classes.on="{Binding ManualValve}"
-                    Command="{Binding ToggleManualCommand}">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
-                  <Canvas Width="24" Height="24">
-                    <Path Classes="tico" Data="M5 8l7 4-7 4z M19 8l-7 4 7 4z M12 8V4 M9 4h6" />
-                  </Canvas>
-                </Viewbox>
-                <TextBlock Text="手动阀控" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
+            <!-- 手动阀控开关已移到气路图 RV1 左侧（SchematicControl.DrawManualSwitch）-->
           </StackPanel>
 
           <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
@@ -205,7 +194,7 @@
                     <Path Classes="tico-fill estop-ico" Data="M512 960A448 448 0 1 1 512 64a448 448 0 0 1 0 896zM256 448a64 64 0 1 0 0 128h512a64 64 0 0 0 0-128H256z" />
                   </Canvas>
                 </Viewbox>
-                <TextBlock Text="急停" VerticalAlignment="Center" LetterSpacing="1.6" />
+                <TextBlock Text="{Binding EstopButtonText}" VerticalAlignment="Center" LetterSpacing="1.6" />
               </StackPanel>
             </Button>
           </StackPanel>
@@ -225,7 +214,7 @@
             <StackPanel Grid.Column="0">
               <TextBlock Text="反应器与气路系统" FontSize="16" FontWeight="SemiBold"
                          Foreground="{DynamicResource OnDark}" />
-              <TextBlock Text="Reactor &amp; Gas Network" FontSize="9.5"
+              <TextBlock Text="Reactor &amp; Gas Network" FontSize="10.5"
                          Foreground="{DynamicResource Body}" LetterSpacing="1.5" Margin="0,2,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="14"
@@ -239,14 +228,14 @@
                     </LinearGradientBrush>
                   </Border.Background>
                 </Border>
-                <TextBlock Text="气体流通" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                <TextBlock Text="气体流通" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
               </StackPanel>
               <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
                 <Border Width="14" Height="4" CornerRadius="2" Background="#22000000" />
-                <TextBlock Text="共用总管" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                <TextBlock Text="共用总管" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
               </StackPanel>
               <TextBlock Text="点击反应釜可控制 · 阀门需开启手动阀控"
-                         FontSize="11" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+                         FontSize="12" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
             </StackPanel>
 
             <!-- 搅拌总控（全局共用一台搅拌器：8 釜同开同关、同一转速）-->
@@ -261,7 +250,7 @@
                 </Viewbox>
                 <StackPanel VerticalAlignment="Center">
                   <TextBlock Text="搅拌总控" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-                  <TextBlock FontSize="9" Foreground="{DynamicResource Mute}" Margin="0,1,0,0">
+                  <TextBlock FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,1,0,0">
                     <Run Text="全部反应釜共用 · 电机电流 " /><Run Text="{Binding StirMotorCurrentText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" /><Run Text="{Binding StirBusVoltageText}" FontWeight="SemiBold" Foreground="{DynamicResource Body}" />
                   </TextBlock>
                 </StackPanel>
@@ -270,7 +259,7 @@
                         Background="#0A000000" BorderBrush="{DynamicResource GlassLine2}" BorderThickness="1"
                         VerticalAlignment="Center" Cursor="Hand">
                   <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                    <Run Text="{Binding StirRpm}" /><Run Text=" rpm" FontSize="9" Foreground="{DynamicResource Body}" />
+                    <Run Text="{Binding StirRpm}" /><Run Text=" rpm" FontSize="10.5" Foreground="{DynamicResource Body}" />
                   </TextBlock>
                 </Button>
                 <!-- 开关 -->
@@ -578,6 +567,28 @@
           </StackPanel>
         </Border>
       </Panel>
+
+      <!-- 下发并运行确认（程序引擎逐步执行：状态随步骤变化，可随时中止）-->
+      <Panel IsVisible="{Binding IsRunConfirmOpen}">
+        <Border Background="#99060609" />
+        <Border Classes="pmodal" Width="560" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <StackPanel>
+            <StackPanel Margin="24,20,24,14">
+              <TextBlock Text="{Binding RunConfirmTitle}" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="{Binding RunConfirmSub}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+            </StackPanel>
+            <Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1"
+                    CornerRadius="9" Padding="14,12" Margin="22,0,22,4">
+              <TextBlock Text="{Binding RunConfirmText}" FontSize="12.5" Foreground="{DynamicResource Body}"
+                         TextWrapping="Wrap" LineHeight="20" />
+            </Border>
+            <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,16,22,20">
+              <Button Classes="mfbtn" Command="{Binding CancelRunCommand}" Content="取消" />
+              <Button Classes="mfbtn go" Command="{Binding ConfirmRunCommand}" Content="开始运行" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Panel>
     </Panel>
 
     <!-- ============ 预运行检查 ============ -->
@@ -746,44 +757,34 @@
     <!-- ============ 泄漏测试 ============ -->
     <Panel IsVisible="{Binding Leak.IsOpen}">
       <Border Background="#99060609" />
-      <Border Classes="pmodal" Width="640" MaxHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center">
+      <Border Classes="pmodal" Width="660" MaxHeight="690" HorizontalAlignment="Center" VerticalAlignment="Center">
         <DockPanel>
           <!-- 头 -->
           <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
             <TextBlock Text="自动泄漏测试" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
-            <TextBlock Text="Auto Leak Test · 充氮 510 psi · 阈值 &lt; 2 psi/hr" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
+            <TextBlock Text="{Binding Leak.SubTitle}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,3,0,0" />
           </StackPanel>
           <!-- 底 -->
           <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
-            <Button Classes="mfbtn" Command="{Binding Leak.CloseCommand}" Content="关闭" />
+            <Button Classes="mfbtn danger" Command="{Binding Leak.AbortCommand}" Content="中止测试" IsVisible="{Binding Leak.Running}" />
+            <Button Classes="mfbtn" Command="{Binding Leak.CloseCommand}" Content="{Binding Leak.CloseText}" />
             <Button Classes="mfbtn go" Command="{Binding Leak.StartCommand}" Content="开始测试" IsVisible="{Binding Leak.ShowStartBtn}" />
             <Button Classes="mfbtn go" Command="{Binding Leak.ShowDiagCommand}" Content="查看维修指南" IsVisible="{Binding Leak.ShowDiagBtn}" />
           </StackPanel>
           <!-- 主体 -->
-          <ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+          <ScrollViewer MaxHeight="480" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
             <StackPanel>
               <!-- 说明（未开始） -->
               <StackPanel IsVisible="{Binding Leak.ShowStartBtn}">
-                <TextBlock Text="系统将按以下流程自动执行泄漏测试，无需人工读取数据：" FontSize="12.5"
+                <TextBlock Text="系统将按以下流程自动执行，无需人工读取数据：" FontSize="12.5"
                            Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="20" />
-                <StackPanel Margin="2,10,0,12" Spacing="8">
-                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-                    <Run Text="1.  使用 Gas A 切换为 " /><Run Text="N₂" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text="，将 8 路 RV 同时充压到 " /><Run Text="500 psi" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-                  </TextBlock>
-                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-                    <Run Text="2.  等待 " /><Run Text="10 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text=" 平衡（消除温度波动）" />
-                  </TextBlock>
-                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-                    <Run Text="3.  密封后 " /><Run Text="30 分钟" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" /><Run Text=" 持续记录压力" />
-                  </TextBlock>
-                  <TextBlock FontSize="12" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18">
-                    <Run Text="4.  自动判读：压降 ≥ 2 psi/hr 为不通过" />
-                  </TextBlock>
-                </StackPanel>
+                <TextBlock Text="{Binding Leak.IntroText}" FontSize="12" Foreground="{DynamicResource Body}"
+                           TextWrapping="Wrap" LineHeight="21" Margin="2,8,0,12" />
                 <Border Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}" BorderThickness="1" CornerRadius="9" Padding="13,11">
-                  <TextBlock Text="取代原 Endeavor 中必须人工点 Listen → 等 40 分钟 → 人工读图的流程。系统会同时记录全部 8 路并给出每路的结论。"
+                  <TextBlock Text="{Binding Leak.IntroNote}"
                              FontSize="11.5" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17" />
                 </Border>
+                <TextBlock Text="测试通道（点击切换；运行中的通道不可选）：" FontSize="12" Foreground="{DynamicResource Body}" Margin="0,14,0,0" />
               </StackPanel>
 
               <!-- 进度（已开始） -->
@@ -803,40 +804,44 @@
                 <ProgressBar Minimum="0" Maximum="100" Value="{Binding Leak.Progress}" Height="6" MinHeight="6"
                              ShowProgressText="False" Foreground="{DynamicResource GreenBright}" Background="{DynamicResource GlassSoft}" Margin="0,0,0,8" />
                 <TextBlock Text="{Binding Leak.PhaseText}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,0,0,4" />
+              </StackPanel>
 
-                <ItemsControl ItemsSource="{Binding Leak.Cells}" Margin="0,6,0,0">
-                  <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
-                  </ItemsControl.ItemsPanel>
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:LeakCell">
+              <!-- 8 路通道（未开始时点击选择） -->
+              <ItemsControl ItemsSource="{Binding Leak.Cells}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:LeakCell">
+                    <Button Command="{Binding ToggleCommand}" Padding="0" Margin="3" Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Cursor="Hand">
                       <Border Opacity="{Binding CellOpacity}" Background="{Binding CellBg}" BorderBrush="{Binding CellBorder}"
-                              BorderThickness="1" CornerRadius="9" Padding="6,8" Margin="3">
+                              BorderThickness="1" CornerRadius="9" Padding="4,8">
                         <StackPanel>
                           <TextBlock Text="{Binding RvName}" FontSize="10" FontWeight="SemiBold"
                                      Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
                           <TextBlock HorizontalAlignment="Center" FontSize="13" FontWeight="SemiBold"
                                      Foreground="{DynamicResource OnDark}" Margin="0,2,0,0">
-                            <Run Text="{Binding PressureText}" /><Run Text=" psi" FontSize="8" Foreground="{DynamicResource Mute}" />
+                            <Run Text="{Binding PressureText}" /><Run Text="{Binding UnitText}" FontSize="8" Foreground="{DynamicResource Mute}" />
                           </TextBlock>
                           <TextBlock Text="{Binding Detail}" FontSize="9" Foreground="{Binding DetailBrush}"
-                                     HorizontalAlignment="Center" Margin="0,1,0,0" />
+                                     HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,1,0,0" />
                         </StackPanel>
                       </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
 
-                <!-- 结果 -->
-                <Border IsVisible="{Binding Leak.Done}" Background="{Binding Leak.ResultBg}" BorderBrush="{Binding Leak.ResultBorder}"
-                        BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,12,0,0">
-                  <StackPanel>
-                    <TextBlock Text="{Binding Leak.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Leak.ResultBrush}" />
-                    <TextBlock Text="{Binding Leak.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
-                               TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
-                  </StackPanel>
-                </Border>
-              </StackPanel>
+              <!-- 结果 -->
+              <Border IsVisible="{Binding Leak.Done}" Background="{Binding Leak.ResultBg}" BorderBrush="{Binding Leak.ResultBorder}"
+                      BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,12,0,0">
+                <StackPanel>
+                  <TextBlock Text="{Binding Leak.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Leak.ResultBrush}" />
+                  <TextBlock Text="{Binding Leak.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
+                             TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
+                </StackPanel>
+              </Border>
             </StackPanel>
           </ScrollViewer>
         </DockPanel>
@@ -857,7 +862,7 @@
           </StackPanel>
           <ScrollViewer MaxHeight="470" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
             <StackPanel>
-              <TextBlock Text="检测到通道压降超过 2 psi/hr 阈值，按优先级排查："
+              <TextBlock Text="{Binding Leak.DiagHeadText}"
                          FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="18" Margin="0,0,0,12" />
               <ItemsControl ItemsSource="{Binding Leak.DiagSteps}">
                 <ItemsControl.ItemTemplate>
@@ -876,11 +881,8 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
-                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="查看 O 圈更换视频" Content="查看 O 圈更换视频" />
-                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="联系工程师" Content="联系工程师" />
-                <Button Classes="mfbtn" Command="{Binding Leak.DiagActionCommand}" CommandParameter="下载维修单" Content="下载维修单" />
-              </StackPanel>
+              <TextBlock Text="按以上顺序排查后仍不通过，请联系霍桐售后：021-6723-0701"
+                         FontSize="12" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" Margin="0,4,0,0" />
             </StackPanel>
           </ScrollViewer>
         </DockPanel>
@@ -950,6 +952,89 @@
       </Border>
     </Panel>
 
+    <!-- ============ 急停面板（按下急停即打开；锁定保持到确认复位）============ -->
+    <Border Background="#B3000000" IsVisible="{Binding IsEstopPanelOpen}">
+      <Border Width="520" CornerRadius="16" BorderThickness="1.5" Padding="24,22"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              BorderBrush="#e0394c" Background="#ffffff">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="11">
+            <Border Width="40" Height="40" CornerRadius="20" Background="#1AE0394C"
+                    BorderBrush="#59E0394C" BorderThickness="1">
+              <Viewbox Width="20" Height="20">
+                <Canvas Width="1024" Height="1024">
+                  <Path Fill="#e0394c" Data="M512 960A448 448 0 1 1 512 64a448 448 0 0 1 0 896zM256 448a64 64 0 1 0 0 128h512a64 64 0 0 0 0-128H256z" />
+                </Canvas>
+              </Viewbox>
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="急停已触发" FontSize="16" FontWeight="Bold" Foreground="#e0394c" />
+              <TextBlock Text="{Binding EstopTimeText}" FontSize="10.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+            </StackPanel>
+          </StackPanel>
+
+          <TextBlock Text="{Binding EstopSummary}" FontSize="12.5" Foreground="{DynamicResource Body}"
+                     TextWrapping="Wrap" LineHeight="19" Margin="0,14,0,10" />
+
+          <!-- 三部分下发结果 -->
+          <Border CornerRadius="10" BorderThickness="1" BorderBrush="{DynamicResource GlassLine}" Padding="14,4">
+            <StackPanel>
+              <Grid ColumnDefinitions="60,*,Auto" Margin="0,8">
+                <TextBlock Text="{Binding EstopHeat.Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding EstopHeat.Detail}" FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding EstopHeat.StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding EstopHeat.StatusBrush}" VerticalAlignment="Center" Margin="10,0,0,0" />
+              </Grid>
+              <Border Height="1" Background="{DynamicResource GlassLine}" />
+              <Grid ColumnDefinitions="60,*,Auto" Margin="0,8">
+                <TextBlock Text="{Binding EstopStir.Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding EstopStir.Detail}" FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding EstopStir.StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding EstopStir.StatusBrush}" VerticalAlignment="Center" Margin="10,0,0,0" />
+              </Grid>
+              <Border Height="1" Background="{DynamicResource GlassLine}" />
+              <Grid ColumnDefinitions="60,*,Auto" Margin="0,8">
+                <TextBlock Text="{Binding EstopValves.Name}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding EstopValves.Detail}" FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding EstopValves.StatusText}" FontSize="12" FontWeight="SemiBold" Foreground="{Binding EstopValves.StatusBrush}" VerticalAlignment="Center" Margin="10,0,0,0" />
+              </Grid>
+            </StackPanel>
+          </Border>
+
+          <TextBlock Text="软件急停经通讯下发，不能替代设备上的硬件急停按钮。复位只解除锁定，设备保持停止，需要时重新开始运行。"
+                     FontSize="11" Foreground="{DynamicResource Mute}" TextWrapping="Wrap" LineHeight="17" Margin="0,12,0,18" />
+
+          <Grid ColumnDefinitions="*,*">
+            <Button Grid.Column="0" Classes="mfbtn" Content="收起（保持急停）" HorizontalAlignment="Stretch"
+                    Margin="0,0,6,0" Command="{Binding CloseEstopPanelCommand}" />
+            <Button Grid.Column="1" Classes="mfbtn danger" Content="复位急停…" HorizontalAlignment="Stretch"
+                    Margin="6,0,0,0" Command="{Binding EstopResetCommand}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- ============ 急停复位确认 ============ -->
+    <Border Background="#B3000000" IsVisible="{Binding IsEstopResetConfirmOpen}">
+      <Border Width="420" CornerRadius="16" BorderThickness="1" Padding="24,22"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              BorderBrush="{DynamicResource GlassLine2}" Background="#ffffff">
+        <StackPanel>
+          <TextBlock Text="确认复位急停？" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+          <TextBlock Text="请确认急停原因已排除。复位后设备仍保持停止，不会自动恢复加热、搅拌或阀门。"
+                     FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="20" Margin="0,12,0,0" />
+          <Border IsVisible="{Binding HasEstopResetWarn}" Margin="0,12,0,0" CornerRadius="9" Padding="12,10"
+                  Background="#14E0394C" BorderBrush="#66E0394C" BorderThickness="1">
+            <TextBlock Text="{Binding EstopResetWarn}" FontSize="12" Foreground="#bd2f43" TextWrapping="Wrap" LineHeight="18" />
+          </Border>
+          <Grid ColumnDefinitions="*,*" Margin="0,20,0,0">
+            <Button Grid.Column="0" Classes="mfbtn" Content="取消" HorizontalAlignment="Stretch"
+                    Margin="0,0,6,0" Command="{Binding CancelEstopResetCommand}" />
+            <Button Grid.Column="1" Classes="mfbtn danger" Content="确认复位" HorizontalAlignment="Stretch"
+                    Margin="6,0,0,0" Command="{Binding ConfirmEstopResetCommand}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Border>
+
     <!-- ============ 退出程序确认 ============ -->
     <Border Background="#B3000000" IsVisible="{Binding IsExitConfirmOpen}">
       <Border Width="384" CornerRadius="16" BorderThickness="1" Padding="24,22"
@@ -970,7 +1055,7 @@
             </StackPanel>
           </StackPanel>
 
-          <TextBlock Text="确定要退出控制系统吗？退出后界面将关闭，正在进行的搅拌保活会停止。"
+          <TextBlock Text="确定要退出控制系统吗？退出前会停止搅拌与全部加热输出，并关闭全部阀门。"
                      FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap"
                      LineHeight="20" Margin="0,16,0,20" />
 

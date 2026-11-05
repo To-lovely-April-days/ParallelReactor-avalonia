@@ -1,6 +1,12 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!-- 触摸屏基础可读性：未单独指定字号的文字保持足够的阅读尺寸。 -->
+  <Style Selector="TextBlock">
+    <Setter Property="FontSize" Value="13.5" />
+    <Setter Property="TextElement.FontWeight" Value="Normal" />
+  </Style>
+
   <!-- ============ 触屏即时按压反馈 ============
        触屏不会触发 :pointerover，而按钮在"松手"才执行动作——没有按压态时，
        从手指按下到松开界面毫无变化，会被感知为"点击延迟"。
@@ -17,14 +23,14 @@
 
   <!-- ============ 工具栏按钮 .tbtn ============ -->
   <Style Selector="Button.tbtn">
-    <Setter Property="Height" Value="30" />
-    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="13,0" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
@@ -46,14 +52,14 @@
 
   <!-- ============ 急停按钮（工具栏内 estop-tb 变体）============ -->
   <Style Selector="Button.estop">
-    <Setter Property="Height" Value="28" />
+    <Setter Property="Height" Value="32" />
     <Setter Property="Padding" Value="12,0" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="BorderBrush" Value="#f06b78" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="FontWeight" Value="Bold" />
-    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontSize" Value="13" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Background" Value="#c62a3b" />
   </Style>
@@ -82,7 +88,7 @@
 
   <!-- ============ 抽屉内通用按钮 .btn ============ -->
   <Style Selector="Button.dbtn">
-    <Setter Property="Height" Value="38" />
+    <Setter Property="Height" Value="42" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -92,7 +98,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GlassLine2}" />
     <Setter Property="Background" Value="{DynamicResource GlassSoft}" />
     <Setter Property="Foreground" Value="{DynamicResource OnDark}" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Margin" Value="0,0,0,8" />
   </Style>
@@ -134,7 +140,7 @@
   <Style Selector="Button.seg">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="VerticalAlignment" Value="Stretch" />
@@ -174,7 +180,7 @@
   </Style>
   <!-- 导航项中文标签 -->
   <Style Selector="Button.nav TextBlock.zh">
-    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontSize" Value="16" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Foreground" Value="#54545e" />
     <Setter Property="VerticalAlignment" Value="Center" />

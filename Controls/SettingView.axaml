@@ -386,13 +386,13 @@
                         <!-- PV -->
                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                           <TextBlock FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource OnDark}">
-                            <Run Text="{Binding Pv, StringFormat={}{0:0.0}}" /><Run Text=" ℃" FontSize="11" Foreground="{StaticResource Body}" />
+                            <Run Text="{Binding PvText}" /><Run Text=" ℃" FontSize="11" Foreground="{StaticResource Body}" />
                           </TextBlock>
                         </StackPanel>
 
                         <!-- 输出 -->
                         <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="13" FontWeight="SemiBold"
-                                   Foreground="{StaticResource Body}" Text="{Binding OutputPct, StringFormat={}{0:0}%}" />
+                                   Foreground="{StaticResource Body}" Text="{Binding OutputText}" />
 
                         <!-- P / I / D -->
                         <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="9" VerticalAlignment="Center">

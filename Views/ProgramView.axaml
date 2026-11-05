@@ -3,6 +3,7 @@
              xmlns:models="using:ParallelReactor.Models"
              xmlns:vm="using:ParallelReactor.ViewModels"
              xmlns:conv="using:ParallelReactor.Converters"
+             xmlns:ctl="using:ParallelReactor.Controls"
              x:Class="ParallelReactor.Controls.ProgramView"
              x:CompileBindings="False"
              x:DataType="vm:ProgramViewModel">
@@ -174,7 +175,7 @@
                             <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold"
                                        Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
                             <Border Classes="ptag" VerticalAlignment="Center">
-                              <TextBlock Text="{Binding Chip}" FontSize="10.5" FontWeight="SemiBold"
+                              <TextBlock Text="{Binding Chip}" FontSize="11.5" FontWeight="SemiBold"
                                          Foreground="{DynamicResource Mute}" LetterSpacing="1" />
                             </Border>
                           </StackPanel>
@@ -212,22 +213,27 @@
           <!-- 底部操作栏 -->
           <Border Grid.Row="2" Height="1" VerticalAlignment="Top" Background="{DynamicResource GlassLine}" />
           <DockPanel Grid.Row="2" Margin="14,10" LastChildFill="False">
-            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}" IsEnabled="{Binding CanEdit}">
+            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding RunProgramCommand}" IsEnabled="{Binding CanEdit}"
+                    IsVisible="{Binding CanRun}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M10 9l5 3-5 3z" Fill="White" /></Canvas></Viewbox>
                 <TextBlock Text="下发并运行" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <!-- 执行中：停止按钮 + 进度 -->
+            <Button Classes="pbtn pri" DockPanel.Dock="Right" Command="{Binding AbortRunCommand}" IsVisible="{Binding IsRunningProgram}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" Stroke="White" StrokeThickness="2" Fill="Transparent" /><Path Data="M9 9h6v6H9z" Fill="White" /></Canvas></Viewbox>
+                <TextBlock Text="停止程序" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding RunStatus}" IsVisible="{Binding IsRunningProgram}"
+                       FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}"
+                       VerticalAlignment="Center" Margin="0,0,12,0" />
             <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding ApplyOthersCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
                 <TextBlock Text="应用到其他通道" VerticalAlignment="Center" />
-              </StackPanel>
-            </Button>
-            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding InsertLeakCommand}" IsEnabled="{Binding CanEdit}">
-              <StackPanel Orientation="Horizontal" Spacing="6">
-                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M12 2C8 8 6 12 6 16a6 6 0 0 0 12 0c0-4-2-8-6-14z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
-                <TextBlock Text="插入泄漏测试" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
             <Button Classes="pbtn" Command="{Binding SaveTemplateCommand}">
@@ -398,5 +404,9 @@
         </StackPanel>
       </Border>
     </Canvas>
+
+    <!-- ===== 运行监控：点击「下发并运行」后覆盖程序编辑区 ===== -->
+    <ctl:RunMonitorView Grid.RowSpan="3" ZIndex="200"
+                        IsVisible="{Binding IsRunMonitorOpen}" />
   </Grid>
 </UserControl>

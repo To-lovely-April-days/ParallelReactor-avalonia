@@ -5,7 +5,7 @@ namespace ParallelReactor.Hardware;
 
 /// <summary>
 /// Modbus RTU 主站抽象。每条 RS485 总线对应一个实例（半双工，内部串行化事务）。
-/// 真实实现走串口(ModbusRtuMaster)，无硬件时用 MockModbusMaster。
+/// 真实实现走串口(ModbusRtuMaster)；未配置串口时用 OfflineModbusMaster（所有事务失败，不产生数据）。
 /// 地址均为 Modbus 协议地址（0 基），与各模块手册一致。
 /// </summary>
 public interface IModbusMaster

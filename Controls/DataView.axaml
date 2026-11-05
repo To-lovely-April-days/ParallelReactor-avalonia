@@ -78,10 +78,10 @@
     <Grid Grid.Row="0" Margin="20,14,20,6" ColumnDefinitions="Auto,*">
       <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
         <TextBlock Text="运行记录" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-        <TextBlock Text="RUN HISTORY · 自动归档 · 点击查看详情" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+        <TextBlock Text="RUN HISTORY · 自动归档 · 点击查看详情" FontSize="10.5" FontWeight="Medium" VerticalAlignment="Bottom"
                    Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
       </StackPanel>
-      <TextBlock Grid.Column="1" Text="所有 .ear 文件自动归档 · 可导出至 Excel / 数据库" FontSize="11" HorizontalAlignment="Right"
+      <TextBlock Grid.Column="1" Text="运行结束后自动生成记录" FontSize="12" HorizontalAlignment="Right"
                  Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
     </Grid>
 
@@ -102,6 +102,9 @@
               <TextBlock Grid.Column="6" Text="状态" Classes="rth" />
             </Grid>
           </Border>
+          <!-- 空状态 -->
+          <TextBlock DockPanel.Dock="Top" IsVisible="{Binding IsEmpty}" Text="暂无运行记录 · 运行结束后会在这里自动生成"
+                     FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,40,0,0" />
           <!-- 列表 -->
           <ListBox Classes="runlist" ItemsSource="{Binding Runs}" SelectedItem="{Binding Selected, Mode=TwoWay}">
             <!-- 直接替换整个容器模板，彻底绕开 Fluent 默认蓝色选中态 -->
@@ -144,13 +147,13 @@
                                HorizontalAlignment="Left" Fill="{Binding StatusBrush}" />
                       <StackPanel Grid.Column="1" VerticalAlignment="Center">
                         <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-                        <TextBlock Text="{Binding Recipe}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
+                        <TextBlock Text="{Binding Recipe}" FontSize="11.5" Foreground="{DynamicResource Mute}" Margin="0,2,0,0" />
                       </StackPanel>
-                      <TextBlock Grid.Column="2" Text="{Binding Start}" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="2" Text="{Binding Start}" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="3" Text="{Binding Dur}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="4" Text="{Binding Rvs}" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
                       <TextBlock Grid.Column="5" Text="{Binding Rsd}" FontSize="12" Foreground="{Binding RsdBrush}" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="6" Text="{Binding StatusText}" FontSize="11.5" FontWeight="SemiBold"
+                      <TextBlock Grid.Column="6" Text="{Binding StatusText}" FontSize="12.5" FontWeight="SemiBold"
                                  Foreground="{Binding StatusBrush}" VerticalAlignment="Center" />
                     </Grid>
                   </Panel>
@@ -163,6 +166,9 @@
 
       <!-- 右：详情 -->
       <Border Grid.Column="1" Classes="graphcol" Padding="16">
+        <Panel>
+        <TextBlock IsVisible="{Binding !HasSelection}" Text="选择左侧一条运行记录查看详情"
+                   FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,40,0,0" />
         <ScrollViewer VerticalScrollBarVisibility="Auto" IsVisible="{Binding HasSelection}">
           <StackPanel>
             <TextBlock Text="{Binding Selected.Name}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
@@ -250,6 +256,7 @@
             </Button>
           </StackPanel>
         </ScrollViewer>
+        </Panel>
       </Border>
     </Grid>
   </Grid>

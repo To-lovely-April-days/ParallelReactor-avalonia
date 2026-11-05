@@ -18,20 +18,34 @@ public partial class AlarmViewModel : ViewModelBase
     public int Total => All.Count;
     public int ActiveCount => All.Count(a => a.Stat == "active");
 
-    public AlarmViewModel()
-    {
-        Seed();
-        ApplyFilter();
-    }
+    /// <summary>开机为空：只记录本次运行期间真实发生的报警与事件（尚未落盘，重启后清空）。</summary>
+    public AlarmViewModel() => ApplyFilter();
+
+    public bool IsEmpty => Filtered.Count == 0;
 
     partial void OnFilterChanged(string value) => ApplyFilter();
 
     [RelayCommand] private void SetFilter(string f) => Filter = f;
 
+    /// <summary>运行时追加一条事件（置顶，"未处理"状态），并刷新过滤列表与统计。</summary>
+    public void Log(string kind, string rv, string msg, string sub)
+    {
+        All.Insert(0, new AlarmItem
+        {
+            K = kind, Rv = rv, Msg = msg, Sub = sub,
+            Time = System.DateTime.Now.ToString("HH:mm:ss"),
+            Stat = kind == "info" ? "done" : "active",
+        });
+        ApplyFilter();
+        OnPropertyChanged(nameof(Total));
+        OnPropertyChanged(nameof(ActiveCount));
+    }
+
     private void ApplyFilter()
     {
         Filtered.Clear();
         foreach (var a in All.Where(Match)) Filtered.Add(a);
+        OnPropertyChanged(nameof(IsEmpty));
     }
 
     private bool Match(AlarmItem a) => Filter switch
@@ -41,24 +55,6 @@ public partial class AlarmViewModel : ViewModelBase
         _ => a.K == Filter,
     };
 
-    private void Seed()
-    {
-        void A(string k, string rv, string msg, string sub, string t, string stat)
-            => All.Add(new AlarmItem { K = k, Rv = rv, Msg = msg, Sub = sub, Time = t, Stat = stat });
-
-        A("err", "RV5", "压力超过 510 psi 阈值", "测得 511.8 psi，触发硬报警，需人工确认", "14:32:45", "active");
-        A("warn", "RV4", "升温 14 分钟仍未达到 SP", "当前 117.4°C / SP 150°C，建议检查传热液", "14:30:12", "active");
-        A("info", "系统", "已开始数据记录", "run_20260602_1018.ear", "14:18:33", "done");
-        A("warn", "RV3", "压力初值偏离 SP 较多", "升压完成 8 分钟仍偏离 5 psi 以上", "14:22:01", "ack");
-        A("info", "系统", "8 路 RV 全部达到 SP 温度", "最大偏差 1.8°C，合格", "14:21:58", "done");
-        A("info", "RV2", "检测到注射事件", "压降 -2.3 psi，已自动重置气体计数", "14:20:12", "done");
-        A("warn", "系统", "泄漏测试已 6 天未运行", "上次：2026-05-27", "14:18:00", "ack");
-        A("info", "系统", "温控、IO、驱动模块全部连接", "3 路 RS485 在线 · 错误 0", "14:17:30", "done");
-        A("err", "RV5", "超压报警（前一次运行）", "2026-05-30 11:45 · 已确认", "05-30 11:45", "done");
-        A("warn", "RV3", "CO 羰基化 - RV3 升温慢", "2026-06-01 09:14", "06-01 09:14", "done");
-        A("info", "系统", "气体消耗计数已重置", "操作人：admin", "06-01 09:05", "done");
-        A("info", "系统", "软件版本已升级到 v2.4.1", "增加 P&ID 视图与一键泄漏测试", "05-30 18:00", "done");
-    }
 }
 
 /// <summary>一条报警/事件记录。</summary>

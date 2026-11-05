@@ -49,9 +49,27 @@ public partial class Reactor : ObservableObject
     /// <summary>16 段曲线升温程序（curve 模式下由 MainViewModel.Tick 驱动下发）。</summary>
     public TempProfile Profile { get; } = new();
 
+    /// <summary>定值加热防超调逼近（fixed 模式启动加热后由 MainViewModel.Tick 驱动下发）。</summary>
+    public HeatApproach Approach { get; } = new();
+
+    // —— 读数是否有效（MainViewModel.Tick 按温控 / 压力模块在线状态刷新）：无效时显示「—」，不显示旧值或 0 ——
+    [ObservableProperty] private bool _tOnline;
+    [ObservableProperty] private bool _pOnline;
+
+    /// <summary>气体消耗是否为实测值（反应步骤按 ΔP 计算后才置 true；之前一律显示「—」）。</summary>
+    [ObservableProperty] private bool _gasValid;
+
+    public string TText => TOnline ? $"{T:0.0}" : "—";
+    public string GasText => GasValid ? $"{Gas:0.00}" : "—";
+
+    partial void OnTChanged(double value) => OnPropertyChanged(nameof(TText));
+    partial void OnTOnlineChanged(bool value) => OnPropertyChanged(nameof(TText));
+    partial void OnGasChanged(double value) => OnPropertyChanged(nameof(GasText));
+    partial void OnGasValidChanged(bool value) => OnPropertyChanged(nameof(GasText));
+
     // —— 压力显示（按全局单位换算；内部 P 恒为 psi，不影响报警/SP 判定）——
     public double PShown => Units.P(P);
-    public string PText => Units.PValue(P);   // 按单位取合适小数位（MPa 三位 / bar 两位 / psi 一位）
+    public string PText => POnline ? Units.PValue(P) : "—";   // 按单位取合适小数位（MPa 三位 / bar 两位 / psi 一位）
     public string PUnit => Units.PLabel;
 
     /// <summary>P 变化时刷新换算后的显示值。</summary>
@@ -60,6 +78,7 @@ public partial class Reactor : ObservableObject
         OnPropertyChanged(nameof(PShown));
         OnPropertyChanged(nameof(PText));
     }
+    partial void OnPOnlineChanged(bool value) => OnPropertyChanged(nameof(PText));
 
     /// <summary>全局单位切换后调用，刷新压力显示（值 + 单位标签）。</summary>
     public void RefreshUnits()
@@ -77,13 +96,22 @@ public partial class Reactor : ObservableObject
         ReactorState.Heating => "升温中",
         ReactorState.Alarm => "超压",
         ReactorState.Done => "已结束",
+        ReactorState.Ready => "已启用",
+        ReactorState.Wait => "等待中",
+        ReactorState.Stir => "搅拌中",
+        ReactorState.Cooling => "降温中",
         _ => "停用"
     };
 
     public bool IsIdle => State == ReactorState.Idle;
     public bool IsDone => State == ReactorState.Done;
     public bool IsRunning => State is ReactorState.React or ReactorState.Heating
-        or ReactorState.Pressing or ReactorState.Alarm;
+        or ReactorState.Pressing or ReactorState.Alarm or ReactorState.Ready
+        or ReactorState.Wait or ReactorState.Stir or ReactorState.Cooling;
+    /// <summary>真正在干活（升温/反应/升压/超压/等待/搅拌/降温），区别于仅「已启用」：程序编辑与下发据此锁定。</summary>
+    public bool IsWorking => State is ReactorState.React or ReactorState.Heating
+        or ReactorState.Pressing or ReactorState.Alarm
+        or ReactorState.Wait or ReactorState.Stir or ReactorState.Cooling;
 
     /// <summary>状态变化时同步刷新派生属性</summary>
     partial void OnStateChanged(ReactorState value)
@@ -92,5 +120,6 @@ public partial class Reactor : ObservableObject
         OnPropertyChanged(nameof(IsIdle));
         OnPropertyChanged(nameof(IsDone));
         OnPropertyChanged(nameof(IsRunning));
+        OnPropertyChanged(nameof(IsWorking));
     }
 }

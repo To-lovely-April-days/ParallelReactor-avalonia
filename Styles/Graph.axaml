@@ -19,7 +19,7 @@
   <!-- 工具栏标签按钮 -->
   <Style Selector="Button.ctab">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11.5" />
+    <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
@@ -48,7 +48,7 @@
   <!-- 右上角工具按钮（自适应/导出/截图）-->
   <Style Selector="Button.gbtn">
     <Setter Property="Foreground" Value="{DynamicResource Body}" />
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="13.5" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Template">
       <Setter.Value>
@@ -71,7 +71,7 @@
 
   <!-- 侧栏小节标题 -->
   <Style Selector="TextBlock.gsect">
-    <Setter Property="FontSize" Value="9.5" />
+    <Setter Property="FontSize" Value="12.5" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{DynamicResource Mute}" />
     <Setter Property="LetterSpacing" Value="1.5" />

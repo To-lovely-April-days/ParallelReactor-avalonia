@@ -59,7 +59,7 @@
 				<TextBlock Text="ALARMS &amp; EVENTS" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
 						   Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
 			</StackPanel>
-			<TextBlock Grid.Column="1" Text="所有报警自动归档 · 支持按通道、严重度、时间过滤" FontSize="11" HorizontalAlignment="Right"
+			<TextBlock Grid.Column="1" Text="记录本次开机以来的报警与事件 · 可按严重度过滤" FontSize="12" HorizontalAlignment="Right"
 					   Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
 		</Grid>
 
@@ -92,6 +92,9 @@
 					</Border>
 					<!-- 列表体 -->
 					<ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,8">
+						<Panel>
+						<TextBlock IsVisible="{Binding IsEmpty}" Text="暂无报警与事件 · 本次开机以来发生的报警与操作会记录在这里"
+								   FontSize="12" Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" Margin="0,40,0,0" />
 						<ItemsControl ItemsSource="{Binding Filtered}">
 							<ItemsControl.ItemTemplate>
 								<DataTemplate>
@@ -113,19 +116,20 @@
 											<!-- 消息 + 副标题 -->
 											<StackPanel Grid.Column="2" VerticalAlignment="Center">
 												<TextBlock Text="{Binding Msg}" FontSize="12" Foreground="{DynamicResource OnDark}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
-												<TextBlock Text="{Binding Sub}" FontSize="10" Foreground="{DynamicResource Mute}" Margin="0,1,0,0"
-														   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
+								<TextBlock Text="{Binding Sub}" FontSize="11.5" Foreground="{DynamicResource Mute}" Margin="0,1,0,0"
+											   TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" />
 											</StackPanel>
 											<!-- 时间 -->
-											<TextBlock Grid.Column="3" Text="{Binding Time}" FontSize="10.5" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+											<TextBlock Grid.Column="3" Text="{Binding Time}" FontSize="11.5" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
 											<!-- 状态 -->
-											<TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="10.5" FontWeight="SemiBold"
+											<TextBlock Grid.Column="4" Text="{Binding StatusText}" FontSize="11.5" FontWeight="SemiBold"
 													   Foreground="{Binding StatusBrush}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 										</Grid>
 									</Border>
 								</DataTemplate>
 							</ItemsControl.ItemTemplate>
 						</ItemsControl>
+						</Panel>
 					</ScrollViewer>
 				</DockPanel>
 			</Border>

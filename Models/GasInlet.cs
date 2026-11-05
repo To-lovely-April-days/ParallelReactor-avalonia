@@ -7,5 +7,4 @@ public partial class GasInlet : ObservableObject
 {
     public string Label { get; init; } = "";
     [ObservableProperty] private bool _on;
-    public int P { get; init; }
 }

@@ -32,12 +32,14 @@ public class SchematicControl : Control
     public IReadOnlyList<Reactor>? Reactors { get; set; }
     public IReadOnlyList<GasInlet>? GasInlets { get; set; }
     public bool VentOn { get; set; }
+    public bool ManualValve { get; set; }
 
     // —— 命中回调 ——
     public Action<int>? OnReactorClick;   // 传 RV id
     public Action<int>? OnValveClick;     // 传 RV id（控制阀 SV）
     public Action<int>? OnGasClick;       // 传 gas index
     public Action? OnVentClick;
+    public Action? OnManualClick;         // 手动阀控开关
 
     // 动画相位（由外部计时器推进，用于流动虚线偏移、桨叶旋转、气泡、脉冲）
     private double _phase;
@@ -57,7 +59,6 @@ public class SchematicControl : Control
     private static readonly Color GreenBright = Color.Parse("#5fae14");
     private static readonly Color AccentBright = Color.Parse("#e0394c");
     private static readonly Color Amber = Color.Parse("#f0a830");
-    private static readonly Color Ink = Color.Parse("#514b41");
     private static readonly Color InkErr = Color.Parse("#c1352a");
     private static readonly Color InkLight = Color.Parse("#9d978d");
     private static readonly Color HeaderLine = Color.FromArgb(150, 120, 128, 145);
@@ -67,6 +68,10 @@ public class SchematicControl : Control
         ReactorState.React => GreenBright,
         ReactorState.Alarm => AccentBright,
         ReactorState.Heating or ReactorState.Pressing => Amber,
+        ReactorState.Ready => Color.Parse("#2d5ca0"),
+        ReactorState.Wait => Color.Parse("#6f7d95"),
+        ReactorState.Stir => Color.Parse("#1fa595"),
+        ReactorState.Cooling => Color.Parse("#3e8ec4"),
         ReactorState.Done => Color.Parse("#7d8694"),
         _ => Color.Parse("#66666f")
     };
@@ -134,6 +139,7 @@ public class SchematicControl : Control
                     DrawReactor(ctx, Reactors[i], i);
             DrawGasInlets(ctx);
             DrawVent(ctx);
+            DrawManualSwitch(ctx);
         }
 
         // 记录变换，供命中检测反推
@@ -176,8 +182,7 @@ public class SchematicControl : Control
         ctx.DrawText(rvFt, new Point(gx + dotR * 2 + gap, gcy - rvFt.Height / 2));
 
         // 气体消耗放釜顶（RV 标号下方），把卡片空间让给温度/压力大字
-        if (c.State != ReactorState.Idle || Services.HardwareOptions.AnyReal)
-            DrawText(ctx, $"{c.Gas:0.00} mmol", cx, 32, Body, 14, SansFace, TextAlignment.Center, FontWeight.SemiBold);
+        DrawText(ctx, $"{c.GasText} mmol", cx, 32, Body, 14, SansFace, TextAlignment.Center, FontWeight.SemiBold);
 
         // 釜体（平移 + 缩放到内部坐标系）
         using (ctx.PushTransform(
@@ -196,24 +201,17 @@ public class SchematicControl : Control
         ctx.DrawRectangle(Brush(Color.Parse("#ffffff")), cardPen, new RoundedRect(cardRect, 12));
         double cardT = RBot + 4;
 
-        if (c.State != ReactorState.Idle || Services.HardwareOptions.AnyReal)
-        {
-            var tCol = c.State == ReactorState.React ? GreenBright : alarm ? AccentBright : OnDark;
-            DrawValueUnit(ctx, $"{c.T:0.0}", "°C", cx, cardT + 6, tCol, 29, FontWeight.Light, 13.5);
+        // 温度 / 压力始终显示实测值（停用通道的传感器照样在线）；模块离线时显示「—」
+        var tCol = c.State == ReactorState.React ? GreenBright : alarm ? AccentBright : OnDark;
+        DrawValueUnit(ctx, c.TText, "°C", cx, cardT + 6, tCol, 29, FontWeight.Light, 13.5);
 
-            var pCol = alarm ? AccentBright : OnDark;
-            DrawValueUnit(ctx, Models.Units.PValue(c.P), Models.Units.PLabel, cx, cardT + 48,
-                pCol, 22, FontWeight.SemiBold, 12.5);
+        var pCol = alarm ? AccentBright : OnDark;
+        DrawValueUnit(ctx, c.PText, Models.Units.PLabel, cx, cardT + 48,
+            pCol, 22, FontWeight.SemiBold, 12.5);
 
-            // 搅拌为全局共用，转速统一显示在主界面「搅拌总控」卡片，这里只显示状态
-            DrawText(ctx, c.StateZh, cx, cardT + 84, col, 12.5, SansFace,
-                TextAlignment.Center, FontWeight.SemiBold);
-        }
-        else
-        {
-            DrawText(ctx, "通道停用", cx, cardT + 43, Color.Parse("#63636e"),
-                13.5, SansFace, TextAlignment.Center);
-        }
+        // 搅拌为全局共用，转速统一显示在主界面「搅拌总控」卡片，这里只显示状态
+        DrawText(ctx, c.StateZh, cx, cardT + 84, col, 12.5, SansFace,
+            TextAlignment.Center, FontWeight.SemiBold);
 
         // 釜 → CV → SV → 总管 的竖直管路（从卡片底沿接出）
         double dropTop = RBot + 106;
@@ -238,7 +236,8 @@ public class SchematicControl : Control
         bool isOff = c.State == ReactorState.Idle;
         bool isErr = c.State == ReactorState.Alarm;
         bool isHeat = c.State == ReactorState.Heating;
-        Color ink = isOff ? InkLight : (isErr ? InkErr : Ink);
+        // 整釜随状态变色：夹套 / 内胆 / 全部轮廓墨色都取状态配色，不只液体
+        var (jacketCol, innerCol, ink) = StateVesselColors(c.State);
         var inkBrush = Brush(ink);
         var inkPen = new Pen(inkBrush, 1.2);
 
@@ -264,7 +263,7 @@ public class SchematicControl : Control
         ctx.DrawRectangle(Brush(Color.Parse("#E9EDF0")), new Pen(inkBrush, 1.4),
             new RoundedRect(new Rect(2, 46, 96, 12), 2));
 
-        // 4. 夹套外壁（直壁 + 圆底）：加热时暖色、停用虚线
+        // 4. 夹套外壁（直壁 + 圆底）：整体随状态配色，停用虚线
         var jacket = new PathGeometry();
         using (var gc = jacket.Open())
         {
@@ -274,14 +273,12 @@ public class SchematicControl : Control
             gc.LineTo(new Point(94, 58));
             gc.EndFigure(true);
         }
-        IBrush jacketFill = isOff ? Brush(Color.Parse("#F6F7F8"))
-            : isHeat ? Brush(Color.Parse("#F6E6C8")) : Brush(Color.Parse("#E9EDF0"));
         var jacketPen = isOff
             ? new Pen(inkBrush, 1.3) { DashStyle = new DashStyle(new double[] { 4, 3 }, 0) }
             : new Pen(inkBrush, 1.4);
-        ctx.DrawGeometry(jacketFill, jacketPen, jacket);
+        ctx.DrawGeometry(Brush(jacketCol), jacketPen, jacket);
 
-        // 5. 内胆（白）
+        // 5. 内胆（随状态微染色）
         var inner = new PathGeometry();
         using (var gc = inner.Open())
         {
@@ -291,7 +288,7 @@ public class SchematicControl : Control
             gc.LineTo(new Point(89.5, 58));
             gc.EndFigure(true);
         }
-        ctx.DrawGeometry(Brushes.White, new Pen(inkBrush, 1.1), inner);
+        ctx.DrawGeometry(Brush(innerCol), new Pen(inkBrush, 1.1), inner);
 
         // 加热指示标签（加热=琥珀，停用=OFF）
         DrawText(ctx, isOff ? "OFF" : "HT", 13, 63,
@@ -387,9 +384,32 @@ public class SchematicControl : Control
         ReactorState.Pressing => (Color.Parse("#9fc0e8"), Color.Parse("#2d5ca0")),
         ReactorState.Heating => (Color.Parse("#f3d896"), Color.Parse("#c97818")),
         ReactorState.Alarm => (Color.Parse("#f0a8a0"), Color.Parse("#c1352a")),
+        ReactorState.Ready => (Color.Parse("#cfe2f5"), Color.Parse("#2d5ca0")),
+        ReactorState.Wait => (Color.Parse("#dde3ec"), Color.Parse("#6f7d95")),
+        ReactorState.Stir => (Color.Parse("#c2e8e2"), Color.Parse("#1fa595")),
+        ReactorState.Cooling => (Color.Parse("#c8dff2"), Color.Parse("#3e8ec4")),
         ReactorState.Done => (Color.Parse("#c3c8cf"), Color.Parse("#6b7079")),
         // 停用：中性水灰（真机上开机即停用，物料也应可见）
         _ => (Color.Parse("#d3dade"), Color.Parse("#9aa4ad"))
+    };
+
+    /// <summary>
+    /// 釜体整体配色（jacket=夹套、inner=内胆、ink=全部轮廓/搅拌/标签墨色）：
+    /// 通道启用后整釜随状态变色，便于隔着老远一眼看出通道状态。
+    /// 停用固定为浅灰 + 虚线轮廓（jacket 虚线在 DrawReactorInner 里单独处理）。
+    /// </summary>
+    private static (Color jacket, Color inner, Color ink) StateVesselColors(ReactorState st) => st switch
+    {
+        ReactorState.Ready => (Color.Parse("#E2EDF9"), Color.Parse("#F5F9FE"), Color.Parse("#2d5ca0")),
+        ReactorState.Heating => (Color.Parse("#F6E6C8"), Color.Parse("#FCF4E4"), Color.Parse("#c97818")),
+        ReactorState.Pressing => (Color.Parse("#DCE8F6"), Color.Parse("#EFF5FC"), Color.Parse("#2d5ca0")),
+        ReactorState.React => (Color.Parse("#E3F1DA"), Color.Parse("#F4FAF0"), Color.Parse("#3E8A4C")),
+        ReactorState.Alarm => (Color.Parse("#F7E0DE"), Color.Parse("#FBEFEE"), InkErr),
+        ReactorState.Wait => (Color.Parse("#E8ECF2"), Color.Parse("#F4F6F9"), Color.Parse("#6f7d95")),
+        ReactorState.Stir => (Color.Parse("#E0F2F0"), Color.Parse("#F0FAF8"), Color.Parse("#1fa595")),
+        ReactorState.Cooling => (Color.Parse("#E1EEF7"), Color.Parse("#F1F7FC"), Color.Parse("#3e8ec4")),
+        ReactorState.Done => (Color.Parse("#E9EDF0"), Color.Parse("#FFFFFF"), Color.Parse("#6b7079")),
+        _ => (Color.Parse("#F6F7F8"), Color.Parse("#FFFFFF"), InkLight)
     };
 
     // 控制阀（方框 + 双三角，开启时绿色）
@@ -455,6 +475,41 @@ public class SchematicControl : Control
         DrawVentValve(ctx, VentX, HdrY + 56, VentOn);
         DrawText(ctx, "排空 / 泄压", VentX, HdrY + 86 - 12, Body, 12, SansFace, TextAlignment.Center, FontWeight.SemiBold);
         _hits.Add(new Hit(new Rect(VentX - 36, HdrY + 20, 72, 72), "vent", 0));
+    }
+
+    // ============ 手动阀控开关（RV1 左侧空白区）============
+    // 胶囊开关：关=灰底旋钮在左（自动控制），开=琥珀底旋钮在右（手动可点 SV 阀）。
+    // 琥珀表示"非自动、需留意"的状态，与运行绿/报警红区分。整卡都是热区，便于手指点按。
+    private void DrawManualSwitch(DrawingContext ctx)
+    {
+        const double cx = 131;                              // 卡片中线（内容左沿 80 与 RV1 数据卡左沿 184 之间）
+        var card = new Rect(cx - 45, RTop + 4, 90, 140);
+        bool on = ManualValve;
+
+        ctx.DrawRectangle(Brush(on ? Color.FromArgb(26, 240, 168, 48) : Color.Parse("#ffffff")),
+            new Pen(Brush(on ? Color.FromArgb(150, 240, 168, 48) : Color.FromArgb(34, 0, 0, 0)), on ? 1.6 : 1.2),
+            new RoundedRect(card, 12));
+
+        double top = card.Top;
+        DrawText(ctx, "手动阀控", cx, top + 14, OnDark, 14, SansFace, TextAlignment.Center, FontWeight.SemiBold);
+        DrawText(ctx, "MANUAL", cx, top + 34, InkLight, 8.5, InterFace, TextAlignment.Center);
+
+        // 胶囊轨道 + 旋钮
+        const double tw = 62, th = 32, kr = 12.5;
+        double ty = top + 62;
+        var track = new Rect(cx - tw / 2, ty, tw, th);
+        ctx.DrawRectangle(Brush(on ? Amber : Color.Parse("#dfe2e7")),
+            new Pen(Brush(on ? Color.Parse("#d68f1c") : Color.FromArgb(40, 0, 0, 0)), 1),
+            new RoundedRect(track, th / 2));
+        double kx = on ? track.Right - th / 2 : track.Left + th / 2;
+        var knobCenter = new Point(kx, ty + th / 2);
+        ctx.DrawEllipse(Brush(Color.FromArgb(40, 0, 0, 0)), null, new Point(kx, ty + th / 2 + 1.2), kr, kr);   // 投影
+        ctx.DrawEllipse(Brush(Color.Parse("#ffffff")), null, knobCenter, kr, kr);
+
+        DrawText(ctx, on ? "已开启" : "已关闭", cx, top + 108,
+            on ? Color.Parse("#c97818") : Body, 13, SansFace, TextAlignment.Center, FontWeight.SemiBold);
+
+        _hits.Add(new Hit(card, "manual", 0));
     }
 
     private void DrawVentValve(DrawingContext ctx, double cx, double cy, bool open)
@@ -548,6 +603,7 @@ public class SchematicControl : Control
             case "sv": OnValveClick?.Invoke(h.Index); break;
             case "gas": OnGasClick?.Invoke(h.Index); break;
             case "vent": OnVentClick?.Invoke(); break;
+            case "manual": OnManualClick?.Invoke(); break;
         }
     }
 }

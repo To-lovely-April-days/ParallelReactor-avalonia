@@ -6,7 +6,7 @@ namespace ParallelReactor.Services;
 /// <summary>
 /// 压力业务服务：艾莫迅 8AI 采集 8 路压力变送器（PT），按信号类型/量程换算为工程量（psi）。
 /// 通道 i(0..7) 对应反应釜 RV(i+1)。轮询后由 MainViewModel 写回各釜的 P。
-/// 总线由 <see cref="HardwareOptions.CreateAnalogBus"/> 决定（真串口或内存模拟）。
+/// 总线由 <see cref="HardwareOptions.CreateAnalogBus"/> 决定（真串口或离线）。
 /// </summary>
 public sealed class PressureService
 {
@@ -18,6 +18,11 @@ public sealed class PressureService
 
     /// <summary>最近一次读到的 8 路压力（psi）。</summary>
     public double[] Pressures { get; } = new double[8];
+
+    private int _fails = 3;   // 连续读失败次数（初值=离线，首次读成功才算在线）
+
+    /// <summary>8AI 是否在线：连续 3 次读失败视为离线（未配置串口时恒为离线）。离线时界面显示「—」。</summary>
+    public bool Online => _fails < 3;
 
     public PressureService(IModbusMaster bus, byte slave, double fullScale, bool is4to20)
     {
@@ -33,8 +38,13 @@ public sealed class PressureService
         {
             var v = await _ai.ReadScaledAsync(0, FullScalePsi, _is4to20).ConfigureAwait(false);
             for (int i = 0; i < Pressures.Length && i < v.Length; i++) Pressures[i] = v[i];
+            _fails = 0;
             return true;
         }
-        catch { return false; }
+        catch
+        {
+            if (_fails < 3) _fails++;
+            return false;
+        }
     }
 }

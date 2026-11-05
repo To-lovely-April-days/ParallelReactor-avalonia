@@ -24,7 +24,9 @@ public static class SettingsStore
 
     private static string Dir => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ParallelReactor");
-    private static string FilePath => Path.Combine(Dir, "settings.json");
+
+    /// <summary>存档文件完整路径（设置页「数据存储」显示用）。</summary>
+    public static string FilePath => Path.Combine(Dir, "settings.json");
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
     private static readonly object Lock = new();

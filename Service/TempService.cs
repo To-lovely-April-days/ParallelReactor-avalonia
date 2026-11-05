@@ -15,16 +15,26 @@ namespace ParallelReactor.Services;
 /// 支持「温度档位」：每个档位每通道独立存一组 PID。切换档位时界面 P/I/D 随之切换；
 /// 同一温区整定一次即可复用，跑反应时按目标温度选对应档位的 PID 下发。
 /// </para>
-/// 当前总线由 <see cref="HardwareOptions.CreateTempBus"/> 决定（真串口或内存 mock）。
+/// 当前总线由 <see cref="HardwareOptions.CreateTempBus"/> 决定（真串口或离线）。
 /// </summary>
 public sealed partial class TempService : ObservableObject
 {
     private readonly TempController _ctrl;   // AI-8 一台 8 回路（RV1-8）
-    private readonly MockModbusMaster? _mock;   // mock 模式下推进 PV 漂移
     private int _curBand;
+    private int _fails = 3;   // 连续轮询失败次数（初值=离线，首次读成功才算在线）
+
+    /// <summary>温控器是否在线：连续 3 次轮询失败视为离线（未配置串口时恒为离线）。离线时 PV 为旧值，界面显示「—」。</summary>
+    public bool Online => _fails < 3;
     // 每通道整定发起时所在的档位（-1=无进行中的整定）。整定期间用户可能切档，
     // 完成回读必须存回"发起时"的档，而不是"完成时"正显示的档。
     private readonly int[] _tuneBand = { -1, -1, -1, -1, -1, -1, -1, -1 };
+
+    // 整定被取消 / 急停打断：仪表 At 从 1 变成 4 时轮询会看到「整定结束」，但仪表里并没有新整定结果，
+    // 不能回读存档（否则会把旧 PID 当成整定结果存进档位）。
+    private readonly bool[] _tuneAborted = new bool[8];
+
+    /// <summary>急停锁定：为 true 时拒绝启动加热 / 自整定（写 SP、PID 不受影响，它们本身不会让仪表出力）。</summary>
+    public bool Locked { get; set; }
 
     /// <summary>档位 PID / 档位边界发生变化（整定完成、手改、切档落存）——上层据此持久化。</summary>
     public event Action? PidsChanged;
@@ -44,14 +54,13 @@ public sealed partial class TempService : ObservableObject
     public TempService(IModbusMaster bus, byte slave, int dpt)
     {
         _ctrl = new TempController(bus, slave, 8, dpt);   // 1 拖 8
-        _mock = bus as MockModbusMaster;
         for (int i = 1; i <= 8; i++) Channels.Add(new TempChannel(i, Bands.Count));
     }
 
     /// <summary>通道号(1..8) → (温控器, 回路号 1..8)。一台 AI-8 直接对应。</summary>
     private (TempController c, int loop) Map(int ch) => (_ctrl, ch);
 
-    /// <summary>切换当前档位：把界面值存回旧档，再载入新档到界面。</summary>
+    /// <summary>切换当前档位：把界面值存回旧档，再载入新档到界面。（手动更改PID，不会更新存储的对应档位的PID）</summary>
     public void SelectBand(int idx)
     {
         if (idx < 0 || idx >= Bands.Count || idx == _curBand) return;
@@ -70,35 +79,69 @@ public sealed partial class TempService : ObservableObject
     }
 
     /// <summary>按目标温度为某通道选用对应档位的 PID，并连同 SP 一起下发到仪表（跑反应前调用）。</summary>
-    public Task ApplyBandForAsync(int ch, double targetTemp) => StartChannelAsync(ch, targetTemp, targetTemp);
+    public Task<bool> ApplyBandForAsync(int ch, double targetTemp) => StartChannelAsync(ch, targetTemp, targetTemp);
+
+
+    // 每通道仪表里当前生效的 PID 属于哪个档位（-1=未知，下次必写）。8 通道各自独立，不能共用。
+    private readonly int[] _lastBand = { -1, -1, -1, -1, -1, -1, -1, -1 };
+
+    /// <summary>
+    /// 按照设定温度应用对应档位的 PID 参数并下发到温度控制器
+    /// </summary>
+    /// <param name="ch">通道编号</param>
+    /// <param name="sp">温度设定值</param>
+    /// <returns></returns>
+    public async Task ApplyPidForBandAsync(int ch, double sp)
+    {
+        int idx = BandIndexForTemp(sp);
+        if (_lastBand[ch - 1] == idx) return;  // 仪表里已是该档 PID，避免每周期重复写
+        var (p, i, d) = Channels[ch - 1].GetBand(idx);
+        var (c, loop) = Map(ch);
+
+        try
+        {
+            await c.SetPidAsync(loop, p, i, d);
+            _lastBand[ch - 1] = idx;   // 写成功才记录，失败下次重试
+        }
+        catch (System.Exception)
+        {
+            _lastBand[ch - 1] = -1;   // 可能只写了一部分，标记未知
+        }
+    }
 
     /// <summary>
     /// 显式启动单通道加热（全链：Srun=0 + At=0 + 按 bandTemp 套档 PID + 写 initialSp）。
     /// 定值恒温：bandTemp = initialSp = 目标温度；曲线：bandTemp 用最高段温度选 PID 档，
     /// initialSp 用起点 PV（避免启动瞬间先朝高温冲一下，随后曲线引擎逐周期接管 SP）。
+    /// 返回是否全部写入成功（通讯失败由调用方提示）。
     /// </summary>
-    public async Task StartChannelAsync(int ch, double bandTemp, double initialSp)
+    public async Task<bool> StartChannelAsync(int ch, double bandTemp, double initialSp)
     {
         int band = BandIndexForTemp(bandTemp);
         var (p, i, d) = Channels[ch - 1].GetBand(band);
         var (c, loop) = Map(ch);
         try
         {
+            // 每个出力步骤前都查一次急停锁：启动途中按下急停，最多只有一帧已排队的写入会落在急停之后，
+            // 而 Srun=0 与 At=0 分属两步，不会同时漏过去（任一保持停止，仪表就不出力）
+            if (Locked) return false;
             await c.RunAllAsync();     // 解除可能的 Srun 全局停止（9655/断电后 15→9655），否则输出被闸死
+            if (Locked) return false;
             await c.StartAsync(loop);  // At=0 回到 APID 自动控制——开机/停止/取消整定都会把通道置于 At=4
+            _lastBand[ch - 1] = -1;
             await c.SetPidAsync(loop, p, i, d);
+            _lastBand[ch - 1] = band;
             await c.SetSetpointAsync(loop, initialSp);
             Channels[ch - 1].Sp = initialSp;
+            return true;
         }
-        catch { /* 通讯异常忽略 */ }
+        catch { return false; }
     }
 
     /// <summary>开机读一次各通道 PID 作为「当前档位」初值填充界面。串口读在后台，结果批量回 UI。
     /// 同时自愈启用回路数：Ctn&lt;8 时自动写 8（出厂可能按 4 路配置，会导致 RV5-8 完全不受控）。</summary>
     public async Task InitAsync(bool seedFromInstrument = true)
     {
-        _mock?.SimulateStep();   // mock：先触发种子 PID，再读取
-
         try
         {
             int ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
@@ -179,7 +222,6 @@ public sealed partial class TempService : ObservableObject
         _polling = true;
         try
         {
-            _mock?.SimulateStep();
             double[] pv, op;
             int[] modes;
             int srun, ctn;
@@ -190,8 +232,15 @@ public sealed partial class TempService : ObservableObject
                 modes = await _ctrl.ReadAllModesAsync().ConfigureAwait(false);
                 srun = await _ctrl.ReadSrunAsync().ConfigureAwait(false);
                 ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
+                _fails = 0;
             }
-            catch { return; }   // 通讯异常：保留上次值，下个周期重试
+            catch
+            {
+                if (_fails < 3) _fails++;   // 通讯异常：保留上次值（界面按离线显示「—」），下个周期重试
+                if (!Online)
+                    await Dispatcher.UIThread.InvokeAsync(() => { foreach (var m in Channels) m.Online = false; });
+                return;
+            }
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -202,8 +251,12 @@ public sealed partial class TempService : ObservableObject
                     var m = Channels[i];
                     bool tuning = modes[i] == 1;
                     bool finished = m.Autotuning && !tuning;
-                    m.Pv = pv[i]; m.OutputPct = op[i]; m.Autotuning = tuning;
-                    if (finished) _ = ReloadPidAsync(i + 1);   // 整定刚结束：回读新 PID
+                    m.Pv = pv[i]; m.OutputPct = op[i]; m.Autotuning = tuning; m.Online = true;
+                    if (finished)
+                    {
+                        if (_tuneAborted[i]) _tuneAborted[i] = false;   // 取消 / 急停打断：没有新结果
+                        else _ = ReloadPidAsync(i + 1);                 // 整定刚结束：回读新 PID
+                    }
                 }
             });
         }
@@ -220,7 +273,9 @@ public sealed partial class TempService : ObservableObject
     public async Task SetPidAsync(int ch, double p, double i, double d)
     {
         var (c, loop) = Map(ch);
+        _lastBand[ch - 1] = -1;
         await c.SetPidAsync(loop, p, i, d);
+        _lastBand[ch - 1] = _curBand;   // 手改写入的是当前显示档的 PID
         var m = Channels[ch - 1];
         m.P = p; m.I = i; m.D = d;
         m.StoreBand(_curBand);
@@ -243,13 +298,19 @@ public sealed partial class TempService : ObservableObject
     public async Task<string?> AutotuneAsync(int ch)
     {
         var (c, loop) = Map(ch);
+        if (Locked) return "急停状态下不可自整定";
         try
         {
             double sp = await c.ReadSetpointAsync(loop).ConfigureAwait(false);
             if (sp < 35) return NoSetpoint;   // 必须明显高于室温，加热振荡才可能发生
+            if (Locked) return "急停状态下不可自整定";
+            _tuneAborted[ch - 1] = false;
             await c.RunAllAsync();
+            if (Locked) return "急停状态下不可自整定";
             await c.AutotuneAsync(loop);
-            _tuneBand[ch - 1] = _curBand;   // 记住发起整定时的档位，完成后存回该档
+            // 整定出的 PID 属于整定 SP 所在的温区，而不是界面当前选中的档
+            _tuneBand[ch - 1] = BandIndexForTemp(sp);
+            _lastBand[ch - 1] = -1;   // 整定会改写仪表 PID，完成回读后再确定
             await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = true);
             return null;
         }
@@ -262,23 +323,53 @@ public sealed partial class TempService : ObservableObject
     public async Task CancelAutotuneAsync(int ch)
     {
         var (c, loop) = Map(ch);
+        AbortTune(ch - 1);
         try { await c.StopAsync(loop); } catch { /* 通讯失败也要把界面状态解开 */ }
         await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = false);
     }
 
-    /// <summary>停止该通道的温控输出（At=4，停止控制、关闭输出）。
-    /// 停止/停用反应釜时必须调用——否则仪表带着旧 SP 继续加热，界面上看着停了、加热器还在全力工作。</summary>
-    public async Task StopChannelAsync(int ch)
+    /// <summary>标记整定被打断：之后轮询看到「整定结束」时不回读、不存档。</summary>
+    private void AbortTune(int i)
     {
-        var (c, loop) = Map(ch);
-        try { await c.StopAsync(loop); } catch { /* 通讯异常：轮询恢复后仍会按界面状态兜底 */ }
+        _tuneAborted[i] = true;
+        _tuneBand[i] = -1;
     }
 
-    /// <summary>停止全部 8 路温控输出（逐路 At=4）。「全部停止」时调用。
-    /// 不用 Srun=9655 全局闸——那会把状态徽章打红，且语义上属于急停级别。</summary>
-    public async Task StopAllChannelsAsync()
+    /// <summary>停止该通道的温控输出（At=4，停止控制、关闭输出）。返回是否写入成功。
+    /// 停止/停用反应釜时必须调用——否则仪表带着旧 SP 继续加热，界面上看着停了、加热器还在全力工作。</summary>
+    public async Task<bool> StopChannelAsync(int ch)
     {
-        for (int ch = 1; ch <= 8; ch++) await StopChannelAsync(ch);
+        var (c, loop) = Map(ch);
+        try { await c.StopAsync(loop); return true; }
+        catch { return false; }
+    }
+
+    /// <summary>停止全部 8 路温控输出（逐路 At=4，某路失败也继续下一路）。「全部停止」时调用。返回是否 8 路全部写入成功。
+    /// 不用 Srun=9655 全局闸——那会把状态徽章打红，且语义上属于急停级别。</summary>
+    public async Task<bool> StopAllChannelsAsync()
+    {
+        bool ok = true;
+        for (int ch = 1; ch <= 8; ch++) ok &= await StopChannelAsync(ch);
+        return ok;
+    }
+
+    /// <summary>急停：先 Srun=9655 一条指令闸死全部输出，再逐路 At=4 兜底（任一步通讯失败都继续下一步）。
+    /// 返回加热是否确认已停（全局闸写入成功，或 8 路 At=4 全部成功）。
+    /// 之后任一通道重新「启动加热」时 <see cref="StartChannelAsync"/> 会写回 Srun=0。</summary>
+    public async Task<bool> EmergencyStopAsync()
+    {
+        // 正在整定的通道会被 At=4 打断：先标记，避免轮询把仪表里的旧 PID 当成整定结果存档
+        for (int i = 0; i < 8; i++)
+        {
+            if (!Channels[i].Autotuning) continue;
+            AbortTune(i);
+            Channels[i].Autotuning = false;
+        }
+        bool gate;
+        try { await _ctrl.StopAllAsync(); gate = true; }
+        catch { gate = false; }
+        bool each = await StopAllChannelsAsync();
+        return gate || each;
     }
 
     // ===== 仪表全局运行状态（Srun 0x0845），随轮询刷新：现场排查「输出100%却不加热」用 =====
@@ -347,6 +438,7 @@ public sealed partial class TempService : ObservableObject
                 int band = _tuneBand[ch - 1] >= 0 ? _tuneBand[ch - 1] : _curBand;
                 _tuneBand[ch - 1] = -1;
                 m.SetBand(band, pid.P, pid.I, pid.D);
+                _lastBand[ch - 1] = band;   // 仪表里现在就是该档刚整定出的 PID
                 if (band == _curBand) m.LoadBand(band);   // 正显示该档才刷新界面 P/I/D
                 PidsChanged?.Invoke();
             });
@@ -398,6 +490,20 @@ public partial class TempChannel : ObservableObject
     [ObservableProperty] private double _pv;
     [ObservableProperty] private double _sp;
     [ObservableProperty] private double _outputPct;
+
+    /// <summary>读数是否有效（温控在线）。由 TempService 轮询刷新；离线时 PV / 输出显示「—」，不显示旧值或 0。</summary>
+    [ObservableProperty] private bool _online;
+
+    public string PvText => Online ? $"{Pv:0.0}" : "—";
+    public string OutputText => Online ? $"{OutputPct:0}%" : "—";
+
+    partial void OnPvChanged(double value) => OnPropertyChanged(nameof(PvText));
+    partial void OnOutputPctChanged(double value) => OnPropertyChanged(nameof(OutputText));
+    partial void OnOnlineChanged(bool value)
+    {
+        OnPropertyChanged(nameof(PvText));
+        OnPropertyChanged(nameof(OutputText));
+    }
     [ObservableProperty] private double _p;
     [ObservableProperty] private double _i;
     [ObservableProperty] private double _d;

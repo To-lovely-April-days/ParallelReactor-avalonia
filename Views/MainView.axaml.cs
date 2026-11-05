@@ -79,6 +79,8 @@ public partial class MainView : UserControl
         _schematic.OnValveClick = id => _vm.TryValve(id);
         _schematic.OnGasClick = i => _vm.ToggleGas(i);
         _schematic.OnVentClick = () => _vm.ToggleVent();
+        _schematic.ManualValve = _vm.ManualValve;
+        _schematic.OnManualClick = () => _vm.ToggleManualCommand.Execute(null);
 
         _vm.SchematicInvalidated += RefreshSchematic;
         _vm.ToastRequested += ShowToast;
@@ -90,6 +92,7 @@ public partial class MainView : UserControl
         if (_schematic != null && _vm != null)
         {
             _schematic.VentOn = _vm.VentOn;
+            _schematic.ManualValve = _vm.ManualValve;
             _schematic.InvalidateVisual();
         }
     }

@@ -22,6 +22,18 @@ public class AppSettings
     // 压力变送器满量程（MPa）—— 必须与实际变送器量程一致，否则压力读数按比例偏。运行时可在设置页改
     public double PressFullScaleMPa { get; set; } = 4.137;   // 启动后由 MainViewModel 从内部 psi 满程回填
 
+    // 定值加热防超调逼近（见 HeatApproach）：先升到 目标−Δ 并判稳，再慢推到目标
+    public double ApproachDelta { get; set; } = 5;        // 预留温差 Δ ℃（须大于实测最大冲温；0=关闭逼近）
+    public double ApproachRate { get; set; } = 0.2;       // 末段慢推速率 ℃/min（离目标 ≤ 末段范围时）
+    public double ApproachFastRate { get; set; } = 1.0;   // 快段逼近速率 ℃/min（离目标 > 末段范围时，PV 领先则跟随）
+    public double ApproachFinalZone { get; set; } = 1.0;  // 末段范围 ℃（只有最后这段慢推、PV 偏高才暂停）
+    public double ApproachSettleBand { get; set; } = 0.2; // 判稳范围 ±℃
+    public double ApproachSettleSec { get; set; } = 90;   // 判稳时长 秒
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ApproachParams ApproachParams => new(ApproachDelta, ApproachRate, ApproachSettleBand, ApproachSettleSec,
+        ApproachFastRate, ApproachFinalZone);
+
     // 报警阈值
     public double OverPressure { get; set; } = 510;   // 超压报警 psi
     public double OverTemp { get; set; } = 250;       // 超温报警 °C
@@ -29,4 +41,10 @@ public class AppSettings
     public double PressDeviation { get; set; } = 8;   // 压力偏离 SP 报警 psi
     public double LeakRate { get; set; } = 2;         // 泄漏率阈值 psi/hr
     public double LeakReminderDays { get; set; } = 7; // 泄漏测试提醒周期 天
+
+    // 泄漏测试（惰性气体低压保压，见 LeakViewModel）
+    public double LeakTestPsi { get; set; } = 50;     // 测试压力 psi（低压，安全优先）
+    public double LeakSettleMin { get; set; } = 10;   // 平衡时间 分钟
+    public double LeakMeasureMin { get; set; } = 30;  // 测量时间 分钟
+    public System.DateTime? LastLeakTestUtc { get; set; }   // 上次完成泄漏测试的时间（提醒用）
 }

@@ -12,10 +12,10 @@
     <Grid Grid.Row="0" Margin="20,14,20,6" ColumnDefinitions="Auto,*">
       <StackPanel Orientation="Horizontal" Spacing="9" VerticalAlignment="Bottom">
         <TextBlock Text="实时曲线" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
-        <TextBlock Text="LIVE CURVES · 多通道叠加" FontSize="9" FontWeight="Medium" VerticalAlignment="Bottom"
+        <TextBlock Text="LIVE CURVES · 多通道叠加" FontSize="10.5" FontWeight="Medium" VerticalAlignment="Bottom"
                    Foreground="{DynamicResource Body}" LetterSpacing="2" Margin="0,0,0,1" />
       </StackPanel>
-      <TextBlock Grid.Column="1" Text="点击右侧通道可切换显示" FontSize="11" HorizontalAlignment="Right"
+      <TextBlock Grid.Column="1" Text="点击右侧通道可切换显示" FontSize="12" HorizontalAlignment="Right"
                  Foreground="{DynamicResource Mute}" VerticalAlignment="Bottom" />
     </Grid>
 
@@ -38,6 +38,7 @@
                 <Button Classes="ctab" Classes.on="{Binding MetricIsT}" Command="{Binding SetMetricCommand}" CommandParameter="T" Content="温度" />
                 <Button Classes="ctab" Classes.on="{Binding MetricIsP}" Command="{Binding SetMetricCommand}" CommandParameter="P" Content="压力" />
                 <Button Classes="ctab" Classes.on="{Binding MetricIsGas}" Command="{Binding SetMetricCommand}" CommandParameter="gas" Content="气体" />
+                <Button Classes="ctab" Classes.on="{Binding MetricIsAll}" Command="{Binding SetMetricCommand}" CommandParameter="all" Content="全部" />
               </StackPanel>
               <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <Button Classes="gbtn" Command="{Binding AutoRangeCommand}">
@@ -52,7 +53,7 @@
                     <TextBlock Text="导出 CSV" VerticalAlignment="Center" />
                   </StackPanel>
                 </Button>
-                <Button Classes="gbtn" Command="{Binding ScreenshotCommand}">
+                <Button Classes="gbtn" Command="{Binding ScreenshotCommand}" CommandParameter="{Binding ElementName=Chart}">
                   <StackPanel Orientation="Horizontal" Spacing="5">
                     <Viewbox Width="12" Height="12"><Canvas Width="24" Height="24"><Path Data="M6 9V2h12v7 M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2 M6 14h12v8H6z" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" /></Canvas></Viewbox>
                     <TextBlock Text="截图" VerticalAlignment="Center" />
@@ -71,7 +72,7 @@
               <DataTemplate>
                 <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,0,14,4" VerticalAlignment="Center">
                   <Border Width="11" Height="3" CornerRadius="1.5" Background="{Binding Color}" VerticalAlignment="Center" />
-                  <TextBlock Text="{Binding Text}" FontSize="11" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                  <TextBlock Text="{Binding Text}" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
                 </StackPanel>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -101,7 +102,7 @@
                                Fill="{Binding Dot}" Stroke="{Binding DotBorder}" StrokeThickness="1" />
                       <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="9,0,0,0" FontSize="12" FontWeight="SemiBold"
                                  Foreground="{DynamicResource OnDark}" VerticalAlignment="Center" />
-                      <TextBlock Grid.Column="2" Text="{Binding ValText}" FontSize="10.5"
+                      <TextBlock Grid.Column="2" Text="{Binding ValText}" FontSize="11.5"
                                  Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
                     </Grid>
                   </Button>
@@ -113,16 +114,16 @@
             <Border Background="{DynamicResource Glass}" CornerRadius="9" Padding="11,10">
               <StackPanel Spacing="7">
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="平均反应速率" FontSize="11" Foreground="{DynamicResource Body}" />
-                  <TextBlock Grid.Column="1" Text="{Binding AvgRate}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  <TextBlock Grid.Column="0" Text="平均反应速率" FontSize="12" Foreground="{DynamicResource Body}" />
+                  <TextBlock Grid.Column="1" Text="{Binding AvgRate}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="8 通道 mmol rsd" FontSize="11" Foreground="{DynamicResource Body}" />
-                  <TextBlock Grid.Column="1" Text="{Binding Rsd}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource GreenBright}" />
+                  <TextBlock Grid.Column="0" Text="8 通道 mmol rsd" FontSize="12" Foreground="{DynamicResource Body}" />
+                  <TextBlock Grid.Column="1" Text="{Binding Rsd}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource GreenBright}" />
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto">
-                  <TextBlock Grid.Column="0" Text="温度最大偏差" FontSize="11" Foreground="{DynamicResource Body}" />
-                  <TextBlock Grid.Column="1" Text="{Binding MaxDev}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+                  <TextBlock Grid.Column="0" Text="温度最大偏差" FontSize="12" Foreground="{DynamicResource Body}" />
+                  <TextBlock Grid.Column="1" Text="{Binding MaxDev}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
                 </Grid>
               </StackPanel>
             </Border>

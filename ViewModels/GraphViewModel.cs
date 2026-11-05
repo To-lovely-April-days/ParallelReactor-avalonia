@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ParallelReactor.Models;
+using ParallelReactor.Service;
 
 namespace ParallelReactor.ViewModels;
 
@@ -17,7 +19,8 @@ public partial class GraphViewModel : ViewModelBase
 {
     private readonly MainViewModel _main;
     private readonly Dictionary<int, List<GSample>> _hist = new();
-    private double _t;                         // 运行时钟（秒，单调递增）
+    private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();   // 采样时间轴（秒，单调递增）
+    private readonly DateTime _t0 = DateTime.Now;   // _clock 起点对应的墙钟（曲线 x 轴 / tip 显示 HH:mm:ss 用）
 
     // 8 通道配色（对应 HTML colors 映射）
     private static readonly Dictionary<int, string> Palette = new()
@@ -30,7 +33,7 @@ public partial class GraphViewModel : ViewModelBase
     public ObservableCollection<GraphLegendItem> Legend { get; } = new();
     public IReadOnlyDictionary<int, List<GSample>> History => _hist;
 
-    [ObservableProperty] private string _metric = "gas";  // T | P | gas
+    [ObservableProperty] private string _metric = "gas";  // T | P | gas | all（全部 = 温度/压力/气体三曲线三 Y 轴同屏）
     [ObservableProperty] private string _range = "15";    // 5 | 15 | 60 | all
     [ObservableProperty] private string _avgRate = "—";
     [ObservableProperty] private string _rsd = "—";
@@ -43,15 +46,18 @@ public partial class GraphViewModel : ViewModelBase
     {
         _main = main;
         foreach (var r in _main.Reactors)
-            Channels.Add(new GraphChannel(this, r, Palette[r.Id], on: !r.IsIdle && r.Id <= 7));
-        BuildHistory();
+        {
+            Channels.Add(new GraphChannel(this, r, Palette[r.Id], on: true));   // 通道启用后即显示其曲线
+            _hist[r.Id] = new List<GSample>();
+        }
+        Refresh();
         Models.Units.Changed += OnUnitChanged;   // 全局压力单位切换后刷新压力曲线的轴/读数
     }
 
-    /// <summary>全局压力单位变化：压力视图下刷新单位标签、小数位、图例与曲线。</summary>
+    /// <summary>全局压力单位变化：压力视图（含「全部」）下刷新单位标签、小数位、图例与曲线。</summary>
     private void OnUnitChanged()
     {
-        if (Metric != "P") return;
+        if (Metric != "P" && Metric != "all") return;
         OnPropertyChanged(nameof(YUnit));
         OnPropertyChanged(nameof(Decimals));
         foreach (var ch in Channels) ch.RaiseVal();
@@ -62,23 +68,35 @@ public partial class GraphViewModel : ViewModelBase
     public bool MetricIsT => Metric == "T";
     public bool MetricIsP => Metric == "P";
     public bool MetricIsGas => Metric == "gas";
+    public bool MetricIsAll => Metric == "all";
     public bool RangeIs5 => Range == "5";
     public bool RangeIs15 => Range == "15";
     public bool RangeIs60 => Range == "60";
     public bool RangeIsAll => Range == "all";
 
-    public string YUnit => Metric == "T" ? "°C" : Metric == "P" ? Models.Units.PLabel : "mmol";
+    public string YUnit => MetricUnit(Metric);
     public string YTitle => Metric == "T" ? "温度" : Metric == "P" ? "压力" : "气体消耗";
     // 压力小数位随单位（MPa 3 / bar 2 / psi 1，取自 Units）；温度 0 位、气体 2 位
-    public int Decimals => Metric == "gas" ? 2 : Metric == "P" ? Models.Units.PDecimals : 0;
+    public int Decimals => MetricDecimals(Metric);
     public double RangeSeconds => Range == "all" ? double.MaxValue : double.Parse(Range) * 60;
 
     /// <summary>取某采样点当前变量的值（压力按全局显示单位换算）。</summary>
-    public double Val(GSample s) => Metric == "T" ? s.T : Metric == "P" ? Models.Units.P(s.P) : s.Gas;
+    public double Val(GSample s) => Val(s, Metric);
+
+    /// <summary>取某采样点指定变量（T / P / gas）的值（压力按全局显示单位换算）。</summary>
+    public double Val(GSample s, string m) => m == "T" ? s.T : m == "P" ? Models.Units.P(s.P) : s.Gas;
+
+    /// <summary>采样时间轴（秒）→ 墙钟时间（曲线轴与 tip 显示用，不含日期）。</summary>
+    public DateTime WallTime(double ts) => _t0.AddSeconds(ts);
+
+    public static string MetricUnit(string m) => m == "T" ? "°C" : m == "P" ? Models.Units.PLabel : "mmol";
+    public static string MetricName(string m) => m == "T" ? "温度" : m == "P" ? "压力" : "气体";
+    public static int MetricDecimals(string m) => m == "gas" ? 2 : m == "P" ? Models.Units.PDecimals : 0;
 
     partial void OnMetricChanged(string value)
     {
-        OnPropertyChanged(nameof(MetricIsT)); OnPropertyChanged(nameof(MetricIsP)); OnPropertyChanged(nameof(MetricIsGas));
+        OnPropertyChanged(nameof(MetricIsT)); OnPropertyChanged(nameof(MetricIsP));
+        OnPropertyChanged(nameof(MetricIsGas)); OnPropertyChanged(nameof(MetricIsAll));
         OnPropertyChanged(nameof(YUnit)); OnPropertyChanged(nameof(YTitle)); OnPropertyChanged(nameof(Decimals));
         foreach (var ch in Channels) ch.RaiseVal();
         Refresh();
@@ -94,8 +112,8 @@ public partial class GraphViewModel : ViewModelBase
     [RelayCommand] private void SetMetric(string m) => Metric = m;
     [RelayCommand] private void SetRange(string r) => Range = r;
     [RelayCommand] private void AutoRange() { _main.Toast("ok", "已自适应缩放"); Refresh(); }
-    [RelayCommand] private void ExportCsv() => _main.Toast("ok", "（演示）已导出 ReactorLog_2026_06_08.csv");
-    [RelayCommand] private void Screenshot() => _main.Toast("ok", "（演示）已保存截图到 ./screenshots/");
+    [RelayCommand] private void ExportCsv() => _main.Toast("warn", "导出 CSV 尚未实现");
+    [RelayCommand] private void Screenshot(Visual visual) => _main.Toast("warn", "截图保存尚未实现");
 
     public void Refresh()
     {
@@ -106,90 +124,34 @@ public partial class GraphViewModel : ViewModelBase
 
     public string ChannelValue(Reactor r) => Metric switch
     {
-        "T" => $"{r.T:0.0} °C",
-        "P" => Models.Units.FormatP(r.P),
-        _ => $"{r.Gas:0.00} mmol",
+        "T" => $"{r.TText} °C",
+        "P" => $"{r.PText} {Models.Units.PLabel}",
+        "all" => $"{r.TText} °C · {r.PText} {Models.Units.PLabel} · {r.GasText} mmol",
+        _ => $"{r.GasText} mmol",
     };
 
-    // ============ 历史数据合成（按状态生成符合实际的曲线形态）============
-    private const int HistN = 170;
-    private const double HistDt = 3.0;          // 历史点间隔（秒）
+    // ============ 实时采样（只记录实测值；开机为空，不合成任何历史）============
+    private const int MaxSamples = 2400;   // 每通道最多保留的点数（1.2s 一点 ≈ 48 分钟）
 
-    private void BuildHistory()
-    {
-        _hist.Clear();
-        _t = (HistN - 1) * HistDt;
-        foreach (var c in _main.Reactors)
-        {
-            var list = new List<GSample>(HistN);
-            if (!c.IsIdle)
-            {
-                double tEnd = c.T, pEnd = c.P, gEnd = c.Gas > 0 ? c.Gas : 12.5;
-                double tSp = c.TSp > 0 ? c.TSp : tEnd;
-                for (int i = 0; i < HistN; i++)
-                {
-                    double frac = i / (double)(HistN - 1);
-                    double ts = i * HistDt;
-                    double T, P, G;
-                    switch (c.State)
-                    {
-                        case ReactorState.Heating:                   // 一阶逼近升温，压力略升
-                            T = 25 + (tEnd - 25) * Approach(frac);
-                            P = 14.7 + (pEnd - 14.7) * Approach(Math.Min(1, frac * 1.2));
-                            G = 0;
-                            break;
-                        case ReactorState.Pressing:                  // 温度到位、压力斜升
-                            T = tEnd + Wobble(frac, c.Id, 0.5);
-                            P = 14.7 + (pEnd - 14.7) * Approach(frac);
-                            G = 0;
-                            break;
-                        case ReactorState.React:                     // 温压平稳波动，气体饱和上升
-                            T = tSp + Wobble(frac, c.Id, 0.7);
-                            P = pEnd + Wobble(frac, c.Id * 3, 2.0);
-                            G = gEnd * Saturate(frac);
-                            break;
-                        case ReactorState.Alarm:                     // 压力攀升并超调到当前高压
-                            T = tSp + Wobble(frac, c.Id, 1.0);
-                            P = pEnd * 0.62 + pEnd * 0.38 * Approach(frac) + Wobble(frac, c.Id * 2, 6) * frac;
-                            G = gEnd * Saturate(frac);
-                            break;
-                        case ReactorState.Done:                      // 由反应工况降温降压到当前低值
-                            T = tEnd + (150 - tEnd) * Math.Max(0, 1 - frac * 1.3);
-                            P = pEnd + (320 - pEnd) * Math.Max(0, 1 - frac * 1.4);
-                            G = gEnd;
-                            break;
-                        default:
-                            T = tEnd; P = pEnd; G = gEnd; break;
-                    }
-                    list.Add(new GSample(ts, T, P, G));
-                }
-            }
-            _hist[c.Id] = list;
-        }
-        Refresh();
-    }
-
-    /// <summary>实时 tick：把各通道当前读数追加为新采样点。</summary>
+    /// <summary>
+    /// 实时 tick：把各通道当前读数追加为新采样点（停用通道不记录）。
+    /// 模块离线 / 气体未实测时该量记为 NaN，曲线在此处断开，不画旧值或 0。
+    /// </summary>
     public void AppendSample()
     {
-        _t += 1.2;   // 与主界面 tick 周期一致
+        double ts = _clock.Elapsed.TotalSeconds;
         foreach (var c in _main.Reactors)
         {
             if (!_hist.TryGetValue(c.Id, out var list) || c.IsIdle) continue;
-            list.Add(new GSample(_t, c.T, c.P, c.Gas));
-            if (list.Count > 2400) list.RemoveRange(0, list.Count - 2400);
+            list.Add(new GSample(ts,
+                c.TOnline ? c.T : double.NaN,
+                c.POnline ? c.P : double.NaN,
+                c.GasValid ? c.Gas : double.NaN));
+            if (list.Count > MaxSamples) list.RemoveRange(0, list.Count - MaxSamples);
         }
         foreach (var ch in Channels) ch.RaiseVal();
         Refresh();
     }
-
-    // 一阶逼近（0→1，前快后缓，像热/压控制趋近设定值）
-    private static double Approach(double x) => (1 - Math.Exp(-3.0 * x)) / (1 - Math.Exp(-3.0));
-    // 气体吸收饱和曲线（0→1）
-    private static double Saturate(double x) => (1 - Math.Exp(-2.6 * x)) / (1 - Math.Exp(-2.6));
-    // 平滑有机抖动（模拟传感器小幅波动，比纯随机更好看）
-    private static double Wobble(double frac, int seed, double amp)
-        => amp * (Math.Sin(frac * 34 + seed) * 0.55 + Math.Sin(frac * 11 + seed * 1.7) * 0.45);
 
     private void RebuildLegend()
     {
@@ -199,29 +161,45 @@ public partial class GraphViewModel : ViewModelBase
             if (!ch.IsOn || ch.Reactor.IsIdle) continue;
             var list = _hist[ch.Reactor.Id];
             if (list.Count == 0) continue;
+            if (Metric == "all")
+            {
+                // 三变量同屏：图例一次性给出该通道三个最新读数
+                Legend.Add(new GraphLegendItem(ch.ColorHex,
+                    $"RV{ch.Reactor.Id} = {Latest(list[^1], "T")} °C · {Latest(list[^1], "P")} {Models.Units.PLabel} · {Latest(list[^1], "gas")} mmol"));
+                continue;
+            }
             double v = Val(list[^1]);
-            Legend.Add(new GraphLegendItem(ch.ColorHex,
-                $"RV{ch.Reactor.Id} = {v.ToString("0." + new string('0', Decimals))} {YUnit}"));
+            string txt = double.IsNaN(v) ? "—" : v.ToString("0." + new string('0', Decimals));
+            Legend.Add(new GraphLegendItem(ch.ColorHex, $"RV{ch.Reactor.Id} = {txt} {YUnit}"));
         }
+    }
+
+    /// <summary>「全部」视图图例用：按变量各自的小数位格式化最新值，无效为「—」。</summary>
+    private static string Latest(GSample s, string m)
+    {
+        double v = m == "T" ? s.T : m == "P" ? Models.Units.P(s.P) : s.Gas;
+        return double.IsNaN(v) ? "—" : v.ToString("0." + new string('0', MetricDecimals(m)));
     }
 
     private void RecalcAnalysis()
     {
         var running = _main.Reactors.Where(r => r.IsRunning).ToList();
-        if (running.Count == 0) { AvgRate = "—"; Rsd = "—"; MaxDev = "—"; return; }
 
-        var gas = running.Select(r => r.Gas).Where(g => g > 0).ToList();
-        if (gas.Count > 0)
+        // 平均反应速率要按反应计时计算，随「反应」步骤（实测气体消耗）一起实现；此前一律显示「—」
+        AvgRate = "—";
+
+        var gas = running.Where(r => r.GasValid).Select(r => r.Gas).ToList();
+        if (gas.Count >= 2 && gas.Average() > 0)
         {
             double mean = gas.Average();
             double sd = Math.Sqrt(gas.Select(g => (g - mean) * (g - mean)).Average());
-            AvgRate = $"{mean / 0.92:0.0} mmol/h";
-            Rsd = mean > 0 ? $"{sd / mean * 100:0.0}%" : "—";
+            Rsd = $"{sd / mean * 100:0.0}%";
         }
-        else { AvgRate = "—"; Rsd = "—"; }
+        else Rsd = "—";
 
-        double md = running.Max(r => Math.Abs(r.T - (r.TSp > 0 ? r.TSp : r.T)));
-        MaxDev = $"±{md:0.0} °C";
+        // 只统计温度在线、且设了目标温度的运行中通道
+        var dev = running.Where(r => r.TOnline && r.TSp > 0).Select(r => Math.Abs(r.T - r.TSp)).ToList();
+        MaxDev = dev.Count > 0 ? $"±{dev.Max():0.0} °C" : "—";
     }
 }
 

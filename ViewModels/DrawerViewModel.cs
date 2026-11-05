@@ -50,7 +50,7 @@ public partial class DrawerViewModel : ViewModelBase
         {
             case "Tsp":
                 c.TSp = Clamp(c.TSp + d * LimTsp.step, LimTsp);
-                _ = _main.WriteTempSpSafeAsync(c.Id, c.TSp);   // 定值模式：即时下发 AI-8
+                _main.SetFixedTarget(c);   // 加热中：交给防超调逼近重新规划；未加热：即时下发 AI-8
                 break;
             case "Vol": c.Vol = (int)Clamp(c.Vol + d * LimVol.step, LimVol); break;
         }
@@ -70,7 +70,7 @@ public partial class DrawerViewModel : ViewModelBase
         {
             case "Tsp":
                 _main.Keyboard.OpenNumeric("温度 SP", c.TSp, "°C", LimTsp.min, LimTsp.max, v =>
-                { c.TSp = v; _ = _main.WriteTempSpSafeAsync(c.Id, v); _main.RefreshSchematic(); RaiseAll(); });
+                { c.TSp = v; _main.SetFixedTarget(c); _main.RefreshSchematic(); RaiseAll(); });
                 break;
             case "Vol":
                 _main.Keyboard.OpenNumeric("溶液体积", c.Vol, "mL", LimVol.min, LimVol.max, v =>
@@ -88,6 +88,7 @@ public partial class DrawerViewModel : ViewModelBase
         if (Reactor is not { } c) return;
         c.SpMode = mode;
         if (mode != "curve" && c.Profile.Running) c.Profile.Stop();
+        if (mode != "fixed") c.Approach.Stop();
         RaiseAll();
     }
 
@@ -123,35 +124,56 @@ public partial class DrawerViewModel : ViewModelBase
     private void StartProfile()
     {
         if (Reactor is not { } c) return;
-        // PV 异常（温控通讯未就绪时读数为 0）则从室温起步，避免段 1 从 0℃ 开始爬
-        double startPv = c.T > 1 ? c.T : 25;
+        if (_main.HeatBlockReason() is { } why) { _main.Toast("err", why); return; }
+        // PV 无效（温控离线 / 读数为 0）则从室温起步，避免段 1 从 0℃ 开始爬
+        double startPv = c.TOnline && c.T > 1 ? c.T : 25;
         double bandTemp = startPv;
         foreach (var s in c.Profile.Segments)
             if (s.Enabled) bandTemp = Math.Max(bandTemp, s.Temp);
-        _ = _main.Temp.StartChannelAsync(c.Id, bandTemp, startPv);
+        _ = StartProfileAsync(c, bandTemp, startPv);
         c.Profile.Start(startPv);
+        if (c.State is ReactorState.Idle or ReactorState.Done or ReactorState.Ready)
+            c.State = ReactorState.Heating;   // 曲线升温也是加热，状态同步为「升温中」
+        _main.RefreshSchematic();
         _main.Toast("ok", $"RV{c.Id} 曲线升温已启动 · 共 {c.Profile.SegCount} 段");
         RaiseAll();
     }
 
-    /// <summary>启动本通道加热（定值恒温，全链：Srun=0 + At=0 + PID 套档 + SP）。</summary>
+    private async System.Threading.Tasks.Task StartProfileAsync(Reactor c, double bandTemp, double startPv)
+    {
+        if (await _main.Temp.StartChannelAsync(c.Id, bandTemp, startPv)) return;
+        // 全链启动没成功：仪表不出力，曲线引擎空转没有意义，停掉并提示
+        if (c.Profile.Running) c.Profile.Stop();
+        _main.ReportHeatStartFailed(c.Id);
+        RaiseAll();
+    }
+
+    /// <summary>启动本通道加热（定值恒温，全链：Srun=0 + At=0 + PID 套档 + SP）。
+    /// SP 走防超调逼近：先写 目标−Δ 判稳，再慢推到目标（Δ 等参数见设置页「参数与报警」）。</summary>
     [RelayCommand]
     private void StartHeat()
     {
         if (Reactor is not { } c) return;
+        if (_main.HeatBlockReason() is { } why) { _main.Toast("err", why); return; }
         if (c.TSp < 35) { _main.Toast("err", "请先设置目标温度（≥35℃）再启动加热"); return; }
-        _ = _main.Temp.StartChannelAsync(c.Id, c.TSp, c.TSp);
-        _main.Toast("ok", $"RV{c.Id} 加热已启动 · 目标 {c.TSp:0}℃");
+        _main.StartFixedHeat(c);
+        if (c.State is ReactorState.Idle or ReactorState.Done or ReactorState.Ready)
+            c.State = ReactorState.Heating;   // 加热真的开始了才显示「升温中」
+        _main.RefreshSchematic();
+        _main.Toast("ok", $"RV{c.Id} 加热已启动 · 目标 {c.TSp:0}℃ · 防超调逼近");
+        RaiseAll();
     }
 
-    /// <summary>停止本通道加热（At=4，输出关闭）。只停加热，不改通道运行状态/阀门。</summary>
+    /// <summary>停止本通道加热（At=4，输出关闭）。只停加热，不改阀门；「升温中」回到「已启用」。</summary>
     [RelayCommand]
     private void StopHeat()
     {
         if (Reactor is not { } c) return;
         if (c.Profile.Running) c.Profile.Stop();   // 曲线在跑也一并停，避免引擎继续抬 SP
-        _ = _main.Temp.StopChannelAsync(c.Id);
-        _main.Toast("warn", $"RV{c.Id} 加热已停止（输出关闭）");
+        c.Approach.Stop();
+        if (c.State == ReactorState.Heating) c.State = ReactorState.Ready;
+        _ = _main.StopHeatAsync(c.Id, $"RV{c.Id} 加热已停止（输出关闭）");
+        _main.RefreshSchematic();
         RaiseAll();
     }
 
@@ -187,10 +209,12 @@ public partial class DrawerViewModel : ViewModelBase
     private void Start()
     {
         if (Reactor is not { } c) return;
-        c.State = ReactorState.Heating;
+        if (_main.Estopped) { _main.Toast("err", "急停状态下不可启动 · 请先复位"); return; }
+        if (_main.GasBusy) { _main.Toast("warn", $"{_main.GasTask}进行中 · 请等待完成或先停止"); return; }
+        c.State = ReactorState.Ready;   // 启用 ≠ 升温中：只表示通道参与运行，开始加热后才转 Heating
         c.Rpm = _main.StirOn ? _main.StirRpm : 0;
         _main.RefreshSchematic();
-        _main.Toast("ok", $"RV{c.Id} 已启动");
+        _main.Toast("ok", $"RV{c.Id} 已启用");
         RaiseAll();
     }
 
@@ -199,12 +223,13 @@ public partial class DrawerViewModel : ViewModelBase
     {
         if (Reactor is not { } c) return;
         c.State = ReactorState.Done;
-        c.Valve = false;
         c.Rpm = 0;
         if (c.Profile.Running) c.Profile.Stop();
-        _ = _main.Temp.StopChannelAsync(c.Id);   // 停温控输出(At=4)——否则仪表带着旧 SP 继续加热
+        c.Approach.Stop();
+        // 停温控输出(At=4)——否则仪表带着旧 SP 继续加热；SV 开着就一并关（写成功才改显示）
+        _ = _main.StopHeatAsync(c.Id, $"RV{c.Id} 已停止（含加热输出）");
+        if (c.Valve) _ = _main.CloseReactorValveAsync(c.Id);
         _main.RefreshSchematic();
-        _main.Toast("ok", $"RV{c.Id} 已停止（含加热输出）");
         RaiseAll();
     }
 
@@ -213,12 +238,12 @@ public partial class DrawerViewModel : ViewModelBase
     {
         if (Reactor is not { } c) return;
         c.State = ReactorState.Idle;
-        c.Valve = false;
         c.Rpm = 0;
         if (c.Profile.Running) c.Profile.Stop();
-        _ = _main.Temp.StopChannelAsync(c.Id);   // 停用同样要停温控输出
+        c.Approach.Stop();
+        _ = _main.StopHeatAsync(c.Id, $"RV{c.Id} 已停用，不参与运行");   // 停用同样要停温控输出
+        if (c.Valve) _ = _main.CloseReactorValveAsync(c.Id);
         _main.RefreshSchematic();
-        _main.Toast("warn", $"RV{c.Id} 已停用，不参与运行");
         RaiseAll();
     }
 
@@ -226,7 +251,9 @@ public partial class DrawerViewModel : ViewModelBase
     private void Enable()
     {
         if (Reactor is not { } c) return;
-        c.State = ReactorState.Heating;
+        if (_main.Estopped) { _main.Toast("err", "急停状态下不可启用通道 · 请先复位"); return; }
+        if (_main.GasBusy) { _main.Toast("warn", $"{_main.GasTask}进行中 · 请等待完成或先停止"); return; }
+        c.State = ReactorState.Ready;
         if (c.Vol == 0) c.Vol = 3;
         c.Rpm = _main.StirOn ? _main.StirRpm : 0;
         _main.RefreshSchematic();

@@ -37,20 +37,21 @@ public partial class ProgramViewModel : ViewModelBase
     public string SelInfo => SelectedStep == null
         ? "" : $"{SelectedStep.Ordinal:00} / {Steps.Count:00}";
 
-    // 反应过程中（运行态）程序锁定为只读
-    public bool IsLocked => CurrentChannel?.Reactor.IsRunning == true;
+    // 通道真正在运行（升温/反应/升压/超压）或程序执行中，程序锁定为只读；仅「已启用」不锁定
+    public bool IsLocked => CurrentChannel?.Reactor.IsWorking == true || IsRunningProgram;
     public bool CanEdit => !IsLocked;
-    public string LockHint => "该通道正在运行 · 程序已锁定为只读";
+    public string LockHint => IsRunningProgram ? "程序执行中 · 已锁定为只读" : "该通道正在运行 · 程序已锁定为只读";
 
     private void OnReactorChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(Reactor.State) or nameof(Reactor.IsRunning)) RaiseLock();
+        if (e.PropertyName is nameof(Reactor.State) or nameof(Reactor.IsWorking)) RaiseLock();
     }
 
     private void RaiseLock()
     {
         OnPropertyChanged(nameof(IsLocked));
         OnPropertyChanged(nameof(CanEdit));
+        OnPropertyChanged(nameof(LockHint));
     }
 
     public ProgramViewModel(MainViewModel main)
@@ -62,9 +63,10 @@ public partial class ProgramViewModel : ViewModelBase
             StepType.Wait, StepType.React, StepType.End
         }.Select(t => new PaletteItem(t)).ToList();
 
+        // 每通道开机为空程序：不预置示例步骤（程序 / 模板的保存与载入随配方一起实现）
         foreach (var rv in _main.Reactors)
         {
-            _byRv[rv.Id] = rv.IsIdle ? new ObservableCollection<ProgramStep>() : DefaultProgram();
+            _byRv[rv.Id] = new ObservableCollection<ProgramStep>();
             Channels.Add(new ProgramChannel(rv));
         }
 
@@ -179,21 +181,136 @@ public partial class ProgramViewModel : ViewModelBase
 
     // ============ 底部按钮 ============
     [RelayCommand] private void ApplyOthers() => OpenApply();
-    [RelayCommand] private void InsertLeak()
+    [RelayCommand] private void SaveTemplate() => _main.Toast("warn", "保存为模板尚未实现（随配方功能一起提供）");
+
+    // ============ 程序执行（引擎见 ProgramViewModel.Run.cs：7 种步骤全部可执行）============
+    [ObservableProperty] private bool _isRunningProgram;
+    [ObservableProperty] private string _runStatus = "";
+    [ObservableProperty] private string _runMonitorDetail = "等待开始";
+    [ObservableProperty] private string _runMonitorPhase = "准备运行";
+    [ObservableProperty] private string _runProgressText = "0 / 0";
+    [ObservableProperty] private int _runCurrentStepIndex = -1;
+    [ObservableProperty] private bool _isRunMonitorOpen;
+    [ObservableProperty] private bool _isRunConfirmOpen;
+    [ObservableProperty] private string _runConfirmTitle = "";
+    [ObservableProperty] private string _runConfirmSub = "";
+    [ObservableProperty] private string _runConfirmText = "";
+    public bool CanRun => !IsRunningProgram;
+    public bool RunMonitorCanClose => !IsRunningProgram;
+    public ObservableCollection<ProgramRunStep> RunSteps { get; } = new();
+    public GraphViewModel MonitorGraph => _main.Graph;
+    private ObservableCollection<ProgramStep>? _runSteps;
+    private int _runRv;
+
+    partial void OnIsRunningProgramChanged(bool value)
     {
-        if (CurrentChannel == null || !CanEdit) return;
-        var leak = ProgramStep.New(StepType.Purge).With("gas", "惰性气体").With("cycles", 3.0);
-        Steps.Insert(0, leak);
-        MarkModified();
-        RenumberAndRefresh();
-        _main.Toast("ok", "已在开头插入泄漏测试吹扫");
+        OnPropertyChanged(nameof(CanRun));
+        OnPropertyChanged(nameof(RunMonitorCanClose));
+        RaiseLock();
     }
-    [RelayCommand] private void SaveTemplate() => _main.Toast("ok", "（占位）保存为模板");
-    [RelayCommand] private void RunProgram()
+
+    partial void OnRunStatusChanged(string value)
     {
-        if (IsEmpty) { _main.Toast("err", "空程序无法下发"); return; }
-        _main.Toast("ok", $"（占位）下发并运行 RV{CurrentChannel?.Reactor.Id} 程序");
+        if (!string.IsNullOrWhiteSpace(value)) RunMonitorDetail = value;
     }
+
+    [RelayCommand]
+    private void RunProgram()
+    {
+        if (CurrentChannel == null) { Blocked("当前未选中通道（先点上方通道条里的 RV）"); return; }
+        if (IsRunningProgram) return;
+        if (IsEmpty) { Blocked("空程序无法下发 · 请先从左侧步骤库添加步骤"); return; }
+        if (CurrentChannel.Reactor.IsWorking) { Blocked("该通道正在运行，不能下发程序"); return; }
+        if (_main.Estopped) { Blocked("急停状态下不可下发程序 · 请先复位"); return; }
+
+        bool gasSteps = Steps.Any(s => s.Type is StepType.Purge or StepType.Press or StepType.End);
+        if (gasSteps && _main.GasBlockReason(needPressure: false) is { } why) { Blocked(why); return; }
+
+        int rv = CurrentChannel.Reactor.Id;
+        RunConfirmTitle = $"下发并运行 RV{rv} 程序";
+        RunConfirmSub = gasSteps ? "含气路步骤 · 执行中气路独占" : "不含气路步骤";
+        RunConfirmText =
+            $"共 {Steps.Count} 步，预计约 {DurText}。\n" +
+            "执行期间釜状态随步骤变化（升温/升压/等待/搅拌/反应/降温），可随时「中止」。" +
+            (gasSteps ? "\n含气路步骤：执行期间气路由程序独占，泄漏测试 / 手动阀控 / 其他程序的气路步骤将被拒绝。" : "");
+        _runSteps = Steps;
+        _runRv = rv;
+        IsRunConfirmOpen = true;
+    }
+
+    /// <summary>下发被守卫拦下：toast 一闪而过容易漏看，同步写一条事件记录（报警/事件页可查）。</summary>
+    private void Blocked(string why)
+    {
+        _main.Toast("err", $"下发被拒绝 · {why}");
+        _main.Alarm.Log("warn", "系统", "程序下发被拒绝", why);
+    }
+
+    [RelayCommand] private void CancelRun() => IsRunConfirmOpen = false;
+
+    [RelayCommand]
+    private void ConfirmRun()
+    {
+        IsRunConfirmOpen = false;
+        if (_runSteps == null) return;
+        if (_main.Estopped) { _main.Toast("err", "急停状态下不可下发程序 · 请先复位"); return; }   // 确认期间状态可能变了
+        PrepareRunMonitor(_runSteps);
+        _ = ExecuteAsync(_runRv, _runSteps.ToList());
+    }
+
+    private void PrepareRunMonitor(IEnumerable<ProgramStep> steps)
+    {
+        RunSteps.Clear();
+        int index = 1;
+        foreach (var step in steps) RunSteps.Add(new ProgramRunStep(index++, step));
+        RunCurrentStepIndex = -1;
+        RunProgressText = $"0 / {RunSteps.Count}";
+        RunMonitorPhase = "准备执行";
+        RunMonitorDetail = $"RV{_runRv} 程序正在准备启动";
+        IsRunMonitorOpen = true;
+        // 进入监控时优先展示最容易判断运行状态的温度曲线；用户仍可在右侧切换变量。
+        MonitorGraph.Metric = "T";
+        MonitorGraph.Range = "15";
+    }
+
+    [RelayCommand]
+    private void CloseRunMonitor()
+    {
+        if (IsRunningProgram) return;
+        IsRunMonitorOpen = false;
+    }
+
+    internal void MarkRunStepStarted(int index)
+    {
+        if (index < 0 || index >= RunSteps.Count) return;
+        RunCurrentStepIndex = index;
+        RunSteps[index].SetState(ProgramRunState.Running, "正在执行");
+        RunProgressText = $"{index} / {RunSteps.Count}";
+        RunMonitorPhase = $"执行第 {index + 1} 步 · {RunSteps[index].Name}";
+    }
+
+    internal void MarkRunStepCompleted(int index)
+    {
+        if (index < 0 || index >= RunSteps.Count) return;
+        RunSteps[index].SetState(ProgramRunState.Completed, "已完成");
+        RunProgressText = $"{index + 1} / {RunSteps.Count}";
+    }
+
+    internal void MarkRunStepFailed(int index, string message)
+    {
+        if (index < 0 || index >= RunSteps.Count) return;
+        RunSteps[index].SetState(ProgramRunState.Failed, message);
+        RunMonitorPhase = $"第 {index + 1} 步执行失败";
+    }
+
+    internal void MarkRunStepAborted(int index)
+    {
+        if (index < 0 || index >= RunSteps.Count) return;
+        RunSteps[index].SetState(ProgramRunState.Aborted, "已中止");
+        RunMonitorPhase = "程序已手动中止";
+    }
+
+    /// <summary>中止当前程序（引擎在 Run.cs：取消令牌 + 中止气路，序列 finally 全关阀）。</summary>
+    [RelayCommand] private void AbortRun() => AbortProgram();
 
     // ============ 升温模式切换（HeatModeRow 调用）============
     public void SetHeatMode(ProgramStep step, string mode)
@@ -297,9 +414,11 @@ public partial class ProgramViewModel : ViewModelBase
         }
         else if (s.Type == StepType.Stir)
         {
-            // 搅拌为全部反应釜共用一台搅拌器：只设一个全局转速
+            // 搅拌转速是全机共用设置；搅拌时长仍属于当前步骤，必须在检查器中单独显示。
             _stirRow = new StirRow(this);
             InspectorRows.Add(_stirRow);
+            foreach (var f in s.Def.Fields.Where(f => f.Key == "dur"))
+                InspectorRows.Add(new StepField(s, f));
         }
         else
         {
@@ -517,16 +636,6 @@ public partial class ProgramViewModel : ViewModelBase
         IsApplyOpen = false;
     }
 
-    private static ObservableCollection<ProgramStep> DefaultProgram() => new()
-    {
-        ProgramStep.New(StepType.Purge).With("gas", "惰性气体").With("cycles", 10.0),
-        ProgramStep.New(StepType.Purge).With("gas", "气体 A").With("cycles", 5.0),
-        ProgramStep.New(StepType.Heat).With("temp", 40.0).With("wait", 15.0),
-        ProgramStep.New(StepType.Press).With("gas", "气体 A").With("pres", 50.0).With("regulate", "开启"),
-        ProgramStep.New(StepType.Stir).With("rpm", 1000.0),
-        ProgramStep.New(StepType.React).With("endBy", "两者先到").With("time", 120.0).With("mmol", 5.0),
-        ProgramStep.New(StepType.End).With("mode", "密封 (推荐)").With("cool", 40.0),
-    };
 }
 
 // ============ 辅助视图模型 ============
@@ -546,13 +655,97 @@ public class PaletteItem
     }
 }
 
+public enum ProgramRunState { Pending, Running, Completed, Failed, Aborted }
+
+/// <summary>运行监控左侧的一步程序状态。</summary>
+public partial class ProgramRunStep : ObservableObject
+{
+    public int Number { get; }
+    public ProgramStep Step { get; }
+    public string Name => Step.Name;
+    public string Detail => Step.Detail;
+    public string IndexText => Number.ToString("00");
+
+    [ObservableProperty] private ProgramRunState _state = ProgramRunState.Pending;
+    [ObservableProperty] private string _message = "待执行";
+
+    public bool IsCurrent => State == ProgramRunState.Running;
+    public bool IsCompleted => State == ProgramRunState.Completed;
+    public bool IsFailed => State == ProgramRunState.Failed;
+    public bool IsAborted => State == ProgramRunState.Aborted;
+
+    public string StatusText => State switch
+    {
+        ProgramRunState.Running => "执行中",
+        ProgramRunState.Completed => "已完成",
+        ProgramRunState.Failed => "失败",
+        ProgramRunState.Aborted => "已中止",
+        _ => "待执行"
+    };
+
+    public string StatusGlyph => State switch
+    {
+        ProgramRunState.Running => "…",
+        ProgramRunState.Completed => "✓",
+        ProgramRunState.Failed => "!",
+        ProgramRunState.Aborted => "×",
+        _ => "·"
+    };
+
+    public IBrush StateBrush => State switch
+    {
+        ProgramRunState.Running => new SolidColorBrush(Color.Parse("#C11B2E")),
+        ProgramRunState.Completed => new SolidColorBrush(Color.Parse("#4d9a12")),
+        ProgramRunState.Failed => new SolidColorBrush(Color.Parse("#d5394d")),
+        ProgramRunState.Aborted => new SolidColorBrush(Color.Parse("#b5750a")),
+        _ => new SolidColorBrush(Color.Parse("#8a8b94"))
+    };
+
+    public IBrush StateBackground => State switch
+    {
+        ProgramRunState.Running => new SolidColorBrush(Color.Parse("#16C11B2E")),
+        ProgramRunState.Completed => new SolidColorBrush(Color.Parse("#1684CC16")),
+        ProgramRunState.Failed => new SolidColorBrush(Color.Parse("#16E0394C")),
+        ProgramRunState.Aborted => new SolidColorBrush(Color.Parse("#16F0A830")),
+        _ => new SolidColorBrush(Color.Parse("#0D000000"))
+    };
+
+    public ProgramRunStep(int number, ProgramStep step)
+    {
+        Number = number;
+        Step = step;
+    }
+
+    public void SetState(ProgramRunState state, string message)
+    {
+        State = state;
+        Message = message;
+        OnPropertyChanged(nameof(IsCurrent));
+        OnPropertyChanged(nameof(IsCompleted));
+        OnPropertyChanged(nameof(IsFailed));
+        OnPropertyChanged(nameof(IsAborted));
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(StatusGlyph));
+        OnPropertyChanged(nameof(StateBrush));
+        OnPropertyChanged(nameof(StateBackground));
+    }
+}
+
 /// <summary>通道选择条的一个通道。</summary>
 public partial class ProgramChannel : ObservableObject
 {
     public Reactor Reactor { get; }
     [ObservableProperty] private bool _isCurrent;
     [ObservableProperty] private bool _isModified;
-    public ProgramChannel(Reactor r) { Reactor = r; }
+    public ProgramChannel(Reactor r)
+    {
+        Reactor = r;
+        // 通道状态在主界面变化（启用 / 停用 / 启停）时，同步刷新选择条小字
+        r.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(Reactor.State)) OnPropertyChanged(nameof(SmallText));
+        };
+    }
     public string Title => $"RV{Reactor.Id}";
     public string SmallText => Reactor.IsIdle ? "停用" : Reactor.StateZh;
 }

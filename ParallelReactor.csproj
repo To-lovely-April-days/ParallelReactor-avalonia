@@ -19,6 +19,12 @@
     <AvaloniaResource Include="Assets/**" />
   </ItemGroup>
 
+  <!-- 单元测试工程单独编译，主工程不要把 tests/ 下的源文件卷进来 -->
+  <ItemGroup>
+    <Compile Remove="tests/**" />
+    <None Remove="tests/**" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />

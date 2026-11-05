@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace ParallelReactor.Models;
@@ -94,7 +95,8 @@ public partial class TempProfile : ObservableObject
             double dur = Math.Max(0.01, seg.Minutes);
             if (elapsedMin < acc + dur)
             {
-                foreach (var s in Segments) s.Active = s.Index == i + 1;
+                var segments = Segments.Where(seg => seg.Enabled);
+                foreach (var s in segments) s.Active = s.Index == i + 1;
                 double remain = (acc + dur) - elapsedMin;
                 StatusText = $"第 {i + 1}/{n} 段 · 剩 {remain:0.#} 分";
                 double k = (elapsedMin - acc) / dur;
@@ -128,4 +130,22 @@ public partial class TempProfile : ObservableObject
         _lastWritten = target;
         _lastWriteUtc = DateTime.UtcNow;
     }
+
+    /// <summary>已运行分钟数（未运行为 0）。</summary>
+    public double ElapsedMin => Running ? (DateTime.UtcNow - _startUtc).TotalMinutes : 0;
+
+    /// <summary>前 <see cref="SegCount"/> 段的时长合计（段下限 0.01 分钟，与 <see cref="CurrentTarget"/> 一致）。</summary>
+    public double TotalMinutes
+    {
+        get
+        {
+            int n = Math.Clamp(SegCount, 1, MaxSegments);
+            double acc = 0;
+            for (int i = 0; i < n; i++) acc += Math.Max(0.01, Segments[i].Minutes);
+            return acc;
+        }
+    }
+
+    /// <summary>曲线是否已全部走完（走完保持末段温度；程序执行引擎据此判定升温·曲线步骤完成）。</summary>
+    public bool IsComplete => Running && ElapsedMin >= TotalMinutes;
 }

@@ -65,19 +65,22 @@ public class StepDef
             {
                 Type = StepType.Purge, Name = "吹扫", Chip = "PURGE", Brush = B("#6f93b8"),
                 Icon = G("M9.6 4.6A2 2 0 1 1 11 8H2 M12.6 19.4A2 2 0 1 0 14 16H2 M17.5 8A2.5 2.5 0 1 1 19.5 12.5H2"),
-                Help = "每次循环：充气→卸压。10 次循环可让 RV 内残留气体含量 < 0.1%。",
+                Help = "只吹扫气路总管：8 路 SV 全程关闭，釜内气体不受影响。每次循环：开气源阀充气 → 关闭 → 开排空阀排气。" +
+                       "总管压力等于该气源减压阀的出口压力，请预先调到低压。",
                 Fields = new()
                 {
                     new FieldDef{ Key="gas", Label="气体", Kind="sel", Options=new[]{"惰性气体","气体 A","气体 B"} },
                     new FieldDef{ Key="cycles", Label="循环次数", Kind="num", Unit="次", Default=10.0, Min=1, Max=50 },
+                    new FieldDef{ Key="fill", Label="充气时间", Kind="num", Unit="秒", Default=3.0, Min=1, Max=30 },
+                    new FieldDef{ Key="vent", Label="排气时间", Kind="num", Unit="秒", Default=5.0, Min=1, Max=60 },
                 },
-                DetailFn = s => $"{s.Str("gas","惰性气体")} × {N(s.Num("cycles",10))} 次",
+                DetailFn = s => $"{s.Str("gas","惰性气体")} × {N(s.Num("cycles",10))} 次 · 充 {N(s.Num("fill",3))}s / 排 {N(s.Num("vent",5))}s · 仅总管",
             },
             [StepType.Heat] = new StepDef
             {
                 Type = StepType.Heat, Name = "升温", Chip = "HEAT", Brush = B("#c79450"),
                 Icon = G("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
-                Help = "升温建议：使用「等待平衡」给予 15-25 分钟，确保溶液温度达到设定值。",
+                Help = "先升温至目标（实测到位 ±2℃ 才进下一步）；「等待平衡」为到位后的保温计时，用于让溶液温度均匀（建议 15-25 分钟，0 = 不平衡）。",
                 Fields = new()
                 {
                     new FieldDef{ Key="temp", Label="目标温度", Kind="num", Unit="°C", Default=150.0, Min=0, Max=300 },
@@ -116,12 +119,13 @@ public class StepDef
             {
                 Type = StepType.Stir, Name = "搅拌", Chip = "STIR", Brush = B("#7e86a8"),
                 Icon = G("M21 12a9 9 0 1 1-6.22-8.56 M21 3v6h-6"),
-                Help = "搅拌速度变更不会立即生效，需要约 50 秒过渡。",
+                Help = "搅拌为全机共用一台电机。步骤持续「搅拌时长」后自动停止搅拌并进入下一步；需要持续搅拌时可在后续步骤再次添加搅拌。",
                 Fields = new()
                 {
                     new FieldDef{ Key="rpm", Label="转速", Kind="num", Unit="rpm", Default=1000.0, Min=0, Max=2000 },
+                    new FieldDef{ Key="dur", Label="搅拌时长", Kind="num", Unit="分钟", Default=5.0, Min=0, Max=600 },
                 },
-                DetailFn = s => $"{N(s.Num("rpm",1000))} rpm",
+                DetailFn = s => $"{N(s.Num("rpm",1000))} rpm · {N(s.Num("dur",5))} min",
             },
             [StepType.Wait] = new StepDef
             {
@@ -228,7 +232,9 @@ public partial class ProgramStep : ObservableObject
         StepType.Press => 8,
         StepType.React => Num("time", 0),
         StepType.Wait => Num("time", 0),
-        StepType.Purge => 5,
+        StepType.Stir => Num("dur", 0),
+        // 每次循环 = 充气 + 排气 + 两次 0.5s 阀态切换死区
+        StepType.Purge => Num("cycles", 10) * (Num("fill", 3) + Num("vent", 5) + 1.0) / 60.0,
         _ => 0
     };
 
@@ -242,6 +248,15 @@ public partial class ProgramStep : ObservableObject
             Segments.Add(new HeatSeg { Temp = 150, Rate = 0, Hold = 60 });
         }
     }
+
+    /// <summary>
+    /// 把升温步骤的 HeatSeg 列表（目标温度 / 升温斜率 / 保温时长）换算为曲线引擎的分段（温度, 分钟）。
+    /// 纯逻辑见 <see cref="HeatCurvePlan"/>（无 UI 依赖、有单测）。超 max 段截断；无有效段返回空列表（调用方拒绝下发）。
+    /// </summary>
+    public static List<(double Temp, double Minutes)> ToProfileSegments(
+        IReadOnlyList<HeatSeg> segs, double startTemp, int max = TempProfile.MaxSegments)
+        => HeatCurvePlan.ToProfileSegments(
+            segs.Select(s => (s.Temp, s.Rate, s.Hold)).ToList(), startTemp, max);
 
     /// <summary>深拷贝（应用到其他通道用）。</summary>
     public ProgramStep Clone()

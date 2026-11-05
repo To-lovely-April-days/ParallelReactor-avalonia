@@ -71,6 +71,10 @@ public class StateColorConverter : IValueConverter
             ReactorState.React => Color.Parse("#5fae14"),
             ReactorState.Alarm => Color.Parse("#e0394c"),
             ReactorState.Heating or ReactorState.Pressing => Color.Parse("#c9820f"),
+            ReactorState.Ready => Color.Parse("#2d5ca0"),
+            ReactorState.Wait => Color.Parse("#6f7d95"),
+            ReactorState.Stir => Color.Parse("#1fa595"),
+            ReactorState.Cooling => Color.Parse("#3e8ec4"),
             ReactorState.Done => Color.Parse("#7d8694"),
             _ => Color.Parse("#66666f")
         };

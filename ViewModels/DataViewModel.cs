@@ -13,63 +13,34 @@ public partial class DataViewModel : ViewModelBase
 {
     private readonly MainViewModel _main;
 
+    /// <summary>运行记录。开机为空：运行记录随运行框架（下一轮）生成并落盘，此前不显示任何示例数据。</summary>
     public ObservableCollection<RunRecord> Runs { get; } = new();
     [ObservableProperty] private RunRecord? _selected;
 
-    // 详情区汇总曲线（逻辑斯蒂 S 曲线）
+    // 详情区汇总曲线：按记录里的实测数据绘制（暂无记录时为空）
     public List<Point> SparkLine { get; private set; } = new();
     public List<Point> SparkArea { get; private set; } = new();
     [ObservableProperty] private IBrush _sparkColor = new SolidColorBrush(Color.Parse("#5fae14"));
 
     public bool HasSelection => Selected != null;
+    public bool IsEmpty => Runs.Count == 0;
 
     public DataViewModel(MainViewModel main)
     {
         _main = main;
-        Seed();
-        Selected = Runs.Count > 0 ? Runs[0] : null;
+        Runs.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsEmpty));
     }
 
     partial void OnSelectedChanged(RunRecord? value)
     {
-        BuildSpark(value);
-        OnPropertyChanged(nameof(SparkLine));
-        OnPropertyChanged(nameof(SparkArea));
+        SparkColor = new SolidColorBrush(Color.Parse(value?.Status == "err" ? "#e0394c" : "#5fae14"));
         OnPropertyChanged(nameof(HasSelection));
     }
 
     [RelayCommand] private void ViewCurve() => _main.SwitchTab("graph");
-    [RelayCommand] private void ExportEar() => _main.Toast("ok", $"（演示）已导出 {Selected?.Id}.ear");
-    [RelayCommand] private void ToTemplate() => _main.Toast("ok", "（演示）已转为程序模板");
-    [RelayCommand] private void CopyParams() => _main.Toast("ok", "（演示）已复制参数到当前运行");
-
-    private void BuildSpark(RunRecord? r)
-    {
-        const double W = 320, H = 72; const int N = 40;
-        var line = new List<Point>(N);
-        for (int i = 0; i < N; i++)
-        {
-            double x = i / (double)(N - 1) * W;
-            double s = 1.0 / (1 + Math.Exp(-((i - 15) / 3.5)));
-            double y = H - 8 - (H - 16) * s;
-            line.Add(new Point(x, y));
-        }
-        SparkLine = line;
-        SparkArea = new List<Point>(line) { new Point(W, H - 8), new Point(0, H - 8) };
-        SparkColor = new SolidColorBrush(Color.Parse(r?.Status == "err" ? "#e0394c" : "#5fae14"));
-    }
-
-    private void Seed()
-    {
-        Runs.Add(new RunRecord { Id = "run_20260602_1018", Name = "加氢-苯甲酸酯 #4", Recipe = "加氢 · Pd/C", Start = "2026-06-02 10:18", Dur = "2h 14m", Rvs = "1-7", Rsd = "4.7%", Status = "ok", Mmol = 14.2, T = 150, P = 325 });
-        Runs.Add(new RunRecord { Id = "run_20260601_1532", Name = "烯烃聚合 第二轮", Recipe = "烯烃聚合", Start = "2026-06-01 15:32", Dur = "1h 28m", Rvs = "1-6", Rsd = "8.2%", Status = "ok", Mmol = 11.5, T = 80, P = 340 });
-        Runs.Add(new RunRecord { Id = "run_20260601_0902", Name = "CO 羰基化测试", Recipe = "CO 羰基化", Start = "2026-06-01 09:02", Dur = "6h 03m", Rvs = "1-4", Rsd = "12.1%", Status = "warn", Mmol = 8.7, T = 120, P = 148, Note = "RV3 升温慢" });
-        Runs.Add(new RunRecord { Id = "run_20260531_1411", Name = "加氢-苯甲酸酯 #3", Recipe = "加氢 · Pd/C", Start = "2026-05-31 14:11", Dur = "2h 11m", Rvs = "1-8", Rsd = "5.3%", Status = "ok", Mmol = 13.9, T = 150, P = 322 });
-        Runs.Add(new RunRecord { Id = "run_20260531_0830", Name = "空白泄漏测试", Recipe = "空白泄漏测试", Start = "2026-05-31 08:30", Dur = "0h 41m", Rvs = "1-8", Rsd = "—", Status = "ok", Mmol = 0, T = 25, P = 498 });
-        Runs.Add(new RunRecord { Id = "run_20260530_1605", Name = "Rh 均相筛选", Recipe = "加氢 · Rh 均相", Start = "2026-05-30 16:05", Dur = "4h 02m", Rvs = "1-7", Rsd = "6.8%", Status = "ok", Mmol = 9.4, T = 60, P = 200 });
-        Runs.Add(new RunRecord { Id = "run_20260530_1011", Name = "加氢-苯甲酸酯 #2", Recipe = "加氢 · Pd/C", Start = "2026-05-30 10:11", Dur = "1h 35m", Rvs = "1-7", Rsd = "—", Status = "err", Mmol = 5.6, T = 150, P = 512, Note = "RV5 超压急停" });
-        Runs.Add(new RunRecord { Id = "run_20260529_1320", Name = "加氢-苯甲酸酯 #1", Recipe = "加氢 · Pd/C", Start = "2026-05-29 13:20", Dur = "2h 16m", Rvs = "1-8", Rsd = "7.1%", Status = "ok", Mmol = 14.0, T = 150, P = 325 });
-    }
+    [RelayCommand] private void ExportEar() => _main.Toast("warn", "导出 .ear 尚未实现");
+    [RelayCommand] private void ToTemplate() => _main.Toast("warn", "转为程序模板尚未实现");
+    [RelayCommand] private void CopyParams() => _main.Toast("warn", "复制参数到当前运行尚未实现");
 }
 
 /// <summary>一条历史运行记录。</summary>
