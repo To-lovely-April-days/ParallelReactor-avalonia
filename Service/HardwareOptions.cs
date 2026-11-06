@@ -16,6 +16,34 @@ namespace ParallelReactor.Services;
 /// </summary>
 public static class HardwareOptions
 {
+    // ===== 开发用模拟（PR_SIM=1）=====
+    // 不接硬件也能把整套程序跑起来：温控 / 压力 / 阀门共用一个内存模拟主站（三者分别用保持寄存器 / 输入寄存器 /
+    // 线圈，互不冲突），搅拌单独一个。每个 Tick 调 SimulateStep 让 PV / 压力动起来。各模块按「已配置」处理。
+    // 只用于开发与演示：现场设备上绝不能设置 PR_SIM。同时配置了任一 PR_*_PORT 时拒绝模拟（见 SimRefused）；
+    // 模拟时数据默认写到 ~/ParallelReactor-data-sim（不与真实数据混在一起），界面顶栏常驻「模拟模式」标识。
+
+    /// <summary>环境变量 PR_SIM=1（请求模拟）。</summary>
+    public static bool SimRequested { get; } = Env("PR_SIM") == "1";
+
+    /// <summary>
+    /// 请求了模拟、但同时配置了任一真机串口（PR_*_PORT）：拒绝模拟，按真机端口运行。
+    /// 防止现场启动脚本残留 PR_SIM=1 时，急停 / 超温切断都只写进内存模拟、真加热器与阀门无人控制。
+    /// </summary>
+    public static bool SimRefused { get; } = SimRequested && AnyPortConfigured();
+
+    /// <summary>是否启用模拟总线（PR_SIM=1 且未配置任何真机串口）。未设置时行为与以前完全一致。</summary>
+    public static bool Sim { get; } = SimRequested && !SimRefused;
+
+    private static bool AnyPortConfigured()
+        => Env("PR_STIR_PORT") != null || Env("PR_TEMP_PORT") != null || Env("PR_PRESS_PORT") != null || Env("PR_IO_PORT") != null;
+
+    private static MockModbusMaster? _simBus;
+
+    /// <summary>温控 + 压力 + 阀门共用的模拟主站（未启用模拟时为 null）。</summary>
+    public static MockModbusMaster? SimBus => Sim
+        ? _simBus ??= new MockModbusMaster { TempSlaves = new[] { TempSlave }, TempLoops = 8, AnalogSlave = AnalogSlave }
+        : null;
+
     /// <summary>搅拌驱动器（雷赛 DM2C）串口名。为空则离线。</summary>
     public static string? StirPort { get; set; } = Env("PR_STIR_PORT");
 
@@ -30,7 +58,7 @@ public static class HardwareOptions
     public static StopBits StirStopBits { get; set; } = StopBits.One;
 
     /// <summary>是否已配置真机端口。</summary>
-    public static bool UseRealStir => !string.IsNullOrWhiteSpace(StirPort);
+    public static bool UseRealStir => Sim || !string.IsNullOrWhiteSpace(StirPort);
 
     /// <summary>搅拌总线追踪（PR_STIR_TRACE=1 时把每笔事务记入 stir-trace.log，用于排查转速波动是否软件所致）。</summary>
     public static bool StirTrace { get; set; } = (Env("PR_STIR_TRACE") ?? "0") == "1";
@@ -38,7 +66,8 @@ public static class HardwareOptions
     /// <summary>按当前配置创建搅拌所在总线的 Modbus 主站（真串口或离线）。</summary>
     public static IModbusMaster CreateStirBus()
     {
-        IModbusMaster bus = UseRealStir
+        IModbusMaster bus = Sim ? new MockModbusMaster()
+            : UseRealStir
             ? new ModbusRtuMaster(StirPort!, StirBaud, StirParity, StirDataBits, StirStopBits)
             : new OfflineModbusMaster("搅拌驱动器（PR_STIR_PORT）");
         return StirTrace ? new TracingModbusMaster(bus, "stir-trace.log") : bus;
@@ -60,11 +89,12 @@ public static class HardwareOptions
 
     public static Parity TempParity { get; set; } = Parity.None;
 
-    public static bool UseRealTemp => !string.IsNullOrWhiteSpace(TempPort);
+    public static bool UseRealTemp => Sim || !string.IsNullOrWhiteSpace(TempPort);
 
     /// <summary>创建温控总线主站（真串口或离线）。</summary>
     public static IModbusMaster CreateTempBus()
-        => UseRealTemp
+        => Sim ? SimBus!
+            : UseRealTemp
             ? new ModbusRtuMaster(TempPort!, TempBaud, TempParity, 8, StopBits.One)
             : new OfflineModbusMaster("温控器 AI-8（PR_TEMP_PORT）");
 
@@ -85,11 +115,12 @@ public static class HardwareOptions
     /// <summary>压力满量程（工程量，单位 psi；原码 16000 对应该值）。</summary>
     public static double PressFullScale { get; set; } = EnvDouble("PR_PRESS_FULLSCALE", 600);
 
-    public static bool UseRealAnalog => !string.IsNullOrWhiteSpace(AnalogPort);
+    public static bool UseRealAnalog => Sim || !string.IsNullOrWhiteSpace(AnalogPort);
 
     /// <summary>创建压力总线主站（真串口或离线）。</summary>
     public static IModbusMaster CreateAnalogBus()
-        => UseRealAnalog
+        => Sim ? SimBus!
+            : UseRealAnalog
             ? new ModbusRtuMaster(AnalogPort!, AnalogBaud, Parity.None, 8, StopBits.One)
             : new OfflineModbusMaster("压力采集 8AI（PR_PRESS_PORT）");
 
@@ -108,11 +139,12 @@ public static class HardwareOptions
     /// <summary>线圈通电时阀门是「开」还是「关」。默认通电=开；若为常开阀（通电关）设 PR_IO_ENERGIZE=close。</summary>
     public static bool IoEnergizeOpens { get; set; } = (Env("PR_IO_ENERGIZE") ?? "open") != "close";
 
-    public static bool UseRealIo => !string.IsNullOrWhiteSpace(IoPort);
+    public static bool UseRealIo => Sim || !string.IsNullOrWhiteSpace(IoPort);
 
     /// <summary>创建阀门总线主站（真串口或离线）。</summary>
     public static IModbusMaster CreateIoBus()
-        => UseRealIo
+        => Sim ? SimBus!
+            : UseRealIo
             ? new ModbusRtuMaster(IoPort!, IoBaud, Parity.None, 8, StopBits.One)
             : new OfflineModbusMaster("阀门 IO16R（PR_IO_PORT）");
 

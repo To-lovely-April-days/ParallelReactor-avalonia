@@ -187,7 +187,7 @@ public partial class ProgramViewModel
     /// <summary>升温：定值（防超调逼近 + 平衡等待）或 16 段曲线（引擎私有曲线，不动通道的抽屉曲线配置）。</summary>
     private async Task StepHeatAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
     {
-        if (_main.HeatBlockReason() is { } why) throw new ProgFaultException($"升温：{why}");
+        if (_main.HeatBlockReason(c.Id) is { } why) throw new ProgFaultException($"升温：{why}");
         if (c.Profile.Running) c.Profile.Stop();
         c.Approach.Stop();
 

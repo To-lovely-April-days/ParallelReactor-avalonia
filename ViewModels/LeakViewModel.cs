@@ -132,8 +132,10 @@ public partial class LeakViewModel : ViewModelBase
             else { c.Status = "skip"; c.Detail = c.CanPick ? "不测" : "运行中"; }
         }
         var ct = _main.BeginGas("泄漏测试", ids);
+        _rec = new LeakRecord(DateTimeOffset.Now);
+        _main.Logger.AddMarker($"泄漏测试开始 {_rec.RunId}");
         _main.Alarm.Log("info", "系统", "泄漏测试开始",
-            $"{Rvs(ids)} · 惰性气体 {target:0.#} psi · 平衡 {s.LeakSettleMin:0.#} min / 测量 {s.LeakMeasureMin:0.#} min");
+            $"{Rvs(ids)} · 惰性气体 {target:0.#} psi · 平衡 {s.LeakSettleMin:0.#} min / 测量 {s.LeakMeasureMin:0.#} min · 逐点数据 leak/{_rec.RunId}.csv");
 
         var tested = new List<LeakCell>();
         var overFill = new List<int>();   // 充压冲过测试压力的通道（减压阀调得过高）
@@ -147,7 +149,7 @@ public partial class LeakViewModel : ViewModelBase
             PhaseText = "关闭全部阀门，读取初始压力…";
             await _main.ApplyValvesAsync(ValveFrame.AllClosed(), ct);
             await _main.HoldAsync(ValveFrame.AllClosed(), PurgePlan.DeadSec, ct);
-            var p0 = await _main.ReadPressuresAsync();
+            var p0 = await SampleAsync(LeakRecord.Prep, picked);
             var fillList = new List<LeakCell>();
             foreach (var c in picked)
             {
@@ -192,6 +194,41 @@ public partial class LeakViewModel : ViewModelBase
         }
 
         Finish(picked, tested, overFill, rates, thr, vented, aborted, fail);
+        try { SaveRecord(picked, rates, target, thr, aborted, fail); }
+        catch (Exception ex) { _main.Alarm.Log("warn", "系统", "泄漏测试逐点数据未保存", ex.Message); }
+    }
+
+    // ============ 逐点数据（P0-3）：每次读压都记一行，结束后整文件写到 数据目录/leak/ ============
+
+    private LeakRecord? _rec;
+
+    /// <summary>读一次 8 路压力（同 <see cref="MainViewModel.ReadPressuresAsync"/>），并把 cells 的这一点记入逐点数据。</summary>
+    private async Task<double[]> SampleAsync(string phase, IEnumerable<LeakCell> cells)
+    {
+        var smp = await _main.ReadPressureSampleAsync();
+        if (_rec != null)
+            foreach (var c in cells)
+                _rec.Add(c.Id, phase, smp.At, smp.Raw[c.Id - 1], smp.Psi[c.Id - 1], TempOf(c.Id));
+        return smp.Psi.ToArray();
+    }
+
+    /// <summary>写本次测试的逐点 CSV + 汇总 CSV / JSON（后台写盘；中止 / 失败时也写已采到的数据）。</summary>
+    private void SaveRecord(List<LeakCell> picked, Dictionary<int, double>? rates, double target, double thr, bool aborted, string? fail)
+    {
+        var rec = _rec;
+        _rec = null;
+        if (rec == null) return;
+        var s = _main.Settings;
+        var sum = rec.Summarize(picked.Select(c => (c.Id, c.Status, c.Detail)), rates);
+        var pars = new
+        {
+            testPsi = target, thresholdPsiPerH = thr, settleMin = s.LeakSettleMin, measureMin = s.LeakMeasureMin,
+            sampleSec = SampleSec, aborted, fail,
+        };
+        _main.Logger.WriteFile($"leak/{rec.RunId}.csv", rec.SamplesCsv());
+        _main.Logger.WriteFile($"leak/{rec.RunId}-summary.csv", rec.SummaryCsv(sum));
+        _main.Logger.WriteFile($"leak/{rec.RunId}-summary.json", rec.SummaryJson(sum, pars));
+        _main.Logger.AddMarker($"泄漏测试结束 {rec.RunId}");
     }
 
     /// <summary>
@@ -244,7 +281,7 @@ public partial class LeakViewModel : ViewModelBase
             }
 
             await _main.HoldAsync(ValveFrame.AllClosed(), 1.0, ct);   // 关阀后静置再读，避开充气瞬间的动态压力
-            var p = await _main.ReadPressuresAsync();
+            var p = await SampleAsync(LeakRecord.Fill, cells);   // 逐点数据记全部待充通道（含已到压的），不只本轮开阀的
             _main.ThrowIfGasUnsafe();
             foreach (var (c, sec) in plan)
             {
@@ -281,7 +318,7 @@ public partial class LeakViewModel : ViewModelBase
         while (true)
         {
             double el = sw.Elapsed.TotalSeconds;
-            var p = await _main.ReadPressuresAsync();
+            var p = await SampleAsync(LeakRecord.Equilibrate, tested);
             _main.ThrowIfGasUnsafe();
             foreach (var c in tested) c.Pressure = p[c.Id - 1];
             Progress = 12 + 23 * Math.Min(1, el / total);
@@ -297,11 +334,12 @@ public partial class LeakViewModel : ViewModelBase
         double total = minutes * 60;
         var series = tested.ToDictionary(c => c.Id, _ => new List<(double Min, double Psi)>());
         var t0 = tested.ToDictionary(c => c.Id, c => TempOf(c.Id));
+        if (_rec != null) foreach (var kv in t0) _rec.TRef[kv.Key] = kv.Value;   // 逐点数据的补偿参考温度 = 判读用的同一参考
         var sw = Stopwatch.StartNew();
         while (true)
         {
             double el = sw.Elapsed.TotalSeconds;
-            var p = await _main.ReadPressuresAsync();
+            var p = await SampleAsync(LeakRecord.Measure, tested);
             _main.ThrowIfGasUnsafe();
             double vmin = el / 60;   // 测量已进行的分钟数
             foreach (var c in tested)
@@ -341,13 +379,13 @@ public partial class LeakViewModel : ViewModelBase
     {
         PhaseText = "尝试经排空阀泄压…";
         var ids = tested.Select(c => c.Id).ToArray();
-        var before = await _main.ReadPressuresAsync();
+        var before = await SampleAsync(LeakRecord.Vent, tested);
         var f = ValveFrame.VentOnly(ids);
         await _main.ApplyValvesAsync(f, ct);
         await _main.HoldAsync(f, 6, ct);
         await _main.ApplyValvesAsync(ValveFrame.AllClosed(), ct);
         await _main.HoldAsync(ValveFrame.AllClosed(), 0.5, ct);
-        var after = await _main.ReadPressuresAsync();
+        var after = await SampleAsync(LeakRecord.Vent, tested);
         foreach (var c in tested) c.Pressure = after[c.Id - 1];
         return tested.All(c => after[c.Id - 1] < Math.Max(2.0, before[c.Id - 1] * 0.2));
     }

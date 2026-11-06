@@ -117,13 +117,13 @@ public partial class SettingViewModel : ViewModelBase
     [RelayCommand]
     private void EditBound1()
         => _main.Keyboard.OpenNumeric("低温 / 中温 分界", TempBands[0].Hi, "℃", 10, TempBands[1].Hi - 10,
-            v => { TempBands[0].Hi = v; TempBands[1].Lo = v; _main.PersistSoon(); });
+            v => { _main.LogSetting("低温 / 中温 分界", Fmt(TempBands[0].Hi, "℃"), Fmt(v, "℃")); TempBands[0].Hi = v; TempBands[1].Lo = v; _main.PersistSoon(); });
 
     /// <summary>改「中温/高温」分界（=中温档上限=高温档下限）。</summary>
     [RelayCommand]
     private void EditBound2()
         => _main.Keyboard.OpenNumeric("中温 / 高温 分界", TempBands[1].Hi, "℃", TempBands[0].Hi + 10, 390,
-            v => { TempBands[1].Hi = v; TempBands[2].Lo = v; _main.PersistSoon(); });
+            v => { _main.LogSetting("中温 / 高温 分界", Fmt(TempBands[1].Hi, "℃"), Fmt(v, "℃")); TempBands[1].Hi = v; TempBands[2].Lo = v; _main.PersistSoon(); });
 
     /// <summary>自整定按钮（再次点击=取消并停止输出）。SP 未设时先弹键盘设整定目标温度——
     /// AI-8 整定是在 SP 附近振荡，SP=0 时加热不会开、仪表会永远卡在「整定中」。</summary>
@@ -133,12 +133,13 @@ public partial class SettingViewModel : ViewModelBase
         if (ch.Autotuning)
         {
             await _main.Temp.CancelAutotuneAsync(ch.Id);
+            _main.Alarm.Log("info", ch.Name, "取消自整定", "At=4 停止输出");
             _main.Toast("ok", $"{ch.Name} 已取消自整定并停止输出");
             return;
         }
 
         // 自整定会让仪表全功率加热振荡：急停锁定 / 温控未配置或离线时不允许发起
-        if (_main.HeatBlockReason() is { } why) { _main.Toast("err", why); return; }
+        if (_main.HeatBlockReason(ch.Id) is { } why) { _main.Toast("err", why); return; }
         _main.Keyboard.OpenNumeric($"{ch.Name} 整定目标温度（整定在此温度附近振荡）", 150, "℃", 40, _main.Settings.TMaxSp,
                 v => _ = StartTuneWithSpAsync(ch, v));
     }
@@ -156,6 +157,8 @@ public partial class SettingViewModel : ViewModelBase
         try { await _main.Temp.SetSetpointAsync(ch.Id, sp); }
         catch { _main.Toast("err", "SP 下发失败，未启动整定"); return; }
         var err = await _main.Temp.AutotuneAsync(ch.Id);
+        _main.Alarm.Log(err == null ? "info" : "warn", ch.Name, err == null ? "启动自整定" : "自整定未启动",
+            err == null ? $"整定目标 {Fmt(sp, "℃")}" : err);
         _main.Toast(err == null ? "ok" : "err",
             err == null ? $"{ch.Name} 已设目标 {sp:0}℃ 并启动自整定" : err);
     }
@@ -163,17 +166,29 @@ public partial class SettingViewModel : ViewModelBase
     [RelayCommand]
     private void EditTempP(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 比例带 P", ch.P, "", 0, 3200,
-            v => _ = _main.Temp.SetPidAsync(ch.Id, v, ch.I, ch.D));
+            v => _ = SetPidLoggedAsync(ch, "P", Fmt(ch.P, ""), Fmt(v, ""), v, ch.I, ch.D));
 
     [RelayCommand]
     private void EditTempI(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 积分时间 I", ch.I, "s", 0, 3200,
-            v => _ = _main.Temp.SetPidAsync(ch.Id, ch.P, v, ch.D));
+            v => _ = SetPidLoggedAsync(ch, "I", Fmt(ch.I, "s"), Fmt(v, "s"), ch.P, v, ch.D));
 
     [RelayCommand]
     private void EditTempD(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 微分时间 D", ch.D, "s", 0, 327,
-            v => _ = _main.Temp.SetPidAsync(ch.Id, ch.P, ch.I, v));
+            v => _ = SetPidLoggedAsync(ch, "D", Fmt(ch.D, "s"), Fmt(v, "s"), ch.P, ch.I, v));
+
+    /// <summary>写 PID 并记设置事件：写入成功才记「旧 → 新」，失败记一条未生效（以前失败时静默）。</summary>
+    private async System.Threading.Tasks.Task SetPidLoggedAsync(Services.TempChannel ch, string key, string oldV, string newV, double p, double i, double d)
+    {
+        try { await _main.Temp.SetPidAsync(ch.Id, p, i, d); }
+        catch
+        {
+            _main.Alarm.Log("err", "设置", $"修改 · {ch.Name} {key} 失败", $"{oldV} → {newV} · AI-8 写入失败，未生效");
+            return;
+        }
+        _main.LogSetting($"{ch.Name} {key}", oldV, newV);
+    }
 
     private volatile bool _netBusy;   // 防止上一次网卡枚举没回来又发起新的
 
@@ -278,15 +293,61 @@ public partial class SettingViewModel : ViewModelBase
     private SetRow PressureUnitRow()
     {
         var row = SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "MPa", "bar", "psi" }, "Pressure Unit");
-        row.OnSelChanged = Models.Units.SetPressure;   // MainViewModel 订阅 Units.Changed 后刷新界面
+        row.OnSelChanged = u =>   // MainViewModel 订阅 Units.Changed 后刷新界面
+        {
+            string old = Models.Units.Pressure;
+            Models.Units.SetPressure(u);
+            _main.LogSetting("压力单位", old, Models.Units.Pressure);
+        };
         return row;
+    }
+
+    /// <summary>事件文字里的数值按 InvariantCulture（小数点「.」）。</summary>
+    private static string Fmt(double v, string unit)
+    {
+        string n = v.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        return unit.Length > 0 ? $"{n} {unit}" : n;
+    }
+
+    /// <summary>+/− 连点后尚未记下的设置修改（停手 1.5s 才记）：退出程序前由 <see cref="FlushPendingSettingLogs"/> 立即记下。</summary>
+    private readonly List<(DispatcherTimer Timer, Action Commit)> _settles = new();
+
+    /// <summary>立即记下所有尚在等待的设置修改事件（退出程序前调用）。</summary>
+    public void FlushPendingSettingLogs()
+    {
+        foreach (var (t, commit) in _settles)
+        {
+            if (!t.IsEnabled) continue;
+            t.Stop();
+            commit();
+        }
     }
 
     /// <summary>构造一行可编辑数值：双向回写全局设置，点数值弹键盘。</summary>
     private SetRow Num(string label, double value, string unit, double min, double max, double step, Action<double> apply, string? sub = null)
     {
         var row = SetRow.Num(label, value, unit, min, max, step, sub);
-        row.Apply = apply;
+        // 设置修改事件：+/− 连点每步都会回写，停手 1.5s 后才记一条（旧值 → 最终值），避免一步一条
+        double committed = value;
+        DispatcherTimer? settle = null;
+        void Commit()
+        {
+            double now = row.NumValue;
+            _main.LogSetting(label, Fmt(committed, unit), Fmt(now, unit));
+            committed = now;
+        }
+        row.Apply = v =>
+        {
+            apply(v);
+            if (settle == null)
+            {
+                settle = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
+                settle.Tick += (_, _) => { settle.Stop(); Commit(); };
+                _settles.Add((settle, Commit));
+            }
+            settle.Stop();
+            settle.Start();
+        };
         row.EditRequest = () => _main.Keyboard.OpenNumeric(label, row.NumValue, unit, min, max, v => row.NumValue = v);
         return row;
     }
@@ -435,8 +496,10 @@ public partial class SettingViewModel : ViewModelBase
             {
                 SetSection.Card(
                     SetRow.Val("设置与 PID 存档", Services.SettingsStore.FilePath, "全局设置、报警阈值、温区边界与 8 通道 PID"),
+                    SetRow.Val("运行记录目录", _main.Logger.Dir,
+                        "telemetry-日期.csv 每 1.2s 一行 · events-日期.csv 报警与事件 · leak/ 泄漏测试逐点数据（环境变量 PR_DATA_DIR 可改）"),
                     _diskRow),
-                SetSection.Note("运行记录、曲线导出与外部数据库对接尚未实现。"),
+                SetSection.Note("曲线导出与外部数据库对接尚未实现。"),
             },
         });
 

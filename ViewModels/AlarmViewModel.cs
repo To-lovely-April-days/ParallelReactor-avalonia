@@ -18,8 +18,15 @@ public partial class AlarmViewModel : ViewModelBase
     public int Total => All.Count;
     public int ActiveCount => All.Count(a => a.Stat == "active");
 
-    /// <summary>开机为空：只记录本次运行期间真实发生的报警与事件（尚未落盘，重启后清空）。</summary>
-    public AlarmViewModel() => ApplyFilter();
+    private readonly Services.DataLogger? _logger;
+
+    /// <summary>开机为空：界面列表只显示本次运行期间的报警与事件（重启后清空）；
+    /// 每条同时追加到数据目录的 events-YYYYMMDD.csv（带日期与毫秒的完整时间戳），见 <see cref="Services.DataLogger"/>。</summary>
+    public AlarmViewModel(Services.DataLogger? logger = null)
+    {
+        _logger = logger;
+        ApplyFilter();
+    }
 
     public bool IsEmpty => Filtered.Count == 0;
 
@@ -30,10 +37,12 @@ public partial class AlarmViewModel : ViewModelBase
     /// <summary>运行时追加一条事件（置顶，"未处理"状态），并刷新过滤列表与统计。</summary>
     public void Log(string kind, string rv, string msg, string sub)
     {
+        var now = System.DateTimeOffset.Now;
+        _logger?.Event(now, kind, rv, msg, sub);
         All.Insert(0, new AlarmItem
         {
             K = kind, Rv = rv, Msg = msg, Sub = sub,
-            Time = System.DateTime.Now.ToString("HH:mm:ss"),
+            Time = now.ToString("HH:mm:ss"),
             Stat = kind == "info" ? "done" : "active",
         });
         ApplyFilter();

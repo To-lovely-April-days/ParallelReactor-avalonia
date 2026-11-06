@@ -28,6 +28,9 @@ public sealed class StirController
     /// <summary>驱动器是否在线：连续 3 次通讯失败视为离线（未配置串口时恒为离线）。</summary>
     public bool Online => _fails < 3;
 
+    /// <summary>事务统计（计数 = 全部命令与读取事务，含 Tick 每 3 次一轮的报警码 / 母线电压读取）。</summary>
+    public CommStats Stats { get; } = new();
+
     /// <summary>加减速时间（ms/1000rpm）：起停平缓度。越大起停越缓。启停/改速时随之下发。</summary>
     public int RampMs { get; set; } = 1000;
 
@@ -50,7 +53,7 @@ public sealed class StirController
             await _drive.ResetAlarmAsync();
             if (Locked) { _on = false; return false; }
             await _drive.RunVelocityAsync(rpm, RampMs, RampMs);
-            _fails = 0;
+            Ok();
         }
         catch (Exception ex) { _on = false; ReportComm(ex); return false; }
 
@@ -70,7 +73,7 @@ public sealed class StirController
     public async Task<bool> StopAsync()
     {
         _on = false;
-        try { await _drive.StopVelocityAsync(); _fails = 0; return true; }
+        try { await _drive.StopVelocityAsync(); Ok(); return true; }
         catch (Exception ex) { ReportComm(ex); return false; }
     }
 
@@ -79,67 +82,69 @@ public sealed class StirController
     {
         _rpm = rpm;
         if (!_on || Locked) return;
-        try { await _drive.RunVelocityAsync(rpm, RampMs, RampMs); _fails = 0; }
+        try { await _drive.RunVelocityAsync(rpm, RampMs, RampMs); Ok(); }
         catch (Exception ex) { ReportComm(ex); }
     }
 
     /// <summary>设置电机峰值电流（A，驱动器硬夹到 0.3–3.2）并存 EEPROM。返回实际写入的电流，通讯失败返回 null。</summary>
     public async Task<double?> SetCurrentAsync(double amps)
     {
-        try { var v = await _drive.SetPeakCurrentAsync(amps); _fails = 0; return v; }
+        try { var v = await _drive.SetPeakCurrentAsync(amps); Ok(); return v; }
         catch (Exception ex) { ReportComm(ex); return null; }
     }
 
     /// <summary>设置待机电流百分比（0–100）并存 EEPROM。返回实际写入值，通讯失败返回 null。</summary>
     public async Task<int?> SetStandbyPctAsync(int pct)
     {
-        try { var v = await _drive.SetStandbyPctAsync(pct); _fails = 0; return v; }
+        try { var v = await _drive.SetStandbyPctAsync(pct); Ok(); return v; }
         catch (Exception ex) { ReportComm(ex); return null; }
     }
 
     /// <summary>读回驱动器当前设定的峰值电流（A）= 步进电机恒流运行电流；通讯失败返回 null。</summary>
     public async Task<double?> ReadCurrentAsync()
     {
-        try { var v = await _drive.ReadPeakCurrentAsync(); _fails = 0; return v; }
+        try { var v = await _drive.ReadPeakCurrentAsync(); Ok(); return v; }
         catch (Exception ex) { ReportComm(ex); return null; }
     }
 
     /// <summary>设置细分（指令脉冲数/转）并存 EEPROM。返回实际写入值，通讯失败返回 null。</summary>
     public async Task<int?> SetMicrostepAsync(int ppr)
     {
-        try { var v = await _drive.SetMicrostepAsync(ppr); _fails = 0; return v; }
+        try { var v = await _drive.SetMicrostepAsync(ppr); Ok(); return v; }
         catch (Exception ex) { ReportComm(ex); return null; }
     }
 
     /// <summary>读回当前细分（指令脉冲数/转）；通讯失败返回 null。</summary>
     public async Task<int?> ReadMicrostepAsync()
     {
-        try { var v = await _drive.ReadMicrostepAsync(); _fails = 0; return v; }
+        try { var v = await _drive.ReadMicrostepAsync(); Ok(); return v; }
         catch { CountFail(); return null; }
     }
 
     /// <summary>读母线电压（V）；失败静默返回 null。带载电压塌陷=电源容量不足的直接证据。</summary>
     public async Task<double?> ReadBusVoltageAsync()
     {
-        try { var v = await _drive.ReadBusVoltageAsync(); _fails = 0; return v; }
+        try { var v = await _drive.ReadBusVoltageAsync(); Ok(); return v; }
         catch { CountFail(); return null; }
     }
 
     /// <summary>读报警码（0=无故障）。用于周期轮询，失败时静默返回 null（不弹通讯错，避免刷屏）。</summary>
     public async Task<ushort?> ReadAlarmAsync()
     {
-        try { var v = await _drive.ReadAlarmAsync(); _fails = 0; return v; }
+        try { var v = await _drive.ReadAlarmAsync(); Ok(); return v; }
         catch { CountFail(); return null; }
     }
 
     /// <summary>清除当前报警（0x1801=0x1111）。</summary>
     public async Task ClearAlarmAsync()
     {
-        try { await _drive.ResetAlarmAsync(); _fails = 0; }
+        try { await _drive.ResetAlarmAsync(); Ok(); }
         catch (Exception ex) { ReportComm(ex); }
     }
 
-    private void CountFail() { if (_fails < 3) _fails++; }
+    private void Ok() { _fails = 0; Stats.Ok(); }
+
+    private void CountFail() { Stats.Fail(); if (_fails < 3) _fails++; }
 
     private void ReportComm(Exception ex)
     {

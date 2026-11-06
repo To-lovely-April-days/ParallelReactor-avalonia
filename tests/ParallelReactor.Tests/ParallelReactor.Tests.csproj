@@ -11,6 +11,13 @@
   <ItemGroup>
     <Compile Include="../../Service/EmergencyStop.cs" Link="Src/EmergencyStop.cs" />
     <Compile Include="../../Models/HeatCurvePlan.cs" Link="Src/HeatCurvePlan.cs" />
+    <Compile Include="../../Service/CommStats.cs" Link="Src/CommStats.cs" />
+    <Compile Include="../../Service/TelemetryCsv.cs" Link="Src/TelemetryCsv.cs" />
+    <Compile Include="../../Service/DataLogger.cs" Link="Src/DataLogger.cs" />
+    <Compile Include="../../Models/OverTempGuard.cs" Link="Src/OverTempGuard.cs" />
+    <Compile Include="../../Models/LeakFit.cs" Link="Src/LeakFit.cs" />
+    <Compile Include="../../Models/LeakRecord.cs" Link="Src/LeakRecord.cs" />
+    <Compile Include="../../Models/GasSequence.cs" Link="Src/GasSequence.cs" />
   </ItemGroup>
 
   <ItemGroup>

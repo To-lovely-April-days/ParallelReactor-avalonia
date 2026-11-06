@@ -72,6 +72,11 @@
                      Fill="{DynamicResource AccentBright}" />
           </Canvas>
           <Border Width="1" Height="24" Background="{DynamicResource GlassLine2}" />
+          <!-- 模拟模式（PR_SIM=1）常驻标识：读数非真实设备，防止误当成现场数据 -->
+          <Border IsVisible="{Binding IsSim}" Background="{DynamicResource AccentBright}"
+                  CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+            <TextBlock Text="模拟模式 · 非真实设备" FontSize="12" FontWeight="Bold" Foreground="White" />
+          </Border>
           <!-- 服务热线 -->
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="服务热线" FontSize="10.5" Foreground="{DynamicResource Mute}"

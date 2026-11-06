@@ -32,6 +32,10 @@ public partial class Reactor : ObservableObject
     // —— 阀门 / IO ——
     [ObservableProperty] private bool _valve;
 
+    /// <summary>报警是超温切断引起的（State=Alarm 期间有效；离开报警态时自动清除）。只影响状态文字「超温」/「超压」。</summary>
+    [ObservableProperty] private bool _overTemp;
+    partial void OnOverTempChanged(bool value) => OnPropertyChanged(nameof(StateZh));
+
     // —— 已应用配方（标签）——
     private string _appliedRecipe = "";
     public string AppliedRecipe
@@ -94,7 +98,7 @@ public partial class Reactor : ObservableObject
         ReactorState.React => "反应中",
         ReactorState.Pressing => "升压中",
         ReactorState.Heating => "升温中",
-        ReactorState.Alarm => "超压",
+        ReactorState.Alarm => OverTemp ? "超温" : "超压",
         ReactorState.Done => "已结束",
         ReactorState.Ready => "已启用",
         ReactorState.Wait => "等待中",
@@ -116,6 +120,7 @@ public partial class Reactor : ObservableObject
     /// <summary>状态变化时同步刷新派生属性</summary>
     partial void OnStateChanged(ReactorState value)
     {
+        if (value != ReactorState.Alarm) OverTemp = false;
         OnPropertyChanged(nameof(StateZh));
         OnPropertyChanged(nameof(IsIdle));
         OnPropertyChanged(nameof(IsDone));
