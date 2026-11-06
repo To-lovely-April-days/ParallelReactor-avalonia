@@ -21,6 +21,11 @@ public partial class ProgramViewModel
     private CancellationTokenSource? _regCts;   // 后台稳压回路（升压步骤 regulate=开启）
     private Task? _regTask;
     private Task? _abortOutputsTask;
+    /// <summary>
+    /// 中止指令（含其停加热）发出之后，执行流程又碰过加热输出（例如曲线升温的全链启动恰好在中止期间完成）：
+    /// finally 不能复用中止时的停加热任务，必须重新下发一次。
+    /// </summary>
+    private bool _heatTouchedAfterAbort;
 
     /// <summary>程序执行中的步骤故障（非气路）：程序中止并收尾。</summary>
     private sealed class ProgFaultException : Exception { public ProgFaultException(string m) : base(m) { } }
@@ -29,15 +34,16 @@ public partial class ProgramViewModel
     /// 中止当前程序（幂等）：先同步停止曲线 / 防超调 / 搅拌，并立即下发当前通道的停加热，
     /// 再取消流程令牌，让 ExecuteAsync 继续完成阀门和状态收尾。
     /// </summary>
-    public void AbortProgram()
+    /// <returns>是否确有程序被中止（false = 没有程序在执行）。</returns>
+    public bool AbortProgram()
     {
-        if (!IsRunningProgram) return;
+        if (!IsRunningProgram) return false;
 
         _progCts?.Cancel();
         _regCts?.Cancel();
-        _main.AbortGas();
+        _main.AbortGas(GasOwner.Program);   // 只中止程序自己的气路占用：不波及泄漏测试（C8）
 
-        if (_main.FindReactor(_runRv) is { } c)
+        if (RunningRv is { } rv && _main.FindReactor(rv) is { } c)
         {
             // 这三项不等待异步流程，按下「立即停止」后立刻停止后续给定值和桨叶输出。
             c.Profile.Stop();
@@ -56,31 +62,41 @@ public partial class ProgramViewModel
             RunSteps[RunCurrentStepIndex].SetState(ProgramRunState.Aborted, "停止指令已下发");
         RunMonitorPhase = "正在安全停止";
         RunMonitorDetail = "正在停止加热、搅拌并完成设备收尾…";
+        return true;
     }
 
     // ============ 主流程 ============
 
-    private async Task ExecuteAsync(int rv, List<ProgramStep> steps)
+    /// <summary>执行一份下发时冻结的程序副本（<see cref="StepSnapshot"/>）：执行中再编辑程序不影响本次执行。</summary>
+    private async Task ExecuteAsync(int rv, IReadOnlyList<StepSnapshot> steps)
     {
         var c = _main.FindReactor(rv);
         if (c == null || steps.Count == 0) return;
+        if (IsRunningProgram) return;   // 防御：同一时间只执行一个程序（入口 ConfirmRun 已守卫）
         _progCts?.Dispose();
         _progCts = new CancellationTokenSource();
         var ct = _progCts.Token;
-        IsRunningProgram = true;
-        _main.Alarm.Log("info", "系统", $"RV{rv} 程序下发", $"共 {steps.Count} 步，开始执行");
+        _heatTouchedAfterAbort = false;
         string? fail = null;
         bool aborted = false;
         int currentIndex = -1;
+        RunningRv = rv;
+        IsRunningProgram = true;
         try
         {
+            // 事件记录放进 try：写事件文件出错也要走 finally 清掉 RunningRv / IsRunningProgram，否则程序永远显示执行中
+            _main.Alarm.Log("info", "系统", $"RV{rv} 程序下发", $"共 {steps.Count} 步，开始执行");
             for (int i = 0; i < steps.Count; i++)
             {
+                // 每步开始前查取消：中止后不能再进入下一步（下一步若是升温会同步重新打开加热）
+                ct.ThrowIfCancellationRequested();
                 currentIndex = i;
                 MarkRunStepStarted(i);
                 try
                 {
                     await RunStepAsync(c, steps[i], steps.Count, ct);
+                    // 步骤可能在不可取消的等待（读压力 / 串口）期间被中止而「正常」返回：按中止处理，不标记完成
+                    ct.ThrowIfCancellationRequested();
                     MarkRunStepCompleted(i);
                 }
                 catch (OperationCanceledException)
@@ -102,15 +118,19 @@ public partial class ProgramViewModel
         finally
         {
             await StopRegulationAsync();
-            if (_main.GasBusy) { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+            // 只收拾程序自己的气路占用：程序在非气路步骤时可能有泄漏测试在别的通道进行，不能关它的阀、释放它的占用（C8）
+            if (_main.GasOwnedBy(GasOwner.Program)) { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); }
             if (c.Profile.Running) c.Profile.Stop();
             c.Approach.Stop();
             if (!_main.Estopped)
             {
-                // 默认收尾：程序跑完（或中止）都停本通道加热输出并关 SV（急停时由急停流程统一处理）
+                // 默认收尾：程序跑完（或中止）都停本通道加热输出并关 SV（急停时由急停流程统一处理）。
+                // 中止时已发出的停加热只在之后没再碰过加热输出时复用，否则重新下发一次。
                 if (_abortOutputsTask is { } stopTask)
                 {
                     try { await stopTask; } catch { }
+                    if (_heatTouchedAfterAbort)
+                        await _main.StopHeatAsync(c.Id, $"RV{c.Id} 程序收尾 · 加热输出已停止");
                 }
                 else
                     await _main.StopHeatAsync(c.Id, $"RV{c.Id} 程序收尾 · 加热输出已停止");
@@ -118,9 +138,11 @@ public partial class ProgramViewModel
             }
             // 清掉本次运行的停止任务，避免下一次程序复用已经完成的任务句柄。
             _abortOutputsTask = null;
+            _heatTouchedAfterAbort = false;
             if (c.State != ReactorState.Idle) c.State = ReactorState.Done;
             c.Rpm = 0;
             IsRunningProgram = false;
+            RunningRv = null;
             RunStatus = "";
             RunCurrentStepIndex = currentIndex;
             RunMonitorPhase = fail != null ? "程序执行失败" : aborted ? "程序已手动中止" : "程序执行完成";
@@ -147,9 +169,13 @@ public partial class ProgramViewModel
         }
     }
 
-    private async Task RunStepAsync(Reactor c, ProgramStep s, int total, CancellationToken ct)
+    private async Task RunStepAsync(Reactor c, StepSnapshot s, int total, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         string head = $"{s.Ordinal:00}/{total:00} {s.Name}";
+        // 执行前按当前全局限值再校验一次（C4：设置可能在下发后被调低）；超限拒绝本步并中止程序
+        if (ProgramLimits.CheckStep(s, Limits) is { } bad)
+            throw new ProgFaultException($"第 {s.Ordinal:00} 步 {s.Name} 参数超出全局限值：{bad}");
         switch (s.Type)
         {
             case StepType.Purge: await StepPurgeAsync(c, s, head, ct); break;
@@ -165,27 +191,28 @@ public partial class ProgramViewModel
     // ============ 各步骤 ============
 
     /// <summary>吹扫：只动共用总管（SV 全关），不改釜状态；占气路。</summary>
-    private async Task StepPurgeAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepPurgeAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         await StopRegulationAsync();   // 吹扫需独占气路：先停后台稳压
+        ct.ThrowIfCancellationRequested();   // 等稳压退出期间可能已被中止
         if (_main.GasBlockReason(needPressure: false) is { } why) throw new ProgFaultException($"吹扫：{why}");
         string gas = s.Str("gas", "惰性气体");
         int cycles = (int)Math.Round(s.Num("cycles", 10));
         double fill = s.Num("fill", 3), vent = s.Num("vent", 5);
         _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 开始管路吹扫",
             $"{gas} × {cycles} 次 · 充 {StepDef.N(fill)}s / 排 {StepDef.N(vent)}s · SV 全关");
-        var gct = _main.BeginGas($"RV{c.Id} 程序");
+        var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序", new[] { c.Id });
         using var link = CancellationTokenSource.CreateLinkedTokenSource(ct, gct);
         try
         {
             await _main.RunPurgeAsync(PurgePlan.GasIndex(gas), cycles, fill, vent,
                 (cy, n, phase) => RunStatus = $"{head} · {gas} {cy}/{n} · {phase}", link.Token);
         }
-        finally { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+        finally { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); }
     }
 
     /// <summary>升温：定值（防超调逼近 + 平衡等待）或 16 段曲线（引擎私有曲线，不动通道的抽屉曲线配置）。</summary>
-    private async Task StepHeatAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepHeatAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         if (_main.HeatBlockReason(c.Id) is { } why) throw new ProgFaultException($"升温：{why}");
         if (c.Profile.Running) c.Profile.Stop();
@@ -194,8 +221,7 @@ public partial class ProgramViewModel
         if (s.Str("mode", "fixed") != "curve")
         {
             // —— 定值升温：全链启动（SP 走防超调逼近，由 Tick 推进）——
-            double temp = s.Num("temp", 150), waitMin = s.Num("wait", 15);
-            if (temp < 35) throw new ProgFaultException($"升温：目标温度 {StepDef.N(temp)}℃ 低于 35℃，无法启动加热");
+            double temp = s.Num("temp", 150), waitMin = s.Num("wait", 15);   // 35℃ 下限 / 上限已在 RunStepAsync 校验
             c.SpMode = "fixed";
             c.TSp = temp;
             _main.StartFixedHeat(c);
@@ -228,9 +254,9 @@ public partial class ProgramViewModel
         }
 
         // —— 曲线升温：步骤段（温度/斜率/保温）→ 引擎私有曲线，SP 由本循环周期下发 ——
-        s.EnsureSegments();
+        // 段来自下发快照（曲线模式缺省段已在快照里补齐），不再改动编辑中的步骤
         double startPv = c.TOnline && c.T > 1 ? c.T : 25;
-        var conv = ProgramStep.ToProfileSegments(s.Segments, startPv);
+        var conv = HeatCurvePlan.ToProfileSegments(s.Segments.ToList(), startPv);
         if (conv.Count == 0) throw new ProgFaultException("升温曲线为空（各段温度与起点相同且无保温段）");
         var prof = new TempProfile { SegCount = conv.Count };
         for (int i = 0; i < conv.Count; i++)
@@ -239,7 +265,14 @@ public partial class ProgramViewModel
             prof.Segments[i].Minutes = conv[i].Minutes;
         }
         double bandTemp = Math.Max(startPv, conv.Max(x => x.Temp));
-        if (!await _main.Temp.StartChannelAsync(c.Id, bandTemp, startPv))
+        bool started = await _main.Temp.StartChannelAsync(c.Id, bandTemp, startPv);
+        if (ct.IsCancellationRequested)
+        {
+            // 全链启动期间被中止：中止时的停加热可能先于这次启动落到仪表，收尾必须再停一次
+            _heatTouchedAfterAbort = true;
+            ct.ThrowIfCancellationRequested();
+        }
+        if (!started)
         {
             _main.ReportHeatStartFailed(c.Id);
             throw new ProgFaultException("升温曲线启动失败（温控通讯）");
@@ -260,35 +293,37 @@ public partial class ProgramViewModel
     }
 
     /// <summary>升压：自适应脉冲充压到目标（从下方逼近不超调）；稳压开启时移交后台稳压回路。</summary>
-    private async Task StepPressAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepPressAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         string gas = s.Str("gas", "气体 A");
         double target = s.Num("pres", 50);
-        bool regulate = s.Str("regulate", "开启") == "开启";
-        if (target >= _main.Settings.OverPressure)
-            throw new ProgFaultException(
-                $"升压：目标 {StepDef.N(target)} psi ≥ 超压阈值 {StepDef.N(_main.Settings.OverPressure)} psi，已拒绝");
+        bool regulate = s.Str("regulate", "开启") == "开启";   // 目标上限（PMaxSp / 超压值 90%）已在 RunStepAsync 校验
         await StopRegulationAsync();   // 新的升压取代旧稳压
-        if (_main.GasBlockReason(needPressure: true) is { } why) throw new ProgFaultException($"升压：{why}");
+        ct.ThrowIfCancellationRequested();   // 等稳压退出期间可能已被中止：不能再把通道改回「升压中」
+        // 本通道自己处于升压 / 反应（连续两个升压步骤、反应后补压）不算占用
+        if (_main.GasBlockReason(needPressure: true, selfId: c.Id) is { } why) throw new ProgFaultException($"升压：{why}");
 
         int gi = PurgePlan.GasIndex(gas);
         c.PSp = target;
         SetState(c, ReactorState.Pressing);
         _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 升压", $"{gas} 到 {StepDef.N(target)} psi · 稳压{(regulate ? "开启" : "关闭")}");
-        var gct = _main.BeginGas($"RV{c.Id} 程序 · 升压", new[] { c.Id });
+        var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序 · 升压", new[] { c.Id }, new[] { c.Id });
         using var link = CancellationTokenSource.CreateLinkedTokenSource(ct, gct);
         bool handOver = false;
         try
         {
             await FillToAsync(c, gi, target, head, link.Token);
+            // 最后一次读压力不可取消：期间被中止（程序中止 / 全部停止 / 联锁）时 FillToAsync 仍会正常返回，
+            // 此时不能再移交稳压（续租会换出未取消的新令牌）
+            link.Token.ThrowIfCancellationRequested();
             _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 升压完成", $"{gas} 到 {StepDef.N(target)} psi");
             if (regulate) { StartRegulation(c, gi, target, ct); handOver = true; }
         }
-        finally { if (!handOver) { await _main.CloseAllValvesAsync(); _main.EndGas(); } }
+        finally { if (!handOver) { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); } }
     }
 
     /// <summary>搅拌：全局转速下发（全机共用一台搅拌器），按「搅拌时长」停留后自动停搅拌并进下一步。</summary>
-    private async Task StepStirAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepStirAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         int rpm = (int)Math.Round(s.Num("rpm", 1000));
         double durMin = s.Num("dur", 5);
@@ -314,7 +349,7 @@ public partial class ProgramViewModel
     }
 
     /// <summary>等待：固定时长 / 等温度到位（|T−TSp|≤2℃）/ 等压力到位（|P−PSp|≤3%），均以「最长时间」为上限。</summary>
-    private async Task StepWaitAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepWaitAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         string mode = s.Str("mode", "固定时长");
         double capMin = s.Num("time", 30);
@@ -337,7 +372,7 @@ public partial class ProgramViewModel
     }
 
     /// <summary>反应：倒计时。气体消耗结束条件 v1 未实现（ΔP→mmol 需釜容标定），退化为按最长时间并明确提示。</summary>
-    private async Task StepReactAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepReactAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         string endBy = s.Str("endBy", "两者先到");
         double timeMin = s.Num("time", 120), mmol = s.Num("mmol", 5);
@@ -356,16 +391,18 @@ public partial class ProgramViewModel
     }
 
     /// <summary>结束：先停加热降温至 cool，再按方式收尾（密封/排空/淬灭/吹扫）。</summary>
-    private async Task StepEndAsync(Reactor c, ProgramStep s, string head, CancellationToken ct)
+    private async Task StepEndAsync(Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         string mode = s.Str("mode", "密封 (推荐)");
         double cool = s.Num("cool", 40);
         await StopRegulationAsync();
+        ct.ThrowIfCancellationRequested();
 
         // 先停加热并降温（温控离线时固定等 10 分钟兜底）
         if (c.Profile.Running) c.Profile.Stop();
         c.Approach.Stop();
         await _main.StopHeatAsync(c.Id, $"RV{c.Id} 程序 · 结束步骤停加热");
+        ct.ThrowIfCancellationRequested();   // 中止后不能再把被外部停止 / 停用的通道改回「降温中」
         SetState(c, ReactorState.Cooling);
         var sw = Stopwatch.StartNew();
         double capMin = c.TOnline ? 60 : 10;
@@ -380,17 +417,17 @@ public partial class ProgramViewModel
         if (mode == "密封 (推荐)")
         {
             if (_main.GasBlockReason(needPressure: false) is { } why) throw new ProgFaultException($"结束·密封：{why}");
-            var gct = _main.BeginGas($"RV{c.Id} 程序 · 密封");
+            var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序 · 密封", new[] { c.Id });
             using var link = CancellationTokenSource.CreateLinkedTokenSource(ct, gct);
             try { await _main.ApplyValvesAsync(ValveFrame.AllClosed(), link.Token); }
-            finally { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+            finally { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); }
             _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 密封", "SV 全关，釜内保压密闭");
         }
         else if (mode is "排空" or "淬灭")
         {
             if (_main.GasBlockReason(needPressure: true) is { } why) throw new ProgFaultException($"结束·{mode}：{why}");
             if (mode == "淬灭") _main.Alarm.Log("warn", "系统", $"RV{c.Id} 程序 · 淬灭", "无淬灭硬件，按排空处理（放尽反应气）");
-            var gct = _main.BeginGas($"RV{c.Id} 程序 · {mode}", new[] { c.Id });
+            var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序 · {mode}", new[] { c.Id }, new[] { c.Id });
             using var link = CancellationTokenSource.CreateLinkedTokenSource(ct, gct);
             try
             {
@@ -406,20 +443,20 @@ public partial class ProgramViewModel
                 }
                 await _main.ApplyValvesAsync(ValveFrame.AllClosed(), link.Token);
             }
-            finally { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+            finally { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); }
             _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · {mode}", "已排至常压并全关");
         }
         else if (mode == "吹扫")
         {
             if (_main.GasBlockReason(needPressure: false) is { } why) throw new ProgFaultException($"结束·吹扫：{why}");
-            var gct = _main.BeginGas($"RV{c.Id} 程序 · 吹扫");
+            var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序 · 吹扫", new[] { c.Id });
             using var link = CancellationTokenSource.CreateLinkedTokenSource(ct, gct);
             try
             {
                 await _main.RunPurgeAsync(0, 3, 3, 5,
                     (cy, n, phase) => RunStatus = $"{head} · 吹扫 {cy}/{n} · {phase}", link.Token);
             }
-            finally { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+            finally { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program); }
             _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 吹扫", "惰性气吹扫总管 3 循环");
         }
         SetState(c, ReactorState.Done);
@@ -460,12 +497,13 @@ public partial class ProgramViewModel
     {
         _regCts?.Cancel();
         _regCts = new CancellationTokenSource();
-        var gct = _main.BeginGas($"RV{c.Id} 程序 · 稳压", new[] { c.Id });
-        _regTask = RegulateAsync(c, gasIdx, target,
+        var gct = _main.BeginGas(GasOwner.Program, $"RV{c.Id} 程序 · 稳压", new[] { c.Id }, new[] { c.Id });
+        long gen = _main.GasGeneration;   // 收尾只释放本段租约：晚到的 finally 不能释放之后的程序气路占用
+        _regTask = RegulateAsync(c, gasIdx, target, gen,
             CancellationTokenSource.CreateLinkedTokenSource(progCt, gct, _regCts.Token).Token);
     }
 
-    private async Task RegulateAsync(Reactor c, int gasIdx, double target, CancellationToken ct)
+    private async Task RegulateAsync(Reactor c, int gasIdx, double target, long gen, CancellationToken ct)
     {
         double band = Math.Max(1, target * 0.03);
         double? gain = null;
@@ -494,7 +532,11 @@ public partial class ProgramViewModel
             _main.Toast("err", $"RV{c.Id} 稳压中止 · {ex.Message}");
             _main.Alarm.Log("err", "系统", $"RV{c.Id} 稳压中止", ex.Message);
         }
-        finally { await _main.CloseAllValvesAsync(); _main.EndGas(); }
+        finally
+        {
+            // 只有气路仍归程序时才收尾（被超压联锁 / 急停中止后可能已被释放，不能误关别的序列的阀）
+            if (_main.GasOwnedBy(GasOwner.Program, gen)) { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program, gen); }
+        }
     }
 
     private async Task StopRegulationAsync()

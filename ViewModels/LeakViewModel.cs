@@ -85,9 +85,12 @@ public partial class LeakViewModel : ViewModelBase
         if (Running) _main.Toast("ok", "泄漏测试在后台继续 · 点工具栏「泄漏测试」查看进度");
     }
 
-    /// <summary>中止测试（同「全部停止」：序列收到取消后全关阀）。</summary>
+    /// <summary>
+    /// 中止泄漏测试（序列收到取消后全关阀）。只中止泄漏测试自己（C8）：气路此刻若由程序占用（吹扫 / 升压 / 稳压），不受影响。
+    /// 要停止一切请用工具栏「全部停止」。
+    /// </summary>
     [RelayCommand]
-    private void Abort() => _main.AbortGas();
+    private void Abort() => _main.AbortGas(GasOwner.Leak);
 
     [RelayCommand]
     private void ShowDiag()
@@ -106,6 +109,14 @@ public partial class LeakViewModel : ViewModelBase
         if (Running) return;
         var picked = Cells.Where(c => c.CanPick && c.Selected).ToList();
         if (picked.Count == 0) { _main.Toast("warn", "请至少选择一个测试通道"); return; }
+        // 可选通道是面板打开时算的：开始前按当前状态再查一次（期间可能有通道开始运行 / 开始执行程序）
+        var nowBusy = picked.Where(c => _main.FindReactor(c.Id) is not { } r || r.IsRunning || _main.Program.RunningRv == c.Id)
+                            .Select(c => "RV" + c.Id).ToList();
+        if (nowBusy.Count > 0)
+        {
+            _main.Toast("err", $"{string.Join("、", nowBusy)} 已在运行或正在执行程序 · 请重新打开泄漏测试选择通道");
+            return;
+        }
         // 阀门 / 压力采集未配置或离线一律拒绝：充压必须按实测压力闭环，并全程做超压监视
         if (_main.GasBlockReason(needPressure: true) is { } why) { _main.Toast("err", why); return; }
         if (_main.Settings.LeakTestPsi >= _main.Settings.OverPressure * 0.9)
@@ -131,7 +142,7 @@ public partial class LeakViewModel : ViewModelBase
             if (picked.Contains(c)) { c.Status = ""; c.Detail = "…"; }
             else { c.Status = "skip"; c.Detail = c.CanPick ? "不测" : "运行中"; }
         }
-        var ct = _main.BeginGas("泄漏测试", ids);
+        var ct = _main.BeginGas(GasOwner.Leak, "泄漏测试", ids, ids);
         _rec = new LeakRecord(DateTimeOffset.Now);
         _main.Logger.AddMarker($"泄漏测试开始 {_rec.RunId}");
         _main.Alarm.Log("info", "系统", "泄漏测试开始",
@@ -189,7 +200,7 @@ public partial class LeakViewModel : ViewModelBase
         finally
         {
             await _main.CloseAllValvesAsync();
-            _main.EndGas();
+            _main.EndGas(GasOwner.Leak);
             Running = false;
         }
 
@@ -490,7 +501,8 @@ public partial class LeakViewModel : ViewModelBase
         Cells.Clear();
         foreach (var r in _main.Reactors.Take(8))
         {
-            bool canPick = !r.IsRunning;
+            // 运行中、或正被程序占用（含程序里处于已结束 / 已启用状态的阶段，C20）的通道不可选
+            bool canPick = !r.IsRunning && _main.Program.RunningRv != r.Id;
             Cells.Add(new LeakCell
             {
                 Id = r.Id,

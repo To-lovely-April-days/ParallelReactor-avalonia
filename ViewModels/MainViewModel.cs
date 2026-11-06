@@ -638,7 +638,8 @@ public partial class MainViewModel : ViewModelBase
 
     public void CopyConfigToAll(Reactor src)
     {
-        foreach (var x in Reactors.Where(r => r.State != ReactorState.Idle))
+        // 正在执行程序的通道不改：程序的「等待温度 / 压力到位」按通道给定值判断，复制会改变程序行为
+        foreach (var x in Reactors.Where(r => r.State != ReactorState.Idle && r.Id != Program.RunningRv))
         {
             x.TSp = src.TSp; x.PSp = src.PSp; x.RpmSp = src.RpmSp;
             x.Vol = src.Vol; x.Blade = src.Blade; x.End = src.End; x.Run = src.Run;
@@ -678,11 +679,15 @@ public partial class MainViewModel : ViewModelBase
             ManualValve ? "手动阀控已开启 · 点击阀门可手动操作" : "手动阀控已关闭");
     }
 
+    /// <summary>
+    /// 全部停止：中止任何气路占用者（含泄漏测试 / 程序的吹扫、升压、稳压，<see cref="AbortAllGas"/>），
+    /// 中止程序，停全部通道加热并全关阀。与泄漏测试面板 / 程序的「中止」不同，它不区分占用者（C8）。
+    /// </summary>
     [RelayCommand]
     private async Task StopAll()
     {
         bool gas = GasBusy;
-        AbortGas();   // 吹扫 / 泄漏测试：序列收到取消后自己也会全关阀
+        AbortAllGas();   // 任何占用者的序列：收到取消后自己也会全关阀
         Program.AbortProgram();   // 有程序在执行也一并中止（含后台稳压回路）
         foreach (var c in Reactors)
         {
@@ -770,6 +775,8 @@ public partial class MainViewModel : ViewModelBase
     private void ConfirmRun()
     {
         if (EstopLocked) { IsPreRunOpen = false; Toast("err", "急停状态下不可启动 · 请先复位"); return; }
+        // 气路序列（泄漏测试 / 程序气路步骤）进行中不开始运行（C6）：确认框打开期间可能刚开始了序列
+        if (GasBusy) { IsPreRunOpen = false; Toast("err", $"{GasTask}进行中 · 无法开始运行"); return; }
         BuildPreRun();   // 弹窗打开期间模块可能掉线：确认时按最新状态重判
         if (!PreRunCanRun) { Toast("err", "存在未处理的异常项，无法开始运行"); return; }
         IsPreRunOpen = false;
@@ -801,7 +808,7 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>开始运行筛选用的通道快照（见 <see cref="RunSelection"/>）。</summary>
     private RunChannel RunChannelOf(Reactor r)
-        => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id));
+        => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id), Program.RunningRv == r.Id);
 
     /// <summary>按当前设备状态生成预运行检查项。</summary>
     private void BuildPreRun()
@@ -841,6 +848,11 @@ public partial class MainViewModel : ViewModelBase
                     ? PreRunCheck.Err("阀门", "排空阀处于开启状态，运行前必须关闭")
                     : PreRunCheck.Ok("阀门", "IO16R 在线 · 排空阀已关闭"));
 
+        // 气路：自动序列（泄漏测试 / 程序气路步骤）进行中不允许开始运行（C6）
+        PreRunChecks.Add(GasBusy
+            ? PreRunCheck.Err("气路", $"{GasTask}进行中，请等待完成或先停止")
+            : PreRunCheck.Ok("气路", "气路空闲"));
+
         // 控制模式
         PreRunChecks.Add(ManualValve
             ? PreRunCheck.Warn("控制模式", "手动阀控仍开启，自动运行时建议关闭")
@@ -859,6 +871,11 @@ public partial class MainViewModel : ViewModelBase
         PreRunChecks.Add(blocking.Count > 0
             ? PreRunCheck.Err("报警通道", $"{string.Join("、", blocking.Select(id => "RV" + id))} 存在报警或超温/超压未解除的通道，请先处理并停止 / 复位")
             : PreRunCheck.Ok("报警通道", "无报警或超温/超压未解除的通道"));
+
+        // 正在执行程序的通道由程序控制，不参与本次运行（C20）
+        if (Program.RunningRv is { } prv)
+            PreRunChecks.Add(PreRunCheck.Warn("程序通道",
+                $"RV{prv} 正在执行程序，不参与本次运行 · 注意搅拌器全机共用：开始运行会以 {StirRpm} rpm 开启搅拌（RV{prv} 也会被搅拌），程序的搅拌步骤结束 / 中止时也会停掉搅拌"));
 
         // 参与运行的通道：只有已启用 / 已结束的通道会转入升温（已在运行的通道不重复下发）
         int active = RunSelection.ToHeat(chans).Count;

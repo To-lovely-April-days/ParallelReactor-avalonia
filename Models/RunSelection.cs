@@ -8,7 +8,8 @@ namespace ParallelReactor.Models;
 /// <param name="State">当前状态。</param>
 /// <param name="OverTempTripped">超温切断已触发且未解除。</param>
 /// <param name="OverPressureTripped">超压联锁已触发且未解除。</param>
-public readonly record struct RunChannel(int Id, ReactorState State, bool OverTempTripped, bool OverPressureTripped);
+/// <param name="ProgramOwned">该通道正在执行程序（C20）：由程序控制，不参与「开始运行」，但也不阻塞。</param>
+public readonly record struct RunChannel(int Id, ReactorState State, bool OverTempTripped, bool OverPressureTripped, bool ProgramOwned = false);
 
 /// <summary>
 /// 开始运行的通道筛选（纯逻辑，单元测试直接链接）：
@@ -21,7 +22,7 @@ public static class RunSelection
     public static bool CanStartHeat(ReactorState s, bool overTempTripped, bool overPressureTripped)
         => s is ReactorState.Ready or ReactorState.Done && !overTempTripped && !overPressureTripped;
 
-    public static bool CanStartHeat(RunChannel c) => CanStartHeat(c.State, c.OverTempTripped, c.OverPressureTripped);
+    public static bool CanStartHeat(RunChannel c) => !c.ProgramOwned && CanStartHeat(c.State, c.OverTempTripped, c.OverPressureTripped);
 
     /// <summary>有报警或超温 / 超压未解除：阻塞本次运行。</summary>
     public static bool IsBlocking(RunChannel c) => c.State == ReactorState.Alarm || c.OverTempTripped || c.OverPressureTripped;

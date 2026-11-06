@@ -24,6 +24,11 @@
     <Compile Include="../../Models/AlarmLifecycle.cs" Link="Src/AlarmLifecycle.cs" />
     <Compile Include="../../Hardware/PriorityGate.cs" Link="Src/PriorityGate.cs" />
     <Compile Include="../../Service/EstopLatch.cs" Link="Src/EstopLatch.cs" />
+    <Compile Include="../../Models/StepType.cs" Link="Src/StepType.cs" />
+    <Compile Include="../../Models/StepSnapshot.cs" Link="Src/StepSnapshot.cs" />
+    <Compile Include="../../Models/ProgramLimits.cs" Link="Src/ProgramLimits.cs" />
+    <Compile Include="../../Models/ProgramRunGuard.cs" Link="Src/ProgramRunGuard.cs" />
+    <Compile Include="../../Models/GasLease.cs" Link="Src/GasLease.cs" />
   </ItemGroup>
 
   <ItemGroup>

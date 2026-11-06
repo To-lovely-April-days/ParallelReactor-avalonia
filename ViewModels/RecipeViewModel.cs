@@ -68,7 +68,7 @@ public partial class RecipeViewModel : ViewModelBase
         foreach (var c in Channels.Where(c => c.Picked && !c.Disabled))
         {
             var rv = _main.FindReactor(c.Id);
-            if (rv is null) continue;
+            if (rv is null || rv.Id == _main.Program.RunningRv) continue;   // 打开面板后才开始的程序也跳过
             rv.TSp = r.TSp;
             rv.PSp = r.PSp;
             rv.RpmSp = r.RpmSp;
@@ -92,11 +92,12 @@ public partial class RecipeViewModel : ViewModelBase
         foreach (var rv in _main.Reactors)
         {
             bool idle = rv.State == ReactorState.Idle;
+            bool prog = _main.Program.RunningRv == rv.Id;   // 正在执行程序的通道不可套配方（程序按通道给定值判断到位）
             var cp = new ChannelPick
             {
                 Id = rv.Id,
-                Disabled = idle,
-                StateText = idle ? "已停用" : rv.StateZh,
+                Disabled = idle || prog,
+                StateText = idle ? "已停用" : prog ? "程序执行中" : rv.StateZh,
                 Running = rv.State is not (ReactorState.Idle or ReactorState.Done),
             };
             cp.PropertyChanged += OnPickChanged;
