@@ -9,12 +9,16 @@ namespace ParallelReactor.Hardware;
 /// <summary>
 /// 走真实串口（RS485）的 Modbus RTU 主站。实现 <see cref="IModbusMaster"/> 的 8 个功能码。
 /// <para>
-/// 半双工：所有事务用一把信号量串行化（一问一答，收完响应再发下一帧）。串口惰性打开，
-/// 断线后下次事务会自动重连。所有阻塞式串口 I/O 都放到线程池（Task.Run），不卡 UI。
+/// 半双工：所有事务经 <see cref="PriorityGate"/> 串行化（一问一答，收完响应再发下一帧）。串口惰性打开，
+/// 断线后下次事务会自动重连。阻塞式串口 I/O 放到线程池（Task.Run），不卡 UI；排队等待不占线程。
+/// </para>
+/// <para>
+/// 优先级：<see cref="Urgent"/> 视图发出的事务（急停停止帧）排在所有普通事务（轮询、普通写入）之前，
+/// 在途的那一笔事务照常做完。同一优先级内先来先得。
 /// </para>
 /// 每条物理总线（一个串口）对应一个实例；同一总线上的多个从站共用这一个实例。
 /// </summary>
-public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
+public sealed class ModbusRtuMaster : IUrgentModbusMaster, IDisposable
 {
     private readonly string _portName;
     private readonly int _baud;
@@ -22,7 +26,7 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
     private readonly int _dataBits;
     private readonly StopBits _stopBits;
     private readonly int _timeoutMs;
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private readonly PriorityGate _gate = new();
     private SerialPort? _sp;
 
     public ModbusRtuMaster(string portName, int baud = 9600, Parity parity = Parity.None,
@@ -34,9 +38,13 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
         _dataBits = dataBits;
         _stopBits = stopBits;
         _timeoutMs = timeoutMs;
+        Urgent = new UrgentView(this);
     }
 
     public string PortName => _portName;
+
+    /// <summary>紧急视图：同一串口、同一互斥，事务插队到普通事务之前（急停用）。</summary>
+    public IModbusMaster Urgent { get; }
 
     private SerialPort EnsureOpen()
     {
@@ -60,30 +68,30 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
     // ===================== 读 =====================
 
     public Task<bool[]> ReadCoilsAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
-        => Task.Run(() => ReadBits(slave, 0x01, start, count), ct);
+        => ReadBits(slave, 0x01, start, count, false, ct);
 
     public Task<bool[]> ReadDiscreteInputsAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
-        => Task.Run(() => ReadBits(slave, 0x02, start, count), ct);
+        => ReadBits(slave, 0x02, start, count, false, ct);
 
     public Task<ushort[]> ReadHoldingRegistersAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
-        => Task.Run(() => ReadRegs(slave, 0x03, start, count), ct);
+        => ReadRegs(slave, 0x03, start, count, false, ct);
 
     public Task<ushort[]> ReadInputRegistersAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
-        => Task.Run(() => ReadRegs(slave, 0x04, start, count), ct);
+        => ReadRegs(slave, 0x04, start, count, false, ct);
 
-    private bool[] ReadBits(byte slave, byte fn, ushort start, ushort count)
+    private async Task<bool[]> ReadBits(byte slave, byte fn, ushort start, ushort count, bool urgent, CancellationToken ct)
     {
         int nbytes = (count + 7) / 8;
-        var resp = Txn(new[] { slave, fn, Hi(start), Lo(start), Hi(count), Lo(count) }, 3 + nbytes + 2);
+        var resp = await Txn(new[] { slave, fn, Hi(start), Lo(start), Hi(count), Lo(count) }, 3 + nbytes + 2, urgent, ct).ConfigureAwait(false);
         var bits = new bool[count];
         for (int i = 0; i < count; i++)
             bits[i] = (resp[3 + i / 8] & (1 << (i % 8))) != 0;
         return bits;
     }
 
-    private ushort[] ReadRegs(byte slave, byte fn, ushort start, ushort count)
+    private async Task<ushort[]> ReadRegs(byte slave, byte fn, ushort start, ushort count, bool urgent, CancellationToken ct)
     {
-        var resp = Txn(new[] { slave, fn, Hi(start), Lo(start), Hi(count), Lo(count) }, 3 + count * 2 + 2);
+        var resp = await Txn(new[] { slave, fn, Hi(start), Lo(start), Hi(count), Lo(count) }, 3 + count * 2 + 2, urgent, ct).ConfigureAwait(false);
         var regs = new ushort[count];
         for (int i = 0; i < count; i++)
             regs[i] = (ushort)((resp[3 + i * 2] << 8) | resp[3 + i * 2 + 1]);
@@ -93,45 +101,65 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
     // ===================== 写 =====================
 
     public Task WriteSingleCoilAsync(byte slave, ushort addr, bool on, CancellationToken ct = default)
-        => Task.Run(() => Txn(new byte[] { slave, 0x05, Hi(addr), Lo(addr), (byte)(on ? 0xFF : 0x00), 0x00 }, 8), ct);
+        => Txn(SingleCoilPdu(slave, addr, on), 8, false, ct);
 
     public Task WriteSingleRegisterAsync(byte slave, ushort addr, ushort value, CancellationToken ct = default)
-        => Task.Run(() => Txn(new[] { slave, (byte)0x06, Hi(addr), Lo(addr), Hi(value), Lo(value) }, 8), ct);
+        => Txn(SingleRegPdu(slave, addr, value), 8, false, ct);
 
     public Task WriteMultipleCoilsAsync(byte slave, ushort start, bool[] values, CancellationToken ct = default)
-        => Task.Run(() =>
-        {
-            int n = values.Length;
-            int nbytes = (n + 7) / 8;
-            var pdu = new byte[7 + nbytes];
-            pdu[0] = slave; pdu[1] = 0x0F;
-            pdu[2] = Hi(start); pdu[3] = Lo(start);
-            pdu[4] = Hi((ushort)n); pdu[5] = Lo((ushort)n);
-            pdu[6] = (byte)nbytes;
-            for (int i = 0; i < n; i++)
-                if (values[i]) pdu[7 + i / 8] |= (byte)(1 << (i % 8));
-            Txn(pdu, 8);
-        }, ct);
+        => Txn(MultiCoilPdu(slave, start, values), 8, false, ct);
 
     public Task WriteMultipleRegistersAsync(byte slave, ushort start, ushort[] values, CancellationToken ct = default)
-        => Task.Run(() =>
-        {
-            int n = values.Length;
-            var pdu = new byte[7 + n * 2];
-            pdu[0] = slave; pdu[1] = 0x10;
-            pdu[2] = Hi(start); pdu[3] = Lo(start);
-            pdu[4] = Hi((ushort)n); pdu[5] = Lo((ushort)n);
-            pdu[6] = (byte)(n * 2);
-            for (int i = 0; i < n; i++) { pdu[7 + i * 2] = Hi(values[i]); pdu[8 + i * 2] = Lo(values[i]); }
-            Txn(pdu, 8);
-        }, ct);
+        => Txn(MultiRegPdu(slave, start, values), 8, false, ct);
+
+    private static byte[] SingleCoilPdu(byte slave, ushort addr, bool on)
+        => new byte[] { slave, 0x05, Hi(addr), Lo(addr), (byte)(on ? 0xFF : 0x00), 0x00 };
+
+    private static byte[] SingleRegPdu(byte slave, ushort addr, ushort value)
+        => new[] { slave, (byte)0x06, Hi(addr), Lo(addr), Hi(value), Lo(value) };
+
+    private static byte[] MultiCoilPdu(byte slave, ushort start, bool[] values)
+    {
+        int n = values.Length;
+        int nbytes = (n + 7) / 8;
+        var pdu = new byte[7 + nbytes];
+        pdu[0] = slave; pdu[1] = 0x0F;
+        pdu[2] = Hi(start); pdu[3] = Lo(start);
+        pdu[4] = Hi((ushort)n); pdu[5] = Lo((ushort)n);
+        pdu[6] = (byte)nbytes;
+        for (int i = 0; i < n; i++)
+            if (values[i]) pdu[7 + i / 8] |= (byte)(1 << (i % 8));
+        return pdu;
+    }
+
+    private static byte[] MultiRegPdu(byte slave, ushort start, ushort[] values)
+    {
+        int n = values.Length;
+        var pdu = new byte[7 + n * 2];
+        pdu[0] = slave; pdu[1] = 0x10;
+        pdu[2] = Hi(start); pdu[3] = Lo(start);
+        pdu[4] = Hi((ushort)n); pdu[5] = Lo((ushort)n);
+        pdu[6] = (byte)(n * 2);
+        for (int i = 0; i < n; i++) { pdu[7 + i * 2] = Hi(values[i]); pdu[8 + i * 2] = Lo(values[i]); }
+        return pdu;
+    }
 
     // ===================== 事务 =====================
 
-    /// <summary>发送一帧并读取完整响应（含 CRC 校验、异常码判定、地址比对）。<paramref name="expectedLen"/> 为正常响应总字节数。</summary>
-    private byte[] Txn(byte[] pdu, int expectedLen)
+    /// <summary>
+    /// 排队（紧急优先）拿到总线后，在线程池上做一次完整的一问一答。ct 只在排队之前有效：
+    /// 已排上的事务不取消（半截帧会让从站与主站错位）。
+    /// </summary>
+    private async Task<byte[]> Txn(byte[] pdu, int expectedLen, bool urgent, CancellationToken ct)
     {
-        _gate.Wait();
+        await _gate.EnterAsync(urgent, ct).ConfigureAwait(false);
+        try { return await Task.Run(() => TxnCore(pdu, expectedLen)).ConfigureAwait(false); }
+        finally { _gate.Release(); }
+    }
+
+    /// <summary>发送一帧并读取完整响应（含 CRC 校验、异常码判定、地址比对）。<paramref name="expectedLen"/> 为正常响应总字节数。调用方已持有总线。</summary>
+    private byte[] TxnCore(byte[] pdu, int expectedLen)
+    {
         try
         {
             var sp = EnsureOpen();
@@ -167,10 +195,6 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
             _sp = null;
             throw;
         }
-        finally
-        {
-            _gate.Release();
-        }
     }
 
     private static byte[] ReadExact(SerialPort sp, int n)
@@ -193,7 +217,30 @@ public sealed class ModbusRtuMaster : IModbusMaster, IDisposable
     public void Dispose()
     {
         try { _sp?.Dispose(); } catch { }
-        _gate.Dispose();
+    }
+
+    /// <summary>紧急视图：全部事务以紧急优先级排队。</summary>
+    private sealed class UrgentView : IModbusMaster
+    {
+        private readonly ModbusRtuMaster _m;
+        public UrgentView(ModbusRtuMaster m) => _m = m;
+
+        public Task<bool[]> ReadCoilsAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
+            => _m.ReadBits(slave, 0x01, start, count, true, ct);
+        public Task<bool[]> ReadDiscreteInputsAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
+            => _m.ReadBits(slave, 0x02, start, count, true, ct);
+        public Task<ushort[]> ReadHoldingRegistersAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
+            => _m.ReadRegs(slave, 0x03, start, count, true, ct);
+        public Task<ushort[]> ReadInputRegistersAsync(byte slave, ushort start, ushort count, CancellationToken ct = default)
+            => _m.ReadRegs(slave, 0x04, start, count, true, ct);
+        public Task WriteSingleCoilAsync(byte slave, ushort addr, bool on, CancellationToken ct = default)
+            => _m.Txn(SingleCoilPdu(slave, addr, on), 8, true, ct);
+        public Task WriteSingleRegisterAsync(byte slave, ushort addr, ushort value, CancellationToken ct = default)
+            => _m.Txn(SingleRegPdu(slave, addr, value), 8, true, ct);
+        public Task WriteMultipleCoilsAsync(byte slave, ushort start, bool[] values, CancellationToken ct = default)
+            => _m.Txn(MultiCoilPdu(slave, start, values), 8, true, ct);
+        public Task WriteMultipleRegistersAsync(byte slave, ushort start, ushort[] values, CancellationToken ct = default)
+            => _m.Txn(MultiRegPdu(slave, start, values), 8, true, ct);
     }
 }
 

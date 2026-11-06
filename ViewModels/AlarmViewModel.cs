@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
 
@@ -34,19 +35,70 @@ public partial class AlarmViewModel : ViewModelBase
 
     [RelayCommand] private void SetFilter(string f) => Filter = f;
 
-    /// <summary>运行时追加一条事件（置顶，"未处理"状态），并刷新过滤列表与统计。</summary>
-    public void Log(string kind, string rv, string msg, string sub)
+    /// <summary>运行时追加一条事件（置顶，"未处理"状态），并刷新过滤列表与统计。返回新条目。</summary>
+    public AlarmItem Log(string kind, string rv, string msg, string sub)
     {
         var now = System.DateTimeOffset.Now;
         _logger?.Event(now, kind, rv, msg, sub);
-        All.Insert(0, new AlarmItem
+        var item = new AlarmItem
         {
             K = kind, Rv = rv, Msg = msg, Sub = sub,
             Time = now.ToString("HH:mm:ss"),
-            Stat = kind == "info" ? "done" : "active",
-        });
+            Stat = kind == "info" ? AlarmLifecycle.Done : AlarmLifecycle.Active,
+        };
+        All.Insert(0, item);
         ApplyFilter();
         OnPropertyChanged(nameof(Total));
+        OnPropertyChanged(nameof(ActiveCount));
+        return item;
+    }
+
+    // 按条件键登记的未解除报警（ot:N 超温 / op:N 超压 / comm:K 模块掉线），条件消失时自动清除
+    private readonly AlarmIndex<AlarmItem> _index = new();
+
+    /// <summary>
+    /// 记一条可自动清除的报警：同 <see cref="Log"/>，另外登记到条件键 key 下（info 不登记）。
+    /// 之后 <see cref="Clear"/>(key) 会把该键下的全部条目置为已解除。
+    /// </summary>
+    public AlarmItem Raise(string key, string kind, string rv, string msg, string sub)
+    {
+        var item = Log(kind, rv, msg, sub);
+        if (kind != "info") _index.Raise(key, item);
+        return item;
+    }
+
+    /// <summary>该条件键下是否还有登记的（未解除的）报警。</summary>
+    public bool HasActive(string key) => _index.Count(key) > 0;
+
+    /// <summary>
+    /// 报警条件消失：该键下登记的条目 未处理 → 已解除、已确认 → 已完成（历史保留，标出解除时刻），
+    /// 再记一条 info「解除」事件（界面列表 + 事件文件）。只清报警列表，不改通道状态（通道仍需人工复位）。
+    /// 返回被清除的条目数（无登记时为 0，解除事件照记）。
+    /// </summary>
+    public int Clear(string key, string rv, string msg, string sub)
+    {
+        var items = _index.TakeActive(key);
+        var t = System.DateTimeOffset.Now.ToString("HH:mm:ss");
+        int n = 0;
+        foreach (var a in items)
+        {
+            var next = AlarmLifecycle.OnCleared(a.Stat);
+            if (next == a.Stat) continue;
+            a.Stat = next;
+            a.ClearedTime = t;
+            n++;
+        }
+        Log("info", rv, msg, n > 0 ? $"{sub} · 自动解除 {n} 条报警" : sub);   // 内含 ApplyFilter 与计数刷新
+        return n;
+    }
+
+    /// <summary>人工确认一条报警（预留：界面暂无入口）。</summary>
+    [RelayCommand]
+    private void Ack(AlarmItem? a)
+    {
+        if (a == null) return;
+        a.Stat = AlarmLifecycle.OnAck(a.Stat);
+        ApplyFilter();
         OnPropertyChanged(nameof(ActiveCount));
     }
 
@@ -60,21 +112,40 @@ public partial class AlarmViewModel : ViewModelBase
     private bool Match(AlarmItem a) => Filter switch
     {
         "all" => true,
-        "active" => a.Stat == "active",
+        "active" => a.Stat == AlarmLifecycle.Active,
         _ => a.K == Filter,
     };
 
 }
 
-/// <summary>一条报警/事件记录。</summary>
-public class AlarmItem
+/// <summary>一条报警/事件记录。Stat：active 未处理 / ack 已确认 / cleared 已解除 / done 已完成（见 <see cref="AlarmLifecycle"/>）。</summary>
+public partial class AlarmItem : ObservableObject
 {
     public string K { get; set; } = "info";
     public string Rv { get; set; } = "";
     public string Msg { get; set; } = "";
-    public string Sub { get; set; } = "";
     public string Time { get; set; } = "";
-    public string Stat { get; set; } = "done";
+
+    [ObservableProperty] private string _sub = "";
+    [ObservableProperty] private string _stat = AlarmLifecycle.Done;
+
+    /// <summary>条件消失（自动解除）的时刻 HH:mm:ss，未解除为空。</summary>
+    [ObservableProperty] private string _clearedTime = "";
+
+    public bool HasCleared => ClearedTime.Length > 0;
+
+    partial void OnSubChanged(string value) => OnPropertyChanged(nameof(HasSub));
+    partial void OnStatChanged(string value)
+    {
+        OnPropertyChanged(nameof(StatusText));
+        OnPropertyChanged(nameof(StatusBrush));
+    }
+    partial void OnClearedTimeChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasCleared));
+        // 解除时刻放在最前：Sub 单行省略显示，放末尾会被长文字截掉
+        if (value.Length > 0) Sub = $"{value} 解除" + (Sub.Length > 0 ? " · " + Sub : "");
+    }
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
 
@@ -90,6 +161,18 @@ public class AlarmItem
         _ => "M12 8v5 M12 17h.01 M21 12a9 9 0 1 1-18 0 9 9 0 1 1 18 0",
     });
 
-    public string StatusText => Stat switch { "active" => "未处理", "ack" => "已确认", _ => "已完成" };
-    public IBrush StatusBrush => Stat switch { "active" => B("#e0394c"), "ack" => B("#c9820f"), _ => B("#7d8694") };
+    public string StatusText => Stat switch
+    {
+        AlarmLifecycle.Active => "未处理",
+        AlarmLifecycle.Ack => "已确认",
+        AlarmLifecycle.Cleared => "已解除",
+        _ => "已完成",
+    };
+    public IBrush StatusBrush => Stat switch
+    {
+        AlarmLifecycle.Active => B("#e0394c"),
+        AlarmLifecycle.Ack => B("#c9820f"),
+        AlarmLifecycle.Cleared => B("#5fae14"),
+        _ => B("#7d8694"),
+    };
 }

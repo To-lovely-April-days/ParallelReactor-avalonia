@@ -17,6 +17,7 @@ namespace ParallelReactor.Services;
 public sealed class StirController
 {
     private readonly StepperDriver _drive;
+    private readonly StepperDriver? _urgentDrive;   // 同一驱动器，走总线紧急视图（急停停车帧插队）
     private bool _on;
     private int _rpm;
     private DateTime _lastCommReport = DateTime.MinValue;
@@ -34,13 +35,19 @@ public sealed class StirController
     /// <summary>加减速时间（ms/1000rpm）：起停平缓度。越大起停越缓。启停/改速时随之下发。</summary>
     public int RampMs { get; set; } = 1000;
 
-    /// <summary>急停锁定：为 true 时拒绝启动 / 改速（停止不受影响）。</summary>
-    public bool Locked { get; set; }
+    private volatile bool _locked;
+
+    /// <summary>急停锁定：为 true 时拒绝启动 / 改速（停止不受影响）。volatile：急停快速路径可能在任意线程置位。</summary>
+    public bool Locked { get => _locked; set => _locked = value; }
 
     /// <summary>串口通讯异常时触发（节流到每 5s 最多一次）。在 UI 线程回调。</summary>
     public event Action<string>? CommError;
 
-    public StirController(StepperDriver drive) => _drive = drive;
+    public StirController(StepperDriver drive, StepperDriver? urgentDrive = null)
+    {
+        _drive = drive;
+        _urgentDrive = urgentDrive;
+    }
 
     /// <summary>启动搅拌：复位报警 → 速度模式一次触发，电机持续匀速运转。返回是否下发成功（急停锁定时返回 false）。</summary>
     public async Task<bool> StartAsync(int rpm)
@@ -69,11 +76,14 @@ public sealed class StirController
         _ = StopAsync();
     }
 
-    /// <summary>停止搅拌并等待下发结果（急停用）。返回是否下发成功。</summary>
-    public async Task<bool> StopAsync()
+    /// <summary>停止搅拌并等待下发结果（急停用）。返回是否下发成功。
+    /// urgent：走总线紧急视图（急停快速路径，可在任意线程调用）。</summary>
+    public async Task<bool> StopAsync() => await StopAsync(urgent: false);
+
+    public async Task<bool> StopAsync(bool urgent)
     {
         _on = false;
-        try { await _drive.StopVelocityAsync(); Ok(); return true; }
+        try { await (urgent && _urgentDrive != null ? _urgentDrive : _drive).StopVelocityAsync(); Ok(); return true; }
         catch (Exception ex) { ReportComm(ex); return false; }
     }
 

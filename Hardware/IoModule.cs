@@ -29,4 +29,7 @@ public sealed class IoModule
 
     /// <summary>一次性写全部 16 路线圈。</summary>
     public Task SetAllCoilsAsync(bool[] coils16) => _bus.WriteMultipleCoilsAsync(_slave, 0x0000, coils16);
+
+    /// <summary>从 start 起连续写若干路线圈（0x0F），范围之外的线圈不受影响。</summary>
+    public Task SetCoilsAsync(int start, bool[] coils) => _bus.WriteMultipleCoilsAsync(_slave, (ushort)start, coils);
 }

@@ -323,6 +323,21 @@ public partial class SettingViewModel : ViewModelBase
         }
     }
 
+    /// <summary>「超压时停止加热」开关：改动立即生效并落盘（安全相关，不等退出）。</summary>
+    private SetRow StopHeatOnOverPressureRow()
+    {
+        var row = SetRow.Toggle("超压时停止加热", "超压联锁关阀、中止气路的同时下发该通道 At=4（默认开）", _main.Settings.StopHeatOnOverPressure);
+        row.ToggleApply = v =>
+        {
+            bool old = _main.Settings.StopHeatOnOverPressure;
+            if (old == v) return;
+            _main.Settings.StopHeatOnOverPressure = v;
+            _main.LogSetting("超压时停止加热", old ? "开" : "关", v ? "开" : "关");
+            _main.PersistSoon();
+        };
+        return row;
+    }
+
     /// <summary>构造一行可编辑数值：双向回写全局设置，点数值弹键盘。</summary>
     private SetRow Num(string label, double value, string unit, double min, double max, double step, Action<double> apply, string? sub = null)
     {
@@ -383,6 +398,7 @@ public partial class SettingViewModel : ViewModelBase
                     Num("溶液体积上限", _main.Settings.VolMax, "mL", 5, 200, 5, v => _main.Settings.VolMax = v)),
                 SetSection.Card("报警阈值",
                     Num("超压报警", _main.Settings.OverPressure, "psi", 100, 1000, 5, v => _main.Settings.OverPressure = v, "压力 ≥ 此值触发硬报警"),
+                    StopHeatOnOverPressureRow(),
                     Num("超温报警", _main.Settings.OverTemp, "°C", 50, 400, 5, v => _main.Settings.OverTemp = v, "温度 ≥ 此值触发报警"),
                     Num("升温超时报警", _main.Settings.HeatTimeout, "分钟", 5, 60, 1, v => _main.Settings.HeatTimeout = v, "升温超过此时长未到 SP 时提示"),
                     Num("压力偏离 SP 报警", _main.Settings.PressDeviation, "psi", 1, 50, 1, v => _main.Settings.PressDeviation = v, "稳压后偏离超过此值时提示"),
@@ -631,6 +647,10 @@ public partial class SetRow : ObservableObject
     public double Step { get; set; } = 1;
     public string[] Options { get; set; } = System.Array.Empty<string>();
     [ObservableProperty] private bool _on;
+
+    /// <summary>开关切换时回写设置（为 null 的开关只是展示）。</summary>
+    public Action<bool>? ToggleApply;
+    partial void OnOnChanged(bool value) => ToggleApply?.Invoke(value);
 
     private string _selValue = "";
     public string SelValue { get => _selValue; set { if (SetProperty(ref _selValue, value)) OnSelChanged?.Invoke(value); } }

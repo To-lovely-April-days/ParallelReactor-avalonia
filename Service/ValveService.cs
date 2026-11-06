@@ -16,6 +16,7 @@ namespace ParallelReactor.Services;
 public sealed class ValveService
 {
     private readonly IoModule _io;
+    private readonly IoModule _urgentIo;   // 同一 IO16R，走总线紧急视图（急停全关帧插队）
     private readonly bool _energizeOpens;
 
     private const int RvBase = 0;     // RV1 进气阀 = 线圈 0
@@ -30,9 +31,18 @@ public sealed class ValveService
     /// <summary>事务统计（IO16R 不做周期轮询：计数 = 全部读写事务，含气路序列每秒一次的保持心跳）。</summary>
     public CommStats Stats { get; } = new();
 
+    private volatile bool _locked;
+
+    /// <summary>
+    /// 急停锁定：为 true 时拒绝任何会<b>打开</b>阀门的写入（抛 <see cref="ValveLockedException"/>，不计通讯失败），
+    /// 关闭类写入照常。volatile：急停快速路径可能在任意线程置位。
+    /// </summary>
+    public bool Locked { get => _locked; set => _locked = value; }
+
     public ValveService(IModbusMaster bus, byte slave, bool energizeOpens)
     {
         _io = new IoModule(bus, slave);
+        _urgentIo = new IoModule(bus.AsUrgent(), slave);
         _energizeOpens = energizeOpens;
     }
 
@@ -49,27 +59,64 @@ public sealed class ValveService
 
     private Task Track(Func<Task> op) => Track(async () => { await op(); return true; });
 
+    /// <summary>急停锁定期间拒绝开阀（在写总线之前判定）。</summary>
+    private void ThrowIfLockedOpen(bool anyOpen)
+    {
+        if (anyOpen && Locked) throw new ValveLockedException();
+    }
+
     /// <summary>设 RV 进气阀（reactorId 1..8）。</summary>
     public Task SetReactorValveAsync(int reactorId, bool open)
-        => Track(() => _io.SetCoilAsync(RvBase + reactorId - 1, Level(open)));
+    {
+        ThrowIfLockedOpen(open);
+        return Track(() => _io.SetCoilAsync(RvBase + reactorId - 1, Level(open)));
+    }
 
     /// <summary>设气源阀（index 0=惰性,1=A,2=B）。</summary>
     public Task SetGasAsync(int index, bool open)
-        => Track(() => _io.SetCoilAsync(GasBase + index, Level(open)));
+    {
+        ThrowIfLockedOpen(open);
+        return Track(() => _io.SetCoilAsync(GasBase + index, Level(open)));
+    }
 
     /// <summary>设排空/Vent 阀。</summary>
-    public Task SetVentAsync(bool open) => Track(() => _io.SetCoilAsync(VentCoil, Level(open)));
+    public Task SetVentAsync(bool open)
+    {
+        ThrowIfLockedOpen(open);
+        return Track(() => _io.SetCoilAsync(VentCoil, Level(open)));
+    }
 
     /// <summary>
     /// 一帧（0x0F）同时写 12 路阀门：open12[0..7]=RV1-8 SV，[8..10]=惰性/A/B，[11]=Vent。
     /// 吹扫 / 泄漏测试用它整体切换阀态，避免逐路写时出现「气源与排空同时开」的中间态。
+    /// urgent：走总线紧急视图（急停全关帧，排在已排队的普通事务之前）。
     /// </summary>
-    public Task WriteAllAsync(bool[] open12)
+    public Task WriteAllAsync(bool[] open12, bool urgent = false)
     {
+        bool any = false;
+        foreach (var o in open12) any |= o;
+        ThrowIfLockedOpen(any);
         var levels = new bool[12];
         for (int i = 0; i < levels.Length && i < open12.Length; i++) levels[i] = Level(open12[i]);
-        return Track(() => _io.SetAllCoilsAsync(levels));
+        var io = urgent ? _urgentIo : _io;
+        return Track(() => io.SetAllCoilsAsync(levels));
     }
+
+    /// <summary>
+    /// 只关不开：一帧（0x0F）把线圈 start..start+count-1 全部写成「关」，范围之外的线圈（例如排空阀）完全不碰。
+    /// 联锁 / 中止收尾用——不能按界面阀态重写整帧（界面只显示最后确认的阀态，可能与硬件不符，整帧重写会把实际已关的阀重新打开）。
+    /// 关闭类写入不受急停锁定影响。
+    /// </summary>
+    public Task CloseRangeAsync(int start, int count, bool urgent = false)
+    {
+        var levels = new bool[count];
+        for (int i = 0; i < count; i++) levels[i] = Level(false);
+        var io = urgent ? _urgentIo : _io;
+        return Track(() => io.SetCoilsAsync(start, levels));
+    }
+
+    /// <summary>三路气源（惰性 / A / B，线圈 8-10）一帧全关，其他线圈不碰。</summary>
+    public Task CloseGasSourcesAsync() => CloseRangeAsync(GasBase, 3);
 
     /// <summary>读回全部 12 路阀门的「开」状态（0-7 RV，8-10 气源，11 Vent）。</summary>
     public async Task<bool[]> ReadOpenStatesAsync()
@@ -79,4 +126,10 @@ public sealed class ValveService
         for (int i = 0; i < open.Length && i < coils.Length; i++) open[i] = OpenFrom(coils[i]);
         return open;
     }
+}
+
+/// <summary>急停锁定期间拒绝开阀（不是通讯失败，不计入在线统计）。</summary>
+public sealed class ValveLockedException : InvalidOperationException
+{
+    public ValveLockedException() : base("急停锁定中，拒绝打开阀门") { }
 }
