@@ -34,3 +34,18 @@ public interface IModbusMaster
     /// <summary>0x10 写多个寄存器。</summary>
     Task WriteMultipleRegistersAsync(byte slave, ushort start, ushort[] values, CancellationToken ct = default);
 }
+
+/// <summary>
+/// 支持优先级的主站：<see cref="Urgent"/> 是同一条总线的「紧急视图」，共用串口与互斥，
+/// 但其事务插到普通事务等待队列的前面（在途的那一笔仍会做完）。只给急停类停止帧用。
+/// </summary>
+public interface IUrgentModbusMaster : IModbusMaster
+{
+    IModbusMaster Urgent { get; }
+}
+
+public static class ModbusMasterExtensions
+{
+    /// <summary>该总线的紧急视图；不支持优先级的实现（模拟 / 离线）返回自身。</summary>
+    public static IModbusMaster AsUrgent(this IModbusMaster m) => m is IUrgentModbusMaster u ? u.Urgent : m;
+}

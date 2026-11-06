@@ -240,10 +240,13 @@ public partial class MainViewModel : ViewModelBase
         Logger = new Services.DataLogger(Services.DataLogger.DefaultDirFor(Services.HardwareOptions.Sim), OnLoggerError);
         // systemd 停服务（SIGTERM）/ 其他非「退出程序」路径：进程退出前尽力写完队列
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Logger.Stop(TimeSpan.FromSeconds(2));
+        // 急停锁存：数据目录下 estop.latch（模拟 estop-sim.latch，PR_DATA_DIR 下真机 / 模拟共用目录时也互不影响）
+        _estopLatch = new Services.EstopLatch(Services.EstopLatch.PathFor(Logger.Dir, Services.HardwareOptions.Sim));
 
         // 搅拌驱动器（DM2C，站地址来自 HardwareOptions）。未配置串口时离线，电流显示「—」。
         _stir = new Services.StirController(
-            new Hardware.StepperDriver(_bus, Services.HardwareOptions.StirSlave));
+            new Hardware.StepperDriver(_bus, Services.HardwareOptions.StirSlave),
+            new Hardware.StepperDriver(Hardware.ModbusMasterExtensions.AsUrgent(_bus), Services.HardwareOptions.StirSlave));
         _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
         _stir.RampMs = (int)Settings.StirRampMs;    // 起停平缓度（加减速时间）
         _ = RefreshStirCurrentAsync();             // 电流只显示从驱动器读回的值，读到之前为「—」
@@ -296,9 +299,6 @@ public partial class MainViewModel : ViewModelBase
         // 压力单位切换（psi/bar）：刷新各釜压力显示 + 气路图（内部仍以 psi 存储/判定）
         Models.Units.Changed += OnUnitsChanged;
 
-        // 开机初始态：不自动开搅拌、8 釜全部停用；温 / 压由轮询填充（模块离线时显示「—」），
-        // 阀门从 IO16R 读回真实状态（读不到时界面按全关显示并提示）。
-        if (RealIo) _ = SyncValvesFromHardware();
 
         // 开机提示哪些模块没配串口（延后到 View 订阅 Toast 之后再发）。
         var off = new List<string>();
@@ -321,6 +321,14 @@ public partial class MainViewModel : ViewModelBase
             Alarm.Log("err", "系统", "已拒绝模拟模式", "PR_SIM=1 与真机串口（PR_*_PORT）同时设置：按真机串口运行，请从启动脚本中删除 PR_SIM");
             Avalonia.Threading.Dispatcher.UIThread.Post(() => Toast("err", "PR_SIM=1 与真机串口同时设置 · 已忽略模拟，按真机运行"));
         }
+
+        // 上次急停未复位（锁存文件仍在）：开机直接进入急停锁定，窗口起来后下发一次停止（C23）。
+        // 必须在读回阀态之前：锁定中不把旧阀态回填界面
+        RestoreEstopLatch();
+
+        // 开机初始态：不自动开搅拌、8 釜全部停用；温 / 压由轮询填充（模块离线时显示「—」），
+        // 阀门从 IO16R 读回真实状态（读不到时界面按全关显示并提示）。
+        if (RealIo) _ = SyncValvesFromHardware();
         ClockTick();
     }
 
@@ -383,11 +391,13 @@ public partial class MainViewModel : ViewModelBase
     /// <param name="id">要启动的通道（1 起）；给出时该通道超温切断未解除则拒绝。</param>
     public string? HeatBlockReason(int? id = null)
     {
-        if (Estopped) return "急停状态下不可启动加热 · 请先复位";
+        if (EstopLocked) return "急停状态下不可启动加热 · 请先复位";
         if (!Services.HardwareOptions.UseRealTemp) return "温控未配置串口（PR_TEMP_PORT），无法加热";
         if (!Temp.Online) return "温控离线（AI-8 通讯失败），无法启动加热";
         if (id is { } n && IsOverTempTripped(n))
             return $"RV{n} 超温切断未解除（需低于 {(Settings.OverTemp - Models.OverTempGuard.Hysteresis).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}℃），不可启动加热";
+        if (id is { } m && Settings.StopHeatOnOverPressure && IsOverPressureTripped(m))
+            return $"RV{m} 超压联锁未解除（需低于 {Units.FormatP(Settings.OverPressure * OverPressureGuard.RearmRatio)}），不可启动加热";
         return null;
     }
 
@@ -519,6 +529,11 @@ public partial class MainViewModel : ViewModelBase
         if (GasLockedForManual()) return;
         if (!IsAdmin) { Toast("err", "手动阀控需要管理员权限"); return; }
         if (!ManualValve) { Toast("warn", "请先打开 RV1 左侧的「手动阀控」开关"); return; }
+        if (!c.Valve && IsOverPressureTripped(id))
+        {
+            Toast("err", $"RV{id} 超压联锁未解除 · 禁止打开 SV{id}");
+            return;
+        }
         if (!c.Valve && c.State is ReactorState.Pressing or ReactorState.React or ReactorState.Alarm)
         {
             Toast("err", $"加压/反应中禁止手动开阀（RV{id}）");
@@ -539,6 +554,11 @@ public partial class MainViewModel : ViewModelBase
         if (!ManualValve) { Toast("warn", "请先开启「手动阀控」"); return; }
         var g = GasInlets[index];
         bool open = !g.On;
+        if (open && AnyOverPressureTripped)
+        {
+            Toast("err", "有通道超压联锁未解除 · 禁止打开气源");
+            return;
+        }
         _ = ManualValveAsync($"{g.Label} 进气阀", open, () => _valves.SetGasAsync(index, open), () => g.On = open);
     }
 
@@ -565,6 +585,11 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             try { await write(); }
+            catch (Services.ValveLockedException)
+            {
+                Toast("err", "急停锁定中 · 拒绝打开阀门，请先复位");
+                return;
+            }
             catch
             {
                 Toast("err", $"{name}{(open ? "打开" : "关闭")}失败（IO16R 通讯）· 阀门状态未改变");
@@ -591,6 +616,13 @@ public partial class MainViewModel : ViewModelBase
         try
         {
             var open = await _valves.ReadOpenStatesAsync();
+            if (Estopped)
+            {
+                // 开机恢复急停锁定：读回的是全关帧之前的旧阀态，不回填界面（急停下发全关确认后界面显示全关）
+                var was = Enumerable.Range(0, 12).Where(i => open[i]).Select(ValveName).ToList();
+                LogFileEvent("info", "阀门", "开机读回阀态（急停锁定中，不回填）", was.Count == 0 ? "全关" : "开启：" + string.Join("、", was));
+                return;
+            }
             for (int i = 0; i < Reactors.Count && i < 8; i++) Reactors[i].Valve = open[i];
             for (int i = 0; i < GasInlets.Count && i < 3; i++) GasInlets[i].On = open[8 + i];
             VentOn = open[11];
@@ -618,7 +650,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ToggleStir()
     {
-        if (!StirOn && Estopped) { Toast("err", "急停状态下不可启动搅拌 · 请先复位"); return; }
+        if (!StirOn && EstopLocked) { Toast("err", "急停状态下不可启动搅拌 · 请先复位"); return; }
         StirOn = !StirOn;
         LogFileEvent("info", "搅拌", StirOn ? "搅拌开启" : "搅拌停止", $"{StirRpm} rpm · 工具栏");
         Toast(StirOn ? "ok" : "warn",
@@ -680,7 +712,7 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void RunAll()
     {
-        if (Estopped) { Toast("err", "急停状态下不可启动 · 请先复位"); return; }
+        if (EstopLocked) { Toast("err", "急停状态下不可启动 · 请先复位"); return; }
         if (GasBusy) { Toast("warn", $"{GasTask}进行中 · 请等待完成或先停止"); return; }
         BuildPreRun();
         IsPreRunOpen = true;
@@ -737,15 +769,16 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private void ConfirmRun()
     {
-        if (Estopped) { IsPreRunOpen = false; Toast("err", "急停状态下不可启动 · 请先复位"); return; }
+        if (EstopLocked) { IsPreRunOpen = false; Toast("err", "急停状态下不可启动 · 请先复位"); return; }
         BuildPreRun();   // 弹窗打开期间模块可能掉线：确认时按最新状态重判
         if (!PreRunCanRun) { Toast("err", "存在未处理的异常项，无法开始运行"); return; }
         IsPreRunOpen = false;
 
-        // 开始运行即下发加热：已结束 / 已启用（待加热）的通道转入「升温中」（停用通道不参与）。
+        // 开始运行即下发加热：只有已结束 / 已启用（待加热）且无超温 / 超压未解除的通道转入「升温中」并下发加热。
+        // 报警（任何原因）、停用、已在运行的通道一律不动（RunSelection.CanStartHeat）。
         // 阀门不在这里动：本轮运行不使用气路
-        foreach (var c in Reactors)
-            if (c.State is ReactorState.Done or ReactorState.Ready) c.State = ReactorState.Heating;
+        var toHeat = Reactors.Where(r => RunSelection.CanStartHeat(RunChannelOf(r))).ToList();
+        foreach (var c in toHeat) c.State = ReactorState.Heating;
 
         // 开始运行：开启全局搅拌并同步桨叶动画（搅拌未配置串口时跳过，预运行检查里已提示）
         if (!StirOn && Services.HardwareOptions.UseRealStir) StirOn = true;   // setter 会触发 ApplyStir
@@ -753,8 +786,8 @@ public partial class MainViewModel : ViewModelBase
 
         // 自动套档：按各釜目标温度选用对应档位的 PID，连同 SP 一起下发到温控器。
         // 定值模式走防超调逼近（先写 目标−Δ，之后由 Tick 推进）
-        // 超温切断未解除的通道不下发加热（否则 At=0 会把刚切断的输出重新打开，要等下一次轮询才被复切）
-        foreach (var c in Reactors.Where(r => r.State != ReactorState.Idle && !IsOverTempTripped(r.Id)))
+        // 超温 / 超压未解除的通道不在 toHeat 里（否则 At=0 会把刚切断的输出重新打开）
+        foreach (var c in toHeat)
         {
             if (c.SpMode == "fixed" && c.TSp >= 35) StartFixedHeat(c);
             else _ = StartBandHeatAsync(c.Id, c.TSp);
@@ -763,8 +796,12 @@ public partial class MainViewModel : ViewModelBase
         RefreshSchematic();
         Drawer.RaiseAll();
         UpdateRunCount();
-        Toast("ok", $"预运行检查通过 · 已开始运行（{Reactors.Count(r => r.State != ReactorState.Idle)} 个通道）· PID 已按温区自动套档");
+        Toast("ok", $"预运行检查通过 · 已开始运行（{toHeat.Count} 个通道）· PID 已按温区自动套档");
     }
+
+    /// <summary>开始运行筛选用的通道快照（见 <see cref="RunSelection"/>）。</summary>
+    private RunChannel RunChannelOf(Reactor r)
+        => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id));
 
     /// <summary>按当前设备状态生成预运行检查项。</summary>
     private void BuildPreRun()
@@ -774,7 +811,7 @@ public partial class MainViewModel : ViewModelBase
         var hw = Services.HardwareOptions.UseRealTemp;   // 仅为缩短下面的判断
 
         // 急停（软件急停；硬件急停回路未接入软件，无法读取）
-        PreRunChecks.Add(Estopped
+        PreRunChecks.Add(EstopLocked
             ? PreRunCheck.Err("急停", "急停已触发，必须先复位才能运行")
             : PreRunCheck.Ok("急停", "软件急停未触发"));
 
@@ -816,11 +853,18 @@ public partial class MainViewModel : ViewModelBase
                 ? PreRunCheck.Warn("搅拌器", "搅拌驱动器离线，开始运行后可能无法搅拌")
                 : PreRunCheck.Ok("搅拌器", $"在线 · 开始后以 {StirRpm} rpm 运转（全部反应釜共用）"));
 
-        // 参与运行的通道
-        int active = Reactors.Count(r => r.State != ReactorState.Idle);
+        // 报警 / 超温 / 超压未解除的通道：阻塞运行（C19，任何原因、任何通道，含停用通道）
+        var chans = Reactors.Select(RunChannelOf).ToList();
+        var blocking = RunSelection.Blocking(chans);
+        PreRunChecks.Add(blocking.Count > 0
+            ? PreRunCheck.Err("报警通道", $"{string.Join("、", blocking.Select(id => "RV" + id))} 存在报警或超温/超压未解除的通道，请先处理并停止 / 复位")
+            : PreRunCheck.Ok("报警通道", "无报警或超温/超压未解除的通道"));
+
+        // 参与运行的通道：只有已启用 / 已结束的通道会转入升温（已在运行的通道不重复下发）
+        int active = RunSelection.ToHeat(chans).Count;
         PreRunChecks.Add(active > 0
             ? PreRunCheck.Ok("运行通道", $"{active} / 8 个通道将参与本次运行")
-            : PreRunCheck.Err("运行通道", "没有已启用的通道，请先启用至少一个反应釜"));
+            : PreRunCheck.Err("运行通道", "没有可开始的通道（已启用 / 已结束），请先启用至少一个反应釜"));
 
         int ok = PreRunChecks.Count(c => c.Kind == "ok");
         int warn = PreRunChecks.Count(c => c.Kind == "warn");
@@ -882,18 +926,18 @@ public partial class MainViewModel : ViewModelBase
 
             // 超温切断对所有通道生效（含停用 / 已结束 / 自整定中）：加热器可能仍在出力，不能只看运行中的通道
             CheckOverTemp(c, realT);
-            CheckOverPressure(c, realP);   // 超压只记事件，报警置位逻辑见下方（不变）
+            CheckOverPressure(c, realP);   // 超压联锁对所有通道生效：关阀 + 中止气路 + 停加热 + 置报警（见 CheckOverPressure）
 
             if (c.State is ReactorState.Idle or ReactorState.Done) continue;
 
-            // 超压 / 超温报警判定（阈值来自全局设置）
-            if ((realP && c.P >= Settings.OverPressure) || (realT && c.T >= Settings.OverTemp))
+            // 运行中通道的超温报警判定（阈值来自全局设置；超压报警由 CheckOverPressure 置位，含停用 / 已结束通道）
+            if (realT && c.T >= Settings.OverTemp)
             {
                 c.State = ReactorState.Alarm;
-                // 状态文字区分超温 / 超压（OverTemp 离开报警态时自动清除）
-                if ((realT && c.T >= Settings.OverTemp) || _otGuard.IsTripped(c.Id - 1)) c.OverTemp = true;
+                c.OverTemp = true;   // 状态文字区分超温 / 超压（OverTemp 离开报警态时自动清除）
             }
         }
+        FlushOverPressureValves();   // 本 Tick 的超压关阀合并成一帧下发
 
         // —— 曲线升温引擎：AI-8 无原生多段程序，由上位机按分段线性插值周期下发 SP ——
         foreach (var c in Reactors)

@@ -12,22 +12,39 @@ namespace ParallelReactor.Hardware;
 /// 若电机转速波动的时间窗内日志里没有任何【写】，即可 100% 排除软件原因。
 /// 由 PR_STIR_TRACE=1 启用（见 <see cref="Services.HardwareOptions.CreateStirBus"/>），默认关闭零开销。
 /// </summary>
-public sealed class TracingModbusMaster : IModbusMaster
+public sealed class TracingModbusMaster : IUrgentModbusMaster
 {
     private readonly IModbusMaster _inner;
     private readonly string _path;
-    private readonly object _lock = new();
+    private readonly object _lock;
+    private readonly string _tag;
+    private TracingModbusMaster? _urgent;
 
     public TracingModbusMaster(IModbusMaster inner, string path)
     {
         _inner = inner;
         _path = path;
+        _lock = new object();
+        _tag = "";
         Log($"=== 追踪开始 {DateTime.Now:yyyy-MM-dd HH:mm:ss} ===");
     }
 
+    // 紧急视图的追踪：同一日志文件、同一把锁，行首加【急】
+    private TracingModbusMaster(IModbusMaster inner, string path, object sharedLock)
+    {
+        _inner = inner;
+        _path = path;
+        _lock = sharedLock;
+        _tag = "【急】";
+    }
+
+    /// <summary>紧急视图（转发到被包装总线的紧急视图，事务同样记日志）。</summary>
+    public IModbusMaster Urgent => _tag.Length > 0 ? this
+        : _urgent ??= new TracingModbusMaster(_inner.AsUrgent(), _path, _lock);
+
     private void Log(string line)
     {
-        try { lock (_lock) File.AppendAllText(_path, $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}"); }
+        try { lock (_lock) File.AppendAllText(_path, $"{DateTime.Now:HH:mm:ss.fff} {_tag}{line}{Environment.NewLine}"); }
         catch { /* 日志失败不影响业务 */ }
     }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -20,6 +21,7 @@ namespace ParallelReactor.Services;
 public sealed partial class TempService : ObservableObject
 {
     private readonly TempController _ctrl;   // AI-8 一台 8 回路（RV1-8）
+    private readonly TempController _urgentCtrl;   // 同一台 AI-8，走总线紧急视图（急停帧插队到轮询之前）
     private int _curBand;
     private int _fails = 3;   // 连续轮询失败次数（初值=离线，首次读成功才算在线）
 
@@ -39,8 +41,11 @@ public sealed partial class TempService : ObservableObject
     // 不能回读存档（否则会把旧 PID 当成整定结果存进档位）。
     private readonly bool[] _tuneAborted = new bool[8];
 
-    /// <summary>急停锁定：为 true 时拒绝启动加热 / 自整定（写 SP、PID 不受影响，它们本身不会让仪表出力）。</summary>
-    public bool Locked { get; set; }
+    private volatile bool _locked;
+
+    /// <summary>急停锁定：为 true 时拒绝启动加热 / 自整定（写 SP、PID 不受影响，它们本身不会让仪表出力）。
+    /// volatile：急停快速路径可能在任意线程置位，之后任何线程上的启动流程都能立即看到。</summary>
+    public bool Locked { get => _locked; set => _locked = value; }
 
     /// <summary>档位 PID / 档位边界发生变化（整定完成、手改、切档落存）——上层据此持久化。</summary>
     public event Action? PidsChanged;
@@ -60,6 +65,7 @@ public sealed partial class TempService : ObservableObject
     public TempService(IModbusMaster bus, byte slave, int dpt)
     {
         _ctrl = new TempController(bus, slave, 8, dpt);   // 1 拖 8
+        _urgentCtrl = new TempController(bus.AsUrgent(), slave, 8, dpt);
         for (int i = 1; i <= 8; i++) Channels.Add(new TempChannel(i, Bands.Count));
     }
 
@@ -394,20 +400,36 @@ public sealed partial class TempService : ObservableObject
     public async Task<bool> EmergencyStopAsync() => (await EmergencyStopDetailedAsync()).Ok;
 
     /// <summary>同 <see cref="EmergencyStopAsync"/>，另外返回本次两步各自的结果：
-    /// 全局闸 Srun=9655 是否写入（Gate）、8 路 At=4 是否全部写入（Each）。事件日志用。</summary>
-    public async Task<(bool Ok, bool Gate, bool Each)> EmergencyStopDetailedAsync()
+    /// 全局闸 Srun=9655 是否写入（Gate）、8 路 At=4 是否全部写入（Each）。事件日志用。
+    /// <para>线程安全，可在任意线程调用（急停快速路径）：只改本服务的普通数组，界面上的「整定中」投递回 UI 线程解除。</para>
+    /// <para>urgent：走总线紧急视图（排在已排队的轮询 / 普通写入之前），只给快速路径的第一轮用；补发 / 自动重发用普通优先级。</para>
+    /// <para>ct：每一帧下发前都查一次——复位（取消）之后不再排出新的停止帧，避免落在复位后新的 Srun=0 / At=0 之后（C18）。
+    /// 取消时未下发的部分记为失败，调用方按令牌丢弃结果。</para></summary>
+    public async Task<(bool Ok, bool Gate, bool Each)> EmergencyStopDetailedAsync(CancellationToken ct = default, bool urgent = false)
     {
+        var ctrl = urgent ? _urgentCtrl : _ctrl;
         // 正在整定的通道会被 At=4 打断：先标记，避免轮询把仪表里的旧 PID 当成整定结果存档
+        // （只读 Autotuning 的值；改界面对象投递到 UI 线程）
+        var tuning = new List<int>();
         for (int i = 0; i < 8; i++)
         {
             if (!Channels[i].Autotuning) continue;
             AbortTune(i);
-            Channels[i].Autotuning = false;
+            tuning.Add(i);
         }
+        if (tuning.Count > 0)
+            Dispatcher.UIThread.Post(() => { foreach (var i in tuning) Channels[i].Autotuning = false; });
+        if (ct.IsCancellationRequested) return (false, false, false);
         bool gate;
-        try { await _ctrl.StopAllAsync(); gate = true; }
+        try { await ctrl.StopAllAsync().ConfigureAwait(false); gate = true; }
         catch { gate = false; }
-        bool each = await StopAllChannelsAsync();
+        bool each = true;
+        for (int ch = 1; ch <= 8; ch++)
+        {
+            if (ct.IsCancellationRequested) { each = false; break; }
+            try { await ctrl.StopAsync(ch).ConfigureAwait(false); }
+            catch { each = false; }
+        }
         return (gate || each, gate, each);
     }
 

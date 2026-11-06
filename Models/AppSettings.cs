@@ -37,6 +37,7 @@ public class AppSettings
     // 报警阈值
     public double OverPressure { get; set; } = 510;   // 超压报警 psi
     public double OverTemp { get; set; } = 250;       // 超温报警 °C
+    public bool StopHeatOnOverPressure { get; set; } = true;   // 超压时停止加热（超压联锁同时下发该通道 At=4）
     public double HeatTimeout { get; set; } = 20;     // 升温超时 分钟
     public double PressDeviation { get; set; } = 8;   // 压力偏离 SP 报警 psi
     public double LeakRate { get; set; } = 2;         // 泄漏率阈值 psi/hr

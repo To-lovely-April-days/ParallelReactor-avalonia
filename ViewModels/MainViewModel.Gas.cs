@@ -46,13 +46,16 @@ public partial class MainViewModel
     /// </summary>
     public string? GasBlockReason(bool needPressure = true)
     {
-        if (Estopped) return "急停状态下禁止气路操作";
+        if (EstopLocked) return "急停状态下禁止气路操作";
         if (!RealIo) return "阀门模块未配置串口（PR_IO_PORT），无法执行气路操作";
         if (needPressure && !Services.HardwareOptions.UseRealAnalog)
             return "压力采集未配置串口（PR_PRESS_PORT），无法闭环充压与超压监视";
         if (needPressure && !_press.Online) return "压力采集离线（8AI 通讯失败），请检查接线与串口后再试";
         if (GasBusy) return $"{GasTask}进行中，请等待完成或先停止";
         if (ManualValve) return "请先关闭「手动阀控」：自动序列与手动阀操作不能同时进行";
+        var op = Reactors.Where(r => IsOverPressureTripped(r.Id)).ToList();
+        if (op.Count > 0)
+            return $"{string.Join("、", op.Select(r => "RV" + r.Id))} 超压未解除（需低于超压报警值的 98%），禁止气路操作";
         // 停用 / 已结束通道的超温切断报警不阻塞气路（见 IsIdleOverTempAlarm）
         var busy = Reactors.Where(r => (r.State is ReactorState.Pressing or ReactorState.React or ReactorState.Alarm)
                                        && !IsIdleOverTempAlarm(r)).ToList();
@@ -79,6 +82,7 @@ public partial class MainViewModel
     /// <summary>释放气路（序列的 finally 里、全关阀之后调用）。</summary>
     public void EndGas()
     {
+        _abortKeepVent = false;
         _gasCts?.Dispose();
         _gasCts = null;
         _gasWatch = Array.Empty<int>();
@@ -137,6 +141,7 @@ public partial class MainViewModel
             // 每次下发前都查一次取消：「全部停止」已发出全关后，不能再把开阀帧写下去
             ct.ThrowIfCancellationRequested();
             try { await _valves.WriteAllAsync(frame); err = null; break; }
+            catch (Services.ValveLockedException) { throw new GasFaultException("急停锁定，拒绝开阀"); }
             catch (Exception ex) { err = ex; await Task.Delay(120); }
         }
         if (err != null) throw new GasFaultException($"阀门写入失败（IO16R 通讯）：{err.Message}");
@@ -154,18 +159,35 @@ public partial class MainViewModel
     }
 
     /// <summary>
+    /// 超压联锁中止气路序列时置位（C7「排空阀保持原样」）：序列 / 稳压收尾的 <see cref="CloseAllValvesAsync"/>
+    /// 只关线圈 0-10（SV 与气源），不碰排空阀——否则排空阶段超压时，收尾会把正在泄压的排空阀关掉。
+    /// 序列释放气路（<see cref="EndGas"/>）或急停时清除；急停一律全关（含排空）。
+    /// </summary>
+    private volatile bool _abortKeepVent;
+
+    /// <summary>
     /// 尽力全关 12 路阀门（序列结束 / 中止时调用，不抛异常）。返回是否确认写入成功。
     /// report=false 时失败不弹提示、不记事件（急停面板自己显示结果并自动重发）。
+    /// 超压中止（<see cref="_abortKeepVent"/>）期间、且不是急停调用（estop=false）时，只关 SV 与气源，排空阀保持。
+    /// ct：每次重试前检查（急停复位后不再补关）。
     /// </summary>
-    public async Task<bool> CloseAllValvesAsync(bool report = true)
+    public async Task<bool> CloseAllValvesAsync(bool report = true, bool estop = false, CancellationToken ct = default)
     {
         var f = ValveFrame.AllClosed();
+        bool keepVent = !estop && _abortKeepVent;
+        if (keepVent) f[ValveFrame.Vent] = VentOn;   // 界面上排空阀保持原样（硬件上线圈 11 根本不写）
         if (RealIo)
         {
             bool ok = false;
             for (int i = 0; i < 4 && !ok; i++)
             {
-                try { await _valves.WriteAllAsync(f); ok = true; }
+                if (ct.IsCancellationRequested) return false;
+                try
+                {
+                    if (keepVent) await _valves.CloseRangeAsync(0, ValveFrame.Vent);   // 线圈 0-10 全关，排空不写
+                    else await _valves.WriteAllAsync(f);
+                    ok = true;
+                }
                 catch { await Task.Delay(200); }
             }
             if (!ok)

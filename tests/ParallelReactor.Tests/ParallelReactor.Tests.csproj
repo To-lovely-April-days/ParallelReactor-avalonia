@@ -18,6 +18,12 @@
     <Compile Include="../../Models/LeakFit.cs" Link="Src/LeakFit.cs" />
     <Compile Include="../../Models/LeakRecord.cs" Link="Src/LeakRecord.cs" />
     <Compile Include="../../Models/GasSequence.cs" Link="Src/GasSequence.cs" />
+    <Compile Include="../../Models/OverPressureGuard.cs" Link="Src/OverPressureGuard.cs" />
+    <Compile Include="../../Models/ReactorState.cs" Link="Src/ReactorState.cs" />
+    <Compile Include="../../Models/RunSelection.cs" Link="Src/RunSelection.cs" />
+    <Compile Include="../../Models/AlarmLifecycle.cs" Link="Src/AlarmLifecycle.cs" />
+    <Compile Include="../../Hardware/PriorityGate.cs" Link="Src/PriorityGate.cs" />
+    <Compile Include="../../Service/EstopLatch.cs" Link="Src/EstopLatch.cs" />
   </ItemGroup>
 
   <ItemGroup>
