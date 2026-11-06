@@ -8,9 +8,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace ParallelReactor.Models;
 
-/// <summary>程序步骤类型，对应 HTML STEP_DEFS 的 key。</summary>
-public enum StepType { Purge, Heat, Press, Stir, Wait, React, End }
-
 /// <summary>升温曲线的单段（16 段曲线编辑器用）。</summary>
 public partial class HeatSeg : ObservableObject
 {
@@ -201,13 +198,10 @@ public partial class ProgramStep : ObservableObject
 
     public ProgramStep With(string k, object v) { _p[k] = v; return this; }
 
-    public double Num(string k, double def = 0)
-        => _p.TryGetValue(k, out var v)
-            ? (v is double d ? d : (double.TryParse(v?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var dp) ? dp : def))
-            : def;
+    // 解析规则与下发快照共用（StepParams），二者不会漂移
+    public double Num(string k, double def = 0) => StepParams.Num(_p, k, def);
 
-    public string Str(string k, string def = "")
-        => _p.TryGetValue(k, out var v) && v is string s ? s : def;
+    public string Str(string k, string def = "") => StepParams.Str(_p, k, def);
 
     public void SetNum(string k, double v) { _p[k] = v; RaiseChanged(); }
     public void SetStr(string k, string v) { _p[k] = v; RaiseChanged(); }
@@ -258,6 +252,19 @@ public partial class ProgramStep : ObservableObject
         => HeatCurvePlan.ToProfileSegments(
             segs.Select(s => (s.Temp, s.Rate, s.Hold)).ToList(), startTemp, max);
 
+    /// <summary>
+    /// 下发用的不可变快照（C3）：基于 <see cref="Clone"/> 生成，曲线模式下缺省段只补在副本上（不改编辑中的步骤）。
+    /// 之后再编辑本步骤不影响快照。
+    /// </summary>
+    public StepSnapshot ToSnapshot()
+    {
+        var c = Clone();
+        c.Ordinal = Ordinal;
+        if (c.Type == StepType.Heat && c.Str("mode", "fixed") == "curve") c.EnsureSegments();
+        return StepSnapshot.Create(c.Type, c.Ordinal, c.Name, c.Detail, c._p,
+            c.Segments.Select(g => (g.Temp, g.Rate, g.Hold)));
+    }
+
     /// <summary>深拷贝（应用到其他通道用）。</summary>
     public ProgramStep Clone()
     {
@@ -284,12 +291,13 @@ public partial class StepField : ObservableObject
     private readonly ProgramStep _s;
     private readonly string _key;
 
-    public StepField(ProgramStep s, FieldDef f)
+    /// <param name="range">数值范围覆盖（FieldDef 范围与全局限值的交集，见 ProgramLimits.FieldRange）；null = 用 FieldDef 自身范围。</param>
+    public StepField(ProgramStep s, FieldDef f, (double Min, double Max)? range = null)
     {
         _s = s; _key = f.Key;
         Label = f.Label; Unit = f.Unit; Kind = f.Kind;
         Options = f.Options ?? Array.Empty<string>();
-        Min = f.Min; Max = f.Max;
+        (Min, Max) = range ?? (f.Min, f.Max);
     }
 
     /// <summary>当前数值（屏幕键盘读取初值用）。</summary>

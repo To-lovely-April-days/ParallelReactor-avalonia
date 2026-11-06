@@ -68,3 +68,19 @@ public class RunSelectionTests
         Assert.Equal(new[] { 1, 2, 3, 4 }, RunSelection.ToHeat(chans));
     }
 }
+
+/// <summary>C20：正被程序执行的通道不参与「开始运行」，也不阻塞。</summary>
+public class RunSelectionProgramOwnedTests
+{
+    [Fact]
+    public void ProgramOwned_NotHeated_NotBlocking()
+    {
+        // 程序第一步是吹扫时通道仍是「已启用」：不能被工具栏「开始运行」转成升温中
+        var owned = new RunChannel(3, ReactorState.Ready, false, false, ProgramOwned: true);
+        Assert.False(RunSelection.CanStartHeat(owned));
+        Assert.False(RunSelection.IsBlocking(owned));
+        var chans = new[] { owned, new RunChannel(4, ReactorState.Ready, false, false) };
+        Assert.Equal(new[] { 4 }, RunSelection.ToHeat(chans));
+        Assert.Empty(RunSelection.Blocking(chans));
+    }
+}

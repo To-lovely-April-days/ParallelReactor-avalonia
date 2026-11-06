@@ -35,12 +35,12 @@
         <Grid Grid.Column="2" ColumnDefinitions="Auto,Auto,Auto" VerticalAlignment="Center">
           <StackPanel Margin="0,0,18,0">
             <TextBlock Text="温度" FontSize="12.5" Foreground="{DynamicResource Mute}" HorizontalAlignment="Right" />
-            <TextBlock Text="{Binding CurrentChannel.Reactor.TText, StringFormat='{}{0} °C'}"
+            <TextBlock Text="{Binding MonitorReactor.TText, StringFormat='{}{0} °C'}"
                        FontSize="19" FontWeight="Bold" Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
           </StackPanel>
           <StackPanel Grid.Column="1" Margin="0,0,18,0">
             <TextBlock Text="压力" FontSize="12.5" Foreground="{DynamicResource Mute}" HorizontalAlignment="Right" />
-            <TextBlock Text="{Binding CurrentChannel.Reactor.PText}" FontSize="19" FontWeight="Bold"
+            <TextBlock Text="{Binding MonitorReactor.PText}" FontSize="19" FontWeight="Bold"
                        Foreground="{DynamicResource OnDark}" HorizontalAlignment="Right" />
           </StackPanel>
           <StackPanel Grid.Column="2">

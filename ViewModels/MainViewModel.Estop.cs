@@ -66,7 +66,7 @@ public partial class MainViewModel
     private volatile bool _estopFast;
 
     /// <summary>急停锁定（UI 状态已置，或快速路径已锁、UI 流程尚未跑到）。</summary>
-    private bool EstopLocked => Estopped || _estopFast;
+    public bool EstopLocked => Estopped || _estopFast;
 
     // 快速路径下发的那一轮（UI 流程首轮直接等它的结果，不重复发帧）
     private readonly object _fastEstopLock = new();
@@ -278,7 +278,7 @@ public partial class MainViewModel
 
         // —— 界面侧立即停：气路序列、程序执行、曲线、逼近、通道状态、搅拌开关、手动阀控、各确认弹窗 ——
         bool hadGas = GasBusy;
-        AbortGas();
+        AbortAllGas();   // 急停不看占用者：一律中止
         Program.AbortProgram();   // 程序执行中也中止（非气路步骤如等待/反应倒计时，靠程序自己的取消令牌）
         foreach (var c in Reactors)
         {
@@ -291,7 +291,7 @@ public partial class MainViewModel
         StirOn = false;        // Estopped 已为 true：setter 不另发停止帧，由下面统一下发并等结果
         ManualValve = false;
         IsPreRunOpen = false;
-        Program.IsRunConfirmOpen = false;
+        Program.CancelPendingRun();   // 关确认框并丢弃待运行程序（确认时还会再判急停，双保险）
         Keyboard.IsOpen = false;   // 关掉键盘且不执行其回调
         UpdateRunCount();
         RefreshSchematic();

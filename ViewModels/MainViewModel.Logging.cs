@@ -205,7 +205,7 @@ public partial class MainViewModel
     /// 上升沿 P ≥ 超压报警值：
     /// <list type="number">
     /// <item>关闭该通道 SV 与全部气源（惰性 / A / B），<b>排空阀保持原样</b>（不自动泄放）——同一 Tick 多路触发合并成一帧；</item>
-    /// <item>中止气路自动序列（吹扫 / 泄漏测试 / 程序升压稳压，<see cref="AbortGas"/>）；</item>
+    /// <item>中止气路自动序列（任何占用者：吹扫 / 泄漏测试 / 程序升压稳压，<see cref="AbortAllGas"/>）；</item>
     /// <item>停止该通道加热（At=4，设置「超压时停止加热」，默认开）；</item>
     /// <item>置报警（任何状态）+ 记事件（数值、动作与结果）。</item>
     /// </list>
@@ -236,7 +236,7 @@ public partial class MainViewModel
             string gas = GasTask;
             // 序列收到取消后自己的 finally 会关阀：超压中止时只关 SV 与气源，排空阀保持原样（不碰线圈 11）
             if (GasBusy) _abortKeepVent = true;
-            AbortGas();
+            AbortAllGas();   // 联锁不看占用者：一律中止
             SetOverPressureAlarm(c);
             var acts = new List<string>
             {
