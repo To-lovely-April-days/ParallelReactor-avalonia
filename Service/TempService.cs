@@ -107,13 +107,15 @@ public sealed partial class TempService : ObservableObject
     {
         int idx = BandIndexForTemp(sp);
         if (_lastBand[ch - 1] == idx) return;  // 仪表里已是该档 PID，避免每周期重复写
+        int gen = Channels[ch - 1].PidGen;
         var (p, i, d) = Channels[ch - 1].GetBand(idx);
         var (c, loop) = Map(ch);
 
         try
         {
             await c.SetPidAsync(loop, p, i, d);
-            _lastBand[ch - 1] = idx;   // 写成功才记录，失败下次重试
+            // 写成功才记录，失败下次重试；写的途中档位被改过（手改 PID）则保持未知，下一 Tick 用新值重写
+            _lastBand[ch - 1] = Channels[ch - 1].PidGen == gen ? idx : -1;
         }
         catch (System.Exception)
         {
@@ -130,6 +132,7 @@ public sealed partial class TempService : ObservableObject
     public async Task<bool> StartChannelAsync(int ch, double bandTemp, double initialSp)
     {
         int band = BandIndexForTemp(bandTemp);
+        int gen = Channels[ch - 1].PidGen;
         var (p, i, d) = Channels[ch - 1].GetBand(band);
         var (c, loop) = Map(ch);
         try
@@ -142,7 +145,7 @@ public sealed partial class TempService : ObservableObject
             await c.StartAsync(loop);  // At=0 回到 APID 自动控制——开机/停止/取消整定都会把通道置于 At=4
             _lastBand[ch - 1] = -1;
             await c.SetPidAsync(loop, p, i, d);
-            _lastBand[ch - 1] = band;
+            _lastBand[ch - 1] = Channels[ch - 1].PidGen == gen ? band : -1;   // 同 ApplyPidForBandAsync：途中手改过则下次重写
             await c.SetSetpointAsync(loop, initialSp);
             Channels[ch - 1].Sp = initialSp; Channels[ch - 1].SpKnown = true;
             return true;
@@ -289,17 +292,54 @@ public sealed partial class TempService : ObservableObject
         Channels[ch - 1].Sp = sp; Channels[ch - 1].SpKnown = true;
     }
 
-    public async Task SetPidAsync(int ch, double p, double i, double d)
+    /// <summary>
+    /// 写某通道某档的 PID（C11 显式档位）。始终存入该档；只有当该档正是仪表当前生效的档（_lastBand[ch-1] == band）
+    /// 时才写仪表——否则会把别档的 PID 写进正在加热的回路，等下一次 <see cref="ApplyPidForBandAsync"/> 切到该档时再写。
+    /// band 为界面显示档时同步界面的 P/I/D。返回是否写入了仪表；写仪表失败抛出（调用方记录「未生效」，存档回滚到原值）。
+    /// <para>先存档、再等仪表：等待期间 Tick 的套档写入读到的已是新值；正在途中的套档写入（读的是旧值）
+    /// 写完时看到 <see cref="TempChannel.PidGen"/> 变了，不会把 _lastBand 记成该档，下一 Tick 用新值重写。</para>
+    /// </summary>
+    public async Task<bool> SetPidAsync(int ch, int band, double p, double i, double d)
     {
-        var (c, loop) = Map(ch);
-        _lastBand[ch - 1] = -1;
-        await c.SetPidAsync(loop, p, i, d);
-        _lastBand[ch - 1] = _curBand;   // 手改写入的是当前显示档的 PID
+        if (band < 0 || band >= Bands.Count) throw new ArgumentOutOfRangeException(nameof(band));
         var m = Channels[ch - 1];
-        m.P = p; m.I = i; m.D = d;
-        m.StoreBand(_curBand);
+        bool live = _lastBand[ch - 1] == band;
+        var old = m.GetBand(band);
+        bool shown = band == _curBand;
+        var oldShown = (m.P, m.I, m.D);
+        m.SetBand(band, p, i, d);
+        if (shown) { m.P = p; m.I = i; m.D = d; }
+        if (live)
+        {
+            var (c, loop) = Map(ch);
+            int gen = m.PidGen;
+            _lastBand[ch - 1] = -1;
+            try { await c.SetPidAsync(loop, p, i, d); }
+            catch
+            {
+                // 失败：_lastBand 保持 -1（仪表状态未知，下次套档重写）；存档 / 界面回到原值（没有更晚的修改时）
+                if (m.PidGen == gen)
+                {
+                    m.SetBand(band, old.p, old.i, old.d);
+                    if (shown) { m.P = oldShown.P; m.I = oldShown.I; m.D = oldShown.D; }
+                }
+                throw;
+            }
+            if (m.PidGen == gen) _lastBand[ch - 1] = band;   // 等待期间又被改过：保持 -1，下一 Tick 用最新值重写
+        }
         PidsChanged?.Invoke();
+        return live;
     }
+
+    /// <summary>某通道某档当前的 PID（显示档以界面上的 P/I/D 为准——它是该档的工作副本）。</summary>
+    public (double p, double i, double d) GetPid(int ch, int band)
+    {
+        var m = Channels[ch - 1];
+        return band == _curBand ? (m.P, m.I, m.D) : m.GetBand(band);
+    }
+
+    /// <summary>该通道仪表里当前生效的 PID 档（-1 = 未知 / 尚未写过）。</summary>
+    public int LiveBand(int ch) => _lastBand[ch - 1];
 
     /// <summary>AutotuneAsync 的返回值：需要先设定目标温度（SP 未设或过低）。</summary>
     public const string NoSetpoint = "SP_NOT_SET";
@@ -583,10 +623,16 @@ public partial class TempChannel : ObservableObject
     public void LoadBand(int idx) { P = _bp[idx]; I = _bi[idx]; D = _bd[idx]; }
 
     /// <summary>把界面当前 P/I/D 存回某档位。</summary>
-    public void StoreBand(int idx) { _bp[idx] = P; _bi[idx] = I; _bd[idx] = D; }
+    public void StoreBand(int idx) { _bp[idx] = P; _bi[idx] = I; _bd[idx] = D; PidGen++; }
 
     /// <summary>直接写某档位 PID（不影响当前界面值，除非该档位正显示）。</summary>
-    public void SetBand(int idx, double p, double i, double d) { _bp[idx] = p; _bi[idx] = i; _bd[idx] = d; }
+    public void SetBand(int idx, double p, double i, double d) { _bp[idx] = p; _bi[idx] = i; _bd[idx] = d; PidGen++; }
+
+    /// <summary>
+    /// 档位存储的修改计数（每次 SetBand / StoreBand 加 1，UI 线程）。套档写仪表前记下、写完比对：
+    /// 写的途中档位被改过（手改 PID 落在切档写入期间），就不能把 _lastBand 记成该档——否则仪表留着旧值、下次也不再重写。
+    /// </summary>
+    public int PidGen { get; private set; }
 
     /// <summary>读某档位存储的 PID。</summary>
     public (double p, double i, double d) GetBand(int idx) => (_bp[idx], _bi[idx], _bd[idx]);

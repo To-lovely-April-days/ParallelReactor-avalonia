@@ -13,6 +13,8 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
+using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
 
@@ -86,8 +88,13 @@ public partial class SettingViewModel : ViewModelBase
                     LoadQr(s);
     }
 
+    // 写入口一律转给 Ops.Try*（守卫、校验与提示文字在命令层 OperatorCommands.Temp / Settings）。
+    private static CommandSource Src => MainViewModel.Src;
+    private OperatorCommands Ops => _main.Ops;
+
     /// <summary>退出整个程序（弹确认框，确认后关闭应用）。</summary>
     [RelayCommand]
+    [ViewEntry("只打开退出确认框；确认后经 MainViewModel.ConfirmExit → TryExitApp")]
     private void ExitApp() => _main.OpenExitConfirm();
 
     // ===== 温控 / PID（绑定到集中页）=====
@@ -108,6 +115,7 @@ public partial class SettingViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("切换界面显示档（附录 B：纯界面状态；C11 之后档位 PID 以 SetBand 存档为准）")]
     private void SelectTempBand(string idx)
     {
         if (int.TryParse(idx, out var n)) TempBandIndex = n;
@@ -115,80 +123,56 @@ public partial class SettingViewModel : ViewModelBase
 
     /// <summary>改「低温/中温」分界（=低温档上限=中温档下限）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetBandBound))]
     private void EditBound1()
         => _main.Keyboard.OpenNumeric("低温 / 中温 分界", TempBands[0].Hi, "℃", 10, TempBands[1].Hi - 10,
-            v => { _main.LogSetting("低温 / 中温 分界", Fmt(TempBands[0].Hi, "℃"), Fmt(v, "℃")); TempBands[0].Hi = v; TempBands[1].Lo = v; _main.PersistSoon(); });
+            v => Ops.TrySetBandBound(Src, 1, v));
 
     /// <summary>改「中温/高温」分界（=中温档上限=高温档下限）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetBandBound))]
     private void EditBound2()
         => _main.Keyboard.OpenNumeric("中温 / 高温 分界", TempBands[1].Hi, "℃", TempBands[0].Hi + 10, 390,
-            v => { _main.LogSetting("中温 / 高温 分界", Fmt(TempBands[1].Hi, "℃"), Fmt(v, "℃")); TempBands[1].Hi = v; TempBands[2].Lo = v; _main.PersistSoon(); });
+            v => Ops.TrySetBandBound(Src, 2, v));
 
     /// <summary>自整定按钮（再次点击=取消并停止输出）。SP 未设时先弹键盘设整定目标温度——
-    /// AI-8 整定是在 SP 附近振荡，SP=0 时加热不会开、仪表会永远卡在「整定中」。</summary>
+    /// AI-8 整定是在 SP 附近振荡，SP=0 时加热不会开、仪表会永远卡在「整定中」。
+    /// 打开键盘前先预检（急停锁定 / 温控未配置或离线时不允许发起），确认时命令层再判一次（K3）。</summary>
     [RelayCommand]
-    private async System.Threading.Tasks.Task Autotune(Services.TempChannel ch)
+    [WriteEntry(nameof(OperatorCommands.TryCancelAutotune), nameof(OperatorCommands.TryStartAutotune))]
+    private Task Autotune(Services.TempChannel ch)
     {
-        if (ch.Autotuning)
-        {
-            await _main.Temp.CancelAutotuneAsync(ch.Id);
-            _main.Alarm.Log("info", ch.Name, "取消自整定", "At=4 停止输出");
-            _main.Toast("ok", $"{ch.Name} 已取消自整定并停止输出");
-            return;
-        }
-
-        // 自整定会让仪表全功率加热振荡：急停锁定 / 温控未配置或离线时不允许发起
-        if (_main.HeatBlockReason(ch.Id) is { } why) { _main.Toast("err", why); return; }
-        _main.Keyboard.OpenNumeric($"{ch.Name} 整定目标温度（整定在此温度附近振荡）", 150, "℃", 40, _main.Settings.TMaxSp,
-                v => _ = StartTuneWithSpAsync(ch, v));
+        if (ch.Autotuning) return _main.LocalAsync(Ops.TryCancelAutotune(Src, ch.Id));
+        int id = ch.Id;
+        if (_main.LocalOk(Ops.CheckAutotune(Src, id)))
+            _main.Keyboard.OpenNumeric($"{ch.Name} 整定目标温度（整定在此温度附近振荡）", 150, "℃", 40, _main.Settings.TMaxSp,
+                v => Ops.TryStartAutotune(Src, id, v));
+        return Task.CompletedTask;
     }
 
     /// <summary>一键把启用回路数 Ctn 设为 8（红色徽章点击触发）。</summary>
     [RelayCommand]
-    private async System.Threading.Tasks.Task FixCtn()
-    {
-        var err = await _main.Temp.FixCtnAsync();
-        _main.Toast(err == null ? "ok" : "err", err ?? "已把启用回路数 Ctn 设为 8，全部 8 通道受控");
-    }
+    [WriteEntry(nameof(OperatorCommands.TryFixCtn))]
+    private Task FixCtn() => _main.LocalAsync(Ops.TryFixCtn(Src));
 
-    private async System.Threading.Tasks.Task StartTuneWithSpAsync(Services.TempChannel ch, double sp)
-    {
-        try { await _main.Temp.SetSetpointAsync(ch.Id, sp); }
-        catch { _main.Toast("err", "SP 下发失败，未启动整定"); return; }
-        var err = await _main.Temp.AutotuneAsync(ch.Id);
-        _main.Alarm.Log(err == null ? "info" : "warn", ch.Name, err == null ? "启动自整定" : "自整定未启动",
-            err == null ? $"整定目标 {Fmt(sp, "℃")}" : err);
-        _main.Toast(err == null ? "ok" : "err",
-            err == null ? $"{ch.Name} 已设目标 {sp:0}℃ 并启动自整定" : err);
-    }
-
+    // PID 手改经命令层（C11：显式档位 = 界面当前显示档）。写入成功记「旧 → 新」，失败记一条未生效；没有 Toast。
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetPid))]
     private void EditTempP(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 比例带 P", ch.P, "", 0, 3200,
-            v => _ = SetPidLoggedAsync(ch, "P", Fmt(ch.P, ""), Fmt(v, ""), v, ch.I, ch.D));
+            v => Ops.TrySetPid(Src, ch.Id, _main.Temp.CurrentBand, v, ch.I, ch.D));
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetPid))]
     private void EditTempI(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 积分时间 I", ch.I, "s", 0, 3200,
-            v => _ = SetPidLoggedAsync(ch, "I", Fmt(ch.I, "s"), Fmt(v, "s"), ch.P, v, ch.D));
+            v => Ops.TrySetPid(Src, ch.Id, _main.Temp.CurrentBand, ch.P, v, ch.D));
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetPid))]
     private void EditTempD(Services.TempChannel ch)
         => _main.Keyboard.OpenNumeric($"{ch.Name} 微分时间 D", ch.D, "s", 0, 327,
-            v => _ = SetPidLoggedAsync(ch, "D", Fmt(ch.D, "s"), Fmt(v, "s"), ch.P, ch.I, v));
-
-    /// <summary>写 PID 并记设置事件：写入成功才记「旧 → 新」，失败记一条未生效（以前失败时静默）。</summary>
-    private async System.Threading.Tasks.Task SetPidLoggedAsync(Services.TempChannel ch, string key, string oldV, string newV, double p, double i, double d)
-    {
-        try { await _main.Temp.SetPidAsync(ch.Id, p, i, d); }
-        catch
-        {
-            _main.Alarm.Log("err", "设置", $"修改 · {ch.Name} {key} 失败", $"{oldV} → {newV} · AI-8 写入失败，未生效");
-            return;
-        }
-        _main.LogSetting($"{ch.Name} {key}", oldV, newV);
-    }
+            v => Ops.TrySetPid(Src, ch.Id, _main.Temp.CurrentBand, ch.P, ch.I, v));
 
     private volatile bool _netBusy;   // 防止上一次网卡枚举没回来又发起新的
 
@@ -289,16 +273,18 @@ public partial class SettingViewModel : ViewModelBase
 
     private static Geometry G(string d) => Geometry.Parse(d);
 
-    /// <summary>压力单位选择行：切换 psi / bar 时更新全局单位（内部仍存 psi，仅换算显示）。</summary>
+    /// <summary>压力单位选择行：切换 psi / bar 时更新全局单位（内部仍存 psi，仅换算显示）。被拒时下拉框回到原值。</summary>
     private SetRow PressureUnitRow()
     {
-        var row = SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "MPa", "bar", "psi" }, "Pressure Unit");
-        row.OnSelChanged = u =>   // MainViewModel 订阅 Units.Changed 后刷新界面
-        {
-            string old = Models.Units.Pressure;
-            Models.Units.SetPressure(u);
-            _main.LogSetting("压力单位", old, Models.Units.Pressure);
-        };
+        var row = Wire(SetRow.Sel("压力单位", Models.Units.Pressure, new[] { "MPa", "bar", "psi" }, "Pressure Unit"));
+        row.OnSelChanged = u => Ops.TrySetPressureUnit(Src, u);
+        return row;
+    }
+
+    /// <summary>行的命令结果统一转成 Toast（被拒时行自己回滚控件值）。</summary>
+    private SetRow Wire(SetRow row)
+    {
+        row.Sink = _main.Local;
         return row;
     }
 
@@ -326,34 +312,31 @@ public partial class SettingViewModel : ViewModelBase
     /// <summary>「超压时停止加热」开关：改动立即生效并落盘（安全相关，不等退出）。</summary>
     private SetRow StopHeatOnOverPressureRow()
     {
-        var row = SetRow.Toggle("超压时停止加热", "超压联锁关阀、中止气路的同时下发该通道 At=4（默认开）", _main.Settings.StopHeatOnOverPressure);
-        row.ToggleApply = v =>
-        {
-            bool old = _main.Settings.StopHeatOnOverPressure;
-            if (old == v) return;
-            _main.Settings.StopHeatOnOverPressure = v;
-            _main.LogSetting("超压时停止加热", old ? "开" : "关", v ? "开" : "关");
-            _main.PersistSoon();
-        };
+        var row = Wire(SetRow.Toggle("超压时停止加热", "超压联锁关阀、中止气路的同时下发该通道 At=4（默认开）", _main.Settings.StopHeatOnOverPressure));
+        row.ToggleApply = v => Ops.TrySetStopHeatOnOverPressure(Src, v);
         return row;
     }
 
-    /// <summary>构造一行可编辑数值：双向回写全局设置，点数值弹键盘。</summary>
-    private SetRow Num(string label, double value, string unit, double min, double max, double step, Action<double> apply, string? sub = null)
+    /// <summary>
+    /// 构造一行可编辑数值（标签 / 单位 / 范围 / 步进 / 说明取自 <see cref="SettingSpecs"/>）：写入经 Ops.TrySetSetting，点数值弹键盘。
+    /// 设置修改事件：+/− 连点每步都会写入，停手 1.5s 后才记一条（旧值 → 最终值），避免一步一条（deferLog）。
+    /// </summary>
+    private SetRow Num(SettingKey key)
     {
-        var row = SetRow.Num(label, value, unit, min, max, step, sub);
-        // 设置修改事件：+/− 连点每步都会回写，停手 1.5s 后才记一条（旧值 → 最终值），避免一步一条
-        double committed = value;
+        var spec = SettingSpecs.Of(key);
+        var row = Wire(SetRow.Num(spec.Label, spec.Get(_main.Settings), spec.Unit, spec.Min, spec.Max, spec.Step, spec.Sub));
+        double committed = row.NumValue;
         DispatcherTimer? settle = null;
         void Commit()
         {
             double now = row.NumValue;
-            _main.LogSetting(label, Fmt(committed, unit), Fmt(now, unit));
+            _main.LogSetting(spec.Label, Fmt(committed, spec.Unit), Fmt(now, spec.Unit));
             committed = now;
         }
-        row.Apply = v =>
+        row.TryApply = v =>
         {
-            apply(v);
+            var t = Ops.TrySetSetting(Src, key, v, deferLog: true);
+            if (t.IsCompleted && !(t.IsCompletedSuccessfully && t.Result.Ok)) return t;   // 被拒：值已回滚，不记事件
             if (settle == null)
             {
                 settle = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.5) };
@@ -362,8 +345,9 @@ public partial class SettingViewModel : ViewModelBase
             }
             settle.Stop();
             settle.Start();
+            return t;
         };
-        row.EditRequest = () => _main.Keyboard.OpenNumeric(label, row.NumValue, unit, min, max, v => row.NumValue = v);
+        row.EditRequest = () => _main.Keyboard.OpenNumeric(spec.Label, row.NumValue, spec.Unit, spec.Min, spec.Max, row.Submit);
         return row;
     }
 
@@ -392,55 +376,36 @@ public partial class SettingViewModel : ViewModelBase
             Sections =
             {
                 SetSection.Card("可设置参数范围",
-                    Num("温度 SP 上限", _main.Settings.TMaxSp, "°C", 50, 300, 5, v => _main.Settings.TMaxSp = v),
-                    Num("压力 SP 上限", _main.Settings.PMaxSp, "psi", 100, 1000, 10, v => _main.Settings.PMaxSp = v),
-                    Num("搅拌转速上限", _main.Settings.RpmMax, "rpm", 500, 3000, 100, v => _main.Settings.RpmMax = v),
-                    Num("溶液体积上限", _main.Settings.VolMax, "mL", 5, 200, 5, v => _main.Settings.VolMax = v)),
+                    Num(SettingKey.TMaxSp),
+                    Num(SettingKey.PMaxSp),
+                    Num(SettingKey.RpmMax),
+                    Num(SettingKey.VolMax)),
                 SetSection.Card("报警阈值",
-                    Num("超压报警", _main.Settings.OverPressure, "psi", 100, 1000, 5, v => _main.Settings.OverPressure = v, "压力 ≥ 此值触发硬报警"),
+                    Num(SettingKey.OverPressure),
                     StopHeatOnOverPressureRow(),
-                    Num("超温报警", _main.Settings.OverTemp, "°C", 50, 400, 5, v => _main.Settings.OverTemp = v, "温度 ≥ 此值触发报警"),
-                    Num("升温超时报警", _main.Settings.HeatTimeout, "分钟", 5, 60, 1, v => _main.Settings.HeatTimeout = v, "升温超过此时长未到 SP 时提示"),
-                    Num("压力偏离 SP 报警", _main.Settings.PressDeviation, "psi", 1, 50, 1, v => _main.Settings.PressDeviation = v, "稳压后偏离超过此值时提示"),
-                    Num("泄漏率阈值", _main.Settings.LeakRate, "psi/hr", 0.5, 10, 0.5, v => _main.Settings.LeakRate = v, "泄漏测试判定不通过的阈值"),
-                    Num("泄漏测试提醒周期", _main.Settings.LeakReminderDays, "天", 1, 30, 1, v => _main.Settings.LeakReminderDays = v, "超过此天数未测试则提醒")),
+                    Num(SettingKey.OverTemp),
+                    Num(SettingKey.HeatTimeout),
+                    Num(SettingKey.PressDeviation),
+                    Num(SettingKey.LeakRate),
+                    Num(SettingKey.LeakReminderDays)),
                 SetSection.Card("泄漏测试（惰性气体低压保压）",
-                    Num("测试压力", _main.Settings.LeakTestPsi, "psi", 10, 150, 5, v => _main.Settings.LeakTestPsi = v,
-                        "低压即可检出密封问题；须低于超压报警值的 90%，惰性气体减压阀调到略高于此值"),
-                    Num("平衡时间", _main.Settings.LeakSettleMin, "分钟", 1, 30, 1, v => _main.Settings.LeakSettleMin = v,
-                        "充压后静置，等气体温度回稳再开始测量"),
-                    Num("测量时间", _main.Settings.LeakMeasureMin, "分钟", 5, 120, 5, v => _main.Settings.LeakMeasureMin = v,
-                        "越长越能分辨小泄漏；压降速率按温度补偿后的最小二乘拟合计算")),
+                    Num(SettingKey.LeakTestPsi),
+                    Num(SettingKey.LeakSettleMin),
+                    Num(SettingKey.LeakMeasureMin)),
                 SetSection.Card("定值加热防超调（先升到 目标−Δ 判稳，再慢推到目标）",
-                    Num("预留温差 Δ", _main.Settings.ApproachDelta, "°C", 0, 30, 0.5, v => _main.Settings.ApproachDelta = v,
-                        "须大于实测最大冲温（建议取 1.5 倍）；0 = 关闭逼近、直接写目标"),
-                    Num("快段速率", _main.Settings.ApproachFastRate, "°C/min", 0.1, 10, 0.1, v => _main.Settings.ApproachFastRate = v,
-                        "离目标大于末段范围时使用；PV 领先时 SP 直接跟随，不暂停"),
-                    Num("末段范围", _main.Settings.ApproachFinalZone, "°C", 0.3, 5, 0.1, v => _main.Settings.ApproachFinalZone = v,
-                        "只有最后这段慢推，PV 偏高才暂停；建议略大于实测冲温"),
-                    Num("末段速率", _main.Settings.ApproachRate, "°C/min", 0.02, 2, 0.02, v => _main.Settings.ApproachRate = v,
-                        "防超调的关键：越慢越稳、越省不了时间"),
-                    Num("判稳范围", _main.Settings.ApproachSettleBand, "±°C", 0.1, 2, 0.1, v => _main.Settings.ApproachSettleBand = v,
-                        "PV 到达 中间SP−此值 后开始判峰；持续落在 ±此值 内也可开始逼近"),
-                    Num("判稳时长", _main.Settings.ApproachSettleSec, "s", 10, 900, 10, v => _main.Settings.ApproachSettleSec = v,
-                        "兜底条件：PV 过峰（不再上升）会提前开始逼近，不必等满此时长")),
+                    Num(SettingKey.ApproachDelta),
+                    Num(SettingKey.ApproachFastRate),
+                    Num(SettingKey.ApproachFinalZone),
+                    Num(SettingKey.ApproachRate),
+                    Num(SettingKey.ApproachSettleBand),
+                    Num(SettingKey.ApproachSettleSec)),
                 SetSection.Card("搅拌电机电流（雷赛 DM2C · 即时写入驱动器并存 EEPROM）",
-                    Num("峰值电流", _main.Settings.StirCurrent, "A", 0.3, 3.2, 0.1,
-                        v => _ = _main.ApplyStirCurrentAsync(v),
-                        "按电机铭牌额定电流设：带负载卡顿调大、发烫调小（驱动器硬限 0.3–3.2A）"),
-                    Num("待机电流", _main.Settings.StirStandbyPct, "%", 0, 100, 5,
-                        v => _ = _main.ApplyStirStandbyPctAsync((int)v),
-                        "停转后自动降到此百分比，减少电机发热"),
-                    Num("加减速时间", _main.Settings.StirRampMs, "ms/1000rpm", 50, 10000, 50,
-                        v => _main.ApplyStirRampMs(v),
-                        "起停平缓度：越大越缓。值小起停顿挫/像“起飞”，值大更柔和（1000≈300rpm 用 0.3s 升起）"),
-                    Num("细分", _main.Settings.StirMicrostep, "脉冲/转", 200, 51200, 200,
-                        v => _ = _main.ApplyStirMicrostepAsync(v),
-                        "指令脉冲数/转：越高低速越平顺、越能压共振。常用 10000 / 20000 / 25600")),
+                    Num(SettingKey.StirCurrent),
+                    Num(SettingKey.StirStandbyPct),
+                    Num(SettingKey.StirRampMs),
+                    Num(SettingKey.StirMicrostep)),
                 SetSection.Card("压力变送器（8AI）",
-                    Num("变送器满量程", _main.Settings.PressFullScaleMPa, "MPa", 0.1, 60, 0.1,
-                        v => _main.ApplyPressFullScaleMPa(v),
-                        "必须与变送器铭牌量程一致（如 0–10MPa 填 10），否则压力读数按比例偏")),
+                    Num(SettingKey.PressFullScaleMPa)),
             },
         });
 
@@ -646,34 +611,111 @@ public partial class SetRow : ObservableObject
     public double Max { get; set; } = 9999;
     public double Step { get; set; } = 1;
     public string[] Options { get; set; } = System.Array.Empty<string>();
-    [ObservableProperty] private bool _on;
+    // ===== 写入：三个回调都返回命令层的 OpResult（编译期约束：只能经 Ops.Try*）=====
+    // 同步阶段被拒（例如远程控制中 MODE_REMOTE）时把控件值恢复为旧值并重新通知界面；
+    // 异步尾部失败（例如 EEPROM 写失败）只提示、不回滚（今天也是「设置已改、设备没写成功」）。
 
-    /// <summary>开关切换时回写设置（为 null 的开关只是展示）。</summary>
-    public Action<bool>? ToggleApply;
-    partial void OnOnChanged(bool value) => ToggleApply?.Invoke(value);
+    /// <summary>命令结果的去向（SettingViewModel 设为 MainViewModel.Local：转成 Toast）。</summary>
+    public Action<Task<Commands.OpResult>>? Sink;
 
-    private string _selValue = "";
-    public string SelValue { get => _selValue; set { if (SetProperty(ref _selValue, value)) OnSelChanged?.Invoke(value); } }
+    /// <summary>开关切换时写入（为 null 的开关只是展示）。</summary>
+    public Func<bool, Task<Commands.OpResult>>? ToggleApply;
 
-    /// <summary>下拉选项变化时回调（如切换压力单位）。</summary>
-    public Action<string>? OnSelChanged;
+    /// <summary>下拉选项变化时写入（如切换压力单位；为 null 的下拉框只是展示）。</summary>
+    public Func<string, Task<Commands.OpResult>>? OnSelChanged;
 
-    /// <summary>数值变化时回写全局设置。</summary>
-    public Action<double>? Apply;
+    /// <summary>数值变化时写入（经 Ops.TrySetSetting）。</summary>
+    public Func<double, Task<Commands.OpResult>>? TryApply;
+
     /// <summary>点击数值时打开键盘。</summary>
     public Action? EditRequest;
+
+    private static bool Rejected(Task<Commands.OpResult> t) => t.IsCompleted && !(t.IsCompletedSuccessfully && t.Result.Ok);
+
+    /// <summary>回滚后的通知：立即一次，再延后一拍一次（双向绑定的控件可能在同一轮里把值写回，见设计稿 §9 第 4 条）。</summary>
+    private void NotifyReverted(params string[] props)
+    {
+        foreach (var p in props) OnPropertyChanged(p);
+        Dispatcher.UIThread.Post(() => { foreach (var p in props) OnPropertyChanged(p); });
+    }
+
+    private bool _on;
+    public bool On
+    {
+        get => _on;
+        set
+        {
+            bool old = _on;
+            if (!SetProperty(ref _on, value) || ToggleApply is not { } f) return;
+            var t = f(value);
+            if (Rejected(t)) { _on = old; NotifyReverted(nameof(On)); }   // 直接写字段：不再触发写入
+            Sink?.Invoke(t);
+        }
+    }
+
+    private string _selValue = "";
+    public string SelValue
+    {
+        get => _selValue;
+        set
+        {
+            string old = _selValue;
+            if (!SetProperty(ref _selValue, value) || OnSelChanged is not { } f) return;
+            var t = f(value);
+            if (Rejected(t)) { _selValue = old; NotifyReverted(nameof(SelValue)); }
+            Sink?.Invoke(t);
+        }
+    }
 
     private double _numValue;
     public double NumValue
     {
         get => _numValue;
-        set { if (SetProperty(ref _numValue, value)) { OnPropertyChanged(nameof(NumText)); Apply?.Invoke(value); } }
+        set
+        {
+            var t = Write(value);
+            if (t != null) Sink?.Invoke(t);
+        }
     }
 
-    [RelayCommand] private void Flip() => On = !On;
-    [RelayCommand] private void Inc() => NumValue = Math.Min(Max, NumValue + Step);
-    [RelayCommand] private void Dec() => NumValue = Math.Max(Min, NumValue - Step);
-    [RelayCommand] private void Edit() => EditRequest?.Invoke();
+    /// <summary>
+    /// 写入一个新数值并返回命令结果。值没变或没有写入回调时返回 null。被同步拒绝时恢复旧值。
+    /// </summary>
+    private Task<Commands.OpResult>? Write(double value)
+    {
+        double old = _numValue;
+        if (!SetProperty(ref _numValue, value, nameof(NumValue))) return null;
+        OnPropertyChanged(nameof(NumText));
+        if (TryApply is not { } f) return null;
+        var t = f(value);
+        if (Rejected(t)) { _numValue = old; NotifyReverted(nameof(NumValue), nameof(NumText)); }
+        return t;
+    }
+
+    /// <summary>键盘确认回调：同 NumValue 赋值，结果交给键盘统一提示。</summary>
+    public Task<Commands.OpResult> Submit(double value) => Write(value) ?? Commands.OpResult.Silent.AsTask();
+
+    [RelayCommand]
+    [Commands.ViewEntry("只改开关控件值；写入在 On 的 setter → ToggleApply（经 Ops.Try*）")]
+    private void Flip() => On = !On;
+
+    [RelayCommand]
+    [Commands.ViewEntry("只改数值控件值；写入在 NumValue 的 setter → TryApply（经 Ops.TrySetSetting）")]
+    private void Inc() => NumValue = InRange(NumValue + Step);
+
+    [RelayCommand]
+    [Commands.ViewEntry("只改数值控件值；写入在 NumValue 的 setter → TryApply（经 Ops.TrySetSetting）")]
+    private void Dec() => NumValue = InRange(NumValue - Step);
+
+    /// <summary>
+    /// +/− 的结果夹到 [Min, Max]：当前值本身可能在范围外（设置文件未限幅、开机从硬件回填，例如驱动器细分 60000），
+    /// 这时按一下就回到范围边界，而不是算出一个仍越界、被 TrySetSetting 拒绝的值（否则 +/− 永远走不回来）。
+    /// </summary>
+    private double InRange(double v) => Math.Max(Min, Math.Min(Max, v));
+
+    [RelayCommand]
+    [Commands.ViewEntry("只打开键盘；确认回调为 Submit → TryApply（经 Ops.TrySetSetting）")]
+    private void Edit() => EditRequest?.Invoke();
 
     private static IBrush B(string hex) => new SolidColorBrush(Color.Parse(hex));
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
@@ -33,7 +34,17 @@ public partial class AlarmViewModel : ViewModelBase
 
     partial void OnFilterChanged(string value) => ApplyFilter();
 
-    [RelayCommand] private void SetFilter(string f) => Filter = f;
+    [RelayCommand]
+    [ViewEntry("切换列表过滤（只改界面）")]
+    private void SetFilter(string f) => Filter = f;
+
+    /// <summary>主视图模型（构造完成后由 MainViewModel 赋值）：确认报警经它的命令层。</summary>
+    internal MainViewModel? Main { get; set; }
+
+    private long _seq;
+
+    /// <summary>按 Id 找一条报警 / 事件（命令层 TryAckAlarm 用）。</summary>
+    internal AlarmItem? Find(string id) => All.FirstOrDefault(a => a.Id == id);
 
     /// <summary>运行时追加一条事件（置顶，"未处理"状态），并刷新过滤列表与统计。返回新条目。</summary>
     public AlarmItem Log(string kind, string rv, string msg, string sub)
@@ -42,6 +53,7 @@ public partial class AlarmViewModel : ViewModelBase
         _logger?.Event(now, kind, rv, msg, sub);
         var item = new AlarmItem
         {
+            Id = (++_seq).ToString(System.Globalization.CultureInfo.InvariantCulture),
             K = kind, Rv = rv, Msg = msg, Sub = sub,
             Time = now.ToString("HH:mm:ss"),
             Stat = kind == "info" ? AlarmLifecycle.Done : AlarmLifecycle.Active,
@@ -94,9 +106,15 @@ public partial class AlarmViewModel : ViewModelBase
 
     /// <summary>人工确认一条报警（预留：界面暂无入口）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryAckAlarm))]
     private void Ack(AlarmItem? a)
     {
-        if (a == null) return;
+        if (a != null && Main is { } m) m.Local(m.Ops.TryAckAlarm(MainViewModel.Src, a.Id));
+    }
+
+    /// <summary>确认的状态迁移本身（命令层调用）。</summary>
+    internal void AckCore(AlarmItem a)
+    {
         a.Stat = AlarmLifecycle.OnAck(a.Stat);
         ApplyFilter();
         OnPropertyChanged(nameof(ActiveCount));
@@ -121,6 +139,8 @@ public partial class AlarmViewModel : ViewModelBase
 /// <summary>一条报警/事件记录。Stat：active 未处理 / ack 已确认 / cleared 已解除 / done 已完成（见 <see cref="AlarmLifecycle"/>）。</summary>
 public partial class AlarmItem : ObservableObject
 {
+    /// <summary>本次运行内唯一的编号（1 起递增），远程 /alarms/{id}/ack 用。</summary>
+    public string Id { get; init; } = "";
     public string K { get; set; } = "info";
     public string Rv { get; set; } = "";
     public string Msg { get; set; } = "";

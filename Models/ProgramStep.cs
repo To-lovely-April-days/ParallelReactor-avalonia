@@ -265,6 +265,15 @@ public partial class ProgramStep : ObservableObject
             c.Segments.Select(g => (g.Temp, g.Rate, g.Hold)));
     }
 
+    /// <summary>由快照还原为可编辑的步骤（远程整体替换程序用，见 OperatorCommands.TryReplaceProgram）。</summary>
+    public static ProgramStep FromSnapshot(StepSnapshot snap)
+    {
+        var s = new ProgramStep(snap.Type);
+        foreach (var kv in snap.Params) s._p[kv.Key] = kv.Value;
+        foreach (var (t, r, h) in snap.Segments) s.Segments.Add(new HeatSeg { Temp = t, Rate = r, Hold = h });
+        return s;
+    }
+
     /// <summary>深拷贝（应用到其他通道用）。</summary>
     public ProgramStep Clone()
     {
@@ -303,7 +312,13 @@ public partial class StepField : ObservableObject
     /// <summary>当前数值（屏幕键盘读取初值用）。</summary>
     public double Number => _s.Num(_key);
 
-    /// <summary>屏幕键盘确认后写回数值。</summary>
+    /// <summary>
+    /// 编辑闸门（ProgramViewModel 注入为 Ops.TryEditProgram 的结果）：false = 被拒（程序执行中 / 通道运行中 / 远程控制中），
+    /// 不写入并让控件回到原值。null = 不设闸门。
+    /// </summary>
+    public Func<bool>? Gate { get; init; }
+
+    /// <summary>屏幕键盘确认后写回数值（调用方已经过 TryEditProgram，这里不再过闸门）。</summary>
     public void SetNumber(double v)
     {
         _s.SetNum(_key, v);
@@ -315,6 +330,13 @@ public partial class StepField : ObservableObject
         get => IsNum ? StepDef.N(_s.Num(_key)) : _s.Str(_key);
         set
         {
+            if (Gate is { } gate && !gate())
+            {
+                // 下拉框双向绑定：同一轮里通知可能被覆盖，延后一拍再通知一次，控件回到原值
+                OnPropertyChanged();
+                Avalonia.Threading.Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(Value)));
+                return;
+            }
             if (IsNum)
             {
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d);

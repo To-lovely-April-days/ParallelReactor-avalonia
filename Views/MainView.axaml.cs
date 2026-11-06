@@ -9,6 +9,7 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Threading;
 using ParallelReactor.Controls;
+using ParallelReactor.Services;
 using ParallelReactor.ViewModels;
 using System.Linq;
 
@@ -18,19 +19,19 @@ namespace ParallelReactor.Views;
 /// 主界面内容（单视图）。既可被 <see cref="MainWindow"/> 托管跑在 X11/桌面，
 /// 也可被 DRM 单视图直出（无窗口、无 X）——由 App 按生命周期选择。
 /// 窗口专属逻辑（铺满屏幕）在 <see cref="MainWindow"/>；本类只管内容与交互。
+/// Tick / 时钟 / 开机预热的定时器由 <see cref="ControlLoop"/> 持有（C1）：View 卸载后控制循环照常运行。
 /// </summary>
-public partial class MainView : UserControl
+public partial class MainView : UserControl, IWarmupHost
 {
     private MainViewModel? _vm;
     private SchematicControl? _schematic;
-    private DispatcherTimer? _tickTimer;
-    private DispatcherTimer? _clockTimer;
-    private DispatcherTimer? _warmTimer;
-    private int _warmIdx;
-    private int _warmSetIdx = -1;   // 设置子页预热进度：-1=未开始
-    private static readonly string[] WarmTabs = { "program", "graph", "data", "alarm", "setting", "home" };
     private bool _closing;
     private bool _started;           // Loaded 可能多次触发，只初始化一次
+    private bool _toastDetached;     // 卸载时退订了 Toast（VM 改为暂存），重新挂载时再订阅
+    // 开机遮罩还在时到达的 Toast（含 VM 暂存的开机提示）：遮罩盖住 ToastHost，2.6s 寿命会在遮罩下耗尽，
+    // 所以先留着，HideSplash 时再显示。最多 20 条，保留最早的。
+    private bool _splashUp = true;
+    private readonly System.Collections.Generic.List<(string kind, string msg)> _splashToasts = new();
 
     public MainView()
     {
@@ -66,7 +67,7 @@ public partial class MainView : UserControl
         if (_vm != null)
         {
             _vm.SchematicInvalidated -= RefreshSchematic;
-            _vm.ToastRequested -= ShowToast;
+            if (!_toastDetached) _vm.ToastRequested -= ShowToast;
             _vm.TabSwitched -= OnTabSwitched;
         }
         _vm = DataContext as MainViewModel;
@@ -76,13 +77,14 @@ public partial class MainView : UserControl
         _schematic.GasInlets = _vm.GasInlets;
         _schematic.VentOn = _vm.VentOn;
         _schematic.OnReactorClick = id => _vm.OpenDrawer(id);
-        _schematic.OnValveClick = id => _vm.TryValve(id);
-        _schematic.OnGasClick = i => _vm.ToggleGas(i);
-        _schematic.OnVentClick = () => _vm.ToggleVent();
+        _schematic.OnValveClick = id => _vm.ValveClicked(id);
+        _schematic.OnGasClick = i => _vm.GasClicked(i);
+        _schematic.OnVentClick = () => _vm.VentClicked();
         _schematic.ManualValve = _vm.ManualValve;
         _schematic.OnManualClick = () => _vm.ToggleManualCommand.Execute(null);
 
         _vm.SchematicInvalidated += RefreshSchematic;
+        _toastDetached = false;
         _vm.ToastRequested += ShowToast;
         _vm.TabSwitched += OnTabSwitched;
     }
@@ -99,89 +101,44 @@ public partial class MainView : UserControl
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
+        if (_toastDetached && _vm != null)
+        {
+            _toastDetached = false;
+            _vm.ToastRequested += ShowToast;   // 卸载期间 VM 暂存的提示在这里补发
+        }
         if (_started) return;   // 挂载后只初始化一次（Loaded 可能重复触发）
         _started = true;
 
-        // 实时数据 tick（1.2s，对应 HTML setInterval 节奏）
-        _tickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1200) };
-        _tickTimer.Tick += (_, _) => _vm?.Tick();
-        _tickTimer.Start();
-
-        // 时钟（1s）
-        _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
-        _clockTimer.Tick += (_, _) => _vm?.ClockTick();
-        _clockTimer.Start();
-
+        // 实时数据 tick / 时钟由控制循环驱动（App 启动时已开始）。
         // 已移除持续动画：气路图改为事件驱动，仅在数据/状态变化时（Tick 调 RefreshSchematic）重绘一次，
         // 弱板上空闲 CPU 接近 0、点击即时响应。
 
-        StartWarmup();
+        // 启动预热：开机时把各页各渲染一次（JIT + 布局预热），消除首次进菜单卡顿（序列见 ControlLoop）
+        if (_vm?.Loop is { } loop) loop.StartWarmup(this);
+        else HideSplash();
     }
 
-    // ============ 启动预热：开机时把各页各渲染一次（JIT + 布局预热），消除首次进菜单卡顿 ============
-    private void StartWarmup()
-    {
-        if (_vm == null) { HideSplash(); return; }
-        _warmIdx = 0;
-        _warmTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
-        _warmTimer.Tick += WarmStep;
-        _warmTimer.Start();
-    }
-
-    private void WarmStep(object? sender, EventArgs e)
-    {
-        if (_closing || _vm == null) { FinishWarm(); return; }
-
-        // 阶段一：逐个切 tab，让每页首次布局/渲染发生（被遮罩盖住，用户看不到）
-        if (_warmIdx < WarmTabs.Length)
-        {
-            _vm.SwitchTab(WarmTabs[_warmIdx]);
-            _warmIdx++;
-            return;
-        }
-
-        // 阶段二：停在设置页，逐个切设置子页预热——把「首次点各设置子页」的 JIT/实例化开销
-        // 全部前置到开机遮罩期间，消除运行时点设置左菜单的一次性卡顿。
-        var pages = _vm.Setting.Pages;
-        if (_warmSetIdx < 0)
-        {
-            _vm.SwitchTab("setting");   // 设置页可见，子页内容才会真正 realize
-            _warmSetIdx = 0;
-            return;
-        }
-        if (_warmSetIdx < pages.Count)
-        {
-            _vm.Setting.Selected = pages[_warmSetIdx];
-            _warmSetIdx++;
-            return;
-        }
-
-        FinishWarm();
-    }
-
-    private void FinishWarm()
-    {
-        _warmTimer?.Stop();
-        _warmTimer = null;
-        if (_vm != null)
-        {
-            if (_vm.Setting.Pages.Count > 0) _vm.Setting.Selected = _vm.Setting.Pages[0];   // 复位到首个设置子页
-            _vm.SwitchTab("home");   // 预热结束停在首页
-        }
-        HideSplash();
-    }
+    bool IWarmupHost.IsClosing => _closing;
+    void IWarmupHost.HideSplash() => HideSplash();
 
     private void HideSplash()
     {
         var splash = this.FindControl<Border>("Splash");
         if (splash != null) splash.IsVisible = false;
+        _splashUp = false;
+        foreach (var (k, m) in _splashToasts) ShowToast(k, m);   // 遮罩期间的提示（开机提示、首几拍 Tick）现在才看得见
+        _splashToasts.Clear();
     }
 
+    // 标记关闭（预热据此提前结束）并退订 Toast（之后的提示由 VM 暂存）；不停定时器——控制循环与 View 无关（C1）
     private void OnUnloaded(object? sender, RoutedEventArgs e)
     {
         _closing = true;
-        _tickTimer?.Stop();
-        _clockTimer?.Stop();
+        if (_vm != null && !_toastDetached)
+        {
+            _vm.ToastRequested -= ShowToast;
+            _toastDetached = true;
+        }
     }
 
     // 点击遮罩关闭抽屉
@@ -225,6 +182,11 @@ public partial class MainView : UserControl
     // ============ Toast ============
     private void ShowToast(string kind, string msg)
     {
+        if (_splashUp)
+        {
+            if (_splashToasts.Count < 20) _splashToasts.Add((kind, msg));
+            return;
+        }
         var host = this.FindControl<StackPanel>("ToastHost");
         if (host == null) return;
 

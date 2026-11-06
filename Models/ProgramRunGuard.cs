@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ParallelReactor.Commands;
 
 namespace ParallelReactor.Models;
 
@@ -23,6 +24,8 @@ public readonly record struct ProgramRunInput
     public bool NeedsGas { get; init; }
     /// <summary>气路公共检查的拒绝原因（GasBlockReason；仅 NeedsGas 时生效）。</summary>
     public string? GasBlock { get; init; }
+    /// <summary><see cref="GasBlock"/> 的 §11 错误码（GasGuard 给出；为空时按 GAS_BUSY）。</summary>
+    public string? GasBlockCode { get; init; }
     /// <summary>参数超出全局限值的违规项（ProgramLimits.Validate）。</summary>
     public IReadOnlyList<string>? LimitErrors { get; init; }
 }
@@ -34,20 +37,26 @@ public readonly record struct ProgramRunInput
 /// </summary>
 public static class ProgramRunGuard
 {
-    public static string? Reason(in ProgramRunInput i)
+    /// <summary>拒绝原因（中文）：null = 可运行。与 <see cref="Check"/> 同一判定。</summary>
+    public static string? Reason(in ProgramRunInput i) => Check(i)?.Message;
+
+    /// <summary>同 <see cref="Reason"/>，带 §11 错误码（命令层用）。</summary>
+    public static (string Code, string Message)? Check(in ProgramRunInput i)
     {
-        if (!i.HasChannel) return "当前未选中通道（先点上方通道条里的 RV）";
-        if (i.ProgramRunning) return "已有程序在执行 · 请等待完成或先中止";
-        if (i.StepCount <= 0) return "空程序无法下发 · 请先从左侧步骤库添加步骤";
-        if (i.EstopLocked) return "急停状态下不可下发程序 · 请先复位";
+        if (!i.HasChannel) return (OpCodes.ChannelNotFound, "当前未选中通道（先点上方通道条里的 RV）");
+        if (i.ProgramRunning) return (OpCodes.ProgramRunning, "已有程序在执行 · 请等待完成或先中止");
+        if (i.StepCount <= 0) return (OpCodes.ProgramInvalid, "空程序无法下发 · 请先从左侧步骤库添加步骤");
+        if (i.EstopLocked) return (OpCodes.EstopActive, "急停状态下不可下发程序 · 请先复位");
         if (i.State == ReactorState.Alarm || i.OverTempTripped || i.OverPressureTripped)
-            return "该通道存在报警或超温 / 超压未解除 · 请先处理并复位";
+            return (OpCodes.ChannelAlarm, "该通道存在报警或超温 / 超压未解除 · 请先处理并复位");
         if (i.State is not (ReactorState.Ready or ReactorState.Done))
-            return i.State == ReactorState.Idle ? "该通道已停用 · 请先启用" : "该通道正在运行，不能下发程序";
-        if (i.GasBusy) return $"{(string.IsNullOrEmpty(i.GasTask) ? "气路序列" : i.GasTask)}进行中，请等待完成或先停止";
-        if (i.NeedsGas && i.GasBlock is { } g) return g;
+            return i.State == ReactorState.Idle
+                ? (OpCodes.ChannelStateInvalid, "该通道已停用 · 请先启用")
+                : (OpCodes.ChannelBusy, "该通道正在运行，不能下发程序");
+        if (i.GasBusy) return (OpCodes.GasBusy, $"{(string.IsNullOrEmpty(i.GasTask) ? "气路序列" : i.GasTask)}进行中，请等待完成或先停止");
+        if (i.NeedsGas && i.GasBlock is { } g) return (i.GasBlockCode ?? OpCodes.GasBusy, g);
         if (i.LimitErrors is { Count: > 0 } e)
-            return e.Count == 1 ? e[0] : $"{e[0]}（另有 {e.Count - 1} 项超限）";
+            return (OpCodes.ParamOutOfRange, e.Count == 1 ? e[0] : $"{e[0]}（另有 {e.Count - 1} 项超限）");
         return null;
     }
 }

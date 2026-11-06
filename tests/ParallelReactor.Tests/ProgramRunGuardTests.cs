@@ -77,3 +77,54 @@ public class ProgramRunGuardTests
         Assert.Contains("正在运行", ProgramRunGuard.Reason(s with { State = ReactorState.Heating }));
     }
 }
+
+/// <summary>批 C：ProgramRunGuard.Check 的 §11 错误码（Reason 的文字不变）。</summary>
+public class ProgramRunGuardCodeTests
+{
+    private static readonly ProgramRunInput Ok = new()
+    {
+        HasChannel = true, StepCount = 3, State = ReactorState.Ready, GasTask = "",
+    };
+
+    [Fact]
+    public void AllClear_IsNull() => Assert.Null(ProgramRunGuard.Check(Ok));
+
+    [Theory]
+    [InlineData("nochannel", ParallelReactor.Commands.OpCodes.ChannelNotFound)]
+    [InlineData("running", ParallelReactor.Commands.OpCodes.ProgramRunning)]
+    [InlineData("empty", ParallelReactor.Commands.OpCodes.ProgramInvalid)]
+    [InlineData("estop", ParallelReactor.Commands.OpCodes.EstopActive)]
+    [InlineData("alarm", ParallelReactor.Commands.OpCodes.ChannelAlarm)]
+    [InlineData("ot", ParallelReactor.Commands.OpCodes.ChannelAlarm)]
+    [InlineData("idle", ParallelReactor.Commands.OpCodes.ChannelStateInvalid)]
+    [InlineData("heating", ParallelReactor.Commands.OpCodes.ChannelBusy)]
+    [InlineData("gasbusy", ParallelReactor.Commands.OpCodes.GasBusy)]
+    [InlineData("limits", ParallelReactor.Commands.OpCodes.ParamOutOfRange)]
+    public void EachBranch_HasCode(string branch, string code)
+    {
+        var i = branch switch
+        {
+            "nochannel" => Ok with { HasChannel = false },
+            "running" => Ok with { ProgramRunning = true },
+            "empty" => Ok with { StepCount = 0 },
+            "estop" => Ok with { EstopLocked = true },
+            "alarm" => Ok with { State = ReactorState.Alarm },
+            "ot" => Ok with { OverTempTripped = true },
+            "idle" => Ok with { State = ReactorState.Idle },
+            "heating" => Ok with { State = ReactorState.Heating },
+            "gasbusy" => Ok with { GasBusy = true, GasTask = "泄漏测试" },
+            _ => Ok with { LimitErrors = new[] { "升温 超限" } },
+        };
+        var r = ProgramRunGuard.Check(i);
+        Assert.Equal(code, r!.Value.Code);
+        Assert.Equal(ProgramRunGuard.Reason(i), r.Value.Message);   // 文字与 Reason 同源
+    }
+
+    [Fact]
+    public void GasBlock_CarriesGuardCode_DefaultsToGasBusy()
+    {
+        var i = Ok with { NeedsGas = true, GasBlock = "阀门离线", GasBlockCode = ParallelReactor.Commands.OpCodes.HwOffline };
+        Assert.Equal(ParallelReactor.Commands.OpCodes.HwOffline, ProgramRunGuard.Check(i)!.Value.Code);
+        Assert.Equal(ParallelReactor.Commands.OpCodes.GasBusy, ProgramRunGuard.Check(i with { GasBlockCode = null })!.Value.Code);
+    }
+}

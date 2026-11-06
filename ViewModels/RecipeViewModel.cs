@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
@@ -33,6 +34,7 @@ public partial class RecipeViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("打开配方面板")]
     private void Open()
     {
         BuildChannels();
@@ -41,9 +43,11 @@ public partial class RecipeViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("关闭配方面板")]
     private void Close() => IsOpen = false;
 
     [RelayCommand]
+    [ViewEntry("快速勾选目标通道（只改面板选择）")]
     private void QuickPick(string mode)
     {
         foreach (var c in Channels)
@@ -60,29 +64,16 @@ public partial class RecipeViewModel : ViewModelBase
         RaiseCount();
     }
 
+    /// <summary>把选中的配方应用到勾选的通道（守卫与提示文字在 OperatorCommands.TryApplyRecipe）。成功后关闭面板。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryApplyRecipe))]
     private void Apply()
     {
         if (SelectedRecipe is not { } r) return;
-        int n = 0;
-        foreach (var c in Channels.Where(c => c.Picked && !c.Disabled))
-        {
-            var rv = _main.FindReactor(c.Id);
-            if (rv is null || rv.Id == _main.Program.RunningRv) continue;   // 打开面板后才开始的程序也跳过
-            rv.TSp = r.TSp;
-            rv.PSp = r.PSp;
-            rv.RpmSp = r.RpmSp;
-            rv.Vol = r.Vol;
-            rv.Blade = r.Blade;
-            rv.End = r.End;
-            rv.Run = r.Run;
-            rv.AppliedRecipe = r.Name;
-            n++;
-        }
-        _main.RefreshSchematic();
-        if (_main.Drawer.IsOpen) _main.Drawer.RaiseAll();
-        IsOpen = false;
-        _main.Toast("ok", $"已将「{r.Name}」应用到 {n} 个通道");
+        var t = _main.Ops.TryApplyRecipe(MainViewModel.Src, r.Name,
+            Channels.Where(c => c.Picked && !c.Disabled).Select(c => c.Id).ToList());
+        if (t.IsCompletedSuccessfully && t.Result.Ok) IsOpen = false;
+        _main.Local(t);
     }
 
     private void BuildChannels()
@@ -140,6 +131,7 @@ public partial class ChannelPick : ObservableObject
     }
 
     [RelayCommand]
+    [ViewEntry("勾选 / 取消勾选目标通道（只改面板选择）")]
     private void Toggle()
     {
         if (!Disabled) Picked = !Picked;

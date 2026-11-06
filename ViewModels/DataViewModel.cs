@@ -1,3 +1,4 @@
+using ParallelReactor.Commands;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -37,10 +38,10 @@ public partial class DataViewModel : ViewModelBase
         OnPropertyChanged(nameof(HasSelection));
     }
 
-    [RelayCommand] private void ViewCurve() => _main.SwitchTab("graph");
-    [RelayCommand] private void ExportEar() => _main.Toast("warn", "导出 .ear 尚未实现");
-    [RelayCommand] private void ToTemplate() => _main.Toast("warn", "转为程序模板尚未实现");
-    [RelayCommand] private void CopyParams() => _main.Toast("warn", "复制参数到当前运行尚未实现");
+    [RelayCommand, ViewEntry("切到曲线页")] private void ViewCurve() => _main.SwitchTab("graph");
+    [RelayCommand, ViewEntry("未实现，只提示")] private void ExportEar() => _main.Toast("warn", "导出 .ear 尚未实现");
+    [RelayCommand, ViewEntry("未实现，只提示")] private void ToTemplate() => _main.Toast("warn", "转为程序模板尚未实现");
+    [RelayCommand, ViewEntry("未实现，只提示")] private void CopyParams() => _main.Toast("warn", "复制参数到当前运行尚未实现");
 }
 
 /// <summary>一条历史运行记录。</summary>
