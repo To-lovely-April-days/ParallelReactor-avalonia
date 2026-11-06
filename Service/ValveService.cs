@@ -27,6 +27,9 @@ public sealed class ValveService
     /// <summary>IO16R 是否在线：连续 3 次通讯失败视为离线（未配置串口时恒为离线）。</summary>
     public bool Online => _fails < 3;
 
+    /// <summary>事务统计（IO16R 不做周期轮询：计数 = 全部读写事务，含气路序列每秒一次的保持心跳）。</summary>
+    public CommStats Stats { get; } = new();
+
     public ValveService(IModbusMaster bus, byte slave, bool energizeOpens)
     {
         _io = new IoModule(bus, slave);
@@ -40,8 +43,8 @@ public sealed class ValveService
     /// <summary>执行一笔事务并记录在线状态（异常照常抛给调用方）。</summary>
     private async Task<T> Track<T>(Func<Task<T>> op)
     {
-        try { var v = await op(); _fails = 0; return v; }
-        catch { if (_fails < 3) _fails++; throw; }
+        try { var v = await op(); _fails = 0; Stats.Ok(); return v; }
+        catch { Stats.Fail(); if (_fails < 3) _fails++; throw; }
     }
 
     private Task Track(Func<Task> op) => Track(async () => { await op(); return true; });

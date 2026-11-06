@@ -67,6 +67,8 @@ public partial class MainViewModel
         IsEstopPanelOpen = true;
         IsEstopResetConfirmOpen = false;
         if (first) EstopTimeText = $"触发时间 {DateTime.Now:HH:mm:ss}";
+        Alarm.Log("err", "系统", first ? "急停按下 · 停止指令下发" : "急停再次按下 · 重新下发",
+            "加热 / 搅拌 / 阀门三路并行下发，各部分回应时刻见事件日志");
 
         // —— 界面侧立即停：气路序列、程序执行、曲线、逼近、通道状态、搅拌开关、手动阀控、各确认弹窗 ——
         bool hadGas = GasBusy;
@@ -94,7 +96,10 @@ public partial class MainViewModel
         _estopInFlight++;
         try
         {
-            var res = await EmergencyStop.RunAsync(HeatStopOp(), StirStopOp(), ValveCloseOp());
+            var res = await EmergencyStop.RunAsync(
+                HeatStopTimed("首轮"),
+                TimedEstopOp("搅拌", "首轮", StirStopOp()),
+                TimedEstopOp("阀门", "首轮", ValveCloseOp()));
             SetEstopParts(res);
             if (first) LogEstopTriggered(res);
 
@@ -105,7 +110,10 @@ public partial class MainViewModel
                 await Task.Delay(100);
             // 等待期间已复位：不再补发，避免把复位后刚启动的加热 / 搅拌又停掉
             if (!Estopped) return;
-            SetEstopParts(await EmergencyStop.RunAsync(HeatStopOp(), StirStopOp(), ValveCloseOp()));
+            SetEstopParts(await EmergencyStop.RunAsync(
+                HeatStopTimed("补发"),
+                TimedEstopOp("搅拌", "补发", StirStopOp()),
+                TimedEstopOp("阀门", "补发", ValveCloseOp())));
         }
         finally { _estopInFlight--; }
     }
@@ -123,9 +131,9 @@ public partial class MainViewModel
         try
         {
             // 三路各自独立重发（任务一创建就已开始，三条总线并行）
-            var h = EstopHeat.Part == EstopPart.Failed ? EmergencyStop.PartAsync(HeatStopOp()) : null;
-            var s = EstopStir.Part == EstopPart.Failed ? EmergencyStop.PartAsync(StirStopOp()) : null;
-            var v = EstopValves.Part == EstopPart.Failed ? EmergencyStop.PartAsync(ValveCloseOp()) : null;
+            var h = EstopHeat.Part == EstopPart.Failed ? EmergencyStop.PartAsync(HeatStopTimed("自动重发")) : null;
+            var s = EstopStir.Part == EstopPart.Failed ? EmergencyStop.PartAsync(TimedEstopOp("搅拌", "自动重发", StirStopOp())) : null;
+            var v = EstopValves.Part == EstopPart.Failed ? EmergencyStop.PartAsync(TimedEstopOp("阀门", "自动重发", ValveCloseOp())) : null;
             if (h != null) SetRetried(EstopHeat, await h);
             if (s != null) SetRetried(EstopStir, await s);
             if (v != null) SetRetried(EstopValves, await v);
@@ -163,8 +171,23 @@ public partial class MainViewModel
     }
 
     // 未配置串口的模块软件从未控制过，记为「未配置」，不算失败
-    private Func<Task<bool>>? HeatStopOp() => HardwareOptions.UseRealTemp ? Temp.EmergencyStopAsync : null;
     private Func<Task<bool>>? StirStopOp() => HardwareOptions.UseRealStir ? _stir.StopAsync : null;
+
+    /// <summary>加热停止 + 计时事件；事件里的 Srun / At=4 两步结果取自<b>本次</b>调用（多轮并发时不会串到别的轮次）。</summary>
+    private Func<Task<bool>>? HeatStopTimed(string round)
+    {
+        if (!HardwareOptions.UseRealTemp) return null;
+        (bool Gate, bool Each)? d = null;
+        return TimedEstopOp("加热", round, async () =>
+        {
+            var r = await Temp.EmergencyStopDetailedAsync();
+            d = (r.Gate, r.Each);
+            return r.Ok;
+        }, () => d is { } x
+            ? $" · Srun=9655 {(x.Gate ? "成功" : "失败")} · 8 路 At=4 {(x.Each ? "全部成功" : "有失败")}"
+            : " · 未完成（异常）");
+    }
+
     private Func<Task<bool>>? ValveCloseOp() => RealIo ? () => CloseAllValvesAsync(report: false) : null;
 
     /// <summary>急停面板「收起」：锁定保持，工具栏按钮显示「急停中」，再按会重新下发并打开面板。</summary>

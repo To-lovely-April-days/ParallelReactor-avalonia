@@ -39,8 +39,11 @@ public sealed class MockModbusMaster : IModbusMaster
             foreach (var s in TempSlaves)
                 for (int i = 0; i < TempLoops; i++)
                 {
-                    // PV 向 SP 漂移
+                    // PV 向 SP 漂移；通道停止（At=4）或全局停止（Srun=9655）时输出关闭，PV 自然冷却回室温 25.0℃
                     short sp = (short)_hold.GetValueOrDefault(Key(s, (ushort)(0x0000 + i)), (ushort)250); // 默认 25.0℃
+                    bool stopped = _hold.GetValueOrDefault(Key(s, (ushort)(0x0300 + i))) == 4
+                        || _hold.GetValueOrDefault(Key(s, 0x0845)) == 9655;
+                    if (stopped) sp = 250;
                     int pvKey = Key(s, (ushort)(0x0600 + i));
                     short pv = (short)_hold.GetValueOrDefault(pvKey, (ushort)sp);
                     int step = Math.Sign(sp - pv) * Math.Min(Math.Abs(sp - pv), 5);

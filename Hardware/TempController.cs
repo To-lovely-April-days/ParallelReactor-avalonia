@@ -62,6 +62,18 @@ public sealed class TempController
         return pv;
     }
 
+    /// <summary>一次性读全部回路 PV 寄存器原码（有符号）。换算为 ℃ 用 <see cref="PvFromRaw"/>。</summary>
+    public async Task<short[]> ReadAllPvRawAsync()
+    {
+        var r = await _bus.ReadHoldingRegistersAsync(_slave, PvBase, (ushort)_loops);
+        var raw = new short[_loops];
+        for (int i = 0; i < _loops && i < r.Length; i++) raw[i] = (short)r[i];
+        return raw;
+    }
+
+    /// <summary>PV 原码 → ℃（按 dPt 缩放）。</summary>
+    public double PvFromRaw(short raw) => raw / Scale;
+
     /// <summary>一次性读全部回路输出百分比（0..100）。</summary>
     public async Task<double[]> ReadAllOutputsAsync()
     {

@@ -124,7 +124,7 @@ public partial class DrawerViewModel : ViewModelBase
     private void StartProfile()
     {
         if (Reactor is not { } c) return;
-        if (_main.HeatBlockReason() is { } why) { _main.Toast("err", why); return; }
+        if (_main.HeatBlockReason(c.Id) is { } why) { _main.Toast("err", why); return; }
         // PV 无效（温控离线 / 读数为 0）则从室温起步，避免段 1 从 0℃ 开始爬
         double startPv = c.TOnline && c.T > 1 ? c.T : 25;
         double bandTemp = startPv;
@@ -154,7 +154,7 @@ public partial class DrawerViewModel : ViewModelBase
     private void StartHeat()
     {
         if (Reactor is not { } c) return;
-        if (_main.HeatBlockReason() is { } why) { _main.Toast("err", why); return; }
+        if (_main.HeatBlockReason(c.Id) is { } why) { _main.Toast("err", why); return; }
         if (c.TSp < 35) { _main.Toast("err", "请先设置目标温度（≥35℃）再启动加热"); return; }
         _main.StartFixedHeat(c);
         if (c.State is ReactorState.Idle or ReactorState.Done or ReactorState.Ready)

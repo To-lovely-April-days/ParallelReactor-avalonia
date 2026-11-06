@@ -53,7 +53,9 @@ public partial class MainViewModel
         if (needPressure && !_press.Online) return "压力采集离线（8AI 通讯失败），请检查接线与串口后再试";
         if (GasBusy) return $"{GasTask}进行中，请等待完成或先停止";
         if (ManualValve) return "请先关闭「手动阀控」：自动序列与手动阀操作不能同时进行";
-        var busy = Reactors.Where(r => r.State is ReactorState.Pressing or ReactorState.React or ReactorState.Alarm).ToList();
+        // 停用 / 已结束通道的超温切断报警不阻塞气路（见 IsIdleOverTempAlarm）
+        var busy = Reactors.Where(r => (r.State is ReactorState.Pressing or ReactorState.React or ReactorState.Alarm)
+                                       && !IsIdleOverTempAlarm(r)).ToList();
         if (busy.Count > 0)
             return $"{string.Join("、", busy.Select(r => "RV" + r.Id))} 正在加压 / 反应 / 报警，需先停止";
         return null;
@@ -105,7 +107,8 @@ public partial class MainViewModel
     public void ThrowIfGasUnsafe()
     {
         if (Estopped) throw new GasFaultException("急停已触发");
-        var a = Reactors.FirstOrDefault(r => r.State == ReactorState.Alarm);
+        // 停用 / 已结束通道的超温报警只在该通道参与本序列（充压监视）时才中止
+        var a = Reactors.FirstOrDefault(r => r.State == ReactorState.Alarm && !(IsIdleOverTempAlarm(r) && !_gasWatch.Contains(r.Id)));
         if (a != null) throw new GasFaultException($"RV{a.Id} 报警");
         var o = Reactors.FirstOrDefault(r => _gasWatch.Contains(r.Id) && r.P >= Settings.OverPressure);
         if (o != null) throw new GasFaultException($"RV{o.Id} 超压（{Units.FormatP(o.P)}）");
@@ -142,6 +145,7 @@ public partial class MainViewModel
     /// <summary>把一帧阀态同步到界面（RV 进气阀 / 气源 / 排空）。</summary>
     private void ShowValves(bool[] f)
     {
+        LogValveFrame(f);   // 与界面当前阀态比，有变化才记（事件文件）
         for (int i = 0; i < 8 && i < Reactors.Count; i++) Reactors[i].Valve = f[i];
         for (int g = 0; g < 3 && g < GasInlets.Count; g++) GasInlets[g].On = f[ValveFrame.GasBase + g];
         VentOn = f[ValveFrame.Vent];
@@ -202,17 +206,20 @@ public partial class MainViewModel
     /// 立即读一次 8 路压力（psi，下标 0..7 = RV1..8）并回写各釜 P。
     /// 读失败重试 1 次，仍失败抛 <see cref="GasFaultException"/>：依赖压力的序列不能盲跑。
     /// </summary>
-    public async Task<double[]> ReadPressuresAsync()
+    public async Task<double[]> ReadPressuresAsync() => (await ReadPressureSampleAsync()).Psi.ToArray();
+
+    /// <summary>同 <see cref="ReadPressuresAsync"/>，但返回整帧（原码 + psi + 响应时刻，同一次读取），泄漏测试逐点记录用。</summary>
+    public async Task<Services.PressureService.Sample> ReadPressureSampleAsync()
     {
         if (!await _press.PollAsync() && !await _press.PollAsync())
             throw new GasFaultException("压力读取失败（8AI 通讯）");
-        var p = _press.Pressures.ToArray();
+        var smp = _press.Last;
         for (int i = 0; i < 8 && i < Reactors.Count; i++)
         {
-            Reactors[i].P = p[i];
+            Reactors[i].P = smp.Psi[i];
             Reactors[i].POnline = true;
         }
-        return p;
+        return smp;
     }
 
     /// <summary>

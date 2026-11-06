@@ -25,6 +25,12 @@ public sealed partial class TempService : ObservableObject
 
     /// <summary>温控器是否在线：连续 3 次轮询失败视为离线（未配置串口时恒为离线）。离线时 PV 为旧值，界面显示「—」。</summary>
     public bool Online => _fails < 3;
+
+    /// <summary>轮询统计（一轮 5 次块读算一次事务；被上一轮未完成而跳过的不计）。LastOkAt = 最近一轮读完的时刻。</summary>
+    public CommStats Stats { get; } = new();
+
+    /// <summary>当前 Channels 里这组值（PV / 输出 / 模式）所属那一轮轮询的响应时刻（UI 线程写，尚无为 null）。</summary>
+    public DateTimeOffset? ValuesAt { get; private set; }
     // 每通道整定发起时所在的档位（-1=无进行中的整定）。整定期间用户可能切档，
     // 完成回读必须存回"发起时"的档，而不是"完成时"正显示的档。
     private readonly int[] _tuneBand = { -1, -1, -1, -1, -1, -1, -1, -1 };
@@ -132,7 +138,7 @@ public sealed partial class TempService : ObservableObject
             await c.SetPidAsync(loop, p, i, d);
             _lastBand[ch - 1] = band;
             await c.SetSetpointAsync(loop, initialSp);
-            Channels[ch - 1].Sp = initialSp;
+            Channels[ch - 1].Sp = initialSp; Channels[ch - 1].SpKnown = true;
             return true;
         }
         catch { return false; }
@@ -222,20 +228,25 @@ public sealed partial class TempService : ObservableObject
         _polling = true;
         try
         {
-            double[] pv, op;
+            double[] op;
+            short[] raw;
             int[] modes;
             int srun, ctn;
+            DateTimeOffset at;
             try
             {
-                pv = await _ctrl.ReadAllPvAsync().ConfigureAwait(false);
+                raw = await _ctrl.ReadAllPvRawAsync().ConfigureAwait(false);
                 op = await _ctrl.ReadAllOutputsAsync().ConfigureAwait(false);
                 modes = await _ctrl.ReadAllModesAsync().ConfigureAwait(false);
                 srun = await _ctrl.ReadSrunAsync().ConfigureAwait(false);
                 ctn = await _ctrl.ReadCtnAsync().ConfigureAwait(false);
                 _fails = 0;
+                at = DateTimeOffset.Now;
+                Stats.Ok(at);   // 记录响应到达时刻（不是 Tick 时刻）
             }
             catch
             {
+                Stats.Fail();
                 if (_fails < 3) _fails++;   // 通讯异常：保留上次值（界面按离线显示「—」），下个周期重试
                 if (!Online)
                     await Dispatcher.UIThread.InvokeAsync(() => { foreach (var m in Channels) m.Online = false; });
@@ -244,14 +255,16 @@ public sealed partial class TempService : ObservableObject
 
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
+                ValuesAt = at;   // 与下面的值在同一次 UI 更新里写，运行记录里「最近响应」与 PV 同属一轮
                 Srun = srun;
                 Ctn = ctn;
-                for (int i = 0; i < 8 && i < pv.Length; i++)
+                for (int i = 0; i < 8 && i < raw.Length; i++)
                 {
                     var m = Channels[i];
                     bool tuning = modes[i] == 1;
                     bool finished = m.Autotuning && !tuning;
-                    m.Pv = pv[i]; m.OutputPct = op[i]; m.Autotuning = tuning; m.Online = true;
+                    m.PvRaw = raw[i]; m.Mode = modes[i];
+                    m.Pv = _ctrl.PvFromRaw(raw[i]); m.OutputPct = op[i]; m.Autotuning = tuning; m.Online = true;
                     if (finished)
                     {
                         if (_tuneAborted[i]) _tuneAborted[i] = false;   // 取消 / 急停打断：没有新结果
@@ -267,7 +280,7 @@ public sealed partial class TempService : ObservableObject
     {
         var (c, loop) = Map(ch);
         await c.SetSetpointAsync(loop, sp);
-        Channels[ch - 1].Sp = sp;
+        Channels[ch - 1].Sp = sp; Channels[ch - 1].SpKnown = true;
     }
 
     public async Task SetPidAsync(int ch, double p, double i, double d)
@@ -344,6 +357,28 @@ public sealed partial class TempService : ObservableObject
         catch { return false; }
     }
 
+    /// <summary>
+    /// 超温切断单通道：正在自整定的先标记整定被打断（否则轮询会把仪表里的旧 PID 当成整定结果存档），
+    /// 再写 At=4（停止控制、关闭输出）。返回 At=4 是否写入确认（Modbus 0x06 回显）。
+    /// <para>不用 Srun=9655：Srun 是 AI-8 的全局寄存器，会把 8 路一起闸死。急停锁定不影响停止。</para>
+    /// </summary>
+    public async Task<bool> OverTempStopAsync(int ch)
+    {
+        var (c, loop) = Map(ch);
+        // 先标记整定被打断，写失败再撤销：写入失败时仪表上的整定仍在进行，完成后的新 PID 不能丢
+        bool wasTuning = Channels[ch - 1].Autotuning && !_tuneAborted[ch - 1];
+        int band = _tuneBand[ch - 1];
+        if (wasTuning) AbortTune(ch - 1);
+        try { await c.StopAsync(loop); }
+        catch
+        {
+            if (wasTuning && Channels[ch - 1].Autotuning) { _tuneAborted[ch - 1] = false; _tuneBand[ch - 1] = band; }
+            return false;
+        }
+        await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = false);
+        return true;
+    }
+
     /// <summary>停止全部 8 路温控输出（逐路 At=4，某路失败也继续下一路）。「全部停止」时调用。返回是否 8 路全部写入成功。
     /// 不用 Srun=9655 全局闸——那会把状态徽章打红，且语义上属于急停级别。</summary>
     public async Task<bool> StopAllChannelsAsync()
@@ -356,7 +391,11 @@ public sealed partial class TempService : ObservableObject
     /// <summary>急停：先 Srun=9655 一条指令闸死全部输出，再逐路 At=4 兜底（任一步通讯失败都继续下一步）。
     /// 返回加热是否确认已停（全局闸写入成功，或 8 路 At=4 全部成功）。
     /// 之后任一通道重新「启动加热」时 <see cref="StartChannelAsync"/> 会写回 Srun=0。</summary>
-    public async Task<bool> EmergencyStopAsync()
+    public async Task<bool> EmergencyStopAsync() => (await EmergencyStopDetailedAsync()).Ok;
+
+    /// <summary>同 <see cref="EmergencyStopAsync"/>，另外返回本次两步各自的结果：
+    /// 全局闸 Srun=9655 是否写入（Gate）、8 路 At=4 是否全部写入（Each）。事件日志用。</summary>
+    public async Task<(bool Ok, bool Gate, bool Each)> EmergencyStopDetailedAsync()
     {
         // 正在整定的通道会被 At=4 打断：先标记，避免轮询把仪表里的旧 PID 当成整定结果存档
         for (int i = 0; i < 8; i++)
@@ -369,7 +408,7 @@ public sealed partial class TempService : ObservableObject
         try { await _ctrl.StopAllAsync(); gate = true; }
         catch { gate = false; }
         bool each = await StopAllChannelsAsync();
-        return gate || each;
+        return (gate || each, gate, each);
     }
 
     // ===== 仪表全局运行状态（Srun 0x0845），随轮询刷新：现场排查「输出100%却不加热」用 =====
@@ -490,6 +529,15 @@ public partial class TempChannel : ObservableObject
     [ObservableProperty] private double _pv;
     [ObservableProperty] private double _sp;
     [ObservableProperty] private double _outputPct;
+
+    /// <summary>软件开机后是否成功写过 SP（仪表 SV 不回读；未写过时 Sp=0 不代表仪表 SV=0）。</summary>
+    public bool SpKnown { get; set; }
+
+    /// <summary>最近一次轮询的 PV 寄存器原码（尚未读到为 null）。</summary>
+    public short? PvRaw { get; set; }
+
+    /// <summary>最近一次轮询的工作模式 At 原值（0=APID 1=自整定 2=ON/OFF 3=手动 4=停止；-1=尚未读到）。</summary>
+    public int Mode { get; set; } = -1;
 
     /// <summary>读数是否有效（温控在线）。由 TempService 轮询刷新；离线时 PV / 输出显示「—」，不显示旧值或 0。</summary>
     [ObservableProperty] private bool _online;
