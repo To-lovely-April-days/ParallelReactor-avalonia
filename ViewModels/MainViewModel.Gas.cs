@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
@@ -25,18 +26,16 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(NotRunning));
     }
 
-    /// <summary>手动阀操作的守卫：急停锁定中、或自动序列进行中（阀门由序列控制），拒绝手动操作。</summary>
-    private bool GasLockedForManual()
+    /// <summary>手动阀操作的守卫：急停锁定中、或自动序列进行中（阀门由序列控制），拒绝手动操作。null = 放行。</summary>
+    internal OpResult? GasLockedForManual()
     {
-        if (Estopped)
-        {
-            Toast("err", "急停状态下禁止阀门操作 · 请先复位");
-            return true;
-        }
-        if (!GasBusy) return false;
-        Toast("warn", $"{GasTask}进行中 · 阀门由自动序列控制");
-        return true;
+        if (Estopped) return OpResult.Fail(OpCodes.EstopActive, "急停状态下禁止阀门操作 · 请先复位");
+        if (!GasBusy) return null;
+        return OpResult.Fail(OpCodes.GasBusy, $"{GasTask}进行中 · 阀门由自动序列控制", "warn");
     }
+
+    /// <summary>该通道正参与当前气路序列（停止通道时据此报告被中止的序列，H9）。</summary>
+    internal bool GasIncludes(int id) => _lease.Includes(id);
 
     private CancellationTokenSource? _gasCts;
 
@@ -45,26 +44,21 @@ public partial class MainViewModel
     /// needPressure：序列是否依赖压力读数（泄漏测试要闭环充压与超压监视；吹扫只动总管、SV 全关，不依赖）。
     /// selfId：发起序列的程序自己的通道——它处于升压 / 反应不算「被占用」（连续升压、反应后补压）；报警仍然阻塞。
     /// </summary>
-    public string? GasBlockReason(bool needPressure = true, int? selfId = null)
+    public string? GasBlockReason(bool needPressure = true, int? selfId = null) => GasBlock(needPressure, selfId)?.Message;
+
+    /// <summary>同 <see cref="GasBlockReason"/>，带 §11 错误码（命令层用，见 <see cref="GasGuard"/>）。</summary>
+    public (string Code, string Message)? GasBlock(bool needPressure = true, int? selfId = null) => GasGuard.Check(new GasGuardInput
     {
-        if (EstopLocked) return "急停状态下禁止气路操作";
-        if (!RealIo) return "阀门模块未配置串口（PR_IO_PORT），无法执行气路操作";
-        if (needPressure && !Services.HardwareOptions.UseRealAnalog)
-            return "压力采集未配置串口（PR_PRESS_PORT），无法闭环充压与超压监视";
-        if (needPressure && !_press.Online) return "压力采集离线（8AI 通讯失败），请检查接线与串口后再试";
-        if (GasBusy) return $"{GasTask}进行中，请等待完成或先停止";
-        if (ManualValve) return "请先关闭「手动阀控」：自动序列与手动阀操作不能同时进行";
-        var op = Reactors.Where(r => IsOverPressureTripped(r.Id)).ToList();
-        if (op.Count > 0)
-            return $"{string.Join("、", op.Select(r => "RV" + r.Id))} 超压未解除（需低于超压报警值的 98%），禁止气路操作";
-        // 停用 / 已结束通道的超温切断报警不阻塞气路（见 IsIdleOverTempAlarm）
-        var busy = Reactors.Where(r => (r.State is ReactorState.Alarm
-                                        || (r.State is ReactorState.Pressing or ReactorState.React && r.Id != selfId))
-                                       && !IsIdleOverTempAlarm(r)).ToList();
-        if (busy.Count > 0)
-            return $"{string.Join("、", busy.Select(r => "RV" + r.Id))} 正在加压 / 反应 / 报警，需先停止";
-        return null;
-    }
+        EstopLocked = EstopLocked,
+        IoConfigured = RealIo,
+        NeedPressure = needPressure,
+        AnalogConfigured = Services.HardwareOptions.UseRealAnalog,
+        PressOnline = _press.Online,
+        GasTask = GasTask,
+        ManualValve = ManualValve,
+        SelfId = selfId,
+        Channels = Reactors.Select(r => new GasChannel(r.Id, r.State, IsOverPressureTripped(r.Id), IsIdleOverTempAlarm(r))).ToList(),
+    });
 
     /// <summary>气路占用登记（占用者 / 参与通道 / 超压监视通道，见 <see cref="GasLease"/>）。</summary>
     private readonly GasLease _lease = new();

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 using Avalonia.Media;
 using System;
@@ -35,7 +36,7 @@ public partial class MainViewModel : ViewModelBase
     // 通过 StirController 驱动雷赛 DM2C 步进驱动器。总线由 HardwareOptions 决定：
     // 配置了串口(PR_STIR_PORT) → 走真实 ModbusRtuMaster；否则离线（事务全部失败）。
     private readonly Hardware.IModbusMaster _bus = Services.HardwareOptions.CreateStirBus();
-    private readonly Services.StirController _stir;
+    internal readonly Services.StirController _stir;
 
     // 温控：一台 AI-8（1 拖 8，RV1-8），8 通道独立 PID + 自整定。未配置串口时离线。
     private readonly Hardware.IModbusMaster _tempBus = Services.HardwareOptions.CreateTempBus();
@@ -43,12 +44,12 @@ public partial class MainViewModel : ViewModelBase
 
     // 压力：艾莫迅 8AI（8 路 PT）。未配置串口时离线，压力显示「—」。
     private readonly Hardware.IModbusMaster _pressBus = Services.HardwareOptions.CreateAnalogBus();
-    private readonly Services.PressureService _press;
+    internal readonly Services.PressureService _press;
 
     // 阀门：艾莫迅 IO16R（线圈驱动电磁阀）。未配置串口时阀门操作一律拒绝（界面不改阀态）。
     private readonly Hardware.IModbusMaster _ioBus = Services.HardwareOptions.CreateIoBus();
-    private readonly Services.ValveService _valves;
-    private static bool RealIo => Services.HardwareOptions.UseRealIo;
+    internal readonly Services.ValveService _valves;
+    internal static bool RealIo => Services.HardwareOptions.UseRealIo;
 
     /// <summary>各模块在线状态（设置页「通讯」显示用）。</summary>
     public bool TempOnline => Temp.Online;
@@ -112,24 +113,10 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>一键清除搅拌电机报警。</summary>
     [RelayCommand]
-    private async System.Threading.Tasks.Task ClearStirFault()
-    {
-        await _stir.ClearAlarmAsync();
-        await RefreshStirFaultAsync();
-        Toast(StirHasFault ? "warn" : "ok", StirHasFault ? $"报警仍在：{StirFaultText}（过流需排查后才能清）" : "已清除搅拌电机报警");
-    }
+    [WriteEntry(nameof(OperatorCommands.TryClearStirFault))]
+    private Task ClearStirFault() => LocalAsync(Ops.TryClearStirFault(Src));
 
-    /// <summary>设置细分（指令脉冲数/转），写入 DM2C 并存 EEPROM；运行中改则重新触发使其生效。</summary>
-    public async System.Threading.Tasks.Task ApplyStirMicrostepAsync(double ppr)
-    {
-        Settings.StirMicrostep = ppr;
-        var v = await _stir.SetMicrostepAsync((int)ppr);
-        if (v is { } n)
-        {
-            if (StirOn) _ = _stir.SetRpmAsync(StirRpm);   // 让新细分立即生效
-            Toast("ok", $"细分已设为 {n} 脉冲/转 并保存");
-        }
-    }
+    // 设置页的搅拌电机电流 / 待机 / 加减速 / 细分、变送器满量程：写入逻辑在 OperatorCommands.Settings（TrySetSetting）。
 
     public string StirStateText => StirOn ? "运行中" : "已停止";
 
@@ -163,46 +150,12 @@ public partial class MainViewModel : ViewModelBase
     }
 
     /// <summary>把全局搅拌状态下发到所有运行中的反应釜（驱动桨叶动画）。</summary>
-    private void ApplyStir()
+    internal void ApplyStir()
     {
         foreach (var c in Reactors)
             c.Rpm = (StirOn && c.IsRunning) ? StirRpm : 0;
         RefreshSchematic();
         if (Drawer.IsOpen) Drawer.RaiseAll();
-    }
-
-    /// <summary>设置搅拌电机峰值电流（A），写入 DM2C 并存 EEPROM；反馈实际生效值（驱动器硬夹 0.3–3.2A）。</summary>
-    public async System.Threading.Tasks.Task ApplyStirCurrentAsync(double amps)
-    {
-        Settings.StirCurrent = amps;
-        var a = await _stir.SetCurrentAsync(amps);
-        if (a is { } v) { StirMotorCurrent = v; Toast("ok", $"搅拌电机峰值电流已设为 {v:0.0} A 并保存"); }
-    }
-
-    /// <summary>设置搅拌待机电流百分比（0–100），写入 DM2C 并存 EEPROM。</summary>
-    public async System.Threading.Tasks.Task ApplyStirStandbyPctAsync(int pct)
-    {
-        Settings.StirStandbyPct = pct;
-        var p = await _stir.SetStandbyPctAsync(pct);
-        if (p is { } v) Toast("ok", $"搅拌待机电流已设为 {v}% 并保存");
-    }
-
-    /// <summary>设置搅拌起停平缓度（加减速时间 ms/1000rpm）：运行中改则立即以新斜率重新下发。</summary>
-    public void ApplyStirRampMs(double ms)
-    {
-        Settings.StirRampMs = ms;
-        _stir.RampMs = (int)ms;
-        if (StirOn) _ = _stir.SetRpmAsync(StirRpm);   // 重新触发速度路径，让新加减速立即生效
-        Toast("ok", $"搅拌加减速时间已设为 {ms:0} ms/1000rpm");
-    }
-
-    /// <summary>设置压力变送器满量程（MPa）：即时生效到 8AI 换算，压力读数随之修正。</summary>
-    public void ApplyPressFullScaleMPa(double mpa)
-    {
-        Settings.PressFullScaleMPa = mpa;
-        _press.FullScalePsi = Models.Units.MpaToPsi(mpa);
-        RefreshSchematic();
-        Toast("ok", $"压力变送器满量程已设为 {mpa:0.###} MPa");
     }
 
     [ObservableProperty] private string _runCountText = "0 / 8";
@@ -224,8 +177,27 @@ public partial class MainViewModel : ViewModelBase
 
     // 气路图重绘信号（View 订阅后调用 InvalidateVisual）
     public event Action? SchematicInvalidated;
-    // Toast 信号
-    public event Action<string, string>? ToastRequested;
+    // Toast 信号：控制循环早于 View 订阅就开始运行（C1）。没有订阅者时先暂存（最多 20 条），
+    // 第一个订阅者挂上时依次补发，避免开机 / View 卸载（MainView 卸载时退订）期间的提示丢失。
+    // 开机遮罩期间到达的提示由 MainView 自己留到遮罩收起后再显示。
+    private Action<string, string>? _toastHandlers;
+    private readonly Queue<(string kind, string msg)> _toastBacklog = new();
+    private const int ToastBacklogMax = 20;
+    public event Action<string, string>? ToastRequested
+    {
+        add
+        {
+            bool first = _toastHandlers == null;
+            _toastHandlers += value;
+            if (!first || value == null) return;
+            while (_toastBacklog.Count > 0)
+            {
+                var (k, m) = _toastBacklog.Dequeue();
+                value(k, m);
+            }
+        }
+        remove => _toastHandlers -= value;
+    }
     // Tab 切换信号
     public event Action<string>? TabSwitched;
 
@@ -291,10 +263,12 @@ public partial class MainViewModel : ViewModelBase
         Program = new ProgramViewModel(this);
         Graph = new GraphViewModel(this);
         Data = new DataViewModel(this);
-        Alarm = new AlarmViewModel(Logger);
+        Alarm = new AlarmViewModel(Logger) { Main = this };
         Setting = new SettingViewModel(this);
         Leak = new LeakViewModel(this);
         RecipePicker = new RecipeViewModel(this);
+        Ops = new OperatorCommands(this, Arbiter);
+        Keyboard.ResultSink = Local;   // 键盘确认回调返回 OpResult → 统一转 Toast
 
         // 压力单位切换（psi/bar）：刷新各釜压力显示 + 气路图（内部仍以 psi 存储/判定）
         Models.Units.Changed += OnUnitsChanged;
@@ -389,45 +363,58 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>启动加热前的公共检查：null = 可以启动，否则为拒绝原因。</summary>
     /// <param name="id">要启动的通道（1 起）；给出时该通道超温切断未解除则拒绝。</param>
-    public string? HeatBlockReason(int? id = null)
-    {
-        if (EstopLocked) return "急停状态下不可启动加热 · 请先复位";
-        if (!Services.HardwareOptions.UseRealTemp) return "温控未配置串口（PR_TEMP_PORT），无法加热";
-        if (!Temp.Online) return "温控离线（AI-8 通讯失败），无法启动加热";
-        if (id is { } n && IsOverTempTripped(n))
-            return $"RV{n} 超温切断未解除（需低于 {(Settings.OverTemp - Models.OverTempGuard.Hysteresis).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)}℃），不可启动加热";
-        if (id is { } m && Settings.StopHeatOnOverPressure && IsOverPressureTripped(m))
-            return $"RV{m} 超压联锁未解除（需低于 {Units.FormatP(Settings.OverPressure * OverPressureGuard.RearmRatio)}），不可启动加热";
-        return null;
-    }
+    public string? HeatBlockReason(int? id = null) => HeatBlock(id)?.Message;
 
-    /// <summary>停止单通道加热（At=4）并按结果提示：写入失败时明确告知，不能让界面显示「已停止」而加热器仍在工作。</summary>
+    /// <summary>同 <see cref="HeatBlockReason"/>，带 §11 错误码（命令层用，见 <see cref="HeatGuard"/>）。</summary>
+    public (string Code, string Message)? HeatBlock(int? id = null) => HeatGuard.Check(new HeatGuardInput
+    {
+        Id = id,
+        EstopLocked = EstopLocked,
+        TempConfigured = Services.HardwareOptions.UseRealTemp,
+        TempOnline = Temp.Online,
+        OverTempTripped = id is { } n && IsOverTempTripped(n),
+        OverPressureTripped = id is { } m && IsOverPressureTripped(m),
+        StopHeatOnOverPressure = Settings.StopHeatOnOverPressure,
+        OverTemp = Settings.OverTemp,
+        OverPressure = Settings.OverPressure,
+    });
+
+    /// <summary>停止单通道加热（At=4）并按结果提示：写入失败时明确告知，不能让界面显示「已停止」而加热器仍在工作。
+    /// 程序引擎 / Tick 等非命令路径用；命令层用 <see cref="StopHeatCoreAsync"/>（不弹 Toast，结果由返回值表达）。</summary>
     public async System.Threading.Tasks.Task StopHeatAsync(int id, string okMsg)
+        => Show(await StopHeatCoreAsync(id, okMsg));
+
+    /// <summary>停止单通道加热（At=4），不弹 Toast：成功为 Done(okMsg, warn)，失败为 HARDWARE_WRITE_FAILED 并记事件。</summary>
+    internal async Task<OpResult> StopHeatCoreAsync(int id, string okMsg)
     {
         if (!Services.HardwareOptions.UseRealTemp || await Temp.StopChannelAsync(id))
-        {
-            Toast("warn", okMsg);
-            return;
-        }
-        Toast("err", $"RV{id} 停止加热未确认（温控通讯失败）· 请按「急停」或到设备现场确认");
+            return OpResult.Done(okMsg, "warn");
         Alarm.Log("err", $"RV{id}", "停止加热未确认", "AI-8 通讯失败，加热输出可能仍在工作");
+        return OpResult.Fail(OpCodes.HardwareWriteFailed,
+            $"RV{id} 停止加热未确认（温控通讯失败）· 请按「急停」或到设备现场确认", "err",
+            new { device = "temp", channel = id });
     }
 
-    /// <summary>关闭单个 RV 进气阀（停止 / 停用通道时）：写成功才改显示，失败提示。</summary>
+    /// <summary>关闭单个 RV 进气阀并按结果提示（程序引擎收尾用；命令层用 <see cref="CloseReactorValveCoreAsync"/>）。</summary>
     public async System.Threading.Tasks.Task CloseReactorValveAsync(int id)
+        => Show(await CloseReactorValveCoreAsync(id));
+
+    /// <summary>关闭单个 RV 进气阀（停止 / 停用通道时）：写成功才改显示，不弹 Toast；失败为 HARDWARE_WRITE_FAILED 并记事件。</summary>
+    internal async Task<OpResult> CloseReactorValveCoreAsync(int id)
     {
-        if (!RealIo || FindReactor(id) is not { } c) return;
+        if (!RealIo || FindReactor(id) is not { } c) return OpResult.Silent;
         try { await _valves.SetReactorValveAsync(id, false); }
         catch
         {
-            Toast("err", $"SV{id} 关闭失败（IO16R 通讯）· 阀门可能仍开启");
             Alarm.Log("err", $"RV{id}", $"SV{id} 关闭失败", "IO16R 通讯异常，阀门可能仍开启");
-            return;
+            return OpResult.Fail(OpCodes.HardwareWriteFailed, $"SV{id} 关闭失败（IO16R 通讯）· 阀门可能仍开启", "err",
+                new { device = "io", valve = $"SV{id}" });
         }
         if (c.Valve) LogFileEvent("info", "阀门", $"SV{id} 关", "停止 / 停用通道时关闭进气阀");
         c.Valve = false;
         RefreshSchematic();
         Drawer.RaiseAll();
+        return OpResult.Silent;
     }
 
     /// <summary>
@@ -441,7 +428,7 @@ public partial class MainViewModel : ViewModelBase
         Alarm.Log("err", $"RV{id}", "启动加热失败", "AI-8 通讯失败，加热输出未启动");
     }
 
-    private async System.Threading.Tasks.Task StartBandHeatAsync(int id, double sp)
+    internal async System.Threading.Tasks.Task StartBandHeatAsync(int id, double sp)
     {
         if (!await Temp.ApplyBandForAsync(id, sp)) ReportHeatStartFailed(id);
     }
@@ -519,96 +506,100 @@ public partial class MainViewModel : ViewModelBase
         foreach (var r in Reactors) r.RefreshUnits();
         RefreshSchematic();
     }
-    public void Toast(string kind, string msg) => ToastRequested?.Invoke(kind, msg);
-
-    // ============ 阀门手动控制（带权限/状态守卫）============
-    public void TryValve(int id)
+    public void Toast(string kind, string msg)
     {
-        var c = FindReactor(id);
-        if (c == null) return;
-        if (GasLockedForManual()) return;
-        if (!IsAdmin) { Toast("err", "手动阀控需要管理员权限"); return; }
-        if (!ManualValve) { Toast("warn", "请先打开 RV1 左侧的「手动阀控」开关"); return; }
-        if (!c.Valve && IsOverPressureTripped(id))
-        {
-            Toast("err", $"RV{id} 超压联锁未解除 · 禁止打开 SV{id}");
-            return;
-        }
-        if (!c.Valve && c.State is ReactorState.Pressing or ReactorState.React or ReactorState.Alarm)
-        {
-            Toast("err", $"加压/反应中禁止手动开阀（RV{id}）");
-            return;
-        }
-        bool open = !c.Valve;
-        _ = ManualValveAsync($"SV{id}", open, () => _valves.SetReactorValveAsync(id, open), () =>
-        {
-            c.Valve = open;
-            Drawer.RaiseAll();
-        });
+        var h = _toastHandlers;
+        if (h != null) { h(kind, msg); return; }
+        if (_toastBacklog.Count < ToastBacklogMax) _toastBacklog.Enqueue((kind, msg));   // 保留最早的（开机提示最重要）
     }
 
-    public void ToggleGas(int index)
-    {
-        if (GasLockedForManual()) return;
-        if (!IsAdmin) { Toast("err", "需要管理员权限"); return; }
-        if (!ManualValve) { Toast("warn", "请先开启「手动阀控」"); return; }
-        var g = GasInlets[index];
-        bool open = !g.On;
-        if (open && AnyOverPressureTripped)
-        {
-            Toast("err", "有通道超压联锁未解除 · 禁止打开气源");
-            return;
-        }
-        _ = ManualValveAsync($"{g.Label} 进气阀", open, () => _valves.SetGasAsync(index, open), () => g.On = open);
-    }
+    // ============ 命令层（C25）：触屏入口统一经 Ops.Try*，结果转成 Toast ============
 
-    public void ToggleVent()
-    {
-        if (GasLockedForManual()) return;
-        if (!IsAdmin) { Toast("err", "需要管理员权限"); return; }
-        if (!ManualValve) { Toast("warn", "请先开启「手动阀控」"); return; }
-        bool open = !VentOn;
-        _ = ManualValveAsync("排空阀", open, () => _valves.SetVentAsync(open), () => VentOn = open, openKind: "warn");
-    }
+    /// <summary>控制权仲裁（§5.1）。默认本地控制，本期没有切换界面。</summary>
+    public ControlArbiter Arbiter { get; } = new();
 
-    private bool _manualValveBusy;   // 上一次手动阀写入还没回来时不接受新操作，避免写入顺序错乱
+    /// <summary>操作员命令层：触屏与将来的远程接口共用的唯一写入口。</summary>
+    public OperatorCommands Ops { get; }
+
+    /// <summary>控制循环（由 App 创建并赋值；退出前停止）。</summary>
+    internal Services.ControlLoop? Loop { get; set; }
+
+    /// <summary>触屏入口的命令来源。</summary>
+    internal static CommandSource Src => CommandSource.Local;
 
     /// <summary>
-    /// 手动阀操作：先写线圈，写成功后才改界面（界面只显示确认过的阀态）。
-    /// 阀门未配置串口时直接拒绝；写入期间按下急停，写完后立即补关一次。
+    /// 触屏入口统一调用：同步完成的结果当场 Toast（时序与今天相同），等待硬件的在完成后 Toast。
+    /// 尾部抛出的异常转成 INTERNAL（记事件 + Toast），不留未观察的异常。
     /// </summary>
-    private async Task ManualValveAsync(string name, bool open, Func<Task> write, Action show, string openKind = "ok")
+    internal void Local(Task<OpResult> t)
     {
-        if (!RealIo) { Toast("err", "阀门模块未配置串口（PR_IO_PORT），无法操作"); return; }
-        if (_manualValveBusy) { Toast("warn", "上一个阀门操作还在进行，请稍候"); return; }
-        _manualValveBusy = true;
-        try
-        {
-            try { await write(); }
-            catch (Services.ValveLockedException)
-            {
-                Toast("err", "急停锁定中 · 拒绝打开阀门，请先复位");
-                return;
-            }
-            catch
-            {
-                Toast("err", $"{name}{(open ? "打开" : "关闭")}失败（IO16R 通讯）· 阀门状态未改变");
-                Alarm.Log("err", "阀门", $"手动{(open ? "打开" : "关闭")} {name} 失败", "IO16R 通讯异常 · 阀门状态未改变");
-                return;
-            }
-            Alarm.Log(open ? "warn" : "info", "阀门", $"手动{(open ? "打开" : "关闭")} {name}", "手动阀控 · 写入已确认");
-            if (Estopped)
-            {
-                // 写入途中按了急停：这一帧可能落在急停的全关之后，再关一次
-                await CloseAllValvesAsync();
-                return;
-            }
-            show();
-            RefreshSchematic();
-            Toast(open ? openKind : "ok", $"{name} {(open ? "已开" : "已关")}");
-        }
-        finally { _manualValveBusy = false; }
+        if (t.IsCompleted) Show(Unwrap(t));
+        else _ = ShowWhenDoneAsync(t);
     }
+
+    /// <summary>同 <see cref="Local"/>，并返回同步部分是否被接受（被拒时 false，供需要回滚控件的入口使用）。</summary>
+    internal bool LocalOk(Task<OpResult> t)
+    {
+        if (!t.IsCompleted) { _ = ShowWhenDoneAsync(t); return true; }
+        var r = Unwrap(t);
+        Show(r);
+        return r.Ok;
+    }
+
+    /// <summary>只读预检（<c>Ops.Check*</c>）的结果：被拒时提示并返回 false。</summary>
+    internal bool LocalOk(OpResult r)
+    {
+        Show(r);
+        return r.Ok;
+    }
+
+    /// <summary>
+    /// 同 <see cref="Local"/>，并返回一个「提示完成」的 Task（不会出错）：给 async RelayCommand 用，
+    /// 让按钮在硬件返回前保持禁用（AsyncRelayCommand 的防连点，与今天一致）。
+    /// </summary>
+    internal Task LocalAsync(Task<OpResult> t)
+    {
+        if (!t.IsCompleted) return ShowWhenDoneAsync(t);
+        Show(Unwrap(t));
+        return Task.CompletedTask;
+    }
+
+    private OpResult Unwrap(Task<OpResult> t)
+        => t.IsCompletedSuccessfully ? t.Result : InternalError(t.Exception);
+
+    private async Task ShowWhenDoneAsync(Task<OpResult> t)
+    {
+        OpResult r;
+        try { r = await t; }
+        catch (Exception ex) { r = InternalError(ex); }
+        Show(r);
+    }
+
+    private OpResult InternalError(Exception? ex)
+    {
+        var r = OpResult.InternalOf(ex);
+        Alarm.Log("err", "系统", "命令异常", r.Message["命令执行异常 · ".Length..]);
+        return r;
+    }
+
+    private void Show(OpResult r)
+    {
+        if (!r.Quiet && r.Message.Length > 0) Toast(r.Kind, r.Message);
+        foreach (var f in r.Followups) Show(f);   // 分步完成的命令：后续各步的提示按顺序补上
+    }
+
+    // ============ 阀门手动控制：气路图回调（守卫与写入在 Ops.TrySet*，只允许本地）============
+    [WriteEntry(nameof(OperatorCommands.TrySetReactorValve))]
+    public void ValveClicked(int id) { if (FindReactor(id) is { } c) Local(Ops.TrySetReactorValve(Src, id, !c.Valve)); }
+
+    [WriteEntry(nameof(OperatorCommands.TrySetGasInlet))]
+    public void GasClicked(int index)
+    {
+        if (index >= 0 && index < GasInlets.Count) Local(Ops.TrySetGasInlet(Src, index, !GasInlets[index].On));
+    }
+
+    [WriteEntry(nameof(OperatorCommands.TrySetVent))]
+    public void VentClicked() => Local(Ops.TrySetVent(Src, !VentOn));
 
     /// <summary>开机从 IO16R 读回 12 路阀门实际状态，回填界面，使显示与硬件一致。读不到时界面保持全关并提示。</summary>
     private async System.Threading.Tasks.Task SyncValvesFromHardware()
@@ -634,96 +625,43 @@ public partial class MainViewModel : ViewModelBase
         catch { Toast("err", "开机读取阀门状态失败（IO16R 通讯）· 气路图按全关显示，实际状态未知"); }
     }
 
+    [ViewEntry("打开通道抽屉")]
     public void OpenDrawer(int id) => Drawer.Open(id);
-
-    public void CopyConfigToAll(Reactor src)
-    {
-        // 正在执行程序的通道不改：程序的「等待温度 / 压力到位」按通道给定值判断，复制会改变程序行为
-        foreach (var x in Reactors.Where(r => r.State != ReactorState.Idle && r.Id != Program.RunningRv))
-        {
-            x.TSp = src.TSp; x.PSp = src.PSp; x.RpmSp = src.RpmSp;
-            x.Vol = src.Vol; x.Blade = src.Blade; x.End = src.End; x.Run = src.Run;
-        }
-        RefreshSchematic();
-    }
 
     // ============ 工具栏命令 ============
     [RelayCommand]
-    private void ToggleStir()
-    {
-        if (!StirOn && EstopLocked) { Toast("err", "急停状态下不可启动搅拌 · 请先复位"); return; }
-        StirOn = !StirOn;
-        LogFileEvent("info", "搅拌", StirOn ? "搅拌开启" : "搅拌停止", $"{StirRpm} rpm · 工具栏");
-        Toast(StirOn ? "ok" : "warn",
-            StirOn ? $"搅拌已开启 · 全部反应釜 {StirRpm} rpm" : "搅拌已停止 · 全部反应釜");
-    }
+    [WriteEntry(nameof(OperatorCommands.TrySetStir))]
+    private void ToggleStir() => Local(Ops.TrySetStir(Src, !StirOn));
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetStirRpm))]
     private void EditStirRpm()
-        => Keyboard.OpenNumeric("搅拌转速（全局共用）", StirRpm, "rpm", 0, Settings.RpmMax, v =>
-        {
-            LogSetting("搅拌转速", $"{StirRpm} rpm", $"{(int)v} rpm");
-            StirRpm = (int)v;
-            if (StirOn) Toast("ok", $"搅拌转速已设为 {StirRpm} rpm · 全部反应釜");
-        });
+        => Keyboard.OpenNumeric("搅拌转速（全局共用）", StirRpm, "rpm", 0, Settings.RpmMax,
+            v => Ops.TrySetStirRpm(Src, (int)v));
 
     [RelayCommand]
-    private void ToggleManual()
-    {
-        if (GasLockedForManual()) return;
-        if (!IsAdmin) { Toast("err", "手动阀控需要管理员权限"); return; }
-        if (!ManualValve && !RealIo) { Toast("err", "阀门模块未配置串口（PR_IO_PORT），无法手动阀控"); return; }
-        ManualValve = !ManualValve;
-        RefreshSchematic();   // 开关画在气路图里，立即重绘
-        Toast(ManualValve ? "warn" : "ok",
-            ManualValve ? "手动阀控已开启 · 点击阀门可手动操作" : "手动阀控已关闭");
-    }
+    [WriteEntry(nameof(OperatorCommands.TrySetManualValveMode))]
+    private void ToggleManual() => Local(Ops.TrySetManualValveMode(Src, !ManualValve));
 
     /// <summary>
-    /// 全部停止：中止任何气路占用者（含泄漏测试 / 程序的吹扫、升压、稳压，<see cref="AbortAllGas"/>），
+    /// 全部停止：中止任何气路占用者（含泄漏测试 / 程序的吹扫、升压、稳压），
     /// 中止程序，停全部通道加热并全关阀。与泄漏测试面板 / 程序的「中止」不同，它不区分占用者（C8）。
     /// </summary>
     [RelayCommand]
-    private async Task StopAll()
-    {
-        bool gas = GasBusy;
-        AbortAllGas();   // 任何占用者的序列：收到取消后自己也会全关阀
-        Program.AbortProgram();   // 有程序在执行也一并中止（含后台稳压回路）
-        foreach (var c in Reactors)
-        {
-            if (c.Profile.Running) c.Profile.Stop();
-            c.Approach.Stop();
-            if (c.State != ReactorState.Idle) c.State = ReactorState.Done;
-            c.Rpm = 0;
-        }
-        RefreshSchematic();
-        Drawer.RaiseAll();
-        UpdateRunCount();
-
-        // 温控与阀门是两条独立总线：并行下发（停全部温控输出 逐路 At=4 + 全关 12 路阀），再按结果提示
-        var heat = Services.HardwareOptions.UseRealTemp ? Temp.StopAllChannelsAsync() : Task.FromResult(true);
-        var valves = RealIo ? CloseAllValvesAsync() : Task.FromResult(true);   // 失败时 CloseAllValvesAsync 自己提示
-        bool heatOk = await heat, valvesOk = await valves;
-
-        if (!heatOk)
-        {
-            Toast("err", "停止加热输出未确认（AI-8 通讯失败）· 请按「急停」或到设备现场确认");
-            Alarm.Log("err", "系统", "全部停止 · 停止加热未确认", "AI-8 通讯失败，加热输出可能仍在工作");
-        }
-        else if (valvesOk)
-            Toast("warn", gas ? "已停止全部通道并中止气路序列 · 阀门全关" : "已停止全部通道（含加热输出）· 阀门全关");
-    }
+    [WriteEntry(nameof(OperatorCommands.TryStopAll))]
+    private Task StopAll() => LocalAsync(Ops.TryStopAll(Src));
 
     [RelayCommand]
+    [ViewEntry("打开预运行检查框（先经 Ops.CheckRun 预检；确认后由 ConfirmRun 经 TryRun 执行）")]
     private void RunAll()
     {
-        if (EstopLocked) { Toast("err", "急停状态下不可启动 · 请先复位"); return; }
-        if (GasBusy) { Toast("warn", $"{GasTask}进行中 · 请等待完成或先停止"); return; }
+        if (!LocalOk(Ops.CheckRun(Src))) return;
         BuildPreRun();
         IsPreRunOpen = true;
     }
 
     [RelayCommand]
+    [ViewEntry("关闭预运行检查框")]
     private void CancelPreRun() => IsPreRunOpen = false;
 
     // ============ 退出程序 ============
@@ -731,10 +669,11 @@ public partial class MainViewModel : ViewModelBase
     public void OpenExitConfirm() => IsExitConfirmOpen = true;
 
     [RelayCommand]
+    [ViewEntry("关闭退出确认框")]
     private void CancelExit() => IsExitConfirmOpen = false;
 
     /// <summary>持久化快照：全局设置 + 档位边界 + 8×3 档 PID。</summary>
-    private Services.SettingsStore.PersistedState BuildPersistState() => new()
+    internal Services.SettingsStore.PersistedState BuildPersistState() => new()
     {
         Settings = Settings,
         BandBounds = new[] { Temp.Bands[0].Hi, Temp.Bands[1].Hi },
@@ -745,25 +684,17 @@ public partial class MainViewModel : ViewModelBase
     public void PersistSoon() => Services.SettingsStore.SaveSoon(BuildPersistState);
 
     [RelayCommand]
-    private async Task ConfirmExit()
+    [WriteEntry(nameof(OperatorCommands.TryExitApp))]
+    private Task ConfirmExit()
     {
         IsExitConfirmOpen = false;
-        if (GasBusy) await AbortGasAndWaitAsync();   // 吹扫 / 泄漏测试中退出：等序列收尾、全关阀后再退出
-        Services.SettingsStore.SaveNow(BuildPersistState());   // 设置页的修改统一在退出时落盘
+        return LocalAsync(Ops.TryExitApp(Src));
+    }
 
-        // 退出前停搅拌、停全部温控输出、全关阀门（三条总线并行，等写完再退出，避免退出后加热器 / 电机 / 气源仍在工作）
-        var stir = _stir.StopAsync();
-        var heat = Temp.StopAllChannelsAsync();
-        var valves = RealIo ? CloseAllValvesAsync(report: false) : Task.FromResult(true);
-        await Task.WhenAll(stir, heat, valves);
-
-        // 运行记录：写完队列并 flush 再退出（最多等 3 秒，磁盘异常不阻塞退出）
-        Setting.FlushPendingSettingLogs();   // +/− 连点后 1.5s 内退出：修改事件不能丢
-        EndTestSession();
-        Alarm.Log("info", "系统", "程序退出",
-            $"停止搅拌 {(stir.Result ? "已确认" : "未确认")} · 停止加热 {(heat.Result ? "已确认" : "未确认")} · 阀门全关 {(valves.Result ? "已确认" : "未确认")}");
-        await Logger.StopAsync(TimeSpan.FromSeconds(3));
-
+    /// <summary>退出进程（命令层 TryExitApp 收尾完成后调用）：先停控制循环，再按生命周期退出。</summary>
+    internal void ShutdownApp()
+    {
+        Loop?.Stop();   // 退出前停控制循环（等待期间 Tick 照常运行，与以前一致）
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
             desktop.Shutdown(0);   // 退出码 0：配合 systemd Restart=on-failure，正常退出不被重启
@@ -771,47 +702,22 @@ public partial class MainViewModel : ViewModelBase
             Environment.Exit(0);
     }
 
+    /// <summary>预运行检查框「确认」：经 TryRun 重判全部守卫并开始运行。预运行检查未通过时保留对话框（与今天一致）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryRun))]
     private void ConfirmRun()
     {
-        if (EstopLocked) { IsPreRunOpen = false; Toast("err", "急停状态下不可启动 · 请先复位"); return; }
-        // 气路序列（泄漏测试 / 程序气路步骤）进行中不开始运行（C6）：确认框打开期间可能刚开始了序列
-        if (GasBusy) { IsPreRunOpen = false; Toast("err", $"{GasTask}进行中 · 无法开始运行"); return; }
-        BuildPreRun();   // 弹窗打开期间模块可能掉线：确认时按最新状态重判
-        if (!PreRunCanRun) { Toast("err", "存在未处理的异常项，无法开始运行"); return; }
-        IsPreRunOpen = false;
-
-        // 开始运行即下发加热：只有已结束 / 已启用（待加热）且无超温 / 超压未解除的通道转入「升温中」并下发加热。
-        // 报警（任何原因）、停用、已在运行的通道一律不动（RunSelection.CanStartHeat）。
-        // 阀门不在这里动：本轮运行不使用气路
-        var toHeat = Reactors.Where(r => RunSelection.CanStartHeat(RunChannelOf(r))).ToList();
-        foreach (var c in toHeat) c.State = ReactorState.Heating;
-
-        // 开始运行：开启全局搅拌并同步桨叶动画（搅拌未配置串口时跳过，预运行检查里已提示）
-        if (!StirOn && Services.HardwareOptions.UseRealStir) StirOn = true;   // setter 会触发 ApplyStir
-        else ApplyStir();
-
-        // 自动套档：按各釜目标温度选用对应档位的 PID，连同 SP 一起下发到温控器。
-        // 定值模式走防超调逼近（先写 目标−Δ，之后由 Tick 推进）
-        // 超温 / 超压未解除的通道不在 toHeat 里（否则 At=0 会把刚切断的输出重新打开）
-        foreach (var c in toHeat)
-        {
-            if (c.SpMode == "fixed" && c.TSp >= 35) StartFixedHeat(c);
-            else _ = StartBandHeatAsync(c.Id, c.TSp);
-        }
-
-        RefreshSchematic();
-        Drawer.RaiseAll();
-        UpdateRunCount();
-        Toast("ok", $"预运行检查通过 · 已开始运行（{toHeat.Count} 个通道）· PID 已按温区自动套档");
+        var t = Ops.TryRun(Src);
+        if (!(t.IsCompletedSuccessfully && t.Result is { Ok: false, Code: OpCodes.PreflightFailed })) IsPreRunOpen = false;
+        Local(t);
     }
 
     /// <summary>开始运行筛选用的通道快照（见 <see cref="RunSelection"/>）。</summary>
-    private RunChannel RunChannelOf(Reactor r)
+    internal RunChannel RunChannelOf(Reactor r)
         => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id), Program.RunningRv == r.Id);
 
     /// <summary>按当前设备状态生成预运行检查项。</summary>
-    private void BuildPreRun()
+    internal void BuildPreRun()
     {
         PreRunChecks.Clear();
 
@@ -894,11 +800,14 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>底栏「← 退出」：未启用登录，按退出程序处理（弹确认框）。</summary>
     [RelayCommand]
+    [ViewEntry("打开退出确认框")]
     private void Logout() => OpenExitConfirm();
 
     [RelayCommand]
+    [ViewEntry("切换页签")]
     private void SwitchTabCmd(string id) => SwitchTab(id);
 
+    [ViewEntry("切换页签（预热 / 曲线跳转）")]
     public void SwitchTab(string id)
     {
         ActiveTab = id;

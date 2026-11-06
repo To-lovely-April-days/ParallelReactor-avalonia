@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
@@ -16,6 +17,7 @@ namespace ParallelReactor.ViewModels;
 /// 自动泄漏测试（惰性气体低压保压）：选通道 → 脉冲充压到测试压力（到压即关该路 SV）→ 总管泄压 → 平衡 →
 /// 测量压降（温度补偿 + 最小二乘拟合）→ 自动判读 → 尝试经排空阀泄压并核实。
 /// 阀门或压力采集未配置 / 离线时拒绝启动（见 <see cref="MainViewModel.GasBlockReason"/>）。
+/// 开始 / 中止经命令层（OperatorCommands.Leak）；面板的 Cells 只用于显示与勾选。
 /// </summary>
 public partial class LeakViewModel : ViewModelBase
 {
@@ -72,6 +74,7 @@ public partial class LeakViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("打开泄漏测试面板（测试在后台进行时只是查看进度）")]
     private void Open()
     {
         if (!Running) Reset();   // 测试在后台进行时重新打开只是查看进度
@@ -79,6 +82,7 @@ public partial class LeakViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("关闭面板（测试在后台继续）")]
     private void Close()
     {
         IsOpen = false;
@@ -90,9 +94,11 @@ public partial class LeakViewModel : ViewModelBase
     /// 要停止一切请用工具栏「全部停止」。
     /// </summary>
     [RelayCommand]
-    private void Abort() => _main.AbortGas(GasOwner.Leak);
+    [WriteEntry(nameof(OperatorCommands.TryAbortLeakTest))]
+    private void Abort() => _main.Local(_main.Ops.TryAbortLeakTest(MainViewModel.Src));
 
     [RelayCommand]
+    [ViewEntry("打开维修指南")]
     private void ShowDiag()
     {
         IsOpen = false;
@@ -101,38 +107,38 @@ public partial class LeakViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("关闭维修指南")]
     private void CloseDiag() => IsDiagOpen = false;
 
+    /// <summary>开始测试：把勾选的通道交给命令层（守卫与提示文字在 OperatorCommands.TryStartLeakTest）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryStartLeakTest))]
     private void Start()
-    {
-        if (Running) return;
-        var picked = Cells.Where(c => c.CanPick && c.Selected).ToList();
-        if (picked.Count == 0) { _main.Toast("warn", "请至少选择一个测试通道"); return; }
-        // 可选通道是面板打开时算的：开始前按当前状态再查一次（期间可能有通道开始运行 / 开始执行程序）
-        var nowBusy = picked.Where(c => _main.FindReactor(c.Id) is not { } r || r.IsRunning || _main.Program.RunningRv == c.Id)
-                            .Select(c => "RV" + c.Id).ToList();
-        if (nowBusy.Count > 0)
-        {
-            _main.Toast("err", $"{string.Join("、", nowBusy)} 已在运行或正在执行程序 · 请重新打开泄漏测试选择通道");
-            return;
-        }
-        // 阀门 / 压力采集未配置或离线一律拒绝：充压必须按实测压力闭环，并全程做超压监视
-        if (_main.GasBlockReason(needPressure: true) is { } why) { _main.Toast("err", why); return; }
-        if (_main.Settings.LeakTestPsi >= _main.Settings.OverPressure * 0.9)
-        {
-            _main.Toast("err", "测试压力须低于超压报警值的 90% · 请在「设置 → 参数与报警」调整");
-            return;
-        }
-        _ = RunAsync(picked);
-    }
+        => _main.Local(_main.Ops.TryStartLeakTest(MainViewModel.Src,
+            Cells.Where(c => c.CanPick && c.Selected).Select(c => c.Id).ToList()));
 
     // ============ 测试流程 ============
 
-    private async Task RunAsync(List<LeakCell> picked)
+    /// <summary>
+    /// 按通道号执行一次测试（命令层守卫通过后调用）。面板格子只用于显示：所选通道在面板里不可选（例如远程发起、
+    /// 面板是很久以前打开的）时按当前状态重建格子，再按 ids 勾选。target = 本次测试压力 psi。
+    /// 第一个 await 之前就占用气路并锁定面板（与命令的同步头在同一次调用里）。
+    /// </summary>
+    internal Task RunAsync(IReadOnlyList<int> channelIds, double target)
+    {
+        if (channelIds.Any(id => Cells.FirstOrDefault(c => c.Id == id) is not { CanPick: true }))
+        {
+            Reset();
+            foreach (var c in Cells.Where(c => c.CanPick)) c.Selected = channelIds.Contains(c.Id);
+        }
+        var picked = Cells.Where(c => channelIds.Contains(c.Id)).ToList();
+        return RunAsync(picked, target);
+    }
+
+    private async Task RunAsync(List<LeakCell> picked, double target)
     {
         var s = _main.Settings;
-        double target = s.LeakTestPsi, thr = s.LeakRate;
+        double thr = s.LeakRate;
         var ids = picked.Select(c => c.Id).ToArray();
 
         Started = true; Running = true; Done = false; Failed = false; LeakFailed = false; Progress = 0;
@@ -550,6 +556,7 @@ public partial class LeakCell : ObservableObject
     }
 
     [RelayCommand]
+    [ViewEntry("勾选 / 取消勾选测试通道（只改面板选择）")]
     private void Toggle()
     {
         if (Locked || !CanPick) return;

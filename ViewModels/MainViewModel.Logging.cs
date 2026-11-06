@@ -25,7 +25,7 @@ public partial class MainViewModel
     });
 
     /// <summary>只写事件日志文件、不进界面报警列表（高频的自动动作：阀门整帧、急停各部分回应时刻）。</summary>
-    private void LogFileEvent(string kind, string source, string title, string detail)
+    internal void LogFileEvent(string kind, string source, string title, string detail)
         => Logger.Event(DateTimeOffset.Now, kind, source, title, detail);
 
     // ============ 测试会话 / 标记（供测试流程调用；暂无界面入口）============
@@ -198,7 +198,7 @@ public partial class MainViewModel
     public bool IsOverPressureTripped(int id) => id >= 1 && id <= _opGuard.Count && _opGuard.IsTripped(id - 1);
 
     /// <summary>任一通道超压联锁未解除。</summary>
-    private bool AnyOverPressureTripped => Enumerable.Range(0, _opGuard.Count).Any(_opGuard.IsTripped);
+    internal bool AnyOverPressureTripped => Enumerable.Range(0, _opGuard.Count).Any(_opGuard.IsTripped);
 
     /// <summary>
     /// 每 Tick 对每个通道调用（不论状态）。压力离线时不判（读数是旧值）。

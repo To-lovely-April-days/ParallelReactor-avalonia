@@ -29,6 +29,20 @@
     <Compile Include="../../Models/ProgramLimits.cs" Link="Src/ProgramLimits.cs" />
     <Compile Include="../../Models/ProgramRunGuard.cs" Link="Src/ProgramRunGuard.cs" />
     <Compile Include="../../Models/GasLease.cs" Link="Src/GasLease.cs" />
+    <!-- 第 4 组：命令层纯逻辑 -->
+    <Compile Include="../../Commands/OpResult.cs" Link="Src/OpResult.cs" />
+    <Compile Include="../../Commands/CommandSource.cs" Link="Src/CommandSource.cs" />
+    <Compile Include="../../Commands/ControlArbiter.cs" Link="Src/ControlArbiter.cs" />
+    <Compile Include="../../Commands/CommandPolicy.cs" Link="Src/CommandPolicy.cs" />
+    <Compile Include="../../Commands/EntryAttributes.cs" Link="Src/EntryAttributes.cs" />
+    <Compile Include="../../Service/TickGate.cs" Link="Src/TickGate.cs" />
+    <Compile Include="../../Models/Units.cs" Link="Src/Units.cs" />
+    <Compile Include="../../Models/ValueRules.cs" Link="Src/ValueRules.cs" />
+    <Compile Include="../../Models/HeatGuard.cs" Link="Src/HeatGuard.cs" />
+    <Compile Include="../../Models/GasGuard.cs" Link="Src/GasGuard.cs" />
+    <!-- 第 4 组 · 批 C -->
+    <Compile Include="../../Models/AppSettings.cs" Link="Src/AppSettings.cs" />
+    <Compile Include="../../Models/SettingSpecs.cs" Link="Src/SettingSpecs.cs" />
   </ItemGroup>
 
   <ItemGroup>

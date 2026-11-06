@@ -1,3 +1,4 @@
+using ParallelReactor.Commands;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -109,11 +110,11 @@ public partial class GraphViewModel : ViewModelBase
         Refresh();
     }
 
-    [RelayCommand] private void SetMetric(string m) => Metric = m;
-    [RelayCommand] private void SetRange(string r) => Range = r;
-    [RelayCommand] private void AutoRange() { _main.Toast("ok", "已自适应缩放"); Refresh(); }
-    [RelayCommand] private void ExportCsv() => _main.Toast("warn", "导出 CSV 尚未实现");
-    [RelayCommand] private void Screenshot(Visual visual) => _main.Toast("warn", "截图保存尚未实现");
+    [RelayCommand, ViewEntry("切换曲线指标")] private void SetMetric(string m) => Metric = m;
+    [RelayCommand, ViewEntry("切换时间范围")] private void SetRange(string r) => Range = r;
+    [RelayCommand, ViewEntry("曲线缩放")] private void AutoRange() { _main.Toast("ok", "已自适应缩放"); Refresh(); }
+    [RelayCommand, ViewEntry("未实现，只提示")] private void ExportCsv() => _main.Toast("warn", "导出 CSV 尚未实现");
+    [RelayCommand, ViewEntry("未实现，只提示")] private void Screenshot(Visual visual) => _main.Toast("warn", "截图保存尚未实现");
 
     public void Refresh()
     {
@@ -225,6 +226,7 @@ public partial class GraphChannel : ObservableObject
     public IBrush DotBorder => new SolidColorBrush(Color.Parse(ColorHex));
 
     [RelayCommand]
+    [ViewEntry("显示 / 隐藏该通道曲线")]
     private void Toggle()
     {
         if (Reactor.IsIdle) return;

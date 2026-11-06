@@ -7,7 +7,9 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.ViewModels;
@@ -74,8 +76,32 @@ public partial class ProgramViewModel : ViewModelBase
         SelectChannel(first);
     }
 
+    // ============ 命令层（C25）============
+    // 草稿编辑统一经 Ops.TryEditProgram 闸门（仲裁 + 可编辑检查，再在同一次调用里执行修改）；
+    // 曲线应用 / 复制 / 下发 / 中止各有独立命令（OperatorCommands.Program）。
+    internal static CommandSource Src => MainViewModel.Src;
+    internal OperatorCommands Ops => _main.Ops;
+    internal void Local(Task<OpResult> t) => _main.Local(t);
+
+    /// <summary>当前选中通道号（未选中为 0，命令层返回 CHANNEL_NOT_FOUND）。</summary>
+    internal int CurrentRv => CurrentChannel?.Reactor.Id ?? 0;
+
+    /// <summary>某通道的程序草稿（命令层读写）。</summary>
+    internal ObservableCollection<ProgramStep> StepsOf(int rv) => _byRv[rv];
+
+    internal ProgramChannel? ChannelOf(int rv) => Channels.FirstOrDefault(c => c.Reactor.Id == rv);
+
+    /// <summary>命令层整体替换了某通道的程序后刷新界面（当前通道时清掉选中步骤）。</summary>
+    internal void OnStepsReplaced(int rv)
+    {
+        if (CurrentRv != rv) return;
+        SelectedStep = null;
+        RenumberAndRefresh();
+    }
+
     // ============ 通道选择 ============
     [RelayCommand]
+    [ViewEntry("切换编辑的通道（只改界面选择）")]
     private void SelectChannel(ProgramChannel ch)
     {
         if (ch.Reactor.IsIdle) return;
@@ -91,15 +117,20 @@ public partial class ProgramViewModel : ViewModelBase
 
     // ============ 步骤库：点击添加到末尾（拖拽下一轮）============
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void AddStep(PaletteItem item)
     {
-        if (CurrentChannel == null || !CanEdit) return;
-        var step = NewStep(item.Type);
-        int at = SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count;
-        Steps.Insert(at, step);
-        SelectedStep = step;
-        MarkModified();
-        RenumberAndRefresh();
+        if (CurrentChannel == null) return;
+        _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            var step = NewStep(item.Type);
+            int at = SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count;
+            Steps.Insert(at, step);
+            SelectedStep = step;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
     }
 
     /// <summary>新建步骤：默认值（含搅拌取当前全局转速）按全局限值裁剪（C4），避免一拖进来就超限。</summary>
@@ -114,10 +145,18 @@ public partial class ProgramViewModel : ViewModelBase
     }
 
     /// <summary>检查器数值字段：FieldDef 范围与全局限值取交集（屏幕键盘按此裁剪输入）。</summary>
+    /// <remarks>字段的下拉 / 文本写入经 Gate（= TryEditProgram 闸门），被拒时控件回到原值。</remarks>
     private StepField Field(ProgramStep s, FieldDef f)
-        => f.Kind == "num" ? new StepField(s, f, ProgramLimits.FieldRange(s.Type, f.Key, f.Min, f.Max, Limits)) : new StepField(s, f);
+    {
+        int rv = CurrentRv;
+        Func<bool> gate = () => _main.LocalOk(Ops.TryEditProgram(Src, rv, () => OpResult.Silent));
+        return f.Kind == "num"
+            ? new StepField(s, f, ProgramLimits.FieldRange(s.Type, f.Key, f.Min, f.Max, Limits)) { Gate = gate }
+            : new StepField(s, f) { Gate = gate };
+    }
 
     [RelayCommand]
+    [ViewEntry("选中步骤（只改界面选择）")]
     private void SelectStep(ProgramStep step)
     {
         SelectedStep = step;
@@ -125,84 +164,112 @@ public partial class ProgramViewModel : ViewModelBase
 
     // ============ 屏幕键盘：检查器数值字段 ============
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void EditField(StepField f)
     {
-        if (!CanEdit || f is not { IsNum: true }) return;
-        _main.Keyboard.OpenNumeric(f.Label, f.Number, f.Unit ?? "", f.Min, f.Max, f.SetNumber);
+        if (!CanEdit || f is not { IsNum: true }) return;   // 界面提示：锁定时不打开键盘（确认时闸门再判一次，K3）
+        int rv = CurrentRv;
+        _main.Keyboard.OpenNumeric(f.Label, f.Number, f.Unit ?? "", f.Min, f.Max,
+            v => Ops.TryEditProgram(Src, rv, () => { f.SetNumber(v); return OpResult.Silent; }));
     }
 
     // ============ 全局搅拌（程序里的「搅拌」步骤改为全局单步）============
     private StirRow? _stirRow;
     public string GlobalStirText => $"{_main.StirRpm} rpm";
 
-    public void EditGlobalStir()
+    /// <summary>
+    /// 打开全局转速键盘（检查器「搅拌」行）。apply 为命令层写入（StirRow.Edit 传入 Ops.TrySetStirRpm，与工具栏同一命令，
+    /// 因此同样记「设置 · 搅拌转速」事件）；命令成功后再同步检查器显示和当前步骤数据，成功不提示（与今天一致）。
+    /// </summary>
+    internal void EditGlobalStir(Func<int, Task<OpResult>> apply)
     {
         if (IsRunningProgram) return;   // 程序执行中只读（全局转速请在主界面调）；通道仅在加热时仍可改全局转速
         _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, _main.Settings.RpmMax, v =>
         {
-            _main.StirRpm = (int)v;
+            var t = apply((int)v);
+            if (!(t.IsCompletedSuccessfully && t.Result.Ok)) return t;
             _stirRow?.Refresh();
             // 同步当前步骤数据，使时间线中的步骤详情一致
             if (SelectedStep?.Type == StepType.Stir) SelectedStep.SetNum("rpm", v);
+            // 程序页改转速今天没有 Toast（工具栏入口在搅拌运行中才提示）：成功结果静默，只多记一条设置事件（§10.2 第 4 条）
+            return (t.Result with { Quiet = true }).AsTask();
         });
     }
 
     // ============ 屏幕键盘：曲线段数值（温度 / 斜率 / 保温）============
+    // 曲线编辑器的段只改临时缓冲区（CurveSegs 是副本）：真正写回程序由 ApplyCurve → TryApplyCurve 完成。
     [RelayCommand]
+    [ViewEntry("曲线编辑器缓冲区（副本），写回程序经 ApplyCurve → TryApplyCurve")]
     private void EditSegTemp(HeatSeg s)
     {
         // 段温度上限 = min(温度 SP 上限, 超温报警值 − 1)（C4）
         if (s != null && CanEdit)
-            _main.Keyboard.OpenNumeric("目标温度", s.Temp, "°C", 0, Math.Max(0, ProgramLimits.HeatTempMax(Limits)), v => s.Temp = v);
+            _main.Keyboard.OpenNumeric("目标温度", s.Temp, "°C", 0, Math.Max(0, ProgramLimits.HeatTempMax(Limits)), v => Buffer(() => s.Temp = v));
     }
 
     [RelayCommand]
+    [ViewEntry("曲线编辑器缓冲区（副本），写回程序经 ApplyCurve → TryApplyCurve")]
     private void EditSegRate(HeatSeg s)
-    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("升温斜率", s.Rate, "°C/min", 0, 50, v => s.Rate = v); }
+    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("升温斜率", s.Rate, "°C/min", 0, 50, v => Buffer(() => s.Rate = v)); }
 
     [RelayCommand]
+    [ViewEntry("曲线编辑器缓冲区（副本），写回程序经 ApplyCurve → TryApplyCurve")]
     private void EditSegHold(HeatSeg s)
-    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("保温时长", s.Hold, "min", 0, 600, v => s.Hold = v); }
+    { if (s != null && CanEdit) _main.Keyboard.OpenNumeric("保温时长", s.Hold, "min", 0, 600, v => Buffer(() => s.Hold = v)); }
+
+    /// <summary>只改曲线编辑器缓冲区的键盘回调：不经命令层（写回程序时 TryApplyCurve 才是写入口）。</summary>
+    private static Task<OpResult> Buffer(Action edit) { edit(); return OpResult.Silent.AsTask(); }
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void MoveUp(ProgramStep step)
-    {
-        if (!CanEdit) return;
-        int i = Steps.IndexOf(step);
-        if (i <= 0) return;
-        Steps.Move(i, i - 1);
-        SelectedStep = step;
-        MarkModified();
-        RenumberAndRefresh();
-    }
+        => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            int i = Steps.IndexOf(step);
+            if (i <= 0) return OpResult.Silent;
+            Steps.Move(i, i - 1);
+            SelectedStep = step;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void MoveDown(ProgramStep step)
-    {
-        if (!CanEdit) return;
-        int i = Steps.IndexOf(step);
-        if (i < 0 || i >= Steps.Count - 1) return;
-        Steps.Move(i, i + 1);
-        SelectedStep = step;
-        MarkModified();
-        RenumberAndRefresh();
-    }
+        => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            int i = Steps.IndexOf(step);
+            if (i < 0 || i >= Steps.Count - 1) return OpResult.Silent;
+            Steps.Move(i, i + 1);
+            SelectedStep = step;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
 
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void DeleteStep(ProgramStep step)
-    {
-        if (!CanEdit) return;
-        int i = Steps.IndexOf(step);
-        if (i < 0) return;
-        Steps.RemoveAt(i);
-        if (SelectedStep == step) SelectedStep = null;
-        MarkModified();
-        RenumberAndRefresh();
-    }
+        => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            int i = Steps.IndexOf(step);
+            if (i < 0) return OpResult.Silent;
+            Steps.RemoveAt(i);
+            if (SelectedStep == step) SelectedStep = null;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
 
     // ============ 底部按钮 ============
-    [RelayCommand] private void ApplyOthers() => OpenApply();
-    [RelayCommand] private void SaveTemplate() => _main.Toast("warn", "保存为模板尚未实现（随配方功能一起提供）");
+    [RelayCommand]
+    [ViewEntry("打开「应用到其他通道」对话框；确认经 ApplyDo → TryCopyProgram")]
+    private void ApplyOthers() => OpenApply();
+
+    [RelayCommand]
+    [ViewEntry("只提示「尚未实现」")]
+    private void SaveTemplate() => _main.Toast("warn", "保存为模板尚未实现（随配方功能一起提供）");
 
     // ============ 程序执行（引擎见 ProgramViewModel.Run.cs：7 种步骤全部可执行）============
     [ObservableProperty] private bool _isRunningProgram;
@@ -278,11 +345,12 @@ public partial class ProgramViewModel : ViewModelBase
         => snap.Any(s => s.Type == StepType.Press
                          || (s.Type == StepType.End && s.Str("mode", "密封 (推荐)") is "排空" or "淬灭"));
 
-    /// <summary>按实时状态判一次下发守卫（见 <see cref="ProgramRunGuard"/>）：null = 可运行。</summary>
-    private string? RunGuard(int? rv, IReadOnlyList<StepSnapshot> snap)
+    /// <summary>按实时状态判一次下发守卫（见 <see cref="ProgramRunGuard"/>）：null = 可运行，否则（§11 错误码, 原因）。命令层调用。</summary>
+    internal (string Code, string Message)? RunGuard(int rv, IReadOnlyList<StepSnapshot> snap)
     {
-        var r = rv is { } id ? _main.FindReactor(id) : null;
+        var r = _main.FindReactor(rv);
         bool gas = HasGasSteps(snap);
+        var gasBlock = gas ? _main.GasBlock(needPressure: NeedsPressure(snap)) : null;
         var input = new ProgramRunInput
         {
             HasChannel = r != null,
@@ -295,22 +363,31 @@ public partial class ProgramViewModel : ViewModelBase
             GasBusy = _main.GasBusy,
             GasTask = _main.GasTask,
             NeedsGas = gas,
-            GasBlock = gas ? _main.GasBlockReason(needPressure: NeedsPressure(snap)) : null,
+            GasBlock = gasBlock?.Message,
+            GasBlockCode = gasBlock?.Code,
             LimitErrors = ProgramLimits.Validate(snap, Limits),
         };
-        return ProgramRunGuard.Reason(input);
+        return ProgramRunGuard.Check(input);
+    }
+
+    /// <summary>命令层下发通过后：打开运行监视并在后台执行冻结的程序副本。</summary>
+    internal void StartRun(int rv, IReadOnlyList<StepSnapshot> steps)
+    {
+        PrepareRunMonitor(rv, steps);
+        _ = ExecuteAsync(rv, steps);
     }
 
     /// <summary>「下发并运行」：冻结当前程序，按全部守卫判一次，通过才打开确认框。</summary>
     [RelayCommand]
+    [ViewEntry("只打开下发确认框；先经 Ops.CheckProgramRun 预检，确认经 ConfirmRun → TryRunProgram")]
     private void RunProgram()
     {
-        if (CurrentChannel == null) { Blocked("当前未选中通道（先点上方通道条里的 RV）"); return; }
-        if (IsRunningProgram) { Blocked("已有程序在执行 · 请等待完成或先中止"); return; }
-        int rv = CurrentChannel.Reactor.Id;
-        RenumberAndRefresh();
-        var snap = Steps.Select(s => s.ToSnapshot()).ToList().AsReadOnly();
-        if (RunGuard(rv, snap) is { } why) { Blocked(why); return; }
+        int rv = CurrentRv;
+        if (rv != 0 && !IsRunningProgram) RenumberAndRefresh();
+        var snap = rv != 0 && !IsRunningProgram
+            ? Steps.Select(s => s.ToSnapshot()).ToList().AsReadOnly()
+            : (IReadOnlyList<StepSnapshot>)Array.Empty<StepSnapshot>();
+        if (!_main.LocalOk(Ops.CheckProgramRun(Src, rv, snap))) return;
 
         bool gasSteps = HasGasSteps(snap);
         int total = (int)Steps.Sum(s => s.DurationMin);
@@ -325,14 +402,9 @@ public partial class ProgramViewModel : ViewModelBase
         IsRunConfirmOpen = true;
     }
 
-    /// <summary>下发被守卫拦下：toast 一闪而过容易漏看，同步写一条事件记录（报警/事件页可查）。</summary>
-    private void Blocked(string why)
-    {
-        _main.Toast("err", $"下发被拒绝 · {why}");
-        _main.Alarm.Log("warn", "系统", "程序下发被拒绝", why);
-    }
-
-    [RelayCommand] private void CancelRun() => CancelPendingRun();
+    [RelayCommand]
+    [ViewEntry("关闭下发确认框并丢弃待运行程序")]
+    private void CancelRun() => CancelPendingRun();
 
     /// <summary>关闭确认框并丢弃待运行程序（取消 / 急停时调用）。</summary>
     public void CancelPendingRun()
@@ -346,14 +418,13 @@ public partial class ProgramViewModel : ViewModelBase
     /// 再按确认时刻的实时状态把全部守卫重判一次，通过才执行——执行的是确认框打开时冻结的副本。
     /// </summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryRunProgram))]
     private void ConfirmRun()
     {
         IsRunConfirmOpen = false;
         if (_pendingRun is not { } run) return;
         _pendingRun = null;
-        if (RunGuard(run.Rv, run.Steps) is { } why) { Blocked(why); return; }   // 确认期间状态可能变了
-        PrepareRunMonitor(run.Rv, run.Steps);
-        _ = ExecuteAsync(run.Rv, run.Steps);
+        _main.Local(Ops.TryRunProgram(Src, run.Rv, run.Steps));   // 命令层按确认时刻的实时状态重判全部守卫（确认期间状态可能变了）
     }
 
     private void PrepareRunMonitor(int rv, IReadOnlyList<StepSnapshot> steps)
@@ -372,6 +443,7 @@ public partial class ProgramViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("关闭运行监视（执行中不可关）")]
     private void CloseRunMonitor()
     {
         if (IsRunningProgram) return;
@@ -409,44 +481,53 @@ public partial class ProgramViewModel : ViewModelBase
     }
 
     /// <summary>中止当前程序（引擎在 Run.cs：取消令牌 + 中止气路，序列 finally 全关阀）。</summary>
-    [RelayCommand] private void AbortRun() => AbortProgram();
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryAbortProgram))]
+    private void AbortRun() => _main.Local(Ops.TryAbortProgram(Src));
 
-    // ============ 升温模式切换（HeatModeRow 调用）============
-    public void SetHeatMode(ProgramStep step, string mode)
+    // ============ 升温模式切换（HeatModeRow 经 TryEditProgram 闸门调用）============
+    internal OpResult SetHeatMode(ProgramStep step, string mode)
     {
-        if (!CanEdit) return;
         step.SetStr("mode", mode);
         if (mode == "curve") step.EnsureSegments();
         MarkModified();
         BuildInspector();
         RenumberAndRefresh();
+        return OpResult.Silent;
     }
 
     // ============ 拖拽（供 code-behind 调用）============
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     public void DropPaletteAt(StepType t, int index)
     {
-        if (CurrentChannel == null || !CanEdit) return;
-        var step = NewStep(t);
-        index = Math.Clamp(index, 0, Steps.Count);
-        Steps.Insert(index, step);
-        SelectedStep = step;
-        MarkModified();
-        RenumberAndRefresh();
+        if (CurrentChannel == null) return;
+        _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            var step = NewStep(t);
+            int at = Math.Clamp(index, 0, Steps.Count);
+            Steps.Insert(at, step);
+            SelectedStep = step;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
     }
 
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     public void ReorderTo(ProgramStep step, int index)
-    {
-        if (!CanEdit) return;
-        int from = Steps.IndexOf(step);
-        if (from < 0) return;
-        if (index > from) index--;
-        Steps.RemoveAt(from);
-        index = Math.Clamp(index, 0, Steps.Count);
-        Steps.Insert(index, step);
-        SelectedStep = step;
-        MarkModified();
-        RenumberAndRefresh();
-    }
+        => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            int from = Steps.IndexOf(step);
+            if (from < 0) return OpResult.Silent;
+            int to = index > from ? index - 1 : index;
+            Steps.RemoveAt(from);
+            to = Math.Clamp(to, 0, Steps.Count);
+            Steps.Insert(to, step);
+            SelectedStep = step;
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Silent;
+        }));
 
     // ============ 内部刷新 ============
     partial void OnSelectedStepChanged(ProgramStep? oldValue, ProgramStep? newValue)
@@ -574,10 +655,16 @@ public partial class ProgramViewModel : ViewModelBase
         UpdateCurveSub();
     }
 
-    [RelayCommand] private void CurveScopeAll() => CurveScope = "all";
-    [RelayCommand] private void CurveScopeCur() => CurveScope = "cur";
+    [RelayCommand]
+    [ViewEntry("曲线编辑器的应用范围（缓冲区）")]
+    private void CurveScopeAll() => CurveScope = "all";
 
     [RelayCommand]
+    [ViewEntry("曲线编辑器的应用范围（缓冲区）")]
+    private void CurveScopeCur() => CurveScope = "cur";
+
+    [RelayCommand]
+    [ViewEntry("曲线编辑器缓冲区（副本），写回程序经 ApplyCurve → TryApplyCurve")]
     private void AddSeg()
     {
         if (CurveSegs.Count >= 16) { _main.Toast("warn", "已达到最多 16 段"); return; }
@@ -589,6 +676,7 @@ public partial class ProgramViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    [ViewEntry("曲线编辑器缓冲区（副本），写回程序经 ApplyCurve → TryApplyCurve")]
     private void DelSeg(HeatSeg seg)
     {
         if (CurveSegs.Count <= 1) { _main.Toast("warn", "至少保留 1 段"); return; }
@@ -597,46 +685,30 @@ public partial class ProgramViewModel : ViewModelBase
         RecomputeCurve();
     }
 
-    [RelayCommand] private void CancelCurve() => IsCurveEditorOpen = false;
-
     [RelayCommand]
+    [ViewEntry("关闭曲线编辑器、丢弃缓冲区")]
+    private void CancelCurve() => IsCurveEditorOpen = false;
+
+    /// <summary>
+    /// 把曲线编辑器缓冲区写回程序（「全部运行中」范围同时写其他通道同序号的升温步骤）。
+    /// 段超限时留在编辑器里提示修改；程序锁定 / 其他拒绝时关闭编辑器（与今天一致）。
+    /// </summary>
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryApplyCurve))]
     private void ApplyCurve()
     {
-        if (_curveStep == null || !CanEdit) { IsCurveEditorOpen = false; return; }
-        // 曲线段温度按全局限值检查（C4）：超限不应用，留在编辑器里提示修改
-        var lim = Limits;
-        var segSnap = StepSnapshot.Create(StepType.Heat, 0, "升温", "",
-            new Dictionary<string, object> { ["mode"] = "curve" }, CurveSegs.Select(g => (g.Temp, g.Rate, g.Hold)));
-        if (ProgramLimits.CheckStep(segSnap, lim) is { } bad) { _main.Toast("err", $"曲线未应用 · {bad}"); return; }
-        void Copy(ProgramStep dst)
-        {
-            dst.Segments.Clear();
-            foreach (var s in CurveSegs) dst.Segments.Add(s.Clone());
-            dst.SetStr("mode", "curve");
-            dst.RaiseChanged();
-        }
-        Copy(_curveStep);
-        int idx = Steps.IndexOf(_curveStep);
-        if (CurveScope == "all" && idx >= 0)
-        {
-            foreach (var ch in Channels)
-            {
-                if (ch.Reactor.IsIdle || ch == CurrentChannel || ch.Reactor.Id == RunningRv) continue;   // 程序执行中的通道不改
-                var list = _byRv[ch.Reactor.Id];
-                if (idx < list.Count && list[idx].Type == StepType.Heat)
-                {
-                    Copy(list[idx]);
-                    ch.IsModified = true;
-                }
-            }
-            _main.Toast("ok", $"已应用 {CurveSegs.Count} 段曲线到全部运行中通道");
-        }
-        else _main.Toast("ok", $"已应用 {CurveSegs.Count} 段曲线到 RV{CurrentChannel?.Reactor.Id}");
-
-        MarkModified();
+        if (_curveStep == null) { IsCurveEditorOpen = false; return; }
+        int rv = CurrentRv, idx = Steps.IndexOf(_curveStep);
+        var t = Ops.TryApplyCurve(Src, rv, idx, CurveSegs.ToList(), CurveScope == "all");
+        var r = t.IsCompletedSuccessfully ? t.Result : null;
+        if (r is { Ok: false, Code: OpCodes.ParamOutOfRange }) { _main.Local(t); return; }   // 超限：留在编辑器里
         IsCurveEditorOpen = false;
-        BuildInspector();
-        RenumberAndRefresh();
+        if (r is { Ok: true })
+        {
+            BuildInspector();
+            RenumberAndRefresh();
+        }
+        _main.Local(t);
     }
 
     private void UpdateCurveSub()
@@ -706,9 +778,17 @@ public partial class ProgramViewModel : ViewModelBase
         IsApplyOpen = true;
     }
 
-    [RelayCommand] private void ApplyQuickActive() => SetApplyQuick("active");
-    [RelayCommand] private void ApplyQuickAll() => SetApplyQuick("all");
-    [RelayCommand] private void ApplyQuickNone() => SetApplyQuick("none");
+    [RelayCommand]
+    [ViewEntry("对话框里的快速勾选")]
+    private void ApplyQuickActive() => SetApplyQuick("active");
+
+    [RelayCommand]
+    [ViewEntry("对话框里的快速勾选")]
+    private void ApplyQuickAll() => SetApplyQuick("all");
+
+    [RelayCommand]
+    [ViewEntry("对话框里的快速勾选")]
+    private void ApplyQuickNone() => SetApplyQuick("none");
     private void SetApplyQuick(string m)
     {
         foreach (var r in ApplyRows)
@@ -723,25 +803,19 @@ public partial class ProgramViewModel : ViewModelBase
         }
     }
 
-    [RelayCommand] private void CancelApply() => IsApplyOpen = false;
-
     [RelayCommand]
+    [ViewEntry("关闭「应用到其他通道」对话框")]
+    private void CancelApply() => IsApplyOpen = false;
+
+    /// <summary>把当前通道程序复制到勾选的通道。没有目标时对话框保持打开（「请先选择目标通道」）。</summary>
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryCopyProgram))]
     private void ApplyDo()
     {
-        if (!CanEdit) { IsApplyOpen = false; return; }
-        var targets = ApplyRows.Where(r => r.CanPick && r.IsPicked && r.Channel.Reactor.Id != RunningRv).ToList();
-        if (targets.Count == 0) { _main.Toast("warn", "请先选择目标通道"); return; }
-        var src = Steps;
-        foreach (var r in targets)
-        {
-            var list = _byRv[r.Channel.Reactor.Id];
-            list.Clear();
-            foreach (var s in src) list.Add(s.Clone());
-            for (int i = 0; i < list.Count; i++) list[i].Ordinal = i + 1;
-            r.Channel.IsModified = false;
-        }
-        _main.Toast("ok", $"已将 RV{CurrentChannel?.Reactor.Id} 的 {src.Count} 步程序应用到 {targets.Count} 个通道");
-        IsApplyOpen = false;
+        var to = ApplyRows.Where(r => r.CanPick && r.IsPicked).Select(r => r.Channel.Reactor.Id).ToList();
+        var t = Ops.TryCopyProgram(Src, CurrentRv, to);
+        if (!(t.IsCompletedSuccessfully && t.Result is { Ok: false, Code: OpCodes.BadRequest })) IsApplyOpen = false;
+        _main.Local(t);
     }
 
 }
@@ -868,8 +942,13 @@ public partial class HeatModeRow : ObservableObject
     public bool IsFixed => _step.Str("mode", "fixed") != "curve";
     public bool IsCurve => !IsFixed;
 
-    [RelayCommand] private void Fixed() => _vm.SetHeatMode(_step, "fixed");
-    [RelayCommand] private void Curve() => _vm.SetHeatMode(_step, "curve");
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
+    private void Fixed() => _vm.Local(_vm.Ops.TryEditProgram(ProgramViewModel.Src, _vm.CurrentRv, () => _vm.SetHeatMode(_step, "fixed")));
+
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
+    private void Curve() => _vm.Local(_vm.Ops.TryEditProgram(ProgramViewModel.Src, _vm.CurrentRv, () => _vm.SetHeatMode(_step, "curve")));
 }
 
 /// <summary>检查器：全局搅拌转速（共用一台搅拌器，所有反应釜同一转速）。</summary>
@@ -879,7 +958,10 @@ public partial class StirRow : ObservableObject
     public StirRow(ProgramViewModel vm) { _vm = vm; }
     public string RpmText => _vm.GlobalStirText;
     public void Refresh() => OnPropertyChanged(nameof(RpmText));
-    [RelayCommand] private void Edit() => _vm.EditGlobalStir();
+    /// <summary>改全局转速：与工具栏同一命令（TrySetStirRpm）。</summary>
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TrySetStirRpm))]
+    private void Edit() => _vm.EditGlobalStir(rpm => _vm.Ops.TrySetStirRpm(ProgramViewModel.Src, rpm));
 }
 
 /// <summary>检查器：曲线预览卡片。</summary>
@@ -897,7 +979,9 @@ public partial class CurveRow : ObservableObject
     public string EndTempText => $"{StepDef.N(_step.Segments[^1].Temp)} °C";
     public List<Point> Points { get; }
 
-    [RelayCommand] private void Edit() => _vm.OpenCurveEditor(_step);
+    [RelayCommand]
+    [ViewEntry("打开曲线编辑器（编辑缓冲区副本）")]
+    private void Edit() => _vm.OpenCurveEditor(_step);
 
     private static List<Point> BuildPoints(List<HeatSeg> segs)
     {
@@ -959,5 +1043,6 @@ public partial class ApplyRow : ObservableObject
     public IBrush CheckBorder => IsPicked ? PB("#e0394c") : PB("#3D000000");
 
     [RelayCommand]
+    [ViewEntry("对话框里勾选目标通道")]
     private void Toggle() { if (CanPick) IsPicked = !IsPicked; }
 }

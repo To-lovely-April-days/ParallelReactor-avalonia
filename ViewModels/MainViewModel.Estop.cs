@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 using ParallelReactor.Services;
 
@@ -134,6 +135,8 @@ public partial class MainViewModel
         LockServices(true);
         _estopFast = true;
         _abortKeepVent = false;   // 急停一律全关（含排空），序列收尾不再保留排空阀
+        // §5.3 第 4 条 / §7.3：急停（任何来源）一律收回控制权。复位之后远程须重新申请，原持有者不能直接再启动加热 / 加压
+        bool tookBack = Arbiter.ReturnToLocal("急停");
         var ct = NewEstopToken();
 
         var task = EmergencyStop.RunAsync(
@@ -146,7 +149,8 @@ public partial class MainViewModel
             _fastEstopAt = Environment.TickCount64;
         }
         Logger.Event(DateTimeOffset.Now, "err", "系统", "急停快速路径",
-            $"来源 {source} · 服务层已锁定 · 停止帧已直接下发（紧急优先一遍 + 普通优先级一遍）· 锁存文件后台写入");
+            $"来源 {source} · 服务层已锁定 · 停止帧已直接下发（紧急优先一遍 + 普通优先级一遍）· 锁存文件后台写入"
+            + (tookBack ? " · 远程控制权已收回（回到本地控制）" : ""));
 
         // 锁存在停止帧之后、线程池上写（Flush 到 SD / eMMC 可能要几十 ms 到秒级）
         _ = Task.Run(() => WriteEstopLatch(source));
@@ -250,7 +254,8 @@ public partial class MainViewModel
 
     /// <summary>工具栏「急停」：任何时候按下都会（重新）下发全部停止指令并打开急停面板。不需要确认。</summary>
     [RelayCommand]
-    private void Estop() => RequestEstop("触屏");
+    [WriteEntry(nameof(OperatorCommands.TryEstop))]
+    private void Estop() => Local(Ops.TryEstop(Src));
 
     /// <summary>急停的界面流程（UI 线程）。restored：开机恢复锁存（时间沿用上次、事件文字不同）。
     /// seq：发起它的 <see cref="RequestEstop"/> 的请求序号。</summary>
@@ -411,10 +416,12 @@ public partial class MainViewModel
 
     /// <summary>急停面板「收起」：锁定保持，工具栏按钮显示「急停中」，再按会重新下发并打开面板。</summary>
     [RelayCommand]
+    [ViewEntry("收起急停面板（锁定保持）")]
     private void CloseEstopPanel() => IsEstopPanelOpen = false;
 
     /// <summary>急停面板「复位」：弹确认框；有停止未确认时在确认框里提醒先到现场确认。</summary>
     [RelayCommand]
+    [ViewEntry("打开急停复位确认框")]
     private void EstopReset()
     {
         var bad = EstopRows.Where(r => r.Part is EstopPart.Failed or EstopPart.Pending).Select(r => r.Name).ToList();
@@ -425,13 +432,25 @@ public partial class MainViewModel
     }
 
     [RelayCommand]
+    [ViewEntry("关闭急停复位确认框")]
     private void CancelEstopReset() => IsEstopResetConfirmOpen = false;
 
+    /// <summary>急停复位确认框「确认」：关掉确认框和急停面板，经 TryResetEstop 复位（只允许本地）。</summary>
     [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryResetEstop))]
     private void ConfirmEstopReset()
     {
         IsEstopResetConfirmOpen = false;
         IsEstopPanelOpen = false;
+        Local(Ops.TryResetEstop(Src));
+    }
+
+    /// <summary>
+    /// 急停复位（命令层 TryResetEstop 调用，不弹 Toast）：取消在途的停止帧、删除锁存、解除锁定（设备保持停止）。
+    /// 复位途中另一线程又发起急停时立刻锁回去。
+    /// </summary>
+    internal OpResult ResetEstopCore()
+    {
         bool unconfirmed = HasEstopResetWarn;
         // 先取消：快速路径 / 补发 / 重发里尚未排出的停止帧不会在复位之后再下发（C18）。
         // 已排进总线队列的那一帧（每条总线至多一帧）排在复位后任何新的启动帧之前，先落地
@@ -461,10 +480,12 @@ public partial class MainViewModel
         if (!latchCleared)
         {
             Alarm.Log("err", "系统", "急停锁存文件删除失败 · 下次开机仍将锁定", _estopLatch.Path);
-            Toast("err", "急停已复位，但锁存文件删除失败 · 下次开机仍将保持急停锁定");
-            return;
+            // 复位本身已完成（Ok），只是锁存没删掉：按 err 提示
+            return OpResult.Done("急停已复位，但锁存文件删除失败 · 下次开机仍将保持急停锁定", "err",
+                new { reset = true, latchCleared = false, path = _estopLatch.Path });
         }
-        Toast("ok", "急停已复位 · 设备保持停止，需要时重新开始运行");
+        return OpResult.Done("急停已复位 · 设备保持停止，需要时重新开始运行", "ok",
+            new { reset = true, latchCleared = true, unconfirmed });
     }
 }
 
