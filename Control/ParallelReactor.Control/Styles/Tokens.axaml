@@ -1,0 +1,138 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- research/pc-control.html 的 CSS 令牌，1:1 搬运（颜色 / 字体 / 字号）。不要在此“改进”。 -->
+  <SolidColorBrush x:Key="Line">#c9c9cd</SolidColorBrush>
+  <SolidColorBrush x:Key="SoftLine">#dedee1</SolidColorBrush>
+  <SolidColorBrush x:Key="Panel">#f7f7f8</SolidColorBrush>
+  <SolidColorBrush x:Key="Ink">#3f3f45</SolidColorBrush>
+  <SolidColorBrush x:Key="Muted">#85858c</SolidColorBrush>
+  <SolidColorBrush x:Key="Purple">#765cc5</SolidColorBrush>
+  <SolidColorBrush x:Key="Green">#efffe4</SolidColorBrush>
+  <SolidColorBrush x:Key="GreenLine">#dcf8c7</SolidColorBrush>
+  <SolidColorBrush x:Key="Blue">#6269df</SolidColorBrush>
+  <SolidColorBrush x:Key="AppBg">#ececee</SolidColorBrush>
+  <SolidColorBrush x:Key="White">#ffffff</SolidColorBrush>
+  <SolidColorBrush x:Key="MenuLine">#2e2e31</SolidColorBrush>
+  <SolidColorBrush x:Key="MenuHover">#ededf2</SolidColorBrush>
+  <SolidColorBrush x:Key="TabBg">#f8f8f9</SolidColorBrush>
+  <SolidColorBrush x:Key="TabBorder">#aaaab0</SolidColorBrush>
+  <SolidColorBrush x:Key="TabCell">#f5f5f6</SolidColorBrush>
+  <SolidColorBrush x:Key="TabHover">#ececf1</SolidColorBrush>
+  <SolidColorBrush x:Key="TabActiveText">#333338</SolidColorBrush>
+  <SolidColorBrush x:Key="TabText">#67676d</SolidColorBrush>
+  <SolidColorBrush x:Key="TabInset">#8a78cd</SolidColorBrush>
+  <SolidColorBrush x:Key="CellLine">#e2e2e5</SolidColorBrush>
+  <SolidColorBrush x:Key="HeadingBg">#fafafb</SolidColorBrush>
+  <SolidColorBrush x:Key="HeadingLine">#d0d0d4</SolidColorBrush>
+  <SolidColorBrush x:Key="HeadingMuted">#8c8c91</SolidColorBrush>
+  <SolidColorBrush x:Key="IconBtn">#66666d</SolidColorBrush>
+  <SolidColorBrush x:Key="IconBtnHover">#27272b</SolidColorBrush>
+  <SolidColorBrush x:Key="IconBtnHoverBg">#e7e7eb</SolidColorBrush>
+  <SolidColorBrush x:Key="IconBtnActive">#6550b1</SolidColorBrush>
+  <SolidColorBrush x:Key="IconBtnActiveBg">#e5e0f5</SolidColorBrush>
+  <SolidColorBrush x:Key="Canvas">#f4f4f5</SolidColorBrush>
+  <SolidColorBrush x:Key="CardLine">#ededf0</SolidColorBrush>
+  <SolidColorBrush x:Key="CardBg">#f0ffffff</SolidColorBrush>
+  <SolidColorBrush x:Key="CardSection">#59d2d2d2</SolidColorBrush>
+  <SolidColorBrush x:Key="GreenCardLine">#e5f5d9</SolidColorBrush>
+  <SolidColorBrush x:Key="Label">#99999e</SolidColorBrush>
+  <SolidColorBrush x:Key="Label2">#88888e</SolidColorBrush>
+  <SolidColorBrush x:Key="Unit">#5e5e64</SolidColorBrush>
+  <SolidColorBrush x:Key="Duration">#fbfbfb</SolidColorBrush>
+  <SolidColorBrush x:Key="DurationTick">#b9b9be</SolidColorBrush>
+  <SolidColorBrush x:Key="FlowLine">#aaaab0</SolidColorBrush>
+  <SolidColorBrush x:Key="Divider">#d4d4d7</SolidColorBrush>
+  <SolidColorBrush x:Key="Scroll">#eeeeef</SolidColorBrush>
+  <SolidColorBrush x:Key="ScrollThumb">#b9b9bd</SolidColorBrush>
+  <SolidColorBrush x:Key="Inspector">#f4f4f5</SolidColorBrush>
+  <SolidColorBrush x:Key="BtnLine">#d7d7da</SolidColorBrush>
+  <SolidColorBrush x:Key="BtnText">#7b7b80</SolidColorBrush>
+  <SolidColorBrush x:Key="BtnHover">#e4e1ef</SolidColorBrush>
+  <SolidColorBrush x:Key="BtnHoverText">#554677</SolidColorBrush>
+  <SolidColorBrush x:Key="ListBg">#f8f8f9</SolidColorBrush>
+  <SolidColorBrush x:Key="ListLine">#c8c8cc</SolidColorBrush>
+  <SolidColorBrush x:Key="RowLine">#e5e5e7</SolidColorBrush>
+  <SolidColorBrush x:Key="Status">#77777d</SolidColorBrush>
+  <SolidColorBrush x:Key="Voltage">#a7a7ac</SolidColorBrush>
+  <SolidColorBrush x:Key="Timeline">#fafafa</SolidColorBrush>
+  <SolidColorBrush x:Key="TimelineTop">#c5c5c9</SolidColorBrush>
+  <SolidColorBrush x:Key="TimelineLine">#d5d5d8</SolidColorBrush>
+  <SolidColorBrush x:Key="TrackLine">#eeeeef</SolidColorBrush>
+  <SolidColorBrush x:Key="TrackGrid">#e6e6e8</SolidColorBrush>
+  <SolidColorBrush x:Key="ActionLine">#e3e3e6</SolidColorBrush>
+  <SolidColorBrush x:Key="RunBarLine">#d2d2d5</SolidColorBrush>
+  <SolidColorBrush x:Key="RunLeft">#e1f3d2</SolidColorBrush>
+  <SolidColorBrush x:Key="Done">#eaffd8</SolidColorBrush>
+  <SolidColorBrush x:Key="DotIdle">#f1c3c8</SolidColorBrush>
+  <SolidColorBrush x:Key="DotIdleLine">#e7b6bb</SolidColorBrush>
+  <SolidColorBrush x:Key="DotRun">#b7e99c</SolidColorBrush>
+  <SolidColorBrush x:Key="DotRunLine">#a0d782</SolidColorBrush>
+  <SolidColorBrush x:Key="DotCur">#e5e0f5</SolidColorBrush>
+  <SolidColorBrush x:Key="DotCurLine">#8a78cd</SolidColorBrush>
+  <SolidColorBrush x:Key="Disabled">#b5b5ba</SolidColorBrush>
+  <SolidColorBrush x:Key="DisabledBg">#f1f1f3</SolidColorBrush>
+  <SolidColorBrush x:Key="ChipActiveText">#554677</SolidColorBrush>
+  <SolidColorBrush x:Key="ChipActiveBg">#e5e0f5</SolidColorBrush>
+  <SolidColorBrush x:Key="ChipActiveLine">#a999da</SolidColorBrush>
+  <SolidColorBrush x:Key="ToastBg">#eb2a2a30</SolidColorBrush>
+  <SolidColorBrush x:Key="Pass">#5a8f3a</SolidColorBrush>
+  <SolidColorBrush x:Key="Fail">#b85360</SolidColorBrush>
+  <SolidColorBrush x:Key="Focus">#8b78d6</SolidColorBrush>
+  <SolidColorBrush x:Key="SidebarText">#eeeaff</SolidColorBrush>
+  <SolidColorBrush x:Key="SidebarLine">#6753a8</SolidColorBrush>
+  <SolidColorBrush x:Key="SidebarHover">#21ffffff</SolidColorBrush>
+  <SolidColorBrush x:Key="Breadcrumb">#55555c</SolidColorBrush>
+  <SolidColorBrush x:Key="Gauge">#303036</SolidColorBrush>
+  <SolidColorBrush x:Key="GreenEdge">#d9f9bf</SolidColorBrush>
+  <SolidColorBrush x:Key="PropertyLine">#d5d5d8</SolidColorBrush>
+  <SolidColorBrush x:Key="Backdrop">#401e1e26</SolidColorBrush>
+  <SolidColorBrush x:Key="ExpandedLine">#888888</SolidColorBrush>
+  <SolidColorBrush x:Key="TabCornerLine">#ededf0</SolidColorBrush>
+  <SolidColorBrush x:Key="AddTab">#666666</SolidColorBrush>
+  <SolidColorBrush x:Key="TabMore">#777777</SolidColorBrush>
+  <SolidColorBrush x:Key="ChartBg">#fafafa</SolidColorBrush>
+
+  <LinearGradientBrush x:Key="SidebarGradient" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#8269d0" />
+    <GradientStop Offset="1" Color="#6e57ba" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="BtnGradient" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#f5f5f6" />
+    <GradientStop Offset="1" Color="#e7e7e9" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="GreenCardGradient" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#f7fff1" />
+    <GradientStop Offset="1" Color="#efffdf" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="RunGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#f2ffe9" />
+    <GradientStop Offset="1" Color="#e5ffd0" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="RunningGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#efffe4" />
+    <GradientStop Offset="1" Color="#d9fbb9" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="PropertyCardGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#73ffffff" />
+    <GradientStop Offset="1" Color="#00ffffff" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="CanvasGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#66ffffff" />
+    <GradientStop Offset="0.2" Color="#00ffffff" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="WaitingGasGradient" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#f1eefb" />
+    <GradientStop Offset="1" Color="#e5e0f5" />
+  </LinearGradientBrush>
+
+  <!-- 字体：Segoe UI（Windows）→ Arial；中文回退 PingFang SC / 微软雅黑 / Noto -->
+  <FontFamily x:Key="UiFont">Segoe UI, Arial, PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Inter</FontFamily>
+  <FontFamily x:Key="ChartFont">Arial, Helvetica, PingFang SC</FontFamily>
+  <x:Double x:Key="Fs6">6</x:Double>
+  <x:Double x:Key="Fs7">7</x:Double>
+  <x:Double x:Key="Fs8">8</x:Double>
+  <x:Double x:Key="Fs9">9</x:Double>
+  <x:Double x:Key="Fs10">10</x:Double>
+  <x:Double x:Key="Fs11">11</x:Double>
+  <x:Double x:Key="Fs20">20</x:Double>
+</ResourceDictionary>

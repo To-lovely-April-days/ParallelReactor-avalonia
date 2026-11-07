@@ -1,0 +1,3 @@
+{"type":"opEvent","opId":"3AE6943F-E607-43A2-BB01-76A4C90D574A","action":"control.request","client":"PC-测试工位1","source":"remote","httpStatus":202,"status":"accepted","code":"OK","message":"已授权远程控制","opEventSeq":11,"ts":"2026-11-07T06:10:42.818415Z"}
+{"type":"opEvent","opId":"c7a75000-2a91-4485-8838-0aabed253df6","action":"channel.enable","client":"PC-测试工位1 （请点允许）","source":"remote","httpStatus":200,"status":"confirmed","code":"OK","message":"RV1 已启用","opEventSeq":15,"ts":"2026-11-07T06:10:42.989032Z"}
+{"type":"opEvent","opId":"2f96208e-37f8-49e6-99cb-00a39314cba7","action":"channel.enable","client":"PC-测试工位1 （请点允许）","source":"remote","httpStatus":200,"status":"confirmed","code":"OK","message":"RV2 已启用","opEventSeq":16,"ts":"2026-11-07T06:10:42.998174Z"}

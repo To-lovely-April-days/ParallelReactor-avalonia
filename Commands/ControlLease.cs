@@ -87,7 +87,7 @@ public sealed class ControlLease
     public const string MsgLeaseExpired = "租约已过期或已作废（宽限期满 / 本地夺回 / 急停）· 请重新申请控制权";
     public const string MsgNotCurrentLease = "带的不是当前租约";
     public const string MsgRequestPending = "已有待处理的远程申请";
-    public const int ClientNameMax = 64;
+    public const int ClientNameMax = ParallelReactor.Api.ClientNames.Max;
     /// <summary>曾发出过的 leaseId 的记忆上限（用于区分 CONTROL_LEASE_EXPIRED 与 NOT_CONTROL_HOLDER）。</summary>
     public const int IssuedLeaseHistory = 256;
 
@@ -175,23 +175,7 @@ public sealed class ControlLease
     /// 客户端名清洗（§4.2 防伪装弹窗）：去掉控制字符 / 格式字符（含零宽、双向控制符）与行分隔符，空白折叠为一个空格，截到 <see cref="ClientNameMax"/>。
     /// 结果为空时返回 ""（调用方用令牌名代替）。
     /// </summary>
-    public static string SanitizeClientName(string? name)
-    {
-        if (string.IsNullOrEmpty(name)) return "";
-        var sb = new StringBuilder(name.Length);
-        bool pendingSpace = false;
-        foreach (var ch in name)
-        {
-            var cat = CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (char.IsWhiteSpace(ch) || cat == UnicodeCategory.SpaceSeparator) { pendingSpace = sb.Length > 0; continue; }   // 含 \t \r \n：折叠为一个空格
-            if (cat is UnicodeCategory.Control or UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator
-                or UnicodeCategory.Surrogate or UnicodeCategory.PrivateUse or UnicodeCategory.OtherNotAssigned) continue;
-            if (pendingSpace) { sb.Append(' '); pendingSpace = false; }
-            sb.Append(ch);
-            if (sb.Length >= ClientNameMax) break;
-        }
-        return sb.ToString();
-    }
+    public static string SanitizeClientName(string? name) => ParallelReactor.Api.ClientNames.Sanitize(name);   // 实现搬到 Contracts，PC 客户端复用同一规则
 
     // ===================== 申请 / 允许 / 拒绝 =====================
 

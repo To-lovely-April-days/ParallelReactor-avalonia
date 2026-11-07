@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.OverviewView"
+             x:DataType="vm:MainViewModel">
+  <!-- 总览：8 格（步骤卡语言：标题 + 三节），RV5–RV8 灰显 -->
+  <Border Classes="panel">
+    <Grid RowDefinitions="24,*">
+      <Border Classes="panel-heading">
+        <StackPanel Classes="breadcrumb">
+          <c:IconView Geometry="{StaticResource IcoMove}" Size="10" />
+          <TextBlock Text="系统视图" /><TextBlock Text="›" /><TextBlock Classes="strong" Text="总览" /><TextBlock Classes="muted" Text="RV1–RV8 状态 · 温度 · 压力 · 程序" />
+        </StackPanel>
+      </Border>
+      <Border Grid.Row="1" Classes="plan-canvas">
+        <ItemsControl ItemsSource="{Binding OverviewTiles}" Margin="14,12">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" Rows="2" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate DataType="vm:OverviewTileVm">
+              <Border Classes="overview-tile" Classes.disabled="{Binding !Channel.Installed}" Classes.running="{Binding Channel.IsRunning}">
+                <StackPanel>
+                  <Border Classes="step-title">
+                    <Grid ColumnDefinitions="*,Auto">
+                      <TextBlock Text="{Binding Channel.Name}" />
+                      <TextBlock Grid.Column="1" Text="{Binding Channel.ListStateText}" FontWeight="Normal" FontSize="8" Foreground="{DynamicResource Status}" />
+                    </Grid>
+                  </Border>
+                  <Border Classes="step-section">
+                    <StackPanel>
+                      <TextBlock Classes="device-label" Text="反应器温度 / 设定值 :" />
+                      <TextBlock Classes="device-mode" Text="{Binding Channel.TempText, StringFormat='{}{0} ℃'}" />
+                      <Grid ColumnDefinitions="Auto,*,Auto"><TextBlock Classes="setpoint-label" Text="SP" /><TextBlock Grid.Column="2" Classes="step-value" Text="{Binding Channel.SpText, StringFormat='{}{0} ℃'}" /></Grid>
+                    </StackPanel>
+                  </Border>
+                  <Border Classes="step-section">
+                    <StackPanel>
+                      <TextBlock Classes="device-label" Text="压力传感器 :" />
+                      <TextBlock Classes="device-mode" Text="{Binding Channel.PressureText, StringFormat='{}{0} psi'}" />
+                      <Grid ColumnDefinitions="Auto,*,Auto"><TextBlock Classes="setpoint-label" Text="进气阀 SV" /><TextBlock Grid.Column="2" Classes="step-value" Text="{Binding Channel.ValveText}" /></Grid>
+                    </StackPanel>
+                  </Border>
+                  <Border Classes="step-section">
+                    <StackPanel>
+                      <TextBlock Classes="device-label" Text="程序 :" />
+                      <TextBlock Classes="device-mode" Text="{Binding Channel.ProgramText}" />
+                      <Grid ColumnDefinitions="Auto,*,Auto"><TextBlock Classes="setpoint-label" Text="加热输出" /><TextBlock Grid.Column="2" Classes="step-value" Text="{Binding Channel.HeatOutputPct, StringFormat='{}{0:0} %'}" /></Grid>
+                    </StackPanel>
+                  </Border>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

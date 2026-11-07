@@ -1,0 +1,1 @@
+{"mode":"remote","holder":"PC-测试工位1 （请点允许）","holderToken":"PC-测试工位1","state":"remote","leaseExpiresAt":"2026-11-07T06:10:45.8069784Z","leaseHardExpiresAt":"2026-11-07T06:10:48.8069782Z","pending":null,"autoGrant":true,"heartbeatTimeoutSec":3,"leaseGraceSec":3,"requestTimeoutSec":60,"onRemoteLost":"keep"}

@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PC 控制软件的性能（摸底）测试模块：测试方案模型（嵌入 JSON，可不重编译修改）、加载 / 校验、
+       顺序执行引擎（暂停 / 继续 / 中止、超时、安全钩子、人工确认与录入）、测量公式、结果落盘与 HTML / CSV 报告。
+       无 Avalonia、无 NuGet；接口对象来自 Contracts，连接门面来自 Client（引擎只通过 IReactorApi / ITelemetryFeed 使用它，测试可全假）。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.PerfTest</RootNamespace>
+    <AssemblyName>ParallelReactor.PerfTest</AssemblyName>
+    <IsAotCompatible>false</IsAotCompatible>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+  </ItemGroup>
+
+  <!-- 测试方案定义：嵌入资源 plans/<name>.json，PlanLoader.LoadEmbedded("rv1-4-baseline") -->
+  <ItemGroup>
+    <EmbeddedResource Include="Plans/*.json" LogicalName="plans/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

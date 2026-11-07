@@ -1,0 +1,303 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 外壳：菜单栏 / 标签栏 / 侧栏 / 基础按钮与文本框模板 / Toast。全部对应 pc-control.html 的 CSS。 -->
+
+  <!-- 平面按钮模板：Border + ContentPresenter，Fluent 的一切 chrome 被替换；:focus-visible 画 mock 的 2px #8b78d6 内描边 -->
+  <Style Selector="Button.flat, ToggleButton.flat, RepeatButton.flat">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" />
+          </Border>
+          <Border Name="PART_Inset" Height="2" VerticalAlignment="Top" Background="{DynamicResource TabInset}" IsVisible="False" />
+          <Border Name="PART_Focus" BorderBrush="{DynamicResource Focus}" BorderThickness="2" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.flat:focus-visible /template/ Border#PART_Focus, ToggleButton.flat:focus-visible /template/ Border#PART_Focus">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Button.flat:disabled, ToggleButton.flat:disabled">
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+  <!-- Fluent 对 ContentPresenter#PART_ContentPresenter 的 :checked / :pressed / :disabled / :pointerover Foreground 直接 setter 会盖过本样式（白字 / 双重变淡）：全部钉回 TemplateBinding -->
+  <Style Selector="Button.flat /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat /template/ ContentPresenter#PART_ContentPresenter, RepeatButton.flat /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                   ToggleButton.flat:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   ToggleButton.flat:checked:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:checked:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+  </Style>
+
+  <!-- .menu-bar -->
+  <Style Selector="Border.menubar">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource MenuLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="ZIndex" Value="3" />
+  </Style>
+  <Style Selector="Button.menu-item">
+    <Setter Property="Padding" Value="7,2" />
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.menu-item:pointerover /template/ Border#PART_Bg, Button.menu-item.open /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource MenuHover}" />
+  </Style>
+  <Style Selector="Button.menu-item.estop">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+    <Setter Property="FontWeight" Value="600" />
+  </Style>
+  <Style Selector="Border.menu-drop">
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TabBorder}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="MinWidth" Value="120" />
+    <Setter Property="BoxShadow" Value="0 2 8 0 #22000000" />
+  </Style>
+  <Style Selector="Button.menu-drop-item">
+    <Setter Property="Padding" Value="9,3" />
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Cursor" Value="Arrow" />
+  </Style>
+  <Style Selector="Button.menu-drop-item:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource MenuHover}" />
+  </Style>
+  <Style Selector="TextBlock.control-badge">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+    <Setter Property="Margin" Value="7,0" />
+  </Style>
+  <Style Selector="TextBlock.control-badge.remote"><Setter Property="Foreground" Value="{DynamicResource Purple}" /></Style>
+  <Style Selector="TextBlock.control-badge.requesting"><Setter Property="Foreground" Value="{DynamicResource Blue}" /></Style>
+  <Style Selector="TextBlock.control-badge.lost"><Setter Property="Foreground" Value="{DynamicResource Fail}" /></Style>
+  <Style Selector="TextBlock.status-text">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+    <Setter Property="Margin" Value="7,0" />
+  </Style>
+  <Style Selector="Border.estop-strip">
+    <Setter Property="Background" Value="{DynamicResource Fail}" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- .tab-bar -->
+  <Style Selector="Border.tabbar">
+    <Setter Property="Height" Value="35" />
+    <Setter Property="Background" Value="{DynamicResource TabBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TabBorder}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="ZIndex" Value="2" />
+  </Style>
+  <Style Selector="Border.brand-cell">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CellLine}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+  </Style>
+  <Style Selector="Button.reactor-tab, Button.utility-tab">
+    <Setter Property="Background" Value="{DynamicResource TabCell}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource CellLine}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Padding" Value="13,0" />
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource TabText}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.reactor-tab:pointerover /template/ Border#PART_Bg, Button.utility-tab:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource TabHover}" />
+  </Style>
+  <Style Selector="Button.reactor-tab.active">
+    <Setter Property="Foreground" Value="{DynamicResource TabActiveText}" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+  </Style>
+  <Style Selector="Button.reactor-tab.active /template/ Border#PART_Inset">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Button.reactor-tab.active:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource White}" />
+  </Style>
+  <Style Selector="Button.add-tab">
+    <Setter Property="Width" Value="31" />
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="Light" />
+    <Setter Property="Foreground" Value="{DynamicResource AddTab}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Button.add-tab:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource TabHover}" />
+  </Style>
+  <Style Selector="Button.tab-more">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource TabMore}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector="Border.tab-corner">
+    <Setter Property="BorderBrush" Value="{DynamicResource TabCornerLine}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+
+  <!-- .sidebar -->
+  <Style Selector="Border.sidebar">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Background" Value="{DynamicResource SidebarGradient}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SidebarLine}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="Padding" Value="0,7,0,0" />
+  </Style>
+  <Style Selector="Button.side-button">
+    <Setter Property="Width" Value="39" />
+    <Setter Property="Height" Value="33" />
+    <Setter Property="Foreground" Value="{DynamicResource SidebarText}" />
+  </Style>
+  <Style Selector="Button.side-button.bottom">
+    <Setter Property="Height" Value="25" />
+  </Style>
+  <Style Selector="Button.side-button:pointerover /template/ Border#PART_Bg, Button.side-button.active /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource SidebarHover}" />
+  </Style>
+
+  <!-- 文本框：mock .property-reading input / 对话框字段 -->
+  <Style Selector="TextBox.flat">
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Padding" Value="3,1" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource Ink}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource ChipActiveBg}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_BorderElement" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ScrollViewer Name="PART_ScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <Panel>
+              <TextBlock Name="PART_Watermark" Text="{TemplateBinding Watermark}" Foreground="{DynamicResource Label}" FontSize="{TemplateBinding FontSize}" VerticalAlignment="Center" TextAlignment="{TemplateBinding TextAlignment}" IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+              <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}" SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                             TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="NoWrap" PasswordChar="{TemplateBinding PasswordChar}" RevealPassword="{TemplateBinding RevealPassword}"
+                             SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}" CaretBrush="{TemplateBinding CaretBrush}"
+                             VerticalAlignment="Center" />
+            </Panel>
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox.flat:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+  </Style>
+  <Style Selector="TextBox.flat:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource Focus}" />
+  </Style>
+  <Style Selector="TextBox.flat:disabled /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource DisabledBg}" />
+  </Style>
+  <Style Selector="TextBox.flat.reading">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="FontWeight" Value="600" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="Padding" Value="2,1" />
+  </Style>
+  <!-- 编辑态 .step-value：白底 + 1px 虚线 #8b78cd -->
+  <Style Selector="TextBox.flat.step-value">
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="2,0" />
+    <Setter Property="MinWidth" Value="44" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_BorderElement" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <ScrollViewer Name="PART_ScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+              <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}" SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                             TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="NoWrap" SelectionBrush="{TemplateBinding SelectionBrush}" CaretBrush="{TemplateBinding CaretBrush}" VerticalAlignment="Center" />
+            </ScrollViewer>
+          </Border>
+          <Rectangle Stroke="{DynamicResource Focus}" StrokeThickness="1" StrokeDashArray="2,1.5" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+  <!-- .toast -->
+  <Style Selector="Border.toast">
+    <Setter Property="Background" Value="{DynamicResource ToastBg}" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Bottom" />
+    <Setter Property="Margin" Value="0,0,0,20" />
+    <Setter Property="ZIndex" Value="100" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <DoubleTransition Property="Opacity" Duration="0:0:0.2" />
+      </Transitions>
+    </Setter>
+  </Style>
+  <Style Selector="Border.toast TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource White}" />
+    <Setter Property="FontSize" Value="11" />
+  </Style>
+
+  <!-- 通用：所有 TextBlock 默认继承字体；ScrollViewer 滚动条按 mock .vertical-scroll（8px，#eeeeef，拇指 #b9b9bd） -->
+  <!-- 自写模板（Fluent 的展开态根元素宽于 8px 会盖住内容）：轨道 8px #eeeeef 左边 1px #dedee1，拇指 7px #b9b9bd 下圆 3 -->
+  <Style Selector="ScrollBar:vertical">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource Scroll}" />
+    <Setter Property="AllowAutoHide" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource SoftLine}" BorderThickness="1,0,0,0" Width="8">
+          <Track Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value, Mode=TwoWay}"
+                 ViewportSize="{TemplateBinding ViewportSize}" Orientation="Vertical" IsDirectionReversed="True">
+            <Track.DecreaseButton><RepeatButton Name="PART_PageUpButton" Classes="flat" Background="Transparent" /></Track.DecreaseButton>
+            <Track.IncreaseButton><RepeatButton Name="PART_PageDownButton" Classes="flat" Background="Transparent" /></Track.IncreaseButton>
+            <Thumb Name="thumb" Width="7" HorizontalAlignment="Right" MinHeight="20">
+              <Thumb.Template><ControlTemplate><Border Background="{DynamicResource ScrollThumb}" CornerRadius="0,0,3,3" /></ControlTemplate></Thumb.Template>
+            </Thumb>
+          </Track>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ScrollBar:horizontal">
+    <Setter Property="Height" Value="8" />
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
+</Styles>

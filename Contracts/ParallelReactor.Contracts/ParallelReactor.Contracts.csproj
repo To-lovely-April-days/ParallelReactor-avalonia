@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- HMI 与 PC 控制软件共用的线上类型（设计稿 §6–§8 的 DTO / 快照 / 消息、§11 错误码、§6.9 枚举码）。
+       纯 .NET：不得引用 Avalonia / ASP.NET Core；JSON 用 System.Text.Json 源生成（ApiJsonContext）。命名空间与原 HMI 文件保持一致。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor</RootNamespace>
+    <AssemblyName>ParallelReactor.Contracts</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+</Project>

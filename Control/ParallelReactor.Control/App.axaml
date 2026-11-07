@@ -1,0 +1,24 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="ParallelReactor.Control.App"
+             RequestedThemeVariant="Light">
+  <!-- Fluent 只做基础模板；所有可见控件由 Styles/*.axaml 按 research/pc-control.html 的 CSS 逐项覆盖 -->
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Tokens.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Icons.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+  <Application.Styles>
+    <FluentTheme />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Shell.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Panels.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Plan.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Property.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Timeline.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Dialogs.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Perf.axaml" />
+  </Application.Styles>
+</Application>

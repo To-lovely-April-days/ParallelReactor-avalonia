@@ -1,0 +1,1 @@
+{"type":"hello","apiVersion":"1.0","serverTime":"2026-11-07T07:15:37.701922Z","clockSynced":null,"bootId":"d8391e8a","simulated":true,"seqEpoch":1,"eventSeqHead":31,"telemetrySeqHead":64,"control":{"control":"local","holder":null},"eventRingSize":5000}

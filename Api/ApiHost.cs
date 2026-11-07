@@ -40,10 +40,10 @@ public sealed class ApiHost
     public const string HeartbeatPolicy = "heartbeat";
     public const int EstopRateLimitPerSec = 5;
     public const int HeartbeatRateLimitPerSec = 10;
-    public const string LeaseHeader = "X-Control-Lease";
-    public const string IdempotencyHeader = "Idempotency-Key";
+    public const string LeaseHeader = ApiHeaders.Lease;
+    public const string IdempotencyHeader = ApiHeaders.Idempotency;
     /// <summary>GET /control/requests/{id} 用的申请凭据（POST /control/request 响应 result.requestKey）：带它才返回 leaseId（§5.3）。</summary>
-    public const string RequestKeyHeader = "X-Control-Request-Key";
+    public const string RequestKeyHeader = ApiHeaders.RequestKey;
     public const int ReadRateLimitPerSec = 50;
     public const int PreflightRateLimitPerSec = 2;
     public const int DownloadConcurrency = 2;

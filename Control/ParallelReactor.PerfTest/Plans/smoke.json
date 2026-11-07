@@ -1,0 +1,73 @@
+{
+  "planId": "smoke",
+  "title": "引擎快速自检（1 min 级，用于截图 / 验收）",
+  "version": "2026-11",
+  "source": "Control/ParallelReactor.PerfTest/Plans/smoke.json（非正式方案）",
+  "stages": [
+    {
+      "index": 1,
+      "name": "快速自检",
+      "items": [
+        {
+          "id": "T0Q",
+          "title": "快速自检 · 升温 60 ℃ 并记录 30 s",
+          "requiresPrecheck": false,
+          "purpose": "验证引擎 → 接口 → 遥测 → 报告整条链路：启用 RV、加热到 60 ℃、保温记录 30 s、人工录一个转速表读数、计算、停止加热。",
+          "sourceRef": "自检（非方案项）",
+          "group": "快速自检",
+          "targetChannels": [1],
+          "channelSelectable": true,
+          "instrument": "转速表（可填任意值）",
+          "estimatedMinutes": 1,
+          "hint": "自动 · 1 min",
+          "steps": [
+            { "id": "T0Q-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T0Q-2", "kind": "command", "title": "RV{rv} 加热到 60 ℃", "command": { "op": "heatStart", "args": { "tempC": 60 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T0Q-3", "kind": "hold", "title": "保温记录 30 s", "durationSec": 30, "signals": ["tempC", "pressurePsi", "heatOutputPct"] },
+            { "id": "T0Q-4", "kind": "manualEntry", "title": "录入转速表读数", "text": "读取转速表（自检时可填任意值）", "fields": [
+              { "key": "tacho", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 1, "min": 0, "max": 3000 } ] },
+            { "id": "T0Q-5", "kind": "measure", "title": "计算", "metrics": [
+              { "key": "tMean", "label": "记录窗口温度均值", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:T0Q-3" },
+              { "key": "tMax", "label": "记录窗口温度最大值", "formula": "max", "unit": "℃", "signal": "tempC", "window": "step:T0Q-3" },
+              { "key": "rate", "label": "升温速率（10–90%）", "formula": "heatingRate", "unit": "℃/min", "signal": "tempC", "reference": "sp", "direction": "higherBetter" },
+              { "key": "pMean", "label": "压力均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:T0Q-3" },
+              { "key": "frames", "label": "样本数", "formula": "count", "unit": "帧", "signal": "tempC", "window": "step:T0Q-3" },
+              { "key": "tacho", "label": "转速表读数", "formula": "mean", "unit": "rpm", "signal": "manual:tacho" } ] },
+            { "id": "T0Q-6", "kind": "command", "title": "RV{rv} 停止加热", "command": { "op": "heatStop" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "tMean", "label": "温度均值", "unit": "℃", "source": "metric:tMean" },
+            { "key": "tMax", "label": "温度最大", "unit": "℃", "source": "metric:tMax" },
+            { "key": "rate", "label": "升温速率", "unit": "℃/min", "source": "metric:rate" },
+            { "key": "tacho", "label": "转速表", "unit": "rpm", "source": "manual:tacho" },
+            { "key": "outcome", "label": "结论", "source": "run.outcome" } ],
+          "referenceValues": [ { "metric": "rate", "text": "升温速率 最快 15 ℃/min（Parr 5000）", "source": "方案 §5" } ]
+        },
+        {
+          "id": "S1Q",
+          "title": "快速自检 · 搅拌 300 rpm 10 s",
+          "purpose": "全局搅拌命令 + 人工录入 3 次转速表 + 转速误差计算 + 停止搅拌。",
+          "sourceRef": "自检（非方案项）",
+          "group": "快速自检",
+          "targetChannels": [1],
+          "channelSelectable": false,
+          "instrument": "激光转速表",
+          "estimatedMinutes": 1,
+          "hint": "转速表读数",
+          "repeat": { "count": 1, "variable": "rpm", "values": [300], "unit": "rpm" },
+          "steps": [
+            { "id": "S1Q-1", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } } },
+            { "id": "S1Q-2", "kind": "hold", "title": "稳定 10 s", "durationSec": 10, "signals": ["rpm", "busVoltageV"] },
+            { "id": "S1Q-3", "kind": "manualEntry", "title": "转速表读 3 次", "fields": [
+              { "key": "n", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 } ] },
+            { "id": "S1Q-4", "kind": "measure", "title": "计算", "metrics": [
+              { "key": "eN", "label": "转速误差 e_n", "formula": "rpmError", "unit": "%", "signal": "manual:n", "reference": "iteration", "direction": "twoSided", "reference5": "Endeavor 250–1000 rpm" },
+              { "key": "nSigma", "label": "转速读数 s_n", "formula": "sigma", "unit": "rpm", "signal": "manual:n" } ] },
+            { "id": "S1Q-5", "kind": "command", "title": "停止搅拌", "perChannel": false, "command": { "op": "stirStop" }, "onFail": "continue" }
+          ]
+        }
+      ]
+    }
+  ]
+}

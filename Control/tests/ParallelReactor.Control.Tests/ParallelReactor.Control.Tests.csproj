@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PC 控制软件的单元测试：Contracts 线上类型（对照实测抓取的 JSON 样本）、Client 的 REST / 租约状态机 / WS 重同步（进程内假服务端）。
+       后续阶段再加 PerfTest 引擎 / 报告与 ViewModel 测试。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+    <ProjectReference Include="../../ParallelReactor.PerfTest/ParallelReactor.PerfTest.csproj" />
+  </ItemGroup>
+
+  <!-- 从真 HMI（PR_SIM）抓取的响应样本：Samples/*.json(l)，随测试输出复制 -->
+  <ItemGroup>
+    <Content Include="Samples/**" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>

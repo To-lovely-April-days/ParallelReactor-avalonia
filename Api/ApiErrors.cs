@@ -13,22 +13,8 @@ public static class ApiErrors
 {
     public const string JsonContentType = "application/json; charset=utf-8";
 
-    public static int StatusOf(string code) => code switch
-    {
-        OpCodes.BadRequest => 400,
-        OpCodes.Unauthorized => 401,
-        OpCodes.ForbiddenRole or OpCodes.IpNotAllowed or OpCodes.NotExposed or OpCodes.SessionNotOwner => 403,
-        OpCodes.NotFound or OpCodes.ChannelNotFound => 404,
-        OpCodes.ParamOutOfRange or OpCodes.ParamCrossCheck or OpCodes.PreflightFailed or OpCodes.ProgramInvalid => 422,
-        OpCodes.ClientTooOld => 426,
-        OpCodes.PreconditionRequired => 428,
-        OpCodes.RateLimited or OpCodes.DownloadBusy => 429,
-        OpCodes.HardwareWriteFailed => 502,
-        OpCodes.TooManyClients or OpCodes.Starting or OpCodes.UiThreadTimeout or OpCodes.HwOffline => 503,
-        OpCodes.OutcomeUnknown => 504,
-        OpCodes.Internal => 500,
-        _ => 409,
-    };
+    /// <summary>§11 错误码 → HTTP 状态码（表在 Contracts 的 <see cref="ApiErrorStatus"/>，PC 客户端共用）。</summary>
+    public static int StatusOf(string code) => ApiErrorStatus.Of(code);
 
     public static string Body(string code, string message, Dictionary<string, string>? detail = null)
         => ApiJson.Serialize(new ErrorDto(false, new ErrorBody(code, message, detail)));

@@ -1,0 +1,30 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.GraphView"
+             x:DataType="vm:ChartVm">
+  <!-- .panel.graph-creator：标题 + 自绘 470×190 曲线（DataContext = ChartVm） -->
+  <Border Classes="panel">
+    <Grid RowDefinitions="24,*">
+      <Border Classes="panel-heading">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Classes="breadcrumb">
+            <c:IconView Geometry="{StaticResource IcoMove}" Size="10" />
+            <TextBlock Classes="strong" Text="{Binding Title}" />
+            <TextBlock Classes="muted" Text="{Binding Subtitle}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Classes="heading-actions">
+            <Button Classes="flat icon-button" ToolTip.Tip="展开面板" Name="ExpandButton"><c:IconView Geometry="{StaticResource IcoExpand}" Size="10" /></Button>
+            <Button Classes="flat icon-button" ToolTip.Tip="关闭面板" Name="CloseButton"><c:IconView Geometry="{StaticResource IcoClose}" Size="10" /></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <Border Grid.Row="1" Classes="chart-box">
+        <c:ProcessChart Series="{Binding Series}" Revision="{Binding Revision}" LeftMax="{Binding LeftMax}" RightMax="{Binding RightMax}" XMaxMinutes="{Binding XMax}"
+                        XLabel="{Binding XLabel}" LeftLabel="{Binding LeftLabel}" RightLabel="{Binding RightLabel}" />
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

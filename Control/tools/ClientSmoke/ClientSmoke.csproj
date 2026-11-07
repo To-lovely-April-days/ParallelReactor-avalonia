@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- 客户端库对真 HMI（PR_SIM=1 + PR_API=1，autoGrantRemote=true）的走通工具：viewer 读 → 申请控制权 → 心跳 → 启用 / 加热 / SP / 程序 → 会话 / 打点
+       → WS 收帧计数 → 释放 → 结束会话 → 停加热。开发期工具，不随发布。用法：
+         ClientSmoke <baseUrl> <operatorToken> <viewerToken> [samplesDir]   或环境变量 PR_SMOKE_URL / PR_SMOKE_TOKEN / PR_SMOKE_VIEW_TOKEN / PR_SMOKE_SAMPLES -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Tools.ClientSmoke</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+  </ItemGroup>
+
+</Project>
