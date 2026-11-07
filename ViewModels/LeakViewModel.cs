@@ -151,8 +151,11 @@ public partial class LeakViewModel : ViewModelBase
         var ct = _main.BeginGas(GasOwner.Leak, "泄漏测试", ids, ids);
         _rec = new LeakRecord(DateTimeOffset.Now);
         _main.Logger.AddMarker($"泄漏测试开始 {_rec.RunId}");
+        var sessionKey = _main.Logger.SessionKey;   // 会话进行中（§10.3）：事件带会话 id，并写进会话 manifest 的 leakTests
         _main.Alarm.Log("info", "系统", "泄漏测试开始",
-            $"{Rvs(ids)} · 惰性气体 {target:0.#} psi · 平衡 {s.LeakSettleMin:0.#} min / 测量 {s.LeakMeasureMin:0.#} min · 逐点数据 leak/{_rec.RunId}.csv");
+            $"{Rvs(ids)} · 惰性气体 {target:0.#} psi · 平衡 {s.LeakSettleMin:0.#} min / 测量 {s.LeakMeasureMin:0.#} min · 逐点数据 leak/{_rec.RunId}.csv"
+            + (sessionKey != null ? $" · 会话 {sessionKey}" : ""));
+        if (sessionKey != null) _main.Sessions.TagLeakTest(_rec.RunId, DateTime.UtcNow);
 
         var tested = new List<LeakCell>();
         var overFill = new List<int>();   // 充压冲过测试压力的通道（减压阀调得过高）
@@ -511,7 +514,7 @@ public partial class LeakViewModel : ViewModelBase
         foreach (var r in _main.Reactors.Take(8))
         {
             // 运行中、或正被程序占用（含程序里处于已结束 / 已启用状态的阶段，C20）的通道不可选
-            bool canPick = !r.IsRunning && _main.Program.RunningRv != r.Id;
+            bool canPick = !r.IsRunning && !_main.Program.IsProgramOwned(r.Id);
             Cells.Add(new LeakCell
             {
                 Id = r.Id,

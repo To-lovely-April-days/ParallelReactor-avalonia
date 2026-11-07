@@ -5,7 +5,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Threading;
 using ParallelReactor.Commands;
 using ParallelReactor.Models;
 using ParallelReactor.Services;
@@ -15,12 +14,13 @@ namespace ParallelReactor.Api.Hmi;
 
 /// <summary>
 /// <see cref="IApiSources"/> 的 HMI 实现：把 MainViewModel / ControlLoop / HardwareOptions 接到接口层。
-/// 除 <see cref="PreflightAsync"/>（Dispatcher 投递，5 s 超时）外，所有成员都不进 UI 线程、不读 VM 的可变状态：
-/// 设备信息来自静态配置，快照来自 ControlLoop.Snapshots，事件来自 Logger.Events。
+/// 本类不直接使用 Dispatcher：进 UI 线程的只有 <see cref="PreflightAsync"/> 与 <see cref="Commands"/>（HmiRemoteCommands），都经 <see cref="UiCommandBridge"/>
+/// （Api/Hmi 下唯一的 UI 线程入口，5 s 超时）。其余成员都不进 UI 线程、不读 VM 的可变状态：
+/// 设备信息来自静态配置，快照来自 ControlLoop.Snapshots，事件来自 Logger.Events，租约 / 会话 manifest 是线程安全的纯对象。
 /// </summary>
 public sealed class HmiApiSources : IApiSources
 {
-    public static readonly TimeSpan UiTimeout = TimeSpan.FromSeconds(5);
+    public static readonly TimeSpan UiTimeout = UiCommandBridge.UiTimeout;
 
     private readonly MainViewModel _vm;
     private readonly ControlLoop _loop;
@@ -34,6 +34,7 @@ public sealed class HmiApiSources : IApiSources
         _loop = loop;
         BootId = Guid.NewGuid().ToString("N")[..8];
         BootTime = Process.GetCurrentProcess().StartTime.ToUniversalTime();
+        Commands = new HmiRemoteCommands(vm);
     }
 
     public SnapshotStore Snapshots => _loop.Snapshots;
@@ -47,8 +48,17 @@ public sealed class HmiApiSources : IApiSources
     public ModeSnap Control => new(_vm.Arbiter.Mode == ControlMode.Remote ? "remote" : "local",
         _vm.Arbiter.Mode == ControlMode.Remote ? _vm.Arbiter.HolderName : null);
 
+    public ControlLease Lease => _vm.ControlLease;
+    public TimeSpan MonoNow => MainViewModel.MonoNow;
+    public IRemoteCommands Commands { get; }
+    public SessionManifest? CurrentSession => _vm.Sessions.Current;
+
     /// <summary>任意线程：经 DataLogger.Event（线程安全）记一条「接口」事件（CSV + JSONL + 环）。</summary>
     public void Audit(string level, string title, string detail) => _vm.Logger.Event(DateTimeOffset.Now, level, "接口", title, detail);
+
+    /// <summary>任意线程：带来源 / 客户端 / opId / 显式 kind 的审计事件（control.* / op.*）；返回 seq。</summary>
+    public long Audit(string level, string title, string detail, string source, string? client, string? opId, string kind)
+        => _vm.Logger.Event(DateTimeOffset.Now, level, "接口", title, detail, source, client, opId, kind)?.Seq ?? 0;
 
     // ===================== /device =====================
 
@@ -98,12 +108,12 @@ public sealed class HmiApiSources : IApiSources
         catch { return null; }
     }
 
-    // ===================== /preflight（唯一进 UI 线程的读取）=====================
+    // ===================== /preflight（经 UiCommandBridge 进 UI 线程的只读计算）=====================
 
-    public async Task<PreflightDto> PreflightAsync(string clientName, CancellationToken ct)
+    public Task<PreflightDto> PreflightAsync(string clientName, CancellationToken ct)
     {
         var src = CommandSource.Remote(clientName, clientName);
-        var op = Dispatcher.UIThread.InvokeAsync(() =>
+        return UiCommandBridge.InvokeAsync(() =>
         {
             // dryRun：只做预运行检查、不启动（Record 类，任何控制模式都允许，见 OperatorCommands.TryRun）。
             // 检查项由 MainViewModel.ComputePreRun 纯计算得到，不写 PreRunChecks：远程轮询不会闪动操作员正打开的确认框
@@ -114,18 +124,7 @@ public sealed class HmiApiSources : IApiSources
             var channels = _vm.Reactors.Where(x => RunSelection.CanStartHeat(_vm.RunChannelOf(x))).Select(x => x.Id).ToArray();
             bool canRun = r.Ok && pre.CanRun;   // 被仲裁 / 其他守卫拒绝时同样不可运行
             return new PreflightDto(canRun, r.Ok ? pre.Summary : r.Message, checks, channels);
-        }, DispatcherPriority.Background);
-        var task = op.GetTask();
-        var done = await Task.WhenAny(task, Task.Delay(UiTimeout, ct)).ConfigureAwait(false);
-        if (done != task)
-        {
-            ct.ThrowIfCancellationRequested();
-            // 还没开始执行：撤销，确定未执行（§13.1）；已开始执行则再等一个超时，仍没回来按 UI 线程卡住处理（不无限等）
-            if (op.Status == DispatcherOperationStatus.Pending && op.Abort()) throw new UiThreadTimeoutException();
-            done = await Task.WhenAny(task, Task.Delay(UiTimeout, ct)).ConfigureAwait(false);
-            if (done != task) { ct.ThrowIfCancellationRequested(); throw new UiThreadTimeoutException(); }
-        }
-        return await task.ConfigureAwait(false);
+        }, ct);
     }
 
     // ===================== /program-schema =====================

@@ -69,6 +69,7 @@ public sealed class TelemetryChannel
     public string? State;       // 通道状态（ReactorState 名）
     public bool OverTemp;       // 超温切断已触发（未恢复）
     public bool? Valve;         // SV 进气阀（软件已确认下发的状态，非线圈回读）
+    public string? ProgramStep; // 程序步「序号/阶段」（如 3/running、2/waitingGas）；该通道没有程序在执行时 null（末尾追加列 RVx_程序步）
 }
 
 /// <summary>运行记录里单个通讯模块的统计。</summary>
@@ -178,6 +179,8 @@ public static class TelemetryCsv
             yield return m + "_最近响应";
         }
         yield return "模拟";   // 1 = PR_SIM 模拟模式（读数非真实设备）
+        // 多程序并行（v0.5）：每通道程序步「序号/阶段」。按「只能在末尾追加」规则放在末尾而不是通道块里
+        for (int i = 1; i <= TelemetryRow.ChannelCount; i++) yield return $"RV{i}_程序步";
     }
 
     /// <summary>psi → MPa（与 Models.Units 一致：1 MPa = 145.037738 psi）。</summary>
@@ -230,6 +233,7 @@ public static class TelemetryCsv
             f.Add(Csv.Time(m.LastOkAt));
         }
         f.Add(Csv.Bool(r.Sim));
+        for (int i = 0; i < TelemetryRow.ChannelCount; i++) f.Add(i < r.Ch.Length ? r.Ch[i].ProgramStep ?? "" : "");
         return Csv.Line(f);
     }
 

@@ -50,7 +50,14 @@ public sealed record ChannelSnap(
     double PressureSpPsi,
     double? GasConsumed,
     bool ValveOpen,
-    bool ProgramOwned);
+    bool ProgramOwned,
+    ChannelProgramSnap? Program);
+
+/// <summary>
+/// §6.3 的 channels[i].program（v0.5 多程序并行）：该通道正在执行 / 最近一次执行的程序。没跑过程序为 null。
+/// state：preparing / running / waitingGas / finishing / completed / failed / aborted；waitingGas = 当前气路步骤正在排队等待其他程序释放气路。
+/// </summary>
+public sealed record ChannelProgramSnap(bool Running, int StepIndex, int StepCount, string State, string Message, string? StartedBy, DateTime? StartedAt, bool WaitingGas);
 
 /// <summary>§6.3 的 stir。</summary>
 public sealed record StirSnap(bool On, int RpmSp, bool Online, bool Locked, double? MotorCurrentA, double? BusVoltageV, string? Fault, int? AlarmCode, int RampMsPer1000Rpm);
@@ -60,8 +67,14 @@ public sealed record GasInletSnap(string Id, bool Open);
 /// <summary>§6.3 的 gas。owner：program / leak / null。</summary>
 public sealed record GasSnap(GasInletSnap[] Inlets, bool VentOpen, bool ManualValve, string? Task, string? Owner);
 
-/// <summary>§6.3 的 program。</summary>
+/// <summary>
+/// §6.3 的 program。<b>已废弃（v0.5 起用 channels[i].program 与 programs；下一版本删除）</b>：
+/// 多程序并行后只填首个（通道号最小）正在执行的程序，没有时 running=false。
+/// </summary>
 public sealed record ProgramSnap(bool Running, int? Channel, string Status, int StepIndex, int StepCount, string Phase, string Detail);
+
+/// <summary>§6.3 的 programs（v0.5）：并行程序总览。gasHolder = 当前持有气路的程序通道；waitingGas = 正在排队等气路的通道（先后顺序）。</summary>
+public sealed record ProgramsSnap(int Running, int[] Channels, int? GasHolder, int[] WaitingGas, string Summary);
 
 /// <summary>§6.3 的 leakTest。</summary>
 public sealed record LeakSnap(bool Running, double Progress, string? Phase, string? RunId, bool Done, bool Failed);
@@ -103,6 +116,7 @@ public sealed record TelemetrySnapshot(
     StirSnap Stir,
     GasSnap Gas,
     ProgramSnap Program,
+    ProgramsSnap Programs,
     LeakSnap LeakTest,
     SessionSnap Session);
 

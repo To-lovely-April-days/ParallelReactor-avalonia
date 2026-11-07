@@ -20,9 +20,10 @@ using ParallelReactor.Commands;
 namespace ParallelReactor.Api;
 
 /// <summary>
-/// 内嵌 Kestrel（设计稿 §3.2）：minimal API + WebSocket，在后台线程运行，绝不碰 VM（只读 <see cref="IApiSources"/>）。
+/// 内嵌 Kestrel（设计稿 §3.2）：minimal API + WebSocket，在后台线程运行，不直接碰 VM：读走 <see cref="IApiSources"/> 的只读快照 / 事件，
+/// 写（P3）走 <see cref="IRemoteCommands"/>（HMI 实现经 UiCommandBridge 进 UI 线程），控制权走 <see cref="ControlService"/>（纯逻辑租约状态机）。
 /// 管线：白名单（403 IP_NOT_ALLOWED）→ /health 免鉴权 → Bearer（401 UNAUTHORIZED；同一 IP 每秒失败超过 <see cref="AuthFailuresPerSec"/> 次后改回 429，
-/// 有效令牌不受影响；鉴权失败审计按 IP 每分钟最多一条）→ 限流（50 次/秒/令牌；下载并发 2；/preflight 每令牌 2 次/秒）。
+/// 有效令牌不受影响；鉴权失败审计按 IP 每分钟最多一条）→ 限流（50 次/秒/令牌；下载并发 2；/preflight 每令牌 2 次/秒；写命令 writeRateLimitPerSec 次/秒/令牌，/estop 不限）。
 /// 绑定失败记事件 <c>system.apiBindFailed</c>（首次之后每 10 分钟最多一条）并每 10 s 重试；<c>enabled=false</c> 时 <see cref="TryStart"/> 返回 null，Kestrel 完全不构造。
 /// 只有 HTTP：<c>httpsPort / certPath</c> 在 P2 不生效（配置了会记一条 warn 事件），令牌明文传输，依赖 §4.1 的网段隔离。
 /// </summary>
@@ -32,6 +33,17 @@ public sealed class ApiHost
     public const string AuthItemKey = "pr.auth";
     public const string DownloadsPolicy = "downloads";
     public const string PreflightPolicy = "preflight";
+    public const string WritesPolicy = "writes";
+    /// <summary>/estop 自己的限流分区：每令牌 <see cref="EstopRateLimitPerSec"/> 次/秒、不排队、不与写命令共用（§7.3「不限流」的实际含义是不受写限流影响）。</summary>
+    public const string EstopPolicy = "estop";
+    /// <summary>/control/heartbeat 自己的分区：不与写命令共用（写命令刷满配额时心跳不能被 429 掉）。</summary>
+    public const string HeartbeatPolicy = "heartbeat";
+    public const int EstopRateLimitPerSec = 5;
+    public const int HeartbeatRateLimitPerSec = 10;
+    public const string LeaseHeader = "X-Control-Lease";
+    public const string IdempotencyHeader = "Idempotency-Key";
+    /// <summary>GET /control/requests/{id} 用的申请凭据（POST /control/request 响应 result.requestKey）：带它才返回 leaseId（§5.3）。</summary>
+    public const string RequestKeyHeader = "X-Control-Request-Key";
     public const int ReadRateLimitPerSec = 50;
     public const int PreflightRateLimitPerSec = 2;
     public const int DownloadConcurrency = 2;
@@ -52,6 +64,10 @@ public sealed class ApiHost
     public ApiStats Stats { get; } = new();
     public WsHub Hub { get; }
     public IApiSources Sources => _src;
+    /// <summary>控制权（租约 / 心跳 / 申请；P3）。</summary>
+    public ControlService Control { get; }
+    /// <summary>写命令幂等表（§13.3）。</summary>
+    public IdempotencyStore Idem { get; } = new();
 
     /// <summary>实际监听的端口（port=0 时为系统分配的端口；未启动为 0）。</summary>
     public int Port => Stats.Port;
@@ -63,6 +79,7 @@ public sealed class ApiHost
         Config = cfg;
         _cidr = new CidrMatcher(cfg.AllowedCidrs);
         Hub = new WsHub(src, cfg, Stats);
+        Control = new ControlService(src, cfg, Hub);
     }
 
     /// <summary>
@@ -80,6 +97,9 @@ public sealed class ApiHost
                 $"请在 {cfg.SourceFileName} 的 tokens 里加入令牌的 SHA-256{(cfg.FileFound ? "" : "（该文件不存在，当前为 PR_API=1 强制启用）")}");
         if (cfg.HttpsPort > 0 || !string.IsNullOrWhiteSpace(cfg.CertPath))
             src.Audit("warn", "接口 HTTPS 未实现 · 已忽略 httpsPort / certPath", "P2 只提供 HTTP（令牌明文传输），依赖网段隔离与白名单；HTTPS 随 P5");
+        foreach (var w in cfg.Warnings) src.Audit("warn", "接口配置已修正", $"{cfg.SourceFileName}：{w}");
+        if (cfg.AutoGrantRemote)
+            src.Audit("warn", "远程控制申请免触屏确认（autoGrantRemote）", "任何 operator 令牌申请即获控制权；只用于无人值守 / 验收，现场请关闭");
         _ = host.RunWithRetryAsync();
         return host;
     }
@@ -188,6 +208,31 @@ public sealed class ApiHost
                     PermitLimit = PreflightRateLimitPerSec, Window = TimeSpan.FromSeconds(1), QueueLimit = 0, AutoReplenishment = true,
                 });
             });
+            // 写命令（P3）：每令牌 writeRateLimitPerSec 次/秒（默认 10）；/estop 不限流（§7.3）
+            o.AddPolicy(WritesPolicy, ctx =>
+            {
+                string key = ctx.Items.TryGetValue(AuthItemKey, out var a) && a is AuthResult ar ? "tok:" + ar.Name : "ip:" + ctx.Connection.RemoteIpAddress;
+                return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = Config.WriteRateLimitPerSec, Window = TimeSpan.FromSeconds(1), QueueLimit = 0, AutoReplenishment = true,
+                });
+            });
+            o.AddPolicy(EstopPolicy, ctx =>
+            {
+                string key = ctx.Items.TryGetValue(AuthItemKey, out var a) && a is AuthResult ar ? "tok:" + ar.Name : "ip:" + ctx.Connection.RemoteIpAddress;
+                return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = EstopRateLimitPerSec, Window = TimeSpan.FromSeconds(1), QueueLimit = 0, AutoReplenishment = true,
+                });
+            });
+            o.AddPolicy(HeartbeatPolicy, ctx =>
+            {
+                string key = ctx.Items.TryGetValue(AuthItemKey, out var a) && a is AuthResult ar ? "tok:" + ar.Name : "ip:" + ctx.Connection.RemoteIpAddress;
+                return RateLimitPartition.GetFixedWindowLimiter(key, _ => new FixedWindowRateLimiterOptions
+                {
+                    PermitLimit = HeartbeatRateLimitPerSec, Window = TimeSpan.FromSeconds(1), QueueLimit = 0, AutoReplenishment = true,
+                });
+            });
             o.OnRejected = async (rc, ct) =>
             {
                 string? policy = rc.HttpContext.GetEndpoint()?.Metadata.GetMetadata<EnableRateLimitingAttribute>()?.PolicyName;
@@ -196,6 +241,9 @@ public sealed class ApiHost
                     dl ? OpCodes.DownloadBusy : OpCodes.RateLimited,
                     dl ? $"同时最多 {DownloadConcurrency} 个下载流"
                     : policy == PreflightPolicy ? $"/preflight 限 {PreflightRateLimitPerSec} 次/秒（要进 UI 线程）"
+                    : policy == WritesPolicy ? $"写命令限 {Config.WriteRateLimitPerSec} 次/秒/令牌"
+                    : policy == EstopPolicy ? $"/estop 限 {EstopRateLimitPerSec} 次/秒/令牌（单独分区，不与写命令共用）"
+                    : policy == HeartbeatPolicy ? $"/control/heartbeat 限 {HeartbeatRateLimitPerSec} 次/秒/令牌（单独分区）"
                     : $"只读请求限 {ReadRateLimitPerSec} 次/秒", null, ct).ConfigureAwait(false);
             };
         });

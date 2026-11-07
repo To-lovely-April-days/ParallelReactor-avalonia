@@ -176,11 +176,14 @@ public sealed class EventStore : IDisposable
     /// <summary>每追加一条触发（在调用方线程上、<b>存储锁内</b>，严格按 seq 递增）。订阅者只能做非阻塞入队，不得阻塞、不得回调本存储。</summary>
     public event Action<EventRecord>? Appended;
 
-    /// <summary>追加一条事件：锁内分配 seq → 入环 → 入写盘队列 → 触发 <see cref="Appended"/>（kind / channel 推导在锁外）。</summary>
+    /// <summary>
+    /// 追加一条事件：锁内分配 seq → 入环 → 入写盘队列 → 触发 <see cref="Appended"/>（kind / channel 推导在锁外）。
+    /// kind 显式给出时优先（P3 控制权 / 远程命令事件：<c>control.*</c>、<c>op.*</c>），否则按来源 / 标题推导。
+    /// </summary>
     public EventRecord Append(DateTimeOffset ts, string level, string origin, string title, string message,
-        string source = "system", string? client = null, string? opId = null)
+        string source = "system", string? client = null, string? opId = null, string? kind = null)
     {
-        string kind = EventKinds.Derive(origin, title);
+        kind = string.IsNullOrWhiteSpace(kind) ? EventKinds.Derive(origin, title) : kind;
         int? channel = EventKinds.ChannelOf(origin);
         string tsLocal = ts.ToString(Csv.TimeFormat, CultureInfo.InvariantCulture);
         string day = ts.ToString("yyyyMMdd", CultureInfo.InvariantCulture);

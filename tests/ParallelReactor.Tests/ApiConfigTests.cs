@@ -50,7 +50,7 @@ public class ApiConfigTests
         Assert.Equal(new List<string> { "192.168.10.0/24" }, c.AllowedCidrs);
         Assert.Single(c.Tokens);
         Assert.Equal("operator", c.Tokens[0].Role);
-        Assert.True(c.Tokens[0].Estop);
+        Assert.True(c.Tokens[0].Estop == true);
         Assert.Equal(2, c.MaxClients);
         Assert.Equal("PR8-2026-0001", c.Serial);
     }

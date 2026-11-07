@@ -158,6 +158,7 @@ public sealed partial class OperatorCommands
         c.Profile.Start(startPv);
         if (c.State is ReactorState.Idle or ReactorState.Done or ReactorState.Ready)
             c.State = ReactorState.Heating;   // 曲线升温也是加热，状态同步为「升温中」
+        c.StartedBy = StartedByOf(src);
         // 硬件链放在曲线启动之后：StartChannelAsync 可能同步返回 false（快速路径急停已置服务锁），
         // 失败分支要能停掉已启动的曲线，否则会留下「曲线在跑、仪表不出力」
         _ = StartProfileHwAsync(c, bandTemp, startPv);
@@ -212,6 +213,7 @@ public sealed partial class OperatorCommands
         _m.StartFixedHeat(c);
         if (c.State is ReactorState.Idle or ReactorState.Done or ReactorState.Ready)
             c.State = ReactorState.Heating;   // 加热真的开始了才显示「升温中」
+        c.StartedBy = StartedByOf(src);   // §5.4：onRemoteLost = stopHeat 只停该租约启动的通道
         _m.RefreshSchematic();
         _m.Drawer.RaiseAll();
         return OpResult.Accepted($"RV{id} 加热已启动 · 目标 {c.TSp:0}℃ · 防超调逼近", "ok", new { tempC = c.TSp }).AsTask();
@@ -225,9 +227,9 @@ public sealed partial class OperatorCommands
     {
         if (Admit(src, ActionClass.Stop) is { } deny) return deny.AsTask();
         if (ChannelOr(id, out var c) is { } nf) return nf.AsTask();
-        if (_m.Program.RunningRv == id)
+        if (_m.Program.IsProgramOwned(id))
         {
-            bool aborted = _m.Program.AbortProgram();
+            bool aborted = _m.Program.AbortProgram(id);
             _m.Drawer.RaiseAll();
             return (aborted
                 ? OpResult.Done($"RV{id} 停止加热 · 正在执行的程序已中止", "warn", new { programAborted = true })
@@ -246,7 +248,7 @@ public sealed partial class OperatorCommands
 
     /// <summary>
     /// 启用通道（状态转「已启用」，开始加热后才转「升温中」）。defaultVolume = true（抽屉「启用通道」）时体积为 0 则补 3 mL。
-    /// 现有守卫：程序占用、急停锁定（含快速路径已锁、UI 流程尚未跑到）、气路序列进行中。
+    /// 现有守卫：程序占用、急停锁定（含快速路径已锁、UI 流程尚未跑到）、气路序列进行中（多程序并行后：另一程序的气路步骤占用不算，泄漏测试才拒绝）。
     /// 严格守卫：报警或超温 / 超压未解除的通道不能启用（K6，本地照旧允许）。
     /// </summary>
     public Task<OpResult> TryEnableChannel(CommandSource src, int id, bool defaultVolume)
@@ -255,11 +257,12 @@ public sealed partial class OperatorCommands
         if (ChannelOr(id, out var c) is { } nf) return nf.AsTask();
         if (ProgramOwned(c) is { } owned) return owned.AsTask();
         if (EstopOr(defaultVolume ? "急停状态下不可启用通道 · 请先复位" : "急停状态下不可启动 · 请先复位") is { } es) return es.AsTask();
-        if (_m.GasBusy)
+        if (_m.GasBusy && !_m.GasOwnedBy(GasOwner.Program))
             return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 请等待完成或先停止", "warn").AsTask();
         if (CommandPolicy.Strict(src) && (c.State == ReactorState.Alarm || _m.IsOverTempTripped(id) || _m.IsOverPressureTripped(id)))
             return OpResult.Fail(OpCodes.ChannelAlarm, $"RV{id} 存在报警或超温 / 超压未解除 · 请先处理").AsTask();
         c.State = ReactorState.Ready;   // 启用 ≠ 升温中：只表示通道参与运行，开始加热后才转 Heating
+        c.StartedBy = StartedByOf(src);
         if (defaultVolume && c.Vol == 0) c.Vol = 3;
         c.Rpm = _m.StirOn ? _m.StirRpm : 0;
         _m.RefreshSchematic();
@@ -283,6 +286,7 @@ public sealed partial class OperatorCommands
         if (ChannelOr(id, out var c) is { } nf) return nf.AsTask();
         string? gas = _m.GasIncludes(id) ? _m.GasTask : null;
         c.State = disable ? ReactorState.Idle : ReactorState.Done;
+        c.StartedBy = null;
         c.Rpm = 0;
         if (c.Profile.Running) c.Profile.Stop();
         c.Approach.Stop();
@@ -348,7 +352,7 @@ public sealed partial class OperatorCommands
         IEnumerable<Reactor> targets;
         var warnings = new List<string>();
         if (to == null)
-            targets = _m.Reactors.Where(r => r.State != ReactorState.Idle && r.Id != _m.Program.RunningRv);
+            targets = _m.Reactors.Where(r => r.State != ReactorState.Idle && !_m.Program.IsProgramOwned(r.Id));
         else
         {
             var list = new List<Reactor>();
@@ -357,7 +361,7 @@ public sealed partial class OperatorCommands
                 if (id == fromId) continue;
                 if (_m.FindReactor(id) is not { } r)
                     return OpResult.Fail(OpCodes.ChannelNotFound, $"通道 RV{id} 不存在（有效范围 RV1–RV8）").AsTask();
-                if (r.Id == _m.Program.RunningRv) { warnings.Add($"RV{id} 正在执行程序 · 已跳过"); continue; }
+                if (_m.Program.IsProgramOwned(r.Id)) { warnings.Add($"RV{id} 正在执行程序 · 已跳过"); continue; }
                 list.Add(r);
             }
             targets = list;

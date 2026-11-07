@@ -52,7 +52,7 @@ public static class TokenAuth
         }
         if (hit == null) return AuthResult.Denied;
         var role = NormalizeRole(hit.Role);
-        return new AuthResult(true, hit.Name, role, hit.Estop || role is "operator" or "admin");   // operator / admin 默认带急停权限（§4.2）
+        return new AuthResult(true, hit.Name, role, hit.Estop ?? role is "operator" or "admin");   // 未配置时 operator / admin 默认带急停权限（§4.2），显式 false 可收回
     }
 
     public static string NormalizeRole(string? role) => role?.Trim().ToLowerInvariant() switch

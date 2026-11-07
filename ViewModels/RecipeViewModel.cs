@@ -83,7 +83,7 @@ public partial class RecipeViewModel : ViewModelBase
         foreach (var rv in _main.Reactors)
         {
             bool idle = rv.State == ReactorState.Idle;
-            bool prog = _main.Program.RunningRv == rv.Id;   // 正在执行程序的通道不可套配方（程序按通道给定值判断到位）
+            bool prog = _main.Program.IsProgramOwned(rv.Id);   // 正在执行程序的通道不可套配方（程序按通道给定值判断到位）
             var cp = new ChannelPick
             {
                 Id = rv.Id,

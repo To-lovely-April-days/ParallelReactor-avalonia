@@ -36,18 +36,28 @@ public class ApiArchitectureTests
         Assert.True(bad.Count == 0, "接口纯逻辑层越界：\n" + string.Join("\n", bad));
     }
 
-    [Fact]
-    public void Api_HmiAdapter_UsesDispatcherOnlyForPreflight()
-    {
-        var hmi = Path.Combine(SourceScan.RepoRoot, "Api", "Hmi", "HmiApiSources.cs");
-        Assert.True(File.Exists(hmi));
-        var members = SourceScan.Members(hmi);
-        var withDispatcher = members.Where(m => Regex.IsMatch(m.Body, @"Dispatcher\.UIThread")).Select(m => m.Name).Distinct().ToList();
-        Assert.Equal(new[] { "PreflightAsync" }, withDispatcher);
+    /// <summary>
+    /// Api/Hmi 下允许使用 Dispatcher 的文件（P3 起）：UiCommandBridge.cs 是接口层进 UI 线程的唯一入口（/preflight 与全部写命令都经它，§13.1：
+    /// 5 s 超时 → Abort / OUTCOME_UNKNOWN 的语义只实现一次）；ControlBridge.cs 只用 Dispatcher.Post 发触屏提示与 onRemoteLost 的 stopHeat（经 UiCommandBridge）。
+    /// 其余文件（HmiApiSources、HmiRemoteCommands、SnapshotBuilder、ProgramJson）不得出现 Dispatcher——它们要么只读线程安全对象，要么把回调交给 UiCommandBridge。
+    /// </summary>
+    public static readonly HashSet<string> HmiDispatcherFiles = new(StringComparer.Ordinal) { "UiCommandBridge.cs", "ControlBridge.cs" };
 
-        // SnapshotBuilder 只在 UI 线程被 ControlLoop 调用，本身不投递
-        var sb = File.ReadAllText(Path.Combine(SourceScan.RepoRoot, "Api", "Hmi", "SnapshotBuilder.cs"));
-        Assert.DoesNotMatch(@"Dispatcher", SourceScan.Mask(sb));
+    [Fact]
+    public void Api_HmiAdapter_DispatcherOnlyInBridges()
+    {
+        var files = SourceScan.Files(Path.Combine("Api", "Hmi"), "*.cs").ToList();
+        Assert.Contains(files, f => Path.GetFileName(f) == "UiCommandBridge.cs");
+        Assert.Contains(files, f => Path.GetFileName(f) == "HmiRemoteCommands.cs");
+        var bad = files.Where(f => !HmiDispatcherFiles.Contains(Path.GetFileName(f)) && Regex.IsMatch(SourceScan.Mask(File.ReadAllText(f)), @"\bDispatcher\b"))
+            .Select(SourceScan.Rel).ToList();
+        Assert.True(bad.Count == 0, "Api/Hmi 下只有 UiCommandBridge.cs / ControlBridge.cs 可以使用 Dispatcher：\n" + string.Join("\n", bad));
+        // 两个桥本身必须存在且确实用到 Dispatcher（名单不是摆设）
+        foreach (var name in HmiDispatcherFiles)
+            Assert.Matches(@"\bDispatcher\b", SourceScan.Mask(File.ReadAllText(Path.Combine(SourceScan.RepoRoot, "Api", "Hmi", name))));
+        // HmiRemoteCommands 的每个命令都经 UiCommandBridge（急停例外：TryEstop 任意线程可调）
+        var rc = SourceScan.Mask(File.ReadAllText(Path.Combine(SourceScan.RepoRoot, "Api", "Hmi", "HmiRemoteCommands.cs")));
+        Assert.Matches(@"UiCommandBridge\.RunAsync", rc);
     }
 
     [Fact]

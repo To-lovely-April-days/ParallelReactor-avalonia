@@ -34,6 +34,8 @@ namespace ParallelReactor.Api;
 [JsonSerializable(typeof(LeakTestsDto))]
 [JsonSerializable(typeof(LeakTestInfoDto))]
 [JsonSerializable(typeof(SessionsDto))]
+[JsonSerializable(typeof(SessionDetailDto))]
+[JsonSerializable(typeof(SessionManifest))]
 [JsonSerializable(typeof(TelemetryRangeInfoDto))]
 [JsonSerializable(typeof(HelloMsg))]
 [JsonSerializable(typeof(PongMsg))]
@@ -42,6 +44,16 @@ namespace ParallelReactor.Api;
 [JsonSerializable(typeof(SubscribedMsg))]
 [JsonSerializable(typeof(AlarmMsg))]
 [JsonSerializable(typeof(EventMsg))]
+// —— P3 控制权 / 写命令 ——
+[JsonSerializable(typeof(JsonElement))]
+[JsonSerializable(typeof(CommandResponseDto))]
+[JsonSerializable(typeof(CommandErrorDto))]
+[JsonSerializable(typeof(ControlStateDto))]
+[JsonSerializable(typeof(ControlRequestResultDto))]
+[JsonSerializable(typeof(ControlRequestStatusDto))]
+[JsonSerializable(typeof(HeartbeatResultDto))]
+[JsonSerializable(typeof(ControlMsg))]
+[JsonSerializable(typeof(OpEventMsg))]
 public partial class ApiJsonContext : JsonSerializerContext
 {
 }
@@ -57,9 +69,31 @@ public static class ApiJson
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
+    /// <summary>
+    /// 反射解析器（camelCase）：只用于把 <c>OpResult.Data</c> 这类匿名对象转成 <see cref="JsonElement"/>（源生成不认识匿名类型；
+    /// 项目不 Trim，§3.2 允许）。在 Kestrel 线程做，不进 UI 线程。
+    /// </summary>
+    public static readonly JsonSerializerOptions Reflection = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     public static string Serialize<T>(T value) => JsonSerializer.Serialize(value, typeof(T), Options);
 
     public static byte[] SerializeUtf8<T>(T value) => JsonSerializer.SerializeToUtf8Bytes(value, typeof(T), Options);
 
     public static T? Deserialize<T>(string json) => (T?)JsonSerializer.Deserialize(json, typeof(T), Options);
+
+    /// <summary>任意对象（含匿名类型）→ JsonElement；null → null。失败时返回带 error 字段的对象而不是抛出（响应形状不能因 Data 而坏）。</summary>
+    public static JsonElement? ToElement(object? data)
+    {
+        if (data == null) return null;
+        if (data is JsonElement je) return je;
+        try { return JsonSerializer.SerializeToElement(data, data.GetType(), Reflection); }
+        catch (Exception ex)
+        {
+            return JsonSerializer.SerializeToElement(new Dictionary<string, string> { ["error"] = "result 序列化失败：" + ex.GetBaseException().Message }, Reflection);
+        }
+    }
 }

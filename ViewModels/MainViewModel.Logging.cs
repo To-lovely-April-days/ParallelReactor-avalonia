@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ParallelReactor.Commands;
 using ParallelReactor.Models;
 using ParallelReactor.Services;
 
@@ -28,35 +29,56 @@ public partial class MainViewModel
     internal void LogFileEvent(string kind, string source, string title, string detail)
         => Logger.Event(DateTimeOffset.Now, kind, source, title, detail);
 
-    // ============ 测试会话 / 标记（供测试流程调用；暂无界面入口）============
+    // ============ 测试会话 / 标记（命令层 TryBeginSession / TryEndSession / TryAddMarker 调用；触屏暂无界面入口）============
 
-    /// <summary>开始测试会话：之后的运行记录另写一份到 sessions/&lt;testId&gt;-&lt;时间&gt;.csv。返回会话文件路径。</summary>
-    public string BeginTestSession(string testId)
+    /// <summary>会话 manifest（§6.11 / §9.1 K6）：sessions/&lt;id&gt;.json；接口的 /sessions/current 读 <see cref="SessionBook.Current"/>（不进 UI 线程）。</summary>
+    public SessionBook Sessions { get; private set; } = null!;
+
+    private void InitSessions()
     {
-        EndTestSession();
+        Sessions = new SessionBook(Logger.WriteFile);
+        // K7：上次未结束（断电 / kill）的会话标为 interrupted
+        var fixedUp = SessionBook.RecoverInterrupted(Logger.Dir);
+        if (fixedUp.Count > 0)
+            Alarm.Log("warn", "系统", "上次未结束的测试会话已标为 interrupted", string.Join("、", fixedUp));
+    }
+
+    /// <summary>
+    /// 开始测试会话：之后的运行记录另写一份到 sessions/&lt;testId&gt;-&lt;时间&gt;.csv，同时建 manifest。
+    /// 本地入口已有会话时先结束它（今天的行为）；远程由命令层的严格守卫先拒（SESSION_ACTIVE）。返回会话文件路径。
+    /// </summary>
+    public string BeginTestSession(string testId, CommandSource src, string? note = null)
+    {
+        EndTestSession(src);
         var path = Logger.BeginSession(testId);
-        Logger.AddMarker($"会话开始 {Logger.SessionId}");
-        Alarm.Log("info", "系统", "测试会话开始", $"{Logger.SessionId} · {path}");
+        var key = Logger.SessionKey!;
+        Logger.AddMarker($"会话开始 {key}");
+        Alarm.Log("info", "系统", "测试会话开始", $"{key} · {System.IO.Path.GetFileName(path)} · {src.Label}" + (string.IsNullOrWhiteSpace(note) ? "" : $" · {note.Trim()}"));
+        Sessions.Begin(key, Logger.SessionId!, note, DateTime.UtcNow, src.IsRemote ? "remote" : "local", src.IsRemote ? src.ClientName : null,
+            HardwareOptions.Sim, Logger.Events?.Head ?? 0, System.IO.Path.GetFileName(path));
         return path;
     }
 
-    /// <summary>结束当前测试会话（无会话时不做任何事）。</summary>
-    public void EndTestSession()
+    /// <summary>结束当前测试会话（无会话时不做任何事）。退出程序路径传本地来源。</summary>
+    public void EndTestSession(CommandSource? src = null)
     {
-        var id = Logger.SessionId;
-        if (id == null) return;
-        string end = $"会话结束 {id}";
+        var key = Logger.SessionKey;
+        if (key == null) return;
+        string end = $"会话结束 {key}";
         Logger.AddMarker(end);   // 日运行记录：下一行
         Logger.EndSession(BuildTelemetryRow(Temp.Online, _press.Online), end);   // 会话文件：立即补写带结束标记的最后一行
-        Alarm.Log("info", "系统", "测试会话结束", id);
+        Alarm.Log("info", "系统", "测试会话结束", $"{key} · {(src ?? CommandSource.Local).Label}");
+        Sessions.End(DateTime.UtcNow, Logger.Events?.Head ?? 0);
     }
 
-    /// <summary>添加标记：出现在下一行运行记录的「标记」列，同时记一条事件。</summary>
-    public void AddTestMarker(string text)
+    /// <summary>添加标记：出现在下一行运行记录的「标记」列，同时记一条事件；有会话时写进 manifest 的 markers（返回标记，无会话为 null）。</summary>
+    public SessionMarker? AddTestMarker(string text, CommandSource? src = null)
     {
-        if (string.IsNullOrWhiteSpace(text)) return;
+        if (string.IsNullOrWhiteSpace(text)) return null;
+        var s = src ?? CommandSource.Local;
         Logger.AddMarker(text);
-        Alarm.Log("info", "系统", "标记", text);
+        Alarm.Log("info", "系统", "标记", text + (s.IsRemote ? $" · {s.Label}" : "") + (Logger.SessionKey is { } k ? $" · 会话 {k}" : ""));
+        return Sessions.AddMarker(text, DateTime.UtcNow, Logger.Events?.Head ?? 0, s.IsRemote ? "remote" : "local", s.IsRemote ? s.ClientName : null);
     }
 
     // ============ 设置修改事件 ============
@@ -240,7 +262,7 @@ public partial class MainViewModel
             string gas = GasTask;
             // 序列收到取消后自己的 finally 会关阀：超压中止时只关 SV 与气源，排空阀保持原样（不碰线圈 11）
             if (GasBusy) _abortKeepVent = true;
-            AbortAllGas();   // 联锁不看占用者：一律中止
+            AbortAllGas(GasAbortCause.OverPressure);   // 联锁不看占用者：一律中止（持有气路的程序据此按「气路被超压联锁中止」收尾）
             SetOverPressureAlarm(c);
             var acts = new List<string>
             {
@@ -495,6 +517,7 @@ public partial class MainViewModel
         var row = new TelemetryRow { Time = DateTimeOffset.Now, Sim = HardwareOptions.Sim };
         var ps = _press.Last;
         bool pValid = realP && ps.At != DateTimeOffset.MinValue;
+        var runInfos = Program.RunInfos;   // 每行取一次（LINQ 新建字典），不在 8 通道循环里重复构建
         for (int i = 0; i < 8 && i < Reactors.Count; i++)
         {
             var c = Reactors[i];
@@ -520,6 +543,7 @@ public partial class MainViewModel
             t.State = c.State.ToString();
             t.OverTemp = _otGuard.IsTripped(i);
             t.Valve = c.Valve;
+            t.ProgramStep = runInfos.TryGetValue(c.Id, out var ri) ? $"{ri.Index + 1}/{ProgramRunSet.PhaseName(ri.Phase)}" : null;
         }
         if (realT)
         {

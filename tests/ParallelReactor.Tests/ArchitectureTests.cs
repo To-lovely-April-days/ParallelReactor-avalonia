@@ -54,7 +54,7 @@ public class ArchitectureTests
         // —— 开机（§5.11）——
         ["MainViewModel.cs:MainViewModel"] = "开机：按 8AI 内部满程回填「变送器满量程」设置显示（读回，不是操作员写入）",
         ["MainViewModel.cs:InitStirMicrostepAsync"] = "开机：从驱动器回填细分到设置显示（读回，不是操作员写入）",
-        // —— 搅拌属性的 setter：命令层（TrySetStir / TrySetStirRpm / TryRun / AbortProgram）改属性，setter 负责下发帧 ——
+        // —— 搅拌属性的 setter：命令层（TrySetStir / TrySetStirRpm / TryRun）与程序引擎（StepStirAsync / ReleaseStir）改属性，setter 负责下发帧 ——
         ["MainViewModel.cs:OnStirOnChanged"] = "StirOn setter 的下发：唯一调用方是命令层与程序引擎 / 急停",
         ["MainViewModel.cs:OnStirRpmChanged"] = "StirRpm setter 的下发：唯一调用方是命令层与程序引擎",
         // —— 命令层调用的加热 / 停加热 / 关阀原语（TryStartHeat、TryStopHeat、TryStopChannel、TryStartProfile……）——
@@ -115,7 +115,10 @@ public class ArchitectureTests
         ["ProgramViewModel.Run.cs:RunStepAsync"] = "程序引擎：执行一步（TryRunProgram 启动的后台流程）",
         ["MainViewModel.Logging.cs:SendOverPressureValvesAsync"] = "Tick 的超压联锁：关该通道 SV 与全部气源",
         ["LeakViewModel.cs:Finish"] = "泄漏测试流程收尾（TryStartLeakTest 启动的后台流程）",
-        ["ProgramViewModel.Run.cs:AbortProgram"] = "程序引擎中止：停曲线 / 逼近 / 搅拌、停加热（TryAbortProgram、全部停止、急停共用）",
+        ["ProgramViewModel.Run.cs:AbortProgram"] = "程序引擎中止（按通道）：停曲线 / 逼近、释放搅拌引用、停加热、中止自己的气路租约（TryAbortProgram、TryStopHeat、停止通道共用）",
+        ["ProgramViewModel.Run.cs:AbortAllPrograms"] = "程序引擎：中止全部并行程序（全部停止、急停共用，逐通道调 AbortProgram）",
+        ["ProgramViewModel.Run.cs:AcquireGasAsync"] = "程序引擎：排队取气路租约（吹扫 / 升压 / 收尾 / 稳压脉冲共用，多程序并行按 GasQueue 先到先得）",
+        ["ProgramViewModel.Run.cs:ReleaseStir"] = "程序引擎：释放本程序的搅拌引用，最后一个释放者才停搅拌（StirShare 引用计数）",
         ["ProgramViewModel.Run.cs:StepHeatAsync"] = "程序引擎：升温步骤（TryRunProgram 启动的后台流程）",
         ["ProgramViewModel.Run.cs:StepStirAsync"] = "程序引擎：搅拌步骤（TryRunProgram 启动的后台流程）",
     };
@@ -589,6 +592,8 @@ public class ArchitectureTests
         // 记录类与配方
         ["TryApplyRecipe"] = "Control·本地", ["TryAckAlarm"] = "Record", ["TryBeginSession"] = "Record",
         ["TryEndSession"] = "Record", ["TryAddMarker"] = "Record",
+        // 控制权（P3，§5.1「只有本地可以允许 / 切回」）：只改租约状态机，不碰设备 → Record · 本地
+        ["TryGrantControl"] = "Record·本地", ["TryDenyControl"] = "Record·本地", ["TryTakeBackControl"] = "Record·本地",
     };
 
     /// <summary>从首句仲裁解析出的类别串（格式同 <see cref="ExpectedClass"/>）。</summary>

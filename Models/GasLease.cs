@@ -10,6 +10,12 @@ namespace ParallelReactor.Models;
 public enum GasOwner { None, Program, Leak }
 
 /// <summary>
+/// 最近一次「无条件中止气路」（MainViewModel.AbortAllGas）的来由：程序引擎据此区分租约被取消的原因——
+/// 超压联锁 → 持有者程序按失败「气路被超压联锁中止」收尾；退出程序 → 按手动中止收尾。急停 / 全部停止另有标志（Estopped / 流程令牌）。
+/// </summary>
+public enum GasAbortCause { None, OverPressure, Shutdown }
+
+/// <summary>
 /// 气路占用登记（C8 / C9，纯逻辑，只在 UI 线程使用）：
 /// <list type="bullet">
 /// <item>谁占用（Owner）、做什么（Task）、涉及哪些通道（Participants：会开 SV 或程序所在通道）、监视哪些通道超压（Watch）；</item>
@@ -23,6 +29,8 @@ public sealed class GasLease
     private IReadOnlyDictionary<int, ReactorState> _start = new Dictionary<int, ReactorState>();
 
     public GasOwner Owner { get; private set; } = GasOwner.None;
+    /// <summary>程序租约所属的通道（多程序并行时区分是谁的租约；泄漏测试为 null）。</summary>
+    public int? OwnerRv { get; private set; }
     public string Task { get; private set; } = "";
     public IReadOnlyList<int> Participants { get; private set; } = Array.Empty<int>();
     public int[] Watch { get; private set; } = Array.Empty<int>();
@@ -35,12 +43,13 @@ public sealed class GasLease
     /// startStates：各参与通道开始时的状态，用于判断「之后被停止 / 停用」。返回本段租约的代号。
     /// 新占用者：清除失效标记。同一占用者续租：延续下来的参与通道保留失效标记与开始状态——
     /// 否则在续租那一刻被停止 / 停用的通道会被当成「开始时就已结束」而不再中止序列。
+    /// ownerRv：程序租约所属通道；同为程序但通道不同视为**新占用者**（另一程序的租约），不算续租。
     /// </summary>
     public long Begin(GasOwner owner, string task, IEnumerable<int>? participants, IEnumerable<int>? watch,
-        IReadOnlyDictionary<int, ReactorState>? startStates)
+        IReadOnlyDictionary<int, ReactorState>? startStates, int? ownerRv = null)
     {
         if (owner == GasOwner.None) throw new ArgumentException("占用者不能为 None", nameof(owner));
-        bool renew = owner == Owner;
+        bool renew = owner == Owner && (owner != GasOwner.Program || ownerRv == OwnerRv);
         var ids = (participants ?? Array.Empty<int>()).Distinct().ToArray();
         var start = startStates != null ? new Dictionary<int, ReactorState>(startStates) : new Dictionary<int, ReactorState>();
         if (renew)
@@ -51,6 +60,7 @@ public sealed class GasLease
         }
         else _invalid.Clear();
         Owner = owner;
+        OwnerRv = owner == GasOwner.Program ? ownerRv : null;
         Task = task ?? "";
         Participants = ids;
         Watch = (watch ?? Array.Empty<int>()).Distinct().ToArray();
@@ -58,8 +68,12 @@ public sealed class GasLease
         return ++Generation;
     }
 
-    /// <summary>请求方能否按自己的身份中止当前序列：只有当前占用者本人可以（None 永远不行）。</summary>
-    public bool CanAbort(GasOwner requester) => requester != GasOwner.None && requester == Owner;
+    /// <summary>
+    /// 请求方能否按自己的身份中止当前序列：只有当前占用者本人可以（None 永远不行）。
+    /// rv 非 null 时还要求是该通道的程序租约（程序 A 的中止不能停掉程序 B 的气路步骤）。
+    /// </summary>
+    public bool CanAbort(GasOwner requester, int? rv = null)
+        => requester != GasOwner.None && requester == Owner && (rv == null || OwnerRv == rv);
 
     /// <summary>
     /// 释放气路：占用者一致（且 gen 为 0 或与当前租约一致）才释放，返回是否释放。
@@ -70,6 +84,7 @@ public sealed class GasLease
         if (owner == GasOwner.None || owner != Owner) return false;
         if (gen != 0 && gen != Generation) return false;
         Owner = GasOwner.None;
+        OwnerRv = null;
         Task = "";
         Participants = Array.Empty<int>();
         Watch = Array.Empty<int>();

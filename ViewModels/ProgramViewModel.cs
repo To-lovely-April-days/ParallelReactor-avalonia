@@ -39,7 +39,7 @@ public partial class ProgramViewModel : ViewModelBase
     public string SelInfo => SelectedStep == null
         ? "" : $"{SelectedStep.Ordinal:00} / {Steps.Count:00}";
 
-    // 通道真正在运行（升温/反应/升压/超压）或程序执行中，程序锁定为只读；仅「已启用」不锁定
+    // 通道真正在运行（升温/反应/升压/超压）或该通道的程序执行中，程序锁定为只读；仅「已启用」不锁定（其他通道的程序不影响本通道编辑）
     public bool IsLocked => CurrentChannel?.Reactor.IsWorking == true || IsRunningProgram;
     public bool CanEdit => !IsLocked;
     public string LockHint => IsRunningProgram ? "程序执行中 · 已锁定为只读" : "该通道正在运行 · 程序已锁定为只读";
@@ -183,7 +183,7 @@ public partial class ProgramViewModel : ViewModelBase
     /// </summary>
     internal void EditGlobalStir(Func<int, Task<OpResult>> apply)
     {
-        if (IsRunningProgram) return;   // 程序执行中只读（全局转速请在主界面调）；通道仅在加热时仍可改全局转速
+        if (AnyProgramRunning) return;   // 有程序执行中只读（搅拌全机共用，全局转速请在主界面调）；通道仅在加热时仍可改全局转速
         _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, _main.Settings.RpmMax, v =>
         {
             var t = apply((int)v);
@@ -271,13 +271,75 @@ public partial class ProgramViewModel : ViewModelBase
     [ViewEntry("只提示「尚未实现」")]
     private void SaveTemplate() => _main.Toast("warn", "保存为模板尚未实现（随配方功能一起提供）");
 
-    // ============ 程序执行（引擎见 ProgramViewModel.Run.cs：7 种步骤全部可执行）============
-    [ObservableProperty] private bool _isRunningProgram;
-    [ObservableProperty] private string _runStatus = "";
-    [ObservableProperty] private string _runMonitorDetail = "等待开始";
-    [ObservableProperty] private string _runMonitorPhase = "准备运行";
-    [ObservableProperty] private string _runProgressText = "0 / 0";
-    [ObservableProperty] private int _runCurrentStepIndex = -1;
+    // ============ 程序执行（引擎见 ProgramViewModel.Run.cs：7 种步骤全部可执行；每通道一份运行，最多 8 份并行）============
+    // 以下 IsRunningProgram / RunStatus / RunMonitor* / RunSteps 是「选中通道的运行」（SelectedRun）的只读投影：
+    // 切换选中通道即切换监视内容；运行对象的属性变化经 OnRunPropertyChanged 转发。
+    private static readonly ObservableCollection<ProgramRunStep> EmptySteps = new();
+
+    /// <summary>选中通道的运行：正在执行的，否则该通道最近一次已结束的运行（终态仍可查看），都没有为 null。</summary>
+    public ProgramRun? SelectedRun
+        => CurrentRv is var rv && rv != 0
+            ? (_runs.TryGetValue(rv, out var r) ? r : _lastRuns.TryGetValue(rv, out var l) ? l : null)
+            : null;
+
+    public bool IsRunningProgram => SelectedRun?.IsActive == true;
+    public string RunStatus => SelectedRun?.Status ?? "";
+    public string RunMonitorDetail => SelectedRun?.MonitorDetail ?? "等待开始";
+    public string RunMonitorPhase => SelectedRun?.MonitorPhase ?? "准备运行";
+    public string RunProgressText => SelectedRun?.ProgressText ?? "0 / 0";
+    public int RunCurrentStepIndex => SelectedRun?.CurrentIndex ?? -1;
+    public ObservableCollection<ProgramRunStep> RunSteps => SelectedRun?.RunSteps ?? EmptySteps;
+    /// <summary>有其他通道（非选中通道）的程序在执行：监视页头显示「正在运行：RV1 RV3」。</summary>
+    public bool HasOtherRuns => RunningIds.Any(rv => rv != CurrentRv);
+
+    private ProgramRun? _subscribedRun;
+
+    /// <summary>选中通道 / 运行集合变化后重算全部投影属性（并把转发订阅切到当前选中的运行）。</summary>
+    internal void RaiseRunProjection()
+    {
+        var run = SelectedRun;
+        if (!ReferenceEquals(run, _subscribedRun))
+        {
+            if (_subscribedRun != null) _subscribedRun.PropertyChanged -= OnRunPropertyChanged;
+            _subscribedRun = run;
+            if (run != null) run.PropertyChanged += OnRunPropertyChanged;
+        }
+        OnPropertyChanged(nameof(SelectedRun));
+        OnPropertyChanged(nameof(IsRunningProgram));
+        OnPropertyChanged(nameof(RunStatus));
+        OnPropertyChanged(nameof(RunMonitorDetail));
+        OnPropertyChanged(nameof(RunMonitorPhase));
+        OnPropertyChanged(nameof(RunProgressText));
+        OnPropertyChanged(nameof(RunCurrentStepIndex));
+        OnPropertyChanged(nameof(RunSteps));
+        OnPropertyChanged(nameof(CanRun));
+        OnPropertyChanged(nameof(RunMonitorCanClose));
+        OnPropertyChanged(nameof(AnyProgramRunning));
+        OnPropertyChanged(nameof(RunningCount));
+        OnPropertyChanged(nameof(RunningSummary));
+        OnPropertyChanged(nameof(HasOtherRuns));
+        RaiseLock();
+    }
+
+    private void OnRunPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, SelectedRun)) return;
+        switch (e.PropertyName)
+        {
+            case nameof(ProgramRun.Status): OnPropertyChanged(nameof(RunStatus)); break;
+            case nameof(ProgramRun.MonitorDetail): OnPropertyChanged(nameof(RunMonitorDetail)); break;
+            case nameof(ProgramRun.MonitorPhase): OnPropertyChanged(nameof(RunMonitorPhase)); break;
+            case nameof(ProgramRun.ProgressText): OnPropertyChanged(nameof(RunProgressText)); break;
+            case nameof(ProgramRun.CurrentIndex): OnPropertyChanged(nameof(RunCurrentStepIndex)); break;
+            case nameof(ProgramRun.IsActive):
+                OnPropertyChanged(nameof(IsRunningProgram));
+                OnPropertyChanged(nameof(CanRun));
+                OnPropertyChanged(nameof(RunMonitorCanClose));
+                RaiseLock();
+                break;
+        }
+    }
+
     [ObservableProperty] private bool _isRunMonitorOpen;
     [ObservableProperty] private bool _isRunConfirmOpen;
     [ObservableProperty] private string _runConfirmTitle = "";
@@ -285,46 +347,18 @@ public partial class ProgramViewModel : ViewModelBase
     [ObservableProperty] private string _runConfirmText = "";
     public bool CanRun => !IsRunningProgram;
     public bool RunMonitorCanClose => !IsRunningProgram;
-    public ObservableCollection<ProgramRunStep> RunSteps { get; } = new();
     public GraphViewModel MonitorGraph => _main.Graph;
 
     /// <summary>确认框打开时冻结的待运行程序（目标通道 + 步骤深拷贝）；确认 / 取消 / 急停时清空。</summary>
     private (int Rv, IReadOnlyList<StepSnapshot> Steps)? _pendingRun;
 
-    /// <summary>
-    /// 正在被程序占用的通道（C20）：ExecuteAsync 入口置位、finally 清除；null = 没有程序在执行。
-    /// 程序归属判断（中止、开始运行筛选、泄漏测试选通道、抽屉操作守卫）一律以它为准。
-    /// </summary>
-    [ObservableProperty] private int? _runningRv;
+    /// <summary>运行监视显示读数的釜：跟随选中通道（多程序并行：监视显示的就是选中通道的运行）。</summary>
+    public Reactor? MonitorReactor => CurrentChannel?.Reactor;
 
-    /// <summary>最近一次执行程序的通道：程序结束后运行监视仍显示它的读数。</summary>
-    private int? _lastRunRv;
-
-    /// <summary>
-    /// 运行监视显示读数的釜（C20）：执行中 = RunningRv，结束后 = 最近一次执行的通道，都没有时退回当前选中通道。
-    /// 不跟随 CurrentChannel：执行中切换选中通道不能让监视显示别的釜的温度 / 压力。
-    /// </summary>
-    public Reactor? MonitorReactor =>
-        (RunningRv ?? _lastRunRv) is { } id && _main.FindReactor(id) is { } r ? r : CurrentChannel?.Reactor;
-
-    partial void OnCurrentChannelChanged(ProgramChannel? value) => OnPropertyChanged(nameof(MonitorReactor));
-
-    partial void OnRunningRvChanged(int? value)
+    partial void OnCurrentChannelChanged(ProgramChannel? value)
     {
-        if (value != null) _lastRunRv = value;
         OnPropertyChanged(nameof(MonitorReactor));
-    }
-
-    partial void OnIsRunningProgramChanged(bool value)
-    {
-        OnPropertyChanged(nameof(CanRun));
-        OnPropertyChanged(nameof(RunMonitorCanClose));
-        RaiseLock();
-    }
-
-    partial void OnRunStatusChanged(string value)
-    {
-        if (!string.IsNullOrWhiteSpace(value)) RunMonitorDetail = value;
+        RaiseRunProjection();
     }
 
     /// <summary>当前全局限值（设置页可改，每次取最新）。</summary>
@@ -350,17 +384,19 @@ public partial class ProgramViewModel : ViewModelBase
     {
         var r = _main.FindReactor(rv);
         bool gas = HasGasSteps(snap);
-        var gasBlock = gas ? _main.GasBlock(needPressure: NeedsPressure(snap)) : null;
+        // 程序气路步骤按队列共享气路：另一程序占用不算阻塞（programWait），其他程序通道的升压 / 反应也不算
+        var gasBlock = gas ? _main.GasBlock(needPressure: NeedsPressure(snap), selfId: rv, programWait: true) : null;
         var input = new ProgramRunInput
         {
             HasChannel = r != null,
-            ProgramRunning = IsRunningProgram || RunningRv != null,
+            ProgramRunning = IsProgramOwned(rv),
+            RunningCount = RunningCount,
             StepCount = snap.Count,
             State = r?.State ?? ReactorState.Idle,
             OverTempTripped = r != null && _main.IsOverTempTripped(r.Id),
             OverPressureTripped = r != null && _main.IsOverPressureTripped(r.Id),
             EstopLocked = _main.EstopLocked,
-            GasBusy = _main.GasBusy,
+            GasBusy = _main.GasBusy && !_main.GasOwnedBy(GasOwner.Program),   // 泄漏测试占用才拒绝；另一程序占用由气路步骤排队
             GasTask = _main.GasTask,
             NeedsGas = gas,
             GasBlock = gasBlock?.Message,
@@ -370,11 +406,18 @@ public partial class ProgramViewModel : ViewModelBase
         return ProgramRunGuard.Check(input);
     }
 
-    /// <summary>命令层下发通过后：打开运行监视并在后台执行冻结的程序副本。</summary>
-    internal void StartRun(int rv, IReadOnlyList<StepSnapshot> steps)
+    /// <summary>
+    /// 命令层下发通过后：建立该通道的运行对象并在后台执行冻结的程序副本；目标是当前选中通道时打开运行监视
+    /// （远程 / 非选中通道下发不弹监视，监视里的「正在运行：RV1 RV3」提示其他通道）。
+    /// </summary>
+    internal bool StartRun(int rv, IReadOnlyList<StepSnapshot> steps, string startedBy = "local")
     {
-        PrepareRunMonitor(rv, steps);
-        _ = ExecuteAsync(rv, steps);
+        // 入口守卫（ProgramRunGuard）已判过；这里是最后防线：不满足就不建运行对象，避免留下停在「准备执行」的孤儿运行
+        if (_main.FindReactor(rv) == null || steps.Count == 0 || IsProgramOwned(rv)) return false;
+        var run = new ProgramRun(rv, steps, startedBy);
+        PrepareRunMonitor(run);
+        _ = ExecuteAsync(run);
+        return true;
     }
 
     /// <summary>「下发并运行」：冻结当前程序，按全部守卫判一次，通过才打开确认框。</summary>
@@ -383,8 +426,8 @@ public partial class ProgramViewModel : ViewModelBase
     private void RunProgram()
     {
         int rv = CurrentRv;
-        if (rv != 0 && !IsRunningProgram) RenumberAndRefresh();
-        var snap = rv != 0 && !IsRunningProgram
+        if (rv != 0 && !IsProgramOwned(rv)) RenumberAndRefresh();
+        var snap = rv != 0 && !IsProgramOwned(rv)
             ? Steps.Select(s => s.ToSnapshot()).ToList().AsReadOnly()
             : (IReadOnlyList<StepSnapshot>)Array.Empty<StepSnapshot>();
         if (!_main.LocalOk(Ops.CheckProgramRun(Src, rv, snap))) return;
@@ -392,12 +435,12 @@ public partial class ProgramViewModel : ViewModelBase
         bool gasSteps = HasGasSteps(snap);
         int total = (int)Steps.Sum(s => s.DurationMin);
         RunConfirmTitle = $"下发并运行 RV{rv} 程序";
-        RunConfirmSub = gasSteps ? "含气路步骤 · 执行中气路独占" : "不含气路步骤";
+        RunConfirmSub = gasSteps ? "含气路步骤 · 气路按步骤排队共享" : "不含气路步骤";
         RunConfirmText =
             $"共 {snap.Count} 步，预计约 {total / 60}h {total % 60}m。\n" +
             "执行期间釜状态随步骤变化（升温/升压/等待/搅拌/反应/降温），可随时「中止」。" +
             "\n确认后执行的是此刻的程序副本：运行中再编辑程序不影响本次执行。" +
-            (gasSteps ? "\n含气路步骤：执行期间气路由程序独占，泄漏测试 / 手动阀控 / 其他程序的气路步骤将被拒绝。" : "");
+            (gasSteps ? "\n含气路步骤：气路同一时间只由一个程序占用，其他程序的气路步骤排队等待；泄漏测试 / 手动阀控仍被拒绝。" : "");
         _pendingRun = (rv, snap);
         IsRunConfirmOpen = true;
     }
@@ -427,15 +470,9 @@ public partial class ProgramViewModel : ViewModelBase
         _main.Local(Ops.TryRunProgram(Src, run.Rv, run.Steps));   // 命令层按确认时刻的实时状态重判全部守卫（确认期间状态可能变了）
     }
 
-    private void PrepareRunMonitor(int rv, IReadOnlyList<StepSnapshot> steps)
+    private void PrepareRunMonitor(ProgramRun run)
     {
-        RunSteps.Clear();
-        int index = 1;
-        foreach (var step in steps) RunSteps.Add(new ProgramRunStep(index++, step));
-        RunCurrentStepIndex = -1;
-        RunProgressText = $"0 / {RunSteps.Count}";
-        RunMonitorPhase = "准备执行";
-        RunMonitorDetail = $"RV{rv} 程序正在准备启动";
+        if (run.Rv != CurrentRv) return;   // 非选中通道（远程下发）：不打开监视，由 RunningSummary 提示
         IsRunMonitorOpen = true;
         // 进入监控时优先展示最容易判断运行状态的温度曲线；用户仍可在右侧切换变量。
         MonitorGraph.Metric = "T";
@@ -450,40 +487,10 @@ public partial class ProgramViewModel : ViewModelBase
         IsRunMonitorOpen = false;
     }
 
-    internal void MarkRunStepStarted(int index)
-    {
-        if (index < 0 || index >= RunSteps.Count) return;
-        RunCurrentStepIndex = index;
-        RunSteps[index].SetState(ProgramRunState.Running, "正在执行");
-        RunProgressText = $"{index} / {RunSteps.Count}";
-        RunMonitorPhase = $"执行第 {index + 1} 步 · {RunSteps[index].Name}";
-    }
-
-    internal void MarkRunStepCompleted(int index)
-    {
-        if (index < 0 || index >= RunSteps.Count) return;
-        RunSteps[index].SetState(ProgramRunState.Completed, "已完成");
-        RunProgressText = $"{index + 1} / {RunSteps.Count}";
-    }
-
-    internal void MarkRunStepFailed(int index, string message)
-    {
-        if (index < 0 || index >= RunSteps.Count) return;
-        RunSteps[index].SetState(ProgramRunState.Failed, message);
-        RunMonitorPhase = $"第 {index + 1} 步执行失败";
-    }
-
-    internal void MarkRunStepAborted(int index)
-    {
-        if (index < 0 || index >= RunSteps.Count) return;
-        RunSteps[index].SetState(ProgramRunState.Aborted, "已中止");
-        RunMonitorPhase = "程序已手动中止";
-    }
-
-    /// <summary>中止当前程序（引擎在 Run.cs：取消令牌 + 中止气路，序列 finally 全关阀）。</summary>
+    /// <summary>中止选中通道的程序（引擎在 Run.cs：取消令牌 + 中止它自己的气路租约，序列 finally 全关阀）。其他通道的程序不受影响。</summary>
     [RelayCommand]
     [WriteEntry(nameof(OperatorCommands.TryAbortProgram))]
-    private void AbortRun() => _main.Local(Ops.TryAbortProgram(Src));
+    private void AbortRun() => _main.Local(Ops.TryAbortProgram(Src, CurrentRv));
 
     // ============ 升温模式切换（HeatModeRow 经 TryEditProgram 闸门调用）============
     internal OpResult SetHeatMode(ProgramStep step, string mode)
@@ -771,7 +778,7 @@ public partial class ProgramViewModel : ViewModelBase
         foreach (var ch in Channels)
         {
             bool cur = ch == CurrentChannel;
-            bool busy = ch.Reactor.Id == RunningRv;   // 正在执行程序的通道不可被覆盖
+            bool busy = IsProgramOwned(ch.Reactor.Id);   // 正在执行程序的通道不可被覆盖
             bool picked = !ch.Reactor.IsIdle && !cur && !busy;
             ApplyRows.Add(new ApplyRow(ch, cur, _byRv[ch.Reactor.Id].Count, picked, busy));
         }
@@ -920,6 +927,9 @@ public partial class ProgramChannel : ObservableObject
     public Reactor Reactor { get; }
     [ObservableProperty] private bool _isCurrent;
     [ObservableProperty] private bool _isModified;
+    /// <summary>该通道有程序在执行（通道条右上角红点；引擎开始 / 结束时置位）。</summary>
+    [ObservableProperty] private bool _isProgramRunning;
+    internal void SetProgramRunning(bool on) => IsProgramRunning = on;
     public ProgramChannel(Reactor r)
     {
         Reactor = r;

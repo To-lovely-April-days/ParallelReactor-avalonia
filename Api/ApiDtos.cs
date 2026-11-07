@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using ParallelReactor.Services;
 
 namespace ParallelReactor.Api;
@@ -86,8 +87,27 @@ public sealed record FilesDto(string Type, int Count, List<HistoryFileInfo> Item
 public sealed record LeakFilesDto(string? Samples, string? SummaryCsv, string? SummaryJson);
 public sealed record LeakTestInfoDto(string RunId, DateTime? Start, long Bytes, LeakFilesDto Files);
 public sealed record LeakTestsDto(int Count, LeakTestInfoDto[] Items);
-public sealed record SessionInfoDto(string TestId, DateTime? StartedAt, string File, long Bytes, DateTime? From, DateTime? To);
+public sealed record SessionInfoDto(string TestId, DateTime? StartedAt, string File, long Bytes, DateTime? From, DateTime? To, string? Id = null);
 public sealed record SessionsDto(int Count, SessionInfoDto[] Items, SessionSnap? Current);
+/// <summary>§10.2 会话详情：当前（或历史）会话的 manifest + 该会话的文件（相对数据目录）。</summary>
+public sealed record SessionDetailDto(bool Active, string Id, string? TestId, string? File, SessionManifest? Manifest, string[] Files);
+
+// —— §7.1 写命令响应 ——
+/// <summary>成功：200 confirmed / 202 accepted。result 为各 Try* 的 Data（匿名对象先转成 JsonElement，§3.2 不 Trim 允许反射）。</summary>
+public sealed record CommandResponseDto(bool Ok, string OpId, string Status, JsonElement? Result, string[] Warnings, long OpEventSeq);
+public sealed record CommandErrorBody(string Code, string Message, JsonElement? Detail);
+public sealed record CommandErrorDto(bool Ok, string OpId, CommandErrorBody Error, long OpEventSeq);
+
+// —— §7.2 控制权 ——
+public sealed record ControlPendingDto(string RequestId, string ClientName, string TokenName, DateTime? ExpiresAt);
+/// <summary>GET /control：模式、持有者、租约状态（不含 leaseId）、待处理申请、超时配置。</summary>
+public sealed record ControlStateDto(string Mode, string? Holder, string? HolderToken, string State, DateTime? LeaseExpiresAt, DateTime? LeaseHardExpiresAt,
+    ControlPendingDto? Pending, bool AutoGrant, int HeartbeatTimeoutSec, int LeaseGraceSec, int RequestTimeoutSec, string OnRemoteLost);
+/// <summary>POST /control/request 的 result：pending（等触屏）或 granted（autoGrant，直接带 leaseId）。</summary>
+public sealed record ControlRequestResultDto(string RequestId, string Result, DateTime? ExpiresAt, string? LeaseId, DateTime? LeaseExpiresAt, int HeartbeatTimeoutSec, int LeaseGraceSec, string? RequestKey = null);
+/// <summary>GET /control/requests/{id}：pending / granted / denied / expired；leaseId 只对申请令牌给出。</summary>
+public sealed record ControlRequestStatusDto(string RequestId, string Result, string ClientName, DateTime? ExpiresAt, string? LeaseId, DateTime? LeaseExpiresAt, int HeartbeatTimeoutSec, int LeaseGraceSec);
+public sealed record HeartbeatResultDto(string Mode, bool Resumed, DateTime? LeaseExpiresAt, DateTime? LeaseHardExpiresAt, int HeartbeatTimeoutSec);
 public sealed record TelemetryRangeInfoDto(DateTime From, DateTime To, string[] Files);
 
 // —— §8 WebSocket ——
@@ -98,6 +118,11 @@ public sealed record GapMsg(string Type, string Reason, long EventSeqHead, long 
 public sealed record WsErrorMsg(string Type, string Code, string Message);
 public sealed record SubscribedMsg(string Type, string[] Topics, int Replayed, long EventSeqHead);
 public sealed record AlarmMsg(string Type, AlarmDto Alarm);
+/// <summary>§8.2 control 消息：模式 / 租约迁移。leaseId 恒为 null（不进 WS 广播；申请方从 HTTP 响应 / GET /control/requests/{id} 取），字段保留以兼容客户端。</summary>
+public sealed record ControlMsg(string Type, string Event, string Mode, string? Holder, string State, string? RequestId, string? Result,
+    string? LeaseId, DateTime? LeaseExpiresAt, int HeartbeatTimeoutSec, string Detail, DateTime Ts);
+/// <summary>§8.2 opEvent：一条远程写命令的结局（与 HTTP 响应同内容，便于其他客户端 / 触屏侧工具观察）。</summary>
+public sealed record OpEventMsg(string Type, string OpId, string Action, string Client, string Source, int HttpStatus, string Status, string Code, string Message, long OpEventSeq, DateTime Ts);
 public sealed record EventMsg(string Type, long Seq, int SeqEpoch, DateTime Ts, string TsLocal, string Level, string Kind, int? Channel,
     string Source, string Origin, string? Client, string? OpId, string Title, string Message)
 {

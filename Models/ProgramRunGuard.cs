@@ -8,8 +8,10 @@ public readonly record struct ProgramRunInput
 {
     /// <summary>已选中目标通道。</summary>
     public bool HasChannel { get; init; }
-    /// <summary>已有程序在执行（本机同一时间只执行一个程序）。</summary>
+    /// <summary>该通道已有程序在执行（每通道同一时间只执行一个程序；不同通道可并行）。</summary>
     public bool ProgramRunning { get; init; }
+    /// <summary>全机正在执行的程序数（≥ <see cref="ProgramRunSet.MaxConcurrent"/> 时拒绝新下发）。</summary>
+    public int RunningCount { get; init; }
     public int StepCount { get; init; }
     /// <summary>目标通道状态。</summary>
     public ReactorState State { get; init; }
@@ -17,7 +19,7 @@ public readonly record struct ProgramRunInput
     public bool OverPressureTripped { get; init; }
     /// <summary>急停锁定（含快速路径已锁、UI 流程尚未跑到）。</summary>
     public bool EstopLocked { get; init; }
-    /// <summary>气路被其他自动序列占用（泄漏测试等）。</summary>
+    /// <summary>气路被**非程序**的自动序列占用（泄漏测试）。另一程序占用不算：程序之间按 GasQueue 排队共享。</summary>
     public bool GasBusy { get; init; }
     public string GasTask { get; init; }
     /// <summary>程序含气路步骤（吹扫 / 升压 / 结束收尾）。</summary>
@@ -32,7 +34,7 @@ public readonly record struct ProgramRunInput
 
 /// <summary>
 /// 程序下发守卫（C3，纯逻辑）：「下发」打开确认框时与「确认运行」时都按同一顺序重判，任一项不满足即拒绝。
-/// 顺序：未选通道 → 已有程序在执行 → 空程序 → 急停 → 报警 / 超温超压未解除 → 状态不是已启用 / 已结束 →
+/// 顺序：未选通道 → 该通道已有程序在执行 → 并行程序已满 → 空程序 → 急停 → 报警 / 超温超压未解除 → 状态不是已启用 / 已结束 →
 /// 气路被占用（不论程序是否含气路步骤）→ 气路公共检查（仅含气路步骤时）→ 参数超限（报第一条）。
 /// </summary>
 public static class ProgramRunGuard
@@ -44,7 +46,9 @@ public static class ProgramRunGuard
     public static (string Code, string Message)? Check(in ProgramRunInput i)
     {
         if (!i.HasChannel) return (OpCodes.ChannelNotFound, "当前未选中通道（先点上方通道条里的 RV）");
-        if (i.ProgramRunning) return (OpCodes.ProgramRunning, "已有程序在执行 · 请等待完成或先中止");
+        if (i.ProgramRunning) return (OpCodes.ProgramRunning, "该通道已有程序在执行 · 请等待完成或先中止");
+        if (i.RunningCount >= ProgramRunSet.MaxConcurrent)
+            return (OpCodes.ProgramRunning, $"并行程序已达 {ProgramRunSet.MaxConcurrent} 个 · 请等待完成或先中止");
         if (i.StepCount <= 0) return (OpCodes.ProgramInvalid, "空程序无法下发 · 请先从左侧步骤库添加步骤");
         if (i.EstopLocked) return (OpCodes.EstopActive, "急停状态下不可下发程序 · 请先复位");
         if (i.State == ReactorState.Alarm || i.OverTempTripped || i.OverPressureTripped)

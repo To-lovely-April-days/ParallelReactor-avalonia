@@ -14,8 +14,8 @@ public sealed class ApiToken
     public string Sha256 { get; set; } = "";
     /// <summary>viewer / operator / admin。P2 只读接口任何角色都可读。</summary>
     public string Role { get; set; } = "viewer";
-    /// <summary>独立的急停权限位（P3 使用）。</summary>
-    public bool Estop { get; set; }
+    /// <summary>独立的急停权限位（§4.2）。null = 按角色默认（operator / admin 有、viewer 无）；显式 false 可收回 operator / admin 的急停权限。</summary>
+    public bool? Estop { get; set; }
 }
 
 /// <summary>
@@ -34,9 +34,20 @@ public sealed class ApiConfig
     /// <summary>白名单网段；为空时只允许本机回环地址。</summary>
     public List<string> AllowedCidrs { get; set; } = new();
     public List<ApiToken> Tokens { get; set; } = new();
+    /// <summary>持有者心跳超时（§5.5）：超过此秒数未收到带租约的心跳进入 RemoteLost。</summary>
     public int HeartbeatTimeoutSec { get; set; } = 10;
+    /// <summary>RemoteLost 宽限（§5.3）：期内凭同一 leaseId 心跳即恢复；期满租约作废、回到本地并执行 <see cref="OnRemoteLost"/>。</summary>
     public int LeaseGraceSec { get; set; } = 60;
+    /// <summary>宽限期满后的动作（§5.4）：keep（默认）/ stopHeat / estop。非法值按 keep 并记 warn。</summary>
     public string OnRemoteLost { get; set; } = "keep";
+    /// <summary>远程申请控制权时免触屏确认直接授权（无人值守 / 验收用；§15 Q2 的「本地预先授权」）。默认 false。</summary>
+    public bool AutoGrantRemote { get; set; }
+    /// <summary>触屏「允许 / 拒绝」弹窗的等待秒数，超时 = 拒绝（P3 定为 60 s，见 §14.1 偏差）。</summary>
+    public int ControlRequestTimeoutSec { get; set; } = 60;
+    /// <summary>写命令限流（每令牌每秒；§4.4）。/estop 不限流。</summary>
+    public int WriteRateLimitPerSec { get; set; } = 10;
+
+    public static readonly string[] RemoteLostPolicies = { "keep", "stopHeat", "estop" };
     /// <summary>WebSocket 并发连接上限。</summary>
     public int MaxClients { get; set; } = 4;
     /// <summary>设备序列号（/device 的 serial）；未配置为 null。</summary>
@@ -46,6 +57,8 @@ public sealed class ApiConfig
     [JsonIgnore] public string? SourcePath { get; set; }
     /// <summary>文件是否存在（不序列化）。</summary>
     [JsonIgnore] public bool FileFound { get; set; }
+    /// <summary>读取时发现并已修正的非致命问题（启动时记 warn 事件；不序列化）。</summary>
+    [JsonIgnore] public List<string> Warnings { get; } = new();
     /// <summary>配置文件名（不带目录；事件文字里用它，不把文件系统路径暴露给接口客户端）。</summary>
     [JsonIgnore] public string SourceFileName => SourcePath is { } p ? Path.GetFileName(p) : "api.json";
 
@@ -70,6 +83,17 @@ public sealed class ApiConfig
             }
             if (cfg.MaxClients <= 0) cfg.MaxClients = 4;
             if (string.IsNullOrWhiteSpace(cfg.Bind)) cfg.Bind = "0.0.0.0";
+            if (cfg.HeartbeatTimeoutSec <= 0) cfg.HeartbeatTimeoutSec = 10;
+            if (cfg.LeaseGraceSec < 0) cfg.LeaseGraceSec = 60;
+            if (cfg.ControlRequestTimeoutSec <= 0) cfg.ControlRequestTimeoutSec = 60;
+            if (cfg.WriteRateLimitPerSec <= 0) cfg.WriteRateLimitPerSec = 10;
+            var policy = Array.Find(RemoteLostPolicies, p => string.Equals(p, cfg.OnRemoteLost?.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (policy == null)
+            {
+                cfg.Warnings.Add($"onRemoteLost「{cfg.OnRemoteLost}」不是 keep / stopHeat / estop · 按 keep");
+                policy = "keep";
+            }
+            cfg.OnRemoteLost = policy;
             return cfg;
         }
         catch (Exception ex)
@@ -87,6 +111,9 @@ public sealed class ApiConfig
         else if (!string.IsNullOrWhiteSpace(api) && api.Trim() is "0" or "false") Enabled = false;
         var port = env("PR_API_PORT");
         if (int.TryParse(port, out var p) && p >= 0 && p <= 65535) HttpPort = p;
+        // 验收便利：PR_API_AUTOGRANT=1 → 远程申请免触屏确认（与 api.json 的 autoGrantRemote 等价）
+        var ag = env("PR_API_AUTOGRANT");
+        if (!string.IsNullOrWhiteSpace(ag) && ag.Trim() is "1" or "true") AutoGrantRemote = true;
         return this;
     }
 

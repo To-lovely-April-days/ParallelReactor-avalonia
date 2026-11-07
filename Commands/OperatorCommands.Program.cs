@@ -10,12 +10,12 @@ namespace ParallelReactor.Commands;
 public sealed partial class OperatorCommands
 {
     /// <summary>
-    /// 程序草稿是否可编辑（与 ProgramViewModel.IsLocked 同一判定）：程序执行中，或该通道真正在运行（升温 / 反应 / 升压 / 超压）时锁定为只读。
-    /// 文字同界面的锁定提示；Quiet：今天只是按钮被禁用，没有 Toast。
+    /// 程序草稿是否可编辑（与 ProgramViewModel.IsLocked 同一判定）：该通道的程序执行中，或该通道真正在运行（升温 / 反应 / 升压 / 超压）时锁定为只读。
+    /// 其他通道的程序不影响本通道编辑（多程序并行）。文字同界面的锁定提示；Quiet：今天只是按钮被禁用，没有 Toast。
     /// </summary>
     private OpResult? EditLocked(Reactor c)
     {
-        if (_m.Program.IsRunningProgram)
+        if (_m.Program.IsProgramOwned(c.Id))
             return OpResult.Fail(OpCodes.ChannelProgramOwned, "程序执行中 · 已锁定为只读", "warn") with { Quiet = true };
         if (c.IsWorking)
             return OpResult.Fail(OpCodes.ChannelBusy, "该通道正在运行 · 程序已锁定为只读", "warn") with { Quiet = true };
@@ -85,7 +85,7 @@ public sealed partial class OperatorCommands
             foreach (var ch in _m.Program.Channels)
             {
                 var r = ch.Reactor;
-                if (r.IsIdle || r.Id == rv || r.Id == _m.Program.RunningRv) continue;   // 程序执行中的通道不改
+                if (r.IsIdle || r.Id == rv || _m.Program.IsProgramOwned(r.Id)) continue;   // 程序执行中的通道不改
                 if (CommandPolicy.Strict(src) && r.IsWorking) { warnings.Add($"RV{r.Id} 正在运行 · 已跳过"); continue; }
                 var list = _m.Program.StepsOf(r.Id);
                 if (stepIndex < list.Count && list[stepIndex].Type == StepType.Heat)
@@ -124,7 +124,7 @@ public sealed partial class OperatorCommands
         {
             if (id == fromRv) continue;
             if (ChannelOr(id, out var r) is { } tnf) return tnf.AsTask();
-            if (id == _m.Program.RunningRv) continue;
+            if (_m.Program.IsProgramOwned(id)) continue;
             if (CommandPolicy.Strict(src) && (r.IsIdle || r.IsWorking))
             {
                 warnings.Add($"RV{id} {(r.IsIdle ? "已停用" : "正在运行")} · 已跳过");
@@ -173,22 +173,23 @@ public sealed partial class OperatorCommands
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (_m.Program.RunGuard(rv, snap) is { } why) return RunBlocked(why).AsTask();
-        _m.Program.StartRun(rv, snap);
+        // startedBy：触屏 "local"；远程带客户端名（快照 channels[i].program.startedBy）
+        _m.Program.StartRun(rv, snap, src.IsRemote ? src.Label : "local");
         return OpResult.Accepted("", "ok", new { rv, steps = snap.Count }).AsTask();
     }
 
     /// <summary>
-    /// 中止当前程序（幂等：没有程序在执行时 Silent）。程序引擎随后停加热、关阀并给出结果提示（事件，不是本命令的返回）。
-    /// 搅拌在运行时 Warnings 带「中止程序将停止全局搅拌」（H5）。触屏不提示（与今天一致）。
+    /// 中止某通道的程序（幂等：该通道没有程序在执行时 Silent）。只中止该通道，其他通道的程序继续。
+    /// 程序引擎随后停加热、关它自己的阀并给出结果提示（事件，不是本命令的返回）。
+    /// 搅拌在运行、且没有其他程序持有搅拌请求时 Warnings 带「中止程序将停止全局搅拌」（H5）。触屏不提示（与今天一致）。
     /// </summary>
-    public Task<OpResult> TryAbortProgram(CommandSource src)
+    public Task<OpResult> TryAbortProgram(CommandSource src, int rv)
     {
         if (Admit(src, ActionClass.Stop) is { } deny) return deny.AsTask();
-        if (!_m.Program.IsRunningProgram) return OpResult.Silent.AsTask();
-        int? rv = _m.Program.RunningRv;
-        bool stir = _m.StirOn;
-        _m.Program.AbortProgram();
-        var r = OpResult.Done("程序已中止 · 正在安全停止", "warn", new { rv }) with { Quiet = true };
+        if (!_m.Program.IsProgramOwned(rv)) return OpResult.Silent.AsTask();
+        bool stir = _m.StirOn && _m.StirShare.Holders.All(h => h == rv);
+        _m.Program.AbortProgram(rv);
+        var r = OpResult.Done($"RV{rv} 程序已中止 · 正在安全停止", "warn", new { rv }) with { Quiet = true };
         return (stir ? r.WithWarnings("中止程序将停止全局搅拌") : r).AsTask();
     }
 }

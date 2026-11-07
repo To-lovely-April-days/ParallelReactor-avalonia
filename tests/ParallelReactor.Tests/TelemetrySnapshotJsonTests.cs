@@ -16,9 +16,13 @@ public class TelemetrySnapshotJsonTests
         var ts = new DateTime(2026, 11, 6, 8, 12, 30, 120, DateTimeKind.Utc);
         var seg = new[] { new ProfileSegmentSnap(1, 80, 20, true, true), new ProfileSegmentSnap(2, 150, 60, true, false) };
         var profile = new ProfileSnap(true, 2, seg, 34.2, 80, false, "第 1 段");
+        var prog2 = new ChannelProgramSnap(true, 3, 7, "running", "148.6 / 150.0 °C", "local", ts.AddMinutes(-20), false);
+        var prog4 = new ChannelProgramSnap(true, 1, 5, "waitingGas", "等待气路（RV2 占用中）", "local", ts.AddMinutes(-5), true);
+        var prog6 = new ChannelProgramSnap(false, 4, 5, "completed", "5 步全部完成", "local", ts.AddHours(-2), false);
         ChannelSnap Ch(int id, bool curve) => new(id, id <= 4, id == 3 ? "alarm" : "heating", id == 3 ? "overTemp" : null, id == 3, false, null,
             offline ? null : 148.6, 150, offline ? null : 147, offline ? null : 63, !offline, false, offline ? null : 0, curve ? "curve" : "fixed",
-            new ApproachSnap("creep", 150, 147, "逼近中"), curve ? profile : null, offline ? null : 52.31, offline ? null : 1234, 50, null, false, id == 2);
+            new ApproachSnap("creep", 150, 147, "逼近中"), curve ? profile : null, offline ? null : 52.31, offline ? null : 1234, 50, null, false, id is 2 or 4,
+            id == 2 ? prog2 : id == 4 ? prog4 : id == 6 ? prog6 : null);
         var full = Enumerable.Range(1, 8).Select(i => Ch(i, i == 2) with { Profile = profile }).ToArray();
         var frame = new TelemetrySnapshot("telemetry", seq, ts, false, 18233,
             new ModeSnap("local", null),
@@ -28,6 +32,7 @@ public class TelemetrySnapshotJsonTests
             new StirSnap(true, 600, true, false, 1.0, 24.1, null, 0, 1000),
             new GasSnap(new[] { new GasInletSnap("inert", false), new GasInletSnap("A", false), new GasInletSnap("B", false) }, false, false, null, null),
             new ProgramSnap(true, 2, "运行中", 3, 7, "升温", "148.6 / 150.0 °C"),
+            new ProgramsSnap(2, new[] { 2, 4 }, 2, new[] { 4 }, "正在运行：RV2 RV4"),
             new LeakSnap(false, 0, null, null, false, false),
             new SessionSnap(true, "TP-017", "TP-017", "TP-017-20261106-070000.csv"));
         var settings = new SettingsSnap(200, 500, 1000, 50, 510, 250, true, 20, 8, 50, 10, 30, 2, 7, null,
@@ -45,14 +50,17 @@ public class TelemetrySnapshotJsonTests
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         var top = root.EnumerateObject().Select(p => p.Name).ToArray();
-        Assert.Equal(new[] { "type", "seq", "ts", "simulated", "eventSeqApplied", "mode", "estop", "comm", "channels", "stir", "gas", "program", "leakTest", "session" }, top);
+        Assert.Equal(new[] { "type", "seq", "ts", "simulated", "eventSeqApplied", "mode", "estop", "comm", "channels", "stir", "gas", "program", "programs", "leakTest", "session" }, top);
         var ch = root.GetProperty("channels")[0].EnumerateObject().Select(p => p.Name).ToArray();
         Assert.Equal(new[]
         {
             "id", "installed", "state", "alarmCause", "overTempTripped", "overPressureTripped", "startedBy", "tempC", "tempSpC", "tempSpDeviceC",
             "heatOutputPct", "tempOnline", "autotuning", "atMode", "spMode", "approach", "profile", "pressurePsi", "pressureRaw", "pressureSpPsi",
-            "gasConsumed", "valveOpen", "programOwned",
+            "gasConsumed", "valveOpen", "programOwned", "program",
         }, ch);
+        Assert.Equal(new[] { "running", "stepIndex", "stepCount", "state", "message", "startedBy", "startedAt", "waitingGas" },
+            root.GetProperty("channels")[1].GetProperty("program").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(new[] { "running", "channels", "gasHolder", "waitingGas", "summary" }, root.GetProperty("programs").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "active", "heat", "stir", "valves", "since", "latched", "restoredOnBoot" }, root.GetProperty("estop").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "on", "rpmSp", "online", "locked", "motorCurrentA", "busVoltageV", "fault", "alarmCode", "rampMsPer1000Rpm" }, root.GetProperty("stir").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "inlets", "ventOpen", "manualValve", "task", "owner" }, root.GetProperty("gas").EnumerateObject().Select(p => p.Name));
@@ -82,6 +90,16 @@ public class TelemetrySnapshotJsonTests
         Assert.Equal("notConfigured", root.GetProperty("estop").GetProperty("valves").GetString());
         Assert.Equal(JsonValueKind.Null, root.GetProperty("estop").GetProperty("since").ValueKind);
         Assert.True(root.GetProperty("channels")[1].GetProperty("programOwned").GetBoolean());
+        // 多程序并行：每通道 program 子块 + 总览 programs；没跑过程序的通道 program 为 null
+        Assert.Equal("running", root.GetProperty("channels")[1].GetProperty("program").GetProperty("state").GetString());
+        Assert.Equal("waitingGas", root.GetProperty("channels")[3].GetProperty("program").GetProperty("state").GetString());
+        Assert.True(root.GetProperty("channels")[3].GetProperty("program").GetProperty("waitingGas").GetBoolean());
+        Assert.False(root.GetProperty("channels")[5].GetProperty("program").GetProperty("running").GetBoolean());   // 已完成的终态仍可见
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("channels")[0].GetProperty("program").ValueKind);
+        Assert.Equal("2026-11-06T07:52:30.12Z", root.GetProperty("channels")[1].GetProperty("program").GetProperty("startedAt").GetString());
+        Assert.Equal(new[] { 2, 4 }, root.GetProperty("programs").GetProperty("channels").EnumerateArray().Select(x => x.GetInt32()));
+        Assert.Equal(2, root.GetProperty("programs").GetProperty("gasHolder").GetInt32());
+        Assert.Equal("正在运行：RV2 RV4", root.GetProperty("programs").GetProperty("summary").GetString());
         Assert.False(root.GetProperty("channels")[4].GetProperty("installed").GetBoolean());
         Assert.Equal("inert", root.GetProperty("gas").GetProperty("inlets")[0].GetProperty("id").GetString());
         Assert.Contains("运行中", json);   // 中文不转义
