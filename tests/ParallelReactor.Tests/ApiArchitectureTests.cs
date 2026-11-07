@@ -18,7 +18,13 @@ namespace ParallelReactor.Tests;
 /// </summary>
 public class ApiArchitectureTests
 {
-    private static IEnumerable<string> PureApiFiles() => SourceScan.Files("Api", "*.cs", recursive: false);
+    /// <summary>接口纯逻辑文件：Api/*.cs（不含 Api/Hmi/）+ 搬到 Contracts 工程的线上类型（同样不得引用 Avalonia / ViewModels / Dispatcher）。</summary>
+    private static IEnumerable<string> PureApiFiles()
+        => SourceScan.Files("Api", "*.cs", recursive: false)
+            .Concat(SourceScan.Files(ContractsDir, "*.cs", recursive: true).Where(f => !f.Contains("/obj/", StringComparison.Ordinal) && !f.Contains("/bin/", StringComparison.Ordinal)
+                && !f.Contains("\\obj\\", StringComparison.Ordinal) && !f.Contains("\\bin\\", StringComparison.Ordinal)));
+
+    public const string ContractsDir = "Contracts/ParallelReactor.Contracts";
 
     [Fact]
     public void Api_PureFiles_DoNotReferenceAvaloniaOrViewModels()
@@ -32,6 +38,7 @@ public class ApiArchitectureTests
             if (Regex.IsMatch(src, @"\bAvalonia\b")) bad.Add($"{SourceScan.Rel(f)}：引用 Avalonia");
             if (Regex.IsMatch(src, @"\bParallelReactor\.ViewModels\b|\bMainViewModel\b")) bad.Add($"{SourceScan.Rel(f)}：引用 ViewModels");
             if (Regex.IsMatch(src, @"\bDispatcher\b")) bad.Add($"{SourceScan.Rel(f)}：使用 Dispatcher");
+            if (f.Contains(ContractsDir, StringComparison.Ordinal) && Regex.IsMatch(src, @"Microsoft\.AspNetCore")) bad.Add($"{SourceScan.Rel(f)}：Contracts 引用 ASP.NET Core");
         }
         Assert.True(bad.Count == 0, "接口纯逻辑层越界：\n" + string.Join("\n", bad));
     }
@@ -116,8 +123,8 @@ public class ApiArchitectureTests
     [Fact]
     public void ApiErrorCodes_ExistInOpCodes()
     {
-        // 接口里出现的 OpCodes.X 常量名都在 Commands/OpResult.cs 中定义（设计稿 §11）
-        var opcodes = File.ReadAllText(Path.Combine(SourceScan.RepoRoot, "Commands", "OpResult.cs"));
+        // 接口里出现的 OpCodes.X 常量名都在 Contracts 的 Commands/OpCodes.cs 中定义（设计稿 §11；原在 Commands/OpResult.cs）
+        var opcodes = File.ReadAllText(Path.Combine(SourceScan.RepoRoot, ContractsDir, "Commands", "OpCodes.cs"));
         var defined = Regex.Matches(opcodes, @"public const string (\w+)\s*=").Select(m => m.Groups[1].Value).ToHashSet();
         var used = PureApiFiles().SelectMany(f => Regex.Matches(File.ReadAllText(f), @"OpCodes\.(\w+)").Select(m => m.Groups[1].Value)).Distinct().ToList();
         Assert.True(used.Count >= 8);

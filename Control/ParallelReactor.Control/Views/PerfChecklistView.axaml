@@ -1,0 +1,65 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.PerfChecklistView"
+             x:DataType="vm:PerfViewModel">
+  <!-- mock #perfPanel：面包屑「性能测试 › 测试项与通道 · 已选 N 项」+ 全选 / 清空；.perf-list：测试通道芯片 + 按阶段分组的 .check-item -->
+  <Border Classes="panel">
+    <Grid RowDefinitions="24,*">
+      <Border Classes="panel-heading">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Classes="breadcrumb">
+            <c:IconView Geometry="{StaticResource IcoMove}" Size="10" />
+            <TextBlock Text="性能测试" /><TextBlock Text="›" /><TextBlock Classes="strong" Text="测试项与通道" />
+            <TextBlock Classes="muted" Text="{Binding SelectedText}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Classes="heading-actions">
+            <Button Classes="flat icon-button" ToolTip.Tip="全选" Command="{Binding SelectAllCommand}"><c:IconView Geometry="{StaticResource IcoList}" Size="10" /></Button>
+            <Button Classes="flat icon-button" ToolTip.Tip="清空" Command="{Binding ClearAllCommand}"><c:IconView Geometry="{StaticResource IcoClose}" Size="10" /></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <ScrollViewer Grid.Row="1" Classes="perf-list" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="0,0,10,0">
+          <Border Classes="check-group-title" Margin="0">
+            <Grid ColumnDefinitions="*,Auto"><TextBlock Text="测试通道" /><TextBlock Grid.Column="1" Classes="right" Text="{Binding ChannelNote}" /></Grid>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Channels}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Classes="channel-picker" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:PerfChannelVm">
+                <ToggleButton Classes="flat channel-chip" Content="{Binding Name}" IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsEnabled}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+
+          <ItemsControl ItemsSource="{Binding Groups}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate DataType="vm:PerfGroupVm">
+                <StackPanel>
+                  <Border Classes="check-group-title">
+                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" /><TextBlock Grid.Column="1" Classes="right" Text="{Binding Right}" /></Grid>
+                  </Border>
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate DataType="vm:PerfItemVm">
+                        <CheckBox Classes="check-item" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip.Tip="{Binding Tooltip}">
+                          <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Classes="check-text" Classes.disabled="{Binding !IsEnabled}" Text="{Binding Title}" />
+                            <TextBlock Grid.Column="1" Classes="check-right" Classes.disabled="{Binding !IsEnabled}" Text="{Binding Right}" />
+                          </Grid>
+                        </CheckBox>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Border>
+</UserControl>

@@ -1,0 +1,928 @@
+{
+  "planId": "RV1-4-baseline",
+  "title": "RV1–RV4 首台摸底性能测试",
+  "version": "2026-11",
+  "source": "test-plan/RV1-4摸底性能测试方案.md",
+  "stages": [
+    {
+      "index": 0,
+      "name": "准备",
+      "items": [
+        {
+          "id": "R0",
+          "title": "带压 / 带热前置检查表",
+          "purpose": "§0.4 的 13 项逐项打勾、两人签字；同时核对软件提示阈值（§0.1-9）。未全勾 → 后续带压 / 带热项自动跳过。",
+          "sourceRef": "§0.4 前置检查表 · §0.1-9",
+          "group": "准备",
+          "targetChannels": [1, 2, 3, 4],
+          "channelSelectable": false,
+          "instrument": "—",
+          "estimatedMinutes": 15,
+          "hint": "手动确认 · 两人签字",
+          "steps": [
+            { "id": "R0-1", "kind": "checklist", "title": "前置检查表（13 项）", "text": "逐项确认后两人签字；每次提高压力级或温度档重新核对。", "twoSigners": true, "checklistItems": [
+              "A1 阀门失电时全部关闭", "A2 IO16R 断线后复位，复位后气源阀关闭", "A3 液压试验合格，试验压力 ≥ 本级压力", "A4 所有元件额定压力 ≥ 本级压力", "A5 泄放装置在位，整定值合适",
+              "减压阀出口已调到本级目标压力加少量余量", "A6 硬件超温切断已做当日功能试验", "A7 硬件急停已做当日功能试验", "A8 机械压力表读数正常", "A9 RV5–8 隔离状态完好",
+              "A10 热电偶与加热输出对应关系已确认", "软件提示阈值已按 0.1 第 9 条设好，并已在重启后核对", "TMaxSp 已调到本档的 SP" ] },
+            { "id": "R0-2", "kind": "compare", "title": "核对软件超压提示阈值 ≥ 100 psi", "compare": { "key": "alarms.overPressurePsi", "min": 100, "hard": false } },
+            { "id": "R0-3", "kind": "compare", "title": "核对软件超温提示阈值 ≤ 250 ℃", "compare": { "key": "alarms.overTempC", "max": 250, "hard": false } },
+            { "id": "R0-4", "kind": "compare", "title": "记录 TMaxSp", "compare": { "key": "limits.tempSpMaxC", "max": 250, "hard": false } },
+            { "id": "R0-5", "kind": "manualEntry", "title": "公共记录（§0.5）", "fields": [
+              { "key": "ambientC", "label": "环境温度", "unit": "℃", "instrument": "温湿度计", "min": -10, "max": 60, "envKey": "ambientTempC" },
+              { "key": "humidity", "label": "湿度", "unit": "%RH", "instrument": "温湿度计", "min": 0, "max": 100, "envKey": "humidityPct" },
+              { "key": "atmKpa", "label": "大气压", "unit": "kPa", "instrument": "大气压计", "min": 80, "max": 110, "envKey": "atmPressureKpa" },
+              { "key": "supplyV", "label": "电源电压", "unit": "V", "instrument": "电压表", "min": 0, "max": 500, "envKey": "supplyVoltageV" },
+              { "key": "assembly", "label": "装配编号 / 装液质量", "unit": "", "instrument": "", "isText": true, "envKey": "assemblyNo" } ] }
+          ],
+          "recordFields": [
+            { "key": "ambient", "label": "环境温度", "unit": "℃", "source": "manual:ambientC" },
+            { "key": "humidity", "label": "湿度", "unit": "%RH", "source": "manual:humidity" },
+            { "key": "atm", "label": "大气压", "unit": "kPa", "source": "manual:atmKpa" },
+            { "key": "check", "label": "检查表结果", "source": "step:R0-1.status" } ]
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "name": "功能与安全",
+      "items": [
+        {
+          "id": "F1",
+          "title": "通讯与读数核对",
+          "recordComm": true,
+          "purpose": "静置 30 min 记录 4 模块在线 / 失败计数；逐模块断开 10 s 记 t_off / t_on（3 次）；PT100 室温偏差 ΔT_0；RV5–8 空输入读数。",
+          "sourceRef": "§2 阶段1 F1",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": [],
+          "instrument": "PT100 标准探头 · 保温块",
+          "estimatedMinutes": 90,
+          "hint": "自动 · 30 min + 手动",
+          "steps": [
+            { "id": "F1-1", "kind": "instruction", "title": "上电静置", "text": "设备上电，确认 4 个模块（AI-8 / 8AI / DM2C / IO16R）均在线后确认。" },
+            { "id": "F1-2", "kind": "hold", "title": "静置记录 30 min（功能确认）", "durationSec": 1800, "signals": ["tempC", "pressurePsi", "busVoltageV"] },
+            { "id": "F1-3", "kind": "measure", "title": "静置统计", "metrics": [
+              { "key": "pvSigma", "label": "静置 PV 噪声 σ", "formula": "sigma", "unit": "℃", "signal": "tempC", "window": "step:F1-2" },
+              { "key": "pSigma", "label": "静置压力噪声 σ", "formula": "sigma", "unit": "psi", "signal": "pressurePsi", "window": "step:F1-2" },
+              { "key": "frames", "label": "采样帧数", "formula": "count", "unit": "帧", "signal": "tempC", "window": "step:F1-2" } ] },
+            { "id": "F1-4", "kind": "instruction", "title": "逐模块断开 10 s 后恢复（每模块 3 次）", "text": "按 AI-8 → 8AI → DM2C → IO16R 顺序，断开该模块端子 10 s 后恢复，每模块 3 次；用秒表记 t_off（断开到界面显示「—」）和 t_on（恢复到重新显示读数）。" },
+            { "id": "F1-5", "kind": "manualEntry", "title": "录入 t_off / t_on", "fields": [
+              { "key": "tOffAi8", "label": "AI-8 t_off ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOnAi8", "label": "AI-8 t_on ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOff8ai", "label": "8AI t_off ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOn8ai", "label": "8AI t_on ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOffDm2c", "label": "DM2C t_off ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOnDm2c", "label": "DM2C t_on ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOffIo", "label": "IO16R t_off ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 },
+              { "key": "tOnIo", "label": "IO16R t_on ×3", "unit": "s", "instrument": "秒表", "repeat": 3, "min": 0, "max": 120 } ] },
+            { "id": "F1-6", "kind": "instruction", "title": "PT100 与热电偶同置保温块", "text": "室温下把 PT100 标准探头和每路热电偶绑在一起放进同一保温块，稳定后确认，开始 10 min 记录。" },
+            { "id": "F1-7", "kind": "hold", "title": "室温对比记录 10 min", "durationSec": 600, "signals": ["tempC"] },
+            { "id": "F1-8", "kind": "manualEntry", "title": "录入 PT100 10 min 均值", "fields": [
+              { "key": "tRef", "label": "PT100 均值", "unit": "℃", "instrument": "PT100 记录仪", "perChannel": true, "min": -10, "max": 60 },
+              { "key": "scale", "label": "寄存器比例（0.1 / 0.01 ℃）", "unit": "", "instrument": "AI-8 面板", "isText": true } ] },
+            { "id": "F1-9", "kind": "measure", "title": "室温偏差 ΔT_0", "metrics": [
+              { "key": "pvMean", "label": "PV 10 min 均值", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:F1-7" },
+              { "key": "dT0", "label": "ΔT_0 = mean(PV) − mean(T_ref)", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:F1-7", "reference": "manual:tRef", "direction": "twoSided", "reference5": "Endeavor 温度准确度 ≤ 4 ℃（室温–100 ℃）" },
+              { "key": "tOffMax", "label": "t_off 最大（AI-8）", "formula": "max", "unit": "s", "signal": "manual:tOffAi8", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tOnMax", "label": "t_on 最大（AI-8）", "formula": "max", "unit": "s", "signal": "manual:tOnAi8", "perChannel": false, "direction": "lowerBetter" } ] },
+            { "id": "F1-10", "kind": "instruction", "title": "热电偶装回后重做 A10", "text": "热电偶装回后逐路单独加热到 SP=40 ℃，确认只有对应通道 PV 上升（R0 的 A10），完成后确认。", "onFail": "continue" },
+            { "id": "F1-11", "kind": "manualEntry", "title": "RV5–8 空输入读数", "fields": [ { "key": "emptyInput", "label": "RV5–8 空输入显示值", "unit": "", "instrument": "界面", "isText": true } ] }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "pvMean", "label": "PV 均值", "unit": "℃", "source": "metric:pvMean" },
+            { "key": "tRef", "label": "T_ref", "unit": "℃", "source": "manual:tRef" },
+            { "key": "dT0", "label": "ΔT_0", "unit": "℃", "source": "metric:dT0" },
+            { "key": "pvSigma", "label": "PV σ", "unit": "℃", "source": "metric:pvSigma" } ],
+          "referenceValues": [ { "metric": "dT0", "text": "温度准确度（液温与显示值之差）室温–100 ℃ ≤ 4 ℃", "source": "Endeavor 手册 p.9" } ]
+        },
+        {
+          "id": "F2",
+          "title": "阀门与 IO16R",
+          "purpose": "手动阀保持、断线行为、逐路开关正确率、互锁、掉电行为（0 压力）；第 6 步 L1 开阀响应 t_v（需 R0）。阀控 / 手动阀不对外暴露 → 触屏操作 + 人工记录。",
+          "sourceRef": "§2 阶段1 F2",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0"],
+          "instrument": "示波器 · 250 Ω 采样电阻",
+          "estimatedMinutes": 90,
+          "hint": "触屏操作 + 人工记录",
+          "steps": [
+            { "id": "F2-1", "kind": "instruction", "title": "手动阀保持检查", "text": "触屏打开手动阀控，开 SV1，不拔线，等 10 s，观察阀门是否保持打开。" },
+            { "id": "F2-2", "kind": "manualEntry", "title": "录入保持结果", "fields": [ { "key": "hold10s", "label": "10 s 后阀门状态（保持 / 复位）", "unit": "", "instrument": "目视", "isText": true } ] },
+            { "id": "F2-3", "kind": "instruction", "title": "断线行为（0 压力）×3", "text": "开着 SV1 和排空，拔掉 IO16R 通讯线 5 s，观察 2 s 后继电器保持还是复位，再插回观察。做 3 次。" },
+            { "id": "F2-4", "kind": "manualEntry", "title": "录入断线行为", "fields": [ { "key": "busLoss", "label": "断线 2 s 后状态（保持 / 复位）", "unit": "", "instrument": "目视", "isText": true } ] },
+            { "id": "F2-5", "kind": "instruction", "title": "逐路开关 5 次", "text": "0 压力下逐路开、关 SV1–4、惰性气、气 A、气 B、排空，每路 5 次；确认指令、继电器指示灯、实际通断三者一致。" },
+            { "id": "F2-6", "kind": "manualEntry", "title": "录入正确次数", "fields": [
+              { "key": "okSv", "label": "SV1–4 各 5 次正确数", "unit": "次", "instrument": "目视", "perChannel": true, "min": 0, "max": 5 },
+              { "key": "okGas", "label": "惰性气 / 气A / 气B / 排空 正确数", "unit": "次", "instrument": "目视", "repeat": 4, "min": 0, "max": 5 } ] },
+            { "id": "F2-7", "kind": "instruction", "title": "互锁检查", "text": "同时开两路气源应被拒绝；气源和排空同时开应被拒绝。确认结果。" },
+            { "id": "F2-8", "kind": "instruction", "title": "掉电行为", "text": "阀门开着时让 PC 掉电或退出 HMI，观察阀门状态。", "onFail": "continue" },
+            { "id": "F2-9", "kind": "manualEntry", "title": "录入互锁 / 掉电结果", "fields": [
+              { "key": "interlock", "label": "互锁结果", "unit": "", "instrument": "目视", "isText": true },
+              { "key": "powerLoss", "label": "掉电后阀门状态", "unit": "", "instrument": "目视", "isText": true } ] },
+            { "id": "F2-10", "kind": "instruction", "title": "开阀响应时间（L1，需前置检查表）", "text": "示波器 CH1 接线圈电压、CH2 接 4–20 mA 回路 250 Ω 采样电阻（≥ 1 kHz）。总管调到 L1，每路开 SV 5 次，读线圈通电到压力开始变化的延迟 t_v。" },
+            { "id": "F2-11", "kind": "manualEntry", "title": "录入 t_v", "fields": [ { "key": "tv", "label": "t_v ×5", "unit": "ms", "instrument": "示波器", "repeat": 5, "perChannel": true, "min": 0, "max": 5000 } ] },
+            { "id": "F2-12", "kind": "measure", "title": "阀门指标", "metrics": [
+              { "key": "tvMean", "label": "t_v 均值", "formula": "mean", "unit": "ms", "signal": "manual:tv", "direction": "lowerBetter" },
+              { "key": "tvMax", "label": "t_v 最大", "formula": "max", "unit": "ms", "signal": "manual:tv", "direction": "lowerBetter" },
+              { "key": "okRate", "label": "SV 动作正确数（/5）", "formula": "mean", "unit": "次", "signal": "manual:okSv" } ] }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "线圈 / SV", "source": "run.channel" },
+            { "key": "ok", "label": "5 次正确数", "source": "manual:okSv" },
+            { "key": "tv", "label": "t_v", "unit": "ms", "source": "manual:tv" },
+            { "key": "tvMax", "label": "t_v 最大", "unit": "ms", "source": "metric:tvMax" } ]
+        },
+        {
+          "id": "F3",
+          "title": "报警与联锁（信号源注入）",
+          "purpose": "超压提示：RV1 注入 4–20 mA、超压值设 100 psi，运行 40 ℃ 保温程序确认程序中止 / 加热停止；超温提示：软件 50 / SP 60 / 硬件 65 ℃，55 ℃ 手停。每项 3 次。",
+          "sourceRef": "§2 阶段1 F3",
+          "targetChannels": [1],
+          "preconditions": ["R0"],
+          "instrument": "4–20 mA 过程校验仪",
+          "estimatedMinutes": 90,
+          "hint": "触屏设定 + 自动采集",
+          "repeat": { "count": 3 },
+          "steps": [
+            { "id": "F3-1", "kind": "instruction", "title": "超压注入准备（第 {iteration} 次）", "text": "断开 RV1 变送器，8AI 的 RV1 输入接信号源；触屏把超压值设为 100 psi；电流置 4 mA。" },
+            { "id": "F3-2", "kind": "compare", "title": "核对超压阈值 = 100 psi", "compare": { "key": "alarms.overPressurePsi", "expect": 100, "tolerance": 0.5, "hard": false } },
+            { "id": "F3-3", "kind": "command", "title": "启用 RV1", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "F3-4", "kind": "command", "title": "下发 40 ℃ 保温程序", "command": { "op": "programPut", "args": { "steps": [ { "type": "heat", "params": { "mode": "fixed", "temp": 40, "wait": 30 } } ] } } },
+            { "id": "F3-5", "kind": "command", "title": "运行程序", "command": { "op": "programRun", "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "F3-6", "kind": "instruction", "title": "缓慢上调电流直到触发", "text": "电流从 4 mA 缓慢上调（110 psi ≈ 6.93 mA @600 psi FS），观察触发时刻、触发值与状态变化；确认程序中止、加热输出归零后确认。" },
+            { "id": "F3-7", "kind": "manualEntry", "title": "录入超压触发", "fields": [
+              { "key": "trigMa", "label": "触发电流", "unit": "mA", "instrument": "校验仪", "min": 4, "max": 20 },
+              { "key": "trigPsi", "label": "触发时软件显示压力", "unit": "psi", "instrument": "界面", "min": 0, "max": 600 },
+              { "key": "progAborted", "label": "程序是否中止 / 加热是否停止 / 事件是否记录", "unit": "", "instrument": "界面", "isText": true } ] },
+            { "id": "F3-8", "kind": "measure", "title": "超压触发统计", "metrics": [
+              { "key": "heatAfter", "label": "触发后加热输出最大", "formula": "max", "unit": "%", "signal": "heatOutputPct", "window": "step:F3-7", "direction": "lowerBetter" },
+              { "key": "trigPsi", "label": "触发压力", "formula": "mean", "unit": "psi", "signal": "manual:trigPsi" } ] },
+            { "id": "F3-9", "kind": "instruction", "title": "复位（§0.1-10）", "text": "抽屉里点「停止」→ 重新启用通道回到 Ready → 确认状态。恢复变送器接线。" },
+            { "id": "F3-10", "kind": "instruction", "title": "超温提示准备（需 A6 已做当日试验）", "text": "软件超温值设 50 ℃，SP 60 ℃，硬件限值 65 ℃；指定一名操作员在 PV 到 55 ℃ 时手动停止加热。" },
+            { "id": "F3-11", "kind": "compare", "title": "核对超温阈值 = 50 ℃", "compare": { "key": "alarms.overTempC", "expect": 50, "tolerance": 0.5, "hard": false } },
+            { "id": "F3-12", "kind": "command", "title": "RV1 加热到 60 ℃", "command": { "op": "heatStart", "args": { "tempC": 60 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "F3-13", "kind": "waitStable", "title": "等待 PV 越过 50 ℃ 或操作员 55 ℃ 手停", "signal": "tempC", "band": 8, "reference": "value", "value": 55, "windowSec": 10, "timeoutSec": 1800, "onFail": "continue" },
+            { "id": "F3-14", "kind": "manualEntry", "title": "录入超温触发", "fields": [
+              { "key": "otTrigC", "label": "触发温度", "unit": "℃", "instrument": "界面", "min": 0, "max": 100 },
+              { "key": "otText", "label": "加热是否继续 / 状态文字 / 事件是否记录", "unit": "", "instrument": "界面", "isText": true } ] },
+            { "id": "F3-15", "kind": "command", "title": "停止 RV1 加热", "command": { "op": "heatStop" }, "onFail": "continue" },
+            { "id": "F3-16", "kind": "instruction", "title": "复位并确认「升温超时」「压力偏离」不触发", "text": "按 §0.1-10 复位；确认两项报警不会触发，记为已知缺陷。" }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "次数", "source": "run.iteration" },
+            { "key": "trigMa", "label": "注入电流", "unit": "mA", "source": "manual:trigMa" },
+            { "key": "trigPsi", "label": "触发值", "unit": "psi", "source": "manual:trigPsi" },
+            { "key": "heatAfter", "label": "触发后加热输出", "unit": "%", "source": "metric:heatAfter" },
+            { "key": "otTrigC", "label": "超温触发温度", "unit": "℃", "source": "manual:otTrigC" } ]
+        },
+        {
+          "id": "F4",
+          "title": "急停",
+          "purpose": "RV1–4 60 ℃ 稳定 + 300 rpm + SV1 开（0 压力）；软件急停测 t_heat（电流钳）/ t_stir（转速表）/ t_valve（示波器），软件可见时刻作参考；5 次。硬件急停见 F4H。",
+          "sourceRef": "§2 阶段1 F4",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0"],
+          "instrument": "钳形电流表 · 激光转速表 · 示波器",
+          "estimatedMinutes": 120,
+          "hint": "自动 + 仪器读数 · 5 次",
+          "hardCriterion": "复位后设备保持停止",
+          "repeat": { "count": 5 },
+          "steps": [
+            { "id": "F4-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "F4-2", "kind": "command", "title": "RV{rv} 加热到 60 ℃", "command": { "op": "heatStart", "args": { "tempC": 60 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "F4-3", "kind": "command", "title": "搅拌 300 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 300, "on": true } } },
+            { "id": "F4-4", "kind": "waitStable", "title": "等待 60 ℃ 稳定（SP±0.5，10 min 窗）", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.05, "reference": "sp", "windowSec": 600, "timeoutSec": 3600, "onFail": "continue" },
+            { "id": "F4-5", "kind": "instruction", "title": "手动打开 SV1，仪器就位", "text": "触屏手动阀控打开 SV1（0 压力）；电流钳夹加热回路、转速表对准桨 / 轴、示波器接 SV1 线圈；准备后确认，下一步将由 PC 下发急停。" },
+            { "id": "F4-6", "kind": "command", "title": "软件急停（第 {iteration} 次）", "perChannel": false, "command": { "op": "estop", "args": { "note": "F4 软件急停 第{iteration}次" } } },
+            { "id": "F4-7", "kind": "hold", "title": "急停后记录 60 s", "durationSec": 60, "signals": ["heatOutputPct", "rpm"] },
+            { "id": "F4-8", "kind": "manualEntry", "title": "录入三个时间", "fields": [
+              { "key": "tHeat", "label": "t_heat（电流钳）", "unit": "s", "instrument": "钳形电流表", "min": 0, "max": 60 },
+              { "key": "tStir", "label": "t_stir（转速表）", "unit": "s", "instrument": "激光转速表", "min": 0, "max": 60 },
+              { "key": "tValve", "label": "t_valve（示波器）", "unit": "s", "instrument": "示波器", "min": 0, "max": 60 },
+              { "key": "resetHold", "label": "复位后是否保持停止（是 / 否）", "unit": "", "instrument": "目视", "isText": true } ] },
+            { "id": "F4-9", "kind": "measure", "title": "急停指标", "metrics": [
+              { "key": "swHeat0", "label": "软件可见：急停后加热输出最大", "formula": "max", "unit": "%", "signal": "heatOutputPct", "window": "step:F4-7", "direction": "lowerBetter" },
+              { "key": "swRpm0", "label": "软件可见：急停后转速设定最大", "formula": "max", "unit": "rpm", "signal": "rpm", "window": "step:F4-7", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tHeat", "label": "t_heat", "formula": "max", "unit": "s", "signal": "manual:tHeat", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tStir", "label": "t_stir", "formula": "max", "unit": "s", "signal": "manual:tStir", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tValve", "label": "t_valve", "formula": "max", "unit": "s", "signal": "manual:tValve", "perChannel": false, "direction": "lowerBetter" } ] },
+            { "id": "F4-10", "kind": "instruction", "title": "复位急停并恢复", "text": "触屏复位急停（§0.1-10 顺序），确认加热 / 搅拌 / 阀门均保持停止后再恢复到初始工况。急停已使 PC 的控制权作废，下一步将重新申请（触屏需确认）。" },
+            { "id": "F4-11", "kind": "command", "title": "重新申请控制权", "perChannel": false, "command": { "op": "controlRequest" } }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "次数", "source": "run.iteration" },
+            { "key": "tHeat", "label": "t_heat", "unit": "s", "source": "manual:tHeat" },
+            { "key": "tStir", "label": "t_stir", "unit": "s", "source": "manual:tStir" },
+            { "key": "tValve", "label": "t_valve", "unit": "s", "source": "manual:tValve" },
+            { "key": "reset", "label": "复位后状态", "source": "manual:resetHold" } ],
+          "referenceValues": [ { "metric": "tHeat", "text": "无公开对标；记录最大值", "source": "方案 §2 F4" } ]
+        },
+        {
+          "id": "F4H",
+          "title": "硬件急停（按钮）",
+          "purpose": "与 F4 同工况（60 ℃ 稳定 + 300 rpm + SV1 开），由操作员按硬件急停按钮；仪器测 t_heat / t_stir / t_valve，软件可见时刻作参考；5 次。",
+          "sourceRef": "§2 阶段1 F4（硬件急停）",
+          "group": "功能与安全",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0"],
+          "instrument": "钳形电流表 · 激光转速表 · 示波器",
+          "estimatedMinutes": 120,
+          "hint": "手动按钮 + 仪器读数 · 5 次",
+          "hardCriterion": "复位后设备保持停止",
+          "repeat": { "count": 5 },
+          "steps": [
+            { "id": "F4H-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "F4H-2", "kind": "command", "title": "RV{rv} 加热到 60 ℃", "command": { "op": "heatStart", "args": { "tempC": 60 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "F4H-3", "kind": "command", "title": "搅拌 300 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 300, "on": true } } },
+            { "id": "F4H-4", "kind": "waitStable", "title": "等待 60 ℃ 稳定（SP±0.5，10 min 窗）", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.05, "reference": "sp", "windowSec": 600, "timeoutSec": 3600, "onFail": "continue" },
+            { "id": "F4H-5", "kind": "instruction", "title": "手动打开 SV1，仪器就位，按下硬件急停", "text": "触屏手动阀控打开 SV1（0 压力）；电流钳 / 转速表 / 示波器就位；按下硬件急停按钮后立即确认本步（PC 自此只记录）。" },
+            { "id": "F4H-6", "kind": "hold", "title": "急停后记录 60 s", "durationSec": 60, "signals": ["heatOutputPct", "rpm"] },
+            { "id": "F4H-7", "kind": "manualEntry", "title": "录入三个时间", "fields": [
+              { "key": "tHeat", "label": "t_heat（电流钳）", "unit": "s", "instrument": "钳形电流表", "min": 0, "max": 60 },
+              { "key": "tStir", "label": "t_stir（转速表）", "unit": "s", "instrument": "激光转速表", "min": 0, "max": 60 },
+              { "key": "tValve", "label": "t_valve（示波器）", "unit": "s", "instrument": "示波器", "min": 0, "max": 60 },
+              { "key": "resetHold", "label": "复位后是否保持停止（是 / 否）", "unit": "", "instrument": "目视", "isText": true } ] },
+            { "id": "F4H-8", "kind": "measure", "title": "急停指标", "metrics": [
+              { "key": "swHeat0", "label": "软件可见：急停后加热输出最大", "formula": "max", "unit": "%", "signal": "heatOutputPct", "window": "step:F4H-6", "direction": "lowerBetter" },
+              { "key": "tHeat", "label": "t_heat", "formula": "max", "unit": "s", "signal": "manual:tHeat", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tStir", "label": "t_stir", "formula": "max", "unit": "s", "signal": "manual:tStir", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "tValve", "label": "t_valve", "formula": "max", "unit": "s", "signal": "manual:tValve", "perChannel": false, "direction": "lowerBetter" } ] },
+            { "id": "F4H-9", "kind": "instruction", "title": "复位急停并恢复", "text": "触屏复位急停（§0.1-10 顺序），确认加热 / 搅拌 / 阀门均保持停止后再恢复到初始工况。" },
+            { "id": "F4H-10", "kind": "command", "title": "重新申请控制权", "perChannel": false, "command": { "op": "controlRequest" } }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "次数", "source": "run.iteration" },
+            { "key": "tHeat", "label": "t_heat", "unit": "s", "source": "manual:tHeat" },
+            { "key": "tStir", "label": "t_stir", "unit": "s", "source": "manual:tStir" },
+            { "key": "tValve", "label": "t_valve", "unit": "s", "source": "manual:tValve" },
+            { "key": "reset", "label": "复位后状态", "source": "manual:resetHold" } ]
+        },
+        {
+          "id": "F5",
+          "title": "传感器故障",
+          "purpose": "热电偶断线（先断加热电源）30 s 观察 AI-8 显示与输出命令；变送器断线（0 压力）确认显示 0 MPa 且不报警，记录原码。每项 2 次。",
+          "sourceRef": "§2 阶段1 F5",
+          "targetChannels": [1],
+          "instrument": "—",
+          "estimatedMinutes": 30,
+          "hint": "触屏操作 + 自动采集",
+          "repeat": { "count": 2 },
+          "steps": [
+            { "id": "F5-1", "kind": "instruction", "title": "热电偶断线（第 {iteration} 次）", "text": "先断开加热电源（接触器断开），再断开 RV1 热电偶 30 s。" },
+            { "id": "F5-2", "kind": "hold", "title": "记录 30 s", "durationSec": 30, "signals": ["tempC", "heatOutputPct"] },
+            { "id": "F5-3", "kind": "manualEntry", "title": "录入 AI-8 显示 / 输出命令", "fields": [
+              { "key": "ai8Out", "label": "AI-8 输出命令", "unit": "%", "instrument": "AI-8 面板", "min": 0, "max": 100 },
+              { "key": "ai8Disp", "label": "AI-8 显示", "unit": "", "instrument": "AI-8 面板", "isText": true } ] },
+            { "id": "F5-4", "kind": "instruction", "title": "变送器断线（0 压力）", "text": "断开 RV1 变送器，观察软件显示（应为 0 MPa 且不报警，已知缺陷）。" },
+            { "id": "F5-5", "kind": "hold", "title": "记录 30 s", "durationSec": 30, "signals": ["pressurePsi", "pressureRaw"] },
+            { "id": "F5-6", "kind": "measure", "title": "断线读数", "metrics": [
+              { "key": "rawMean", "label": "断线时压力原码均值", "formula": "mean", "unit": "码", "signal": "pressureRaw", "window": "step:F5-5" },
+              { "key": "psiMean", "label": "断线时压力显示均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:F5-5" },
+              { "key": "heatCmd", "label": "热电偶断线时软件加热输出最大", "formula": "max", "unit": "%", "signal": "heatOutputPct", "window": "step:F5-2" } ] },
+            { "id": "F5-7", "kind": "instruction", "title": "恢复接线", "text": "恢复热电偶与变送器接线，确认读数正常。" }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "次数", "source": "run.iteration" },
+            { "key": "ai8Out", "label": "AI-8 输出命令", "unit": "%", "source": "manual:ai8Out" },
+            { "key": "raw", "label": "断线原码", "source": "metric:rawMean" },
+            { "key": "psi", "label": "断线显示", "unit": "psi", "source": "metric:psiMean" } ]
+        },
+        {
+          "id": "F6",
+          "title": "负载下的通讯与电磁干扰",
+          "recordComm": true,
+          "purpose": "搅拌 n_max（S2 结果）+ 4 路 SP=80 ℃ 全功率 30 min：记录各模块失败数、总电流 / 压降；室温不加热时搅拌开 / 关的 PV 噪声 σ。",
+          "sourceRef": "§2 阶段1 F6",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["S2", "R0"],
+          "instrument": "钳形电流表 · 电压表",
+          "estimatedMinutes": 60,
+          "hint": "自动 · 30 min + 读数",
+          "steps": [
+            { "id": "F6-1", "kind": "hold", "title": "室温 · 搅拌关 · PV 噪声 5 min", "durationSec": 300, "signals": ["tempC"] },
+            { "id": "F6-2", "kind": "manualEntry", "title": "输入 n_max（S2 结果）", "fields": [ { "key": "nMax", "label": "n_max", "unit": "rpm", "instrument": "S2 结果", "min": 0, "max": 2000 } ] },
+            { "id": "F6-3", "kind": "command", "title": "搅拌 n_max（取 F6-2 录入值）", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{manual:nMax}", "on": true } } },
+            { "id": "F6-4", "kind": "hold", "title": "室温 · 搅拌开 · PV 噪声 5 min", "durationSec": 300, "signals": ["tempC"] },
+            { "id": "F6-5", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "F6-6", "kind": "command", "title": "RV{rv} 加热 80 ℃", "command": { "op": "heatStart", "args": { "tempC": 80 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "F6-7", "kind": "hold", "title": "全功率记录 30 min", "durationSec": 1800, "signals": ["tempC", "heatOutputPct", "busVoltageV"] },
+            { "id": "F6-8", "kind": "manualEntry", "title": "录入电源读数与失败数", "fields": [
+              { "key": "amps", "label": "总电流", "unit": "A", "instrument": "钳形电流表", "min": 0, "max": 200 },
+              { "key": "drop", "label": "压降", "unit": "V", "instrument": "电压表", "min": 0, "max": 50 },
+              { "key": "fails", "label": "各模块失败数（AI-8 / 8AI / DM2C / IO16R）", "unit": "次", "instrument": "触屏通讯页", "repeat": 4, "min": 0 } ] },
+            { "id": "F6-9", "kind": "measure", "title": "噪声与一致性", "metrics": [
+              { "key": "sigmaOff", "label": "PV σ（搅拌关）", "formula": "sigma", "unit": "℃", "signal": "tempC", "window": "step:F6-1" },
+              { "key": "sigmaOn", "label": "PV σ（搅拌开）", "formula": "sigma", "unit": "℃", "signal": "tempC", "window": "step:F6-4" },
+              { "key": "busMin", "label": "母线电压最小", "formula": "min", "unit": "V", "signal": "busVoltageV", "window": "step:F6-7", "perChannel": false },
+              { "key": "failsSum", "label": "模块失败数（均值）", "formula": "mean", "unit": "次", "signal": "manual:fails", "perChannel": false } ] },
+            { "id": "F6-10", "kind": "command", "title": "停止 RV{rv} 加热", "command": { "op": "heatStop" }, "onFail": "continue" },
+            { "id": "F6-11", "kind": "command", "title": "停止搅拌", "perChannel": false, "command": { "op": "stirStop" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "sigmaOff", "label": "PV σ 搅拌关", "unit": "℃", "source": "metric:sigmaOff" },
+            { "key": "sigmaOn", "label": "PV σ 搅拌开", "unit": "℃", "source": "metric:sigmaOn" },
+            { "key": "amps", "label": "总电流", "unit": "A", "source": "manual:amps" },
+            { "key": "drop", "label": "压降", "unit": "V", "source": "manual:drop" } ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "name": "搅拌",
+      "items": [
+        {
+          "id": "S1",
+          "title": "转速误差",
+          "purpose": "水、室温；100/200/300/500/750/1000 rpm 先升后降，每档稳定 1 min 后转速表读 3 次（4 釜各测）；e_n、s_n、4 釜极差。方案 3 个循环，本次编码 1 个循环（12 档），其余循环重复运行本项。",
+          "sourceRef": "§2 阶段2 S1",
+          "targetChannels": [1, 2, 3, 4],
+          "channelSelectable": false,
+          "preconditions": [],
+          "instrument": "激光转速表（0.1 rpm 档）",
+          "estimatedMinutes": 120,
+          "hint": "转速表读数 · 12 档",
+          "repeat": { "variable": "rpm", "values": [100, 200, 300, 500, 750, 1000, 1000, 750, 500, 300, 200, 100], "unit": "rpm" },
+          "steps": [
+            { "id": "S1-1", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } } },
+            { "id": "S1-2", "kind": "hold", "title": "稳定 1 min", "durationSec": 60, "signals": ["rpm", "busVoltageV"] },
+            { "id": "S1-3", "kind": "manualEntry", "title": "转速表读数（每釜 3 次）", "text": "透过视窗测桨叶；开盖测量只允许常温 / 水 / 低液位 / 防护罩。注明测的是桨还是轴。", "fields": [
+              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "perChannel": true, "min": 0, "max": 3000 },
+              { "key": "pos", "label": "测量位置（桨 / 轴）", "unit": "", "instrument": "", "isText": true } ] },
+            { "id": "S1-4", "kind": "measure", "title": "转速指标", "metrics": [
+              { "key": "nMean", "label": "n̄_meas", "formula": "mean", "unit": "rpm", "signal": "manual:n" },
+              { "key": "eN", "label": "转速误差 e_n", "formula": "rpmError", "unit": "%", "signal": "manual:n", "reference": "iteration", "direction": "twoSided", "reference5": "开环正常时 e_n ≈ 0" },
+              { "key": "sN", "label": "转速稳定性 s_n", "formula": "sigma", "unit": "rpm", "signal": "manual:n", "direction": "lowerBetter" },
+              { "key": "range4", "label": "4 釜 n̄ 极差", "formula": "crossRange", "unit": "rpm", "signal": "manual:n", "perChannel": false, "direction": "lowerBetter" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "档", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "n", "label": "读数 ×3", "unit": "rpm", "source": "manual:n" },
+            { "key": "nMean", "label": "n̄", "unit": "rpm", "source": "metric:nMean" },
+            { "key": "eN", "label": "e_n", "unit": "%", "source": "metric:eN" },
+            { "key": "sN", "label": "s_n", "unit": "rpm", "source": "metric:sN" },
+            { "key": "pos", "label": "位置", "source": "manual:pos" } ],
+          "referenceValues": [ { "metric": "eN", "text": "搅拌 250–1000 rpm，改转速后 ≤ 50 s 生效", "source": "Endeavor" } ]
+        },
+        {
+          "id": "S2",
+          "title": "失步边界 / 最高可用转速（简化）",
+          "purpose": "RpmMax 临时设 2000（触屏）；从 500 起每次 +50，每档 2 min，直到 |e_n|>1% / 异响 / 停转 / 驱动器报警 → n_slip。水 25 ℃ 与硅油 25 ℃ 各 n=2。",
+          "sourceRef": "§2 阶段2 S2",
+          "targetChannels": [1, 2, 3, 4],
+          "channelSelectable": false,
+          "preconditions": ["S1"],
+          "instrument": "激光转速表",
+          "estimatedMinutes": 150,
+          "hint": "触屏设 RpmMax + 转速表",
+          "hardCriterion": "|e_n| > 1% 即判失步（判据，非规格）",
+          "repeat": { "variable": "rpm", "values": [500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500], "unit": "rpm" },
+          "steps": [
+            { "id": "S2-1", "kind": "compare", "title": "核对 RpmMax ≥ 2000", "compare": { "key": "limits.rpmMax", "min": 2000, "hard": false }, "onFail": "continue" },
+            { "id": "S2-2", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } }, "onFail": "skipItem" },
+            { "id": "S2-3", "kind": "hold", "title": "保持 2 min", "durationSec": 120, "signals": ["rpm", "busVoltageV"] },
+            { "id": "S2-4", "kind": "manualEntry", "title": "转速表读数 + 现象", "text": "若已出现 |e_n|>1%、异响、停转或驱动器报警，录入后请在下一步选择「跳过」以结束本项（n_slip = 本档）。", "fields": [
+              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 },
+              { "key": "phen", "label": "现象（正常 / 偏差 / 异响 / 停转 / 报警码）", "unit": "", "instrument": "", "isText": true } ] },
+            { "id": "S2-5", "kind": "measure", "title": "本档误差", "metrics": [
+              { "key": "eN", "label": "e_n", "formula": "rpmError", "unit": "%", "signal": "manual:n", "reference": "iteration", "perChannel": false, "direction": "twoSided" },
+              { "key": "busMin", "label": "母线电压最小", "formula": "min", "unit": "V", "signal": "busVoltageV", "window": "step:S2-3", "perChannel": false } ] },
+            { "id": "S2-6", "kind": "instruction", "title": "继续加 50 rpm？", "text": "本档 {value} rpm 已完成。未出现失步 → 确认进入下一档；已失步 → 选择跳过 / 拒绝以结束本项，n_slip = {value} rpm。", "onFail": "skipItem" }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "档", "source": "run.iteration" },
+            { "key": "eN", "label": "e_n", "unit": "%", "source": "metric:eN" },
+            { "key": "phen", "label": "现象", "source": "manual:phen" },
+            { "key": "bus", "label": "母线电压", "unit": "V", "source": "metric:busMin" } ]
+        },
+        {
+          "id": "S3",
+          "title": "加减速与启动",
+          "purpose": "0→1000 与 1000→0，加减速 1000/500/200 ms/1000rpm（触屏设）：是否失步、稳定用时。方案 n=3，本次编码每档 1 轮；n_max 连续 1 h 温升（红外测电机 / 驱动器）未编码，二期或手动记录。",
+          "sourceRef": "§2 阶段2 S3",
+          "targetChannels": [1, 2, 3, 4],
+          "channelSelectable": false,
+          "preconditions": ["S2"],
+          "instrument": "激光转速表 · 红外测温枪",
+          "estimatedMinutes": 90,
+          "hint": "触屏设加减速 + 读数",
+          "repeat": { "variable": "rampMs", "values": [1000, 500, 200], "unit": "ms/1000rpm" },
+          "steps": [
+            { "id": "S3-1", "kind": "instruction", "title": "触屏设加减速 {value} ms/1000rpm", "text": "设置页把加减速设为 {value} ms/1000rpm 并正常退出一次让设置写盘。" },
+            { "id": "S3-2", "kind": "compare", "title": "核对加减速 = {value}", "compare": { "key": "stir.rampMsPer1000Rpm", "tolerance": 1, "hard": false }, "reference": "iteration", "onFail": "continue" },
+            { "id": "S3-3", "kind": "command", "title": "0 → 1000 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 1000, "on": true } } },
+            { "id": "S3-4", "kind": "hold", "title": "观察 60 s", "durationSec": 60, "signals": ["rpm", "busVoltageV"] },
+            { "id": "S3-5", "kind": "manualEntry", "title": "录入启动结果", "fields": [
+              { "key": "slipUp", "label": "启动是否失步（是 / 否）", "unit": "", "instrument": "转速表", "isText": true },
+              { "key": "tUp", "label": "稳定用时（启动）", "unit": "s", "instrument": "转速表记录", "min": 0, "max": 120 } ] },
+            { "id": "S3-6", "kind": "command", "title": "1000 → 0 rpm", "perChannel": false, "command": { "op": "stirStop" } },
+            { "id": "S3-7", "kind": "hold", "title": "观察 60 s", "durationSec": 60, "signals": ["rpm"] },
+            { "id": "S3-8", "kind": "manualEntry", "title": "录入停止结果", "fields": [ { "key": "tDown", "label": "停止用时", "unit": "s", "instrument": "转速表记录", "min": 0, "max": 120 } ] },
+            { "id": "S3-9", "kind": "measure", "title": "加减速指标", "metrics": [
+              { "key": "tUp", "label": "启动稳定用时", "formula": "mean", "unit": "s", "signal": "manual:tUp", "perChannel": false, "direction": "lowerBetter", "reference5": "Endeavor 改转速后 ≤ 50 s 生效" },
+              { "key": "tDown", "label": "停止用时", "formula": "mean", "unit": "s", "signal": "manual:tDown", "perChannel": false, "direction": "lowerBetter" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "加减速档", "source": "run.iteration" },
+            { "key": "slip", "label": "是否失步", "source": "manual:slipUp" },
+            { "key": "tUp", "label": "稳定用时", "unit": "s", "source": "metric:tUp" } ]
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "name": "压力",
+      "items": [
+        {
+          "id": "P1",
+          "title": "压力示值误差与一致性",
+          "purpose": "P1b 标准表接总管 0/0.2/…/1.0 MPa 升降（方案 5 循环，本次编码 1 循环 11 点），|dP/dt| 达标后同窗 30 s 均值；本次只算 P̄_disp、原码均值 / σ、4 路极差并录 P_ref（MPa）；e_ij / 回差 / s_pooled / 线性拟合 / P1a 电信号注入 / 零点噪声段由多次运行离线合并计算。",
+          "sourceRef": "§2 阶段3 P1",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0"],
+          "instrument": "0.05 级标准数字压力表 · 过程校验仪",
+          "estimatedMinutes": 240,
+          "hint": "调压 + 标准表读数 · 11 点",
+          "repeat": { "variable": "mpa", "values": [0, 0.2, 0.4, 0.6, 0.8, 1.0, 0.8, 0.6, 0.4, 0.2, 0], "unit": "MPa" },
+          "steps": [
+            { "id": "P1-1", "kind": "instruction", "title": "调压到 {value} MPa（标准表读数）", "text": "SV1–4 同时打开，标准表接总管；按 §0.1-5 逐步调到 {value} MPa，等待 |dP/dt| < 1 码/min。" },
+            { "id": "P1-2", "kind": "waitStable", "title": "等待 |dP/dt| < 1 码/min（2 min 窗）", "signal": "pressureRaw", "maxSlopePerMin": 1, "windowSec": 120, "timeoutSec": 1200, "onFail": "continue" },
+            { "id": "P1-3", "kind": "hold", "title": "同窗 30 s 平均", "durationSec": 30, "signals": ["pressurePsi", "pressureRaw"] },
+            { "id": "P1-4", "kind": "manualEntry", "title": "标准表 30 s 均值", "fields": [ { "key": "pRef", "label": "P_ref（标准表）", "unit": "MPa", "instrument": "标准数字压力表", "min": -0.1, "max": 6 } ] },
+            { "id": "P1-5", "kind": "measure", "title": "示值误差", "metrics": [
+              { "key": "pDispPsi", "label": "P̄_disp", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:P1-3" },
+              { "key": "rawMean", "label": "原码均值", "formula": "mean", "unit": "码", "signal": "pressureRaw", "window": "step:P1-3" },
+              { "key": "rawSigma", "label": "原码 σ（噪声）", "formula": "sigma", "unit": "码", "signal": "pressureRaw", "window": "step:P1-3", "direction": "lowerBetter" },
+              { "key": "range4", "label": "4 路 P̄ 极差", "formula": "crossRange", "unit": "psi", "signal": "pressurePsi", "window": "step:P1-3", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "pRef", "label": "P_ref", "formula": "mean", "unit": "MPa", "signal": "manual:pRef", "perChannel": false } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "点", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "pRef", "label": "P_ref", "unit": "MPa", "source": "manual:pRef" },
+            { "key": "raw", "label": "原码", "source": "metric:rawMean" },
+            { "key": "pDisp", "label": "P 显示", "unit": "psi", "source": "metric:pDispPsi" },
+            { "key": "range4", "label": "4 路 max−min", "unit": "psi", "source": "metric:range4" } ],
+          "referenceValues": [ { "metric": "pDispPsi", "text": "压力测量准确度 ±2 psi 或读数 2%，取大者", "source": "Endeavor p.9" } ]
+        },
+        {
+          "id": "P2",
+          "title": "气相体积 V_gas 标定",
+          "purpose": "气体膨胀法：V_r 充 N₂ 到 P₁（≤ L2）后与 0 表压釜连通读 P₂（同一标准表表压）；V_gas = V_r·(P₁−P₂)/(P₂−P₀)。每路 n=3，RSD < 2%。",
+          "sourceRef": "§2 阶段3 P2",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0"],
+          "instrument": "标准容器 V_r · 标准压力表",
+          "estimatedMinutes": 120,
+          "hint": "全手动录入 · 3 次",
+          "repeat": { "count": 3 },
+          "steps": [
+            { "id": "P2-1", "kind": "instruction", "title": "充 V_r 并连通（第 {iteration} 次）", "text": "给 V_r 充 N₂ 到 P₁，与处于 0 表压的被测釜连通，等 |dP/dt| 低于阈值后读平衡压力 P₂。写明连接阀内腔体积算在哪一边。" },
+            { "id": "P2-2", "kind": "manualEntry", "title": "录入 V_r / P₁ / P₂ / T", "fields": [
+              { "key": "vr", "label": "V_r", "unit": "mL", "instrument": "标定值", "min": 0 },
+              { "key": "p1", "label": "P₁（表压）", "unit": "kPa", "instrument": "标准表", "perChannel": true, "min": 0 },
+              { "key": "p2", "label": "P₂（表压）", "unit": "kPa", "instrument": "标准表", "perChannel": true, "min": 0 },
+              { "key": "t", "label": "T", "unit": "℃", "instrument": "温度计", "min": -10, "max": 60 },
+              { "key": "vgas", "label": "V_gas = V_r·(P₁−P₂)/P₂（现场计算）", "unit": "mL", "instrument": "计算", "perChannel": true, "min": 0 } ] },
+            { "id": "P2-3", "kind": "measure", "title": "V_gas 统计", "metrics": [
+              { "key": "vgas", "label": "V_gas", "formula": "mean", "unit": "mL", "signal": "manual:vgas" },
+              { "key": "vgasSigma", "label": "V_gas s", "formula": "sigma", "unit": "mL", "signal": "manual:vgas", "direction": "lowerBetter" } ] }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "vr", "label": "V_r", "unit": "mL", "source": "manual:vr" },
+            { "key": "p1", "label": "P₁", "unit": "kPa", "source": "manual:p1" },
+            { "key": "p2", "label": "P₂", "unit": "kPa", "source": "manual:p2" },
+            { "key": "vgas", "label": "V_gas", "unit": "mL", "source": "manual:vgas" } ]
+        },
+        {
+          "id": "P3",
+          "title": "低压气密（L1 / L2，含 SV 内漏对照）",
+          "purpose": "首次 120 min 测平衡时间；常规用软件泄漏测试（只勾 RV1–4，只用逐点数据）；大气压 / T_gas 补偿；b 未补偿与补偿后、L_P / L_n / L_rel、检出下限。方案 L1、L2 各 n=6；本次编码每级 1 轮（测量窗 30 min 单独拟合，其余轮次由多次运行离线合并）。模拟环境下泄漏测试可能被拒 → 结果标 simulated。",
+          "sourceRef": "§2 阶段3 P3",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0", "P2"],
+          "instrument": "大气压计（≤ 1 min 记录）· PT100 或环境温度计",
+          "estimatedMinutes": 180,
+          "hint": "自动泄漏测试 + 录入",
+          "repeat": { "variable": "psi", "values": [43.5, 145], "unit": "psi" },
+          "steps": [
+            { "id": "P3-1", "kind": "instruction", "title": "充压到 {value} psi 级并记大气压", "text": "室温、空釜装桨、不搅拌；按 §0.1-5 逐步升压到 {value} psi；大气压计开始 ≤ 1 min 连续记录；检漏液只在保压阶段刷涂。" },
+            { "id": "P3-2", "kind": "compare", "title": "核对泄漏测试压力设置", "compare": { "key": "leakTest.testPsi", "min": 10, "hard": false }, "onFail": "continue" },
+            { "id": "P3-2b", "kind": "compare", "title": "核对泄漏测试平衡时间 = 10 min", "compare": { "key": "leakTest.settleMin", "expect": 10, "tolerance": 0.01, "hard": false }, "onFail": "continue" },
+            { "id": "P3-2c", "kind": "compare", "title": "核对泄漏测试测量窗口 = 30 min", "compare": { "key": "leakTest.measureMin", "expect": 30, "tolerance": 0.01, "hard": false }, "onFail": "continue" },
+            { "id": "P3-3", "kind": "command", "title": "启动软件泄漏测试（RV1–4）", "perChannel": false, "command": { "op": "leakTestStart", "args": { "testPsi": "{value}" }, "expectStatus": ["accepted", "confirmed"] }, "onFail": "continue" },
+            { "id": "P3-4", "kind": "hold", "title": "脉冲充压 + 平衡 11 min（不拟合）", "durationSec": 660, "signals": ["pressurePsi", "pressureRaw", "tempC"] },
+            { "id": "P3-4b", "kind": "hold", "title": "测量窗口 30 min（压降拟合窗）", "durationSec": 1800, "signals": ["pressurePsi", "pressureRaw", "tempC"] },
+            { "id": "P3-4c", "kind": "hold", "title": "泄空 / 收尾 3 min", "durationSec": 180, "signals": ["pressurePsi"] },
+            { "id": "P3-5", "kind": "manualEntry", "title": "录入大气压序列文件名 / T_gas", "fields": [
+              { "key": "atmFile", "label": "大气压序列文件名", "unit": "", "instrument": "大气压计", "isText": true },
+              { "key": "tGas", "label": "T_gas（PT100 或环境）", "unit": "℃", "instrument": "PT100 / 环境温度计", "perChannel": true, "min": -10, "max": 60 },
+              { "key": "ventOk", "label": "泄压到 max(2 psi, 20%) 以下（是 / 否）", "unit": "", "instrument": "界面", "isText": true } ] },
+            { "id": "P3-6", "kind": "measure", "title": "压降拟合（未补偿）", "metrics": [
+              { "key": "bPsiH", "label": "b 未补偿（psi/h，负=泄漏）", "formula": "slopePerHour", "unit": "psi/h", "signal": "pressurePsi", "window": "step:P3-4b", "direction": "twoSided", "reference5": "Endeavor < 2 psi/h @500 psi" },
+              { "key": "r2", "label": "R²", "formula": "r2", "unit": "", "signal": "pressurePsi", "window": "step:P3-4b" },
+              { "key": "p0", "label": "P_g 测量窗起点均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:P3-4b" },
+              { "key": "tMean", "label": "PV 均值（T_gas 参考）", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:P3-4b" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "压力级", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "p0", "label": "P_g,0", "unit": "psi", "source": "metric:p0" },
+            { "key": "b", "label": "b 未补偿", "unit": "psi/h", "source": "metric:bPsiH" },
+            { "key": "r2", "label": "R²", "source": "metric:r2" },
+            { "key": "tGas", "label": "T_gas", "unit": "℃", "source": "manual:tGas" },
+            { "key": "atm", "label": "大气压文件", "source": "manual:atmFile" } ],
+          "referenceValues": [ { "metric": "bPsiH", "text": "泄漏率 < 2 psi/h（< 0.13 mmol/h），500 psi N₂，空釜", "source": "Endeavor p.9/p.16" } ]
+        },
+        {
+          "id": "P4",
+          "title": "升压性能",
+          "purpose": "程序「升压」步骤目标 L1（43.5 psi）、L2（145 psi）；每次 1 个 RV，稳压 10 min；t_P（目标 − max(1 psi, 3%)）、ΔP_os、稳压带、补压次数。本次编码每级 2 轮（方案 n=2）。",
+          "sourceRef": "§2 阶段3 P4",
+          "targetChannels": [1],
+          "preconditions": ["R0", "P3"],
+          "instrument": "—",
+          "estimatedMinutes": 60,
+          "hint": "自动 · 程序升压",
+          "repeat": { "variable": "psi", "values": [43.5, 43.5, 145, 145], "unit": "psi" },
+          "steps": [
+            { "id": "P4-1", "kind": "instruction", "title": "减压阀出口调到目标 + 余量", "text": "减压阀出口调到 {value} psi + 少量余量后打开气源；确认超压阈值 ≥ 1.2 × 目标。" },
+            { "id": "P4-2", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "P4-3", "kind": "command", "title": "下发升压程序（{value} psi，稳压 10 min）", "command": { "op": "programPut", "args": { "steps": [ { "type": "press", "params": { "gas": "A", "pres": "{value}", "regulate": "on" } }, { "type": "wait", "params": { "mode": "fixed", "time": 10 } } ] } } },
+            { "id": "P4-4", "kind": "command", "title": "运行程序", "command": { "op": "programRun", "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "P4-5", "kind": "hold", "title": "记录升压 + 稳压 12 min", "durationSec": 720, "signals": ["pressurePsi", "pressureRaw"] },
+            { "id": "P4-6", "kind": "measure", "title": "升压指标", "metrics": [
+              { "key": "tP", "label": "到压时间 t_P（目标 − max(1 psi, 3%)）", "formula": "timeToValue", "unit": "s", "signal": "pressurePsi", "window": "step:P4-5", "reference": "iteration", "band": 1, "bandPct": 3, "direction": "lowerBetter", "reference5": "Endeavor 到压 7 min" },
+              { "key": "pMax", "label": "P_max", "formula": "max", "unit": "psi", "signal": "pressurePsi", "window": "step:P4-5" },
+              { "key": "os", "label": "超调 ΔP_os = P_max − 目标", "formula": "maxDeviation", "unit": "psi", "signal": "pressurePsi", "window": "step:P4-5", "reference": "iteration", "direction": "lowerBetter", "reference5": "Endeavor 平均超调 < 2 psi，最大 < 5 psi" },
+              { "key": "pMin", "label": "稳压带 P_min", "formula": "min", "unit": "psi", "signal": "pressurePsi", "window": "step:P4-5" } ] },
+            { "id": "P4-7", "kind": "manualEntry", "title": "补压次数（界面阀动作计数）", "fields": [ { "key": "refills", "label": "补压次数", "unit": "次", "instrument": "界面 / 事件", "min": 0 } ] },
+            { "id": "P4-8", "kind": "command", "title": "中止程序（如仍在运行）", "command": { "op": "programAbort" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "次", "source": "run.iteration" },
+            { "key": "tP", "label": "t_P", "unit": "s", "source": "metric:tP" },
+            { "key": "os", "label": "ΔP_os", "unit": "psi", "source": "metric:os" },
+            { "key": "pMin", "label": "稳压 min", "unit": "psi", "source": "metric:pMin" },
+            { "key": "pMax", "label": "稳压 max", "unit": "psi", "source": "metric:pMax" },
+            { "key": "refills", "label": "补压次数", "source": "manual:refills" } ],
+          "referenceValues": [ { "metric": "os", "text": "压力控制 −2/+4 psi；平均超调 < 2 psi，最大 < 5 psi；到压 7 min", "source": "Endeavor p.9" } ]
+        }
+      ]
+    },
+    {
+      "index": 4,
+      "name": "温度",
+      "items": [
+        {
+          "id": "T0",
+          "title": "PID 自整定",
+          "purpose": "低 / 中档分界改为 120 ℃（触屏设）；低档在 SP=100 ℃、中档在 SP=150 ℃ 整定，每档 2 次；记录 P、I、D 与用时，整定后冻结 PID。",
+          "sourceRef": "§2 阶段4 T0",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0", "S2"],
+          "instrument": "—",
+          "estimatedMinutes": 240,
+          "hint": "自动整定 + 触屏抄录",
+          "repeat": { "variable": "tempC", "values": [100, 100, 150, 150], "unit": "℃" },
+          "steps": [
+            { "id": "T0-1", "kind": "instruction", "title": "分界 120 ℃ 与安全确认", "text": "触屏把低 / 中档分界设为 120 ℃；硬件限值与泄放装置在位；全程值守，PV 超过 SP+15 ℃ 时手动中止。" },
+            { "id": "T0-2", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T0-3", "kind": "command", "title": "RV{rv} 自整定 SP={value} ℃", "command": { "op": "autotuneStart", "args": { "tempC": "{value}" }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T0-4", "kind": "waitStable", "title": "等待整定结束（PV 回到 SP±1）", "signal": "tempC", "band": 1, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "T0-5", "kind": "manualEntry", "title": "抄录 PID 与用时", "fields": [
+              { "key": "p", "label": "P", "unit": "", "instrument": "触屏 PID 页", "perChannel": true },
+              { "key": "i", "label": "I", "unit": "", "instrument": "触屏 PID 页", "perChannel": true },
+              { "key": "d", "label": "D", "unit": "", "instrument": "触屏 PID 页", "perChannel": true },
+              { "key": "mode", "label": "整定方式（快速 / 常规）", "unit": "", "instrument": "", "isText": true } ] },
+            { "id": "T0-6", "kind": "measure", "title": "整定用时", "metrics": [
+              { "key": "dur", "label": "整定用时", "formula": "duration", "unit": "s", "window": "step:T0-4", "direction": "lowerBetter" },
+              { "key": "p", "label": "P", "formula": "mean", "unit": "", "signal": "manual:p" },
+              { "key": "i", "label": "I", "formula": "mean", "unit": "", "signal": "manual:i" },
+              { "key": "d", "label": "D", "formula": "mean", "unit": "", "signal": "manual:d" } ] },
+            { "id": "T0-7", "kind": "command", "title": "停止 RV{rv} 加热", "command": { "op": "heatStop" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "iter", "label": "次", "source": "run.iteration" },
+            { "key": "dur", "label": "用时", "unit": "s", "source": "metric:dur" },
+            { "key": "p", "label": "P", "source": "manual:p" },
+            { "key": "i", "label": "I", "source": "manual:i" },
+            { "key": "d", "label": "D", "source": "manual:d" } ]
+        },
+        {
+          "id": "T1",
+          "title": "阶跃响应与稳态（默认逼近 Δ=5）",
+          "purpose": "RV1–4 同时加热，室温 → 50 → 100 → 150 ℃；每档：下发 SP → 稳定判据（10 min 窗 |dT/dt|<0.01 ℃/min 且 |T−SP|≤0.5）→ 记录 30 min + 每 2 min 16 组 T_ref；ΔT_max/min、ΔT_d、ΔT_f、一致性、ΔT_mean、超调、升温速率、t_r、t_s。",
+          "sourceRef": "§2 阶段4 T1/T2（T1：Δ = 5 ℃）",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0", "T0", "P3"],
+          "instrument": "PT100 ×4 记录仪（1 s）",
+          "estimatedMinutes": 360,
+          "hint": "自动 · 3 档 + PT100 录入",
+          "repeat": { "variable": "tempC", "values": [50, 100, 150], "unit": "℃" },
+          "steps": [
+            { "id": "T1-1", "kind": "compare", "title": "核对逼近 Δ = 5 ℃", "compare": { "key": "approach.deltaC", "expect": 5, "tolerance": 0.01, "hard": false }, "onFail": "continue" },
+            { "id": "T1-2", "kind": "compare", "title": "核对 TMaxSp ≥ {value} ℃", "compare": { "key": "limits.tempSpMaxC", "hard": false, "iterationAs": "min" }, "reference": "iteration", "onFail": "continue" },
+            { "id": "T1-3", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T1-4", "kind": "command", "title": "搅拌 300 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 300, "on": true } }, "onFail": "continue" },
+            { "id": "T1-5", "kind": "command", "title": "RV{rv} 下发 SP {value} ℃", "command": { "op": "heatStart", "args": { "tempC": "{value}" }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T1-6", "kind": "waitStable", "title": "等待稳定判据", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.01, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "T1-7", "kind": "hold", "title": "稳态记录 30 min", "durationSec": 1800, "signals": ["tempC", "heatOutputPct", "pressurePsi"] },
+            { "id": "T1-8", "kind": "manualEntry", "title": "录入 T_ref 16 组均值（或导入 PT100 CSV 后填均值）", "fields": [
+              { "key": "tRef", "label": "T_ref 30 min 均值", "unit": "℃", "instrument": "PT100 记录仪", "perChannel": true, "min": 0, "max": 300 },
+              { "key": "tRefP2p", "label": "T_ref 波动 (max−min)/2", "unit": "℃", "instrument": "PT100 记录仪", "perChannel": true, "min": 0, "max": 50 },
+              { "key": "ambient", "label": "环境温度", "unit": "℃", "instrument": "温湿度计", "min": -10, "max": 60 } ] },
+            { "id": "T1-9", "kind": "measure", "title": "T1 指标", "metrics": [
+              { "key": "dTmax", "label": "ΔT_max = T_max − T_s（PV）", "formula": "maxDeviation", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "reference": "sp", "direction": "twoSided" },
+              { "key": "dTmin", "label": "ΔT_min = T_min − T_s（PV）", "formula": "minDeviation", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "reference": "sp", "direction": "twoSided" },
+              { "key": "dTf", "label": "波动度 ΔT_f（PV）", "formula": "p2p", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "direction": "lowerBetter", "reference5": "Radleys ±1 ℃（常压）" },
+              { "key": "dTmean", "label": "稳态均值偏差 ΔT_mean（PV）", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "reference": "sp", "direction": "twoSided", "reference5": "Endeavor 控温精度 ≤ 2 ℃" },
+              { "key": "dTd", "label": "示值–液温差 ΔT_d = mean(PV) − mean(T_ref)（未修正）", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "reference": "manual:tRef", "direction": "twoSided", "reference5": "Endeavor ≤ 4 ℃（≤100 ℃）/ ≤ 8 ℃" },
+              { "key": "consStatic", "label": "通道间一致性（静态，T_ref 均值极差）", "formula": "crossRange", "unit": "℃", "signal": "manual:tRef", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "consPv", "label": "通道间一致性（PV 均值极差）", "formula": "crossRange", "unit": "℃", "signal": "tempC", "window": "step:T1-7", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "os", "label": "超调 σ = T_peak − T_s（PV）", "formula": "overshoot", "unit": "℃", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "direction": "lowerBetter", "reference5": "Endeavor 最大 5 ℃" },
+              { "key": "rate", "label": "升温速率（10–90%，span=(SP−5)−T₀）", "formula": "heatingRate", "unit": "℃/min", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "delta": 5, "direction": "higherBetter", "reference5": "Parr 最快 15 ℃/min；OSR 5 ℃/min" },
+              { "key": "tr", "label": "到温时间 t_r（T_s − 0.5）", "formula": "timeToBand", "unit": "s", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "band": 0.5, "direction": "lowerBetter" },
+              { "key": "ts10", "label": "稳定时间 t_s(1.0)", "formula": "settlingTime", "unit": "s", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "band": 1.0, "direction": "lowerBetter" },
+              { "key": "ts05", "label": "稳定时间 t_s(0.5)", "formula": "settlingTime", "unit": "s", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "band": 0.5, "direction": "lowerBetter" },
+              { "key": "ts03", "label": "稳定时间 t_s(0.3)", "formula": "settlingTime", "unit": "s", "signal": "tempC", "window": "from:T1-5", "reference": "sp", "band": 0.3, "direction": "lowerBetter" },
+              { "key": "waitDur", "label": "实际等待稳定时长", "formula": "duration", "unit": "s", "window": "step:T1-6" },
+              { "key": "pHot", "label": "顶空压力均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:T1-7" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "档", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "wait", "label": "实际等待", "unit": "s", "source": "metric:waitDur" },
+            { "key": "tr", "label": "t_r", "unit": "s", "source": "metric:tr" },
+            { "key": "ts05", "label": "t_s(0.5)", "unit": "s", "source": "metric:ts05" },
+            { "key": "os", "label": "σ", "unit": "℃", "source": "metric:os" },
+            { "key": "rate", "label": "升温速率", "unit": "℃/min", "source": "metric:rate" },
+            { "key": "dTmax", "label": "ΔT_max", "unit": "℃", "source": "metric:dTmax" },
+            { "key": "dTmin", "label": "ΔT_min", "unit": "℃", "source": "metric:dTmin" },
+            { "key": "dTmean", "label": "ΔT_mean", "unit": "℃", "source": "metric:dTmean" },
+            { "key": "dTf", "label": "ΔT_f", "unit": "℃", "source": "metric:dTf" },
+            { "key": "dTd", "label": "ΔT_d", "unit": "℃", "source": "metric:dTd" },
+            { "key": "cons", "label": "一致性（静态）", "unit": "℃", "source": "metric:consStatic" } ],
+          "referenceValues": [
+            { "metric": "dTmean", "text": "控温精度：热平衡后显示值与 SP 相差 ≤ 2 ℃", "source": "Endeavor p.9" },
+            { "metric": "os", "text": "温度超调最大 5 ℃，5 min 内回到 SP", "source": "Endeavor" },
+            { "metric": "rate", "text": "升温速率最快 15 ℃/min（Parr 5000）；5 ℃/min（OSR）", "source": "方案 §5" } ]
+        },
+        {
+          "id": "T2",
+          "title": "阶跃响应与稳态（关闭逼近 Δ=0）",
+          "purpose": "与 T1 相同流程，Δ=0（触屏设），隔天交替 n=3；T2 的升温速率作为最大升温速率；对比 T1/T2 的 σ、t_r、t_s(0.5)。",
+          "sourceRef": "§2 阶段4 T1/T2（T2：Δ = 0）",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["R0", "T0", "P3"],
+          "instrument": "PT100 ×4 记录仪（1 s）",
+          "estimatedMinutes": 360,
+          "hint": "自动 · 3 档 + PT100 录入",
+          "repeat": { "variable": "tempC", "values": [50, 100, 150], "unit": "℃" },
+          "steps": [
+            { "id": "T2-1", "kind": "instruction", "title": "触屏关闭逼近（Δ = 0）", "text": "设置页逼近 Δ 设为 0，正常退出一次让设置写盘并重启后核对。" },
+            { "id": "T2-2", "kind": "compare", "title": "核对逼近 Δ = 0", "compare": { "key": "approach.deltaC", "expect": 0, "tolerance": 0.01, "hard": false }, "onFail": "continue" },
+            { "id": "T2-3", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T2-4", "kind": "command", "title": "搅拌 300 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 300, "on": true } }, "onFail": "continue" },
+            { "id": "T2-5", "kind": "command", "title": "RV{rv} 下发 SP {value} ℃", "command": { "op": "heatStart", "args": { "tempC": "{value}" }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T2-6", "kind": "waitStable", "title": "等待稳定判据", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.01, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "T2-7", "kind": "hold", "title": "稳态记录 30 min", "durationSec": 1800, "signals": ["tempC", "heatOutputPct", "pressurePsi"] },
+            { "id": "T2-8", "kind": "manualEntry", "title": "录入 T_ref 均值", "fields": [
+              { "key": "tRef", "label": "T_ref 30 min 均值", "unit": "℃", "instrument": "PT100 记录仪", "perChannel": true, "min": 0, "max": 300 } ] },
+            { "id": "T2-9", "kind": "measure", "title": "T2 指标", "metrics": [
+              { "key": "dTmean", "label": "ΔT_mean（PV）", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T2-7", "reference": "sp", "direction": "twoSided" },
+              { "key": "dTf", "label": "ΔT_f（PV）", "formula": "p2p", "unit": "℃", "signal": "tempC", "window": "step:T2-7", "direction": "lowerBetter" },
+              { "key": "dTd", "label": "ΔT_d", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T2-7", "reference": "manual:tRef", "direction": "twoSided" },
+              { "key": "os", "label": "超调 σ", "formula": "overshoot", "unit": "℃", "signal": "tempC", "window": "from:T2-5", "reference": "sp", "direction": "lowerBetter" },
+              { "key": "rateMax", "label": "最大升温速率（10–90%，Δ=0）", "formula": "heatingRate", "unit": "℃/min", "signal": "tempC", "window": "from:T2-5", "reference": "sp", "delta": 0, "direction": "higherBetter" },
+              { "key": "tr", "label": "t_r", "formula": "timeToBand", "unit": "s", "signal": "tempC", "window": "from:T2-5", "reference": "sp", "band": 0.5, "direction": "lowerBetter" },
+              { "key": "ts05", "label": "t_s(0.5)", "formula": "settlingTime", "unit": "s", "signal": "tempC", "window": "from:T2-5", "reference": "sp", "band": 0.5, "direction": "lowerBetter" },
+              { "key": "consStatic", "label": "一致性（静态）", "formula": "crossRange", "unit": "℃", "signal": "manual:tRef", "perChannel": false, "direction": "lowerBetter" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "档", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "tr", "label": "t_r", "unit": "s", "source": "metric:tr" },
+            { "key": "ts05", "label": "t_s(0.5)", "unit": "s", "source": "metric:ts05" },
+            { "key": "os", "label": "σ", "unit": "℃", "source": "metric:os" },
+            { "key": "rate", "label": "最大升温速率", "unit": "℃/min", "source": "metric:rateMax" },
+            { "key": "dTmean", "label": "ΔT_mean", "unit": "℃", "source": "metric:dTmean" },
+            { "key": "dTd", "label": "ΔT_d", "unit": "℃", "source": "metric:dTd" } ]
+        },
+        {
+          "id": "T4",
+          "title": "搅拌对温度的影响",
+          "purpose": "100 ℃ 稳态，0 / 300 / 1000 rpm 每档 30 min，同日循环 3 次；每档 ΔT_f、通道间一致性、ΔT_d。",
+          "sourceRef": "§2 阶段4 T4",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["T1"],
+          "instrument": "PT100 ×4",
+          "estimatedMinutes": 300,
+          "hint": "自动 · 9 档 × 30 min",
+          "repeat": { "variable": "rpm", "values": [0, 300, 1000, 0, 300, 1000, 0, 300, 1000], "unit": "rpm" },
+          "steps": [
+            { "id": "T4-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T4-2", "kind": "command", "title": "RV{rv} SP 100 ℃", "command": { "op": "heatStart", "args": { "tempC": 100 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T4-3", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } } },
+            { "id": "T4-4", "kind": "waitStable", "title": "等待 100 ℃ 稳定", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.01, "reference": "sp", "windowSec": 600, "timeoutSec": 5400, "onFail": "continue" },
+            { "id": "T4-5", "kind": "hold", "title": "记录 30 min", "durationSec": 1800, "signals": ["tempC", "heatOutputPct"] },
+            { "id": "T4-6", "kind": "manualEntry", "title": "录入 T_ref 均值", "fields": [ { "key": "tRef", "label": "T_ref 30 min 均值", "unit": "℃", "instrument": "PT100", "perChannel": true, "min": 0, "max": 300 } ] },
+            { "id": "T4-7", "kind": "measure", "title": "T4 指标", "metrics": [
+              { "key": "dTf", "label": "ΔT_f（PV）", "formula": "p2p", "unit": "℃", "signal": "tempC", "window": "step:T4-5", "direction": "lowerBetter" },
+              { "key": "cons", "label": "一致性（T_ref 极差）", "formula": "crossRange", "unit": "℃", "signal": "manual:tRef", "perChannel": false, "direction": "lowerBetter" },
+              { "key": "dTd", "label": "ΔT_d", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T4-5", "reference": "manual:tRef", "direction": "twoSided" } ] }
+          ],
+          "recordFields": [
+            { "key": "iter", "label": "档", "source": "run.iteration" },
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "dTf", "label": "ΔT_f", "unit": "℃", "source": "metric:dTf" },
+            { "key": "cons", "label": "一致性", "unit": "℃", "source": "metric:cons" },
+            { "key": "dTd", "label": "ΔT_d", "unit": "℃", "source": "metric:dTd" } ]
+        },
+        {
+          "id": "T5",
+          "title": "通道间热串扰",
+          "purpose": "只把 RV1 升到 150 ℃，RV2–4 保持 50 ℃；记录邻路 PV 与输出% 的变化。",
+          "sourceRef": "§2 阶段4 T5",
+          "targetChannels": [1, 2, 3, 4],
+          "channelSelectable": false,
+          "preconditions": ["T1"],
+          "instrument": "—",
+          "estimatedMinutes": 120,
+          "hint": "自动 · 60 min",
+          "steps": [
+            { "id": "T5-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "T5-2", "kind": "command", "title": "RV2–4 SP 50 ℃", "channels": [2, 3, 4], "command": { "op": "heatStart", "args": { "tempC": 50 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T5-3", "kind": "waitStable", "title": "RV2–4 50 ℃ 稳定", "channels": [2, 3, 4], "signal": "tempC", "band": 0.5, "reference": "sp", "windowSec": 600, "timeoutSec": 5400, "onFail": "continue" },
+            { "id": "T5-4", "kind": "hold", "title": "基线记录 10 min", "durationSec": 600, "signals": ["tempC", "heatOutputPct"] },
+            { "id": "T5-5", "kind": "command", "title": "RV1 SP 150 ℃", "channels": [1], "command": { "op": "heatStart", "args": { "tempC": 150 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "T5-6", "kind": "waitStable", "title": "RV1 150 ℃ 稳定", "channels": [1], "signal": "tempC", "band": 0.5, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "T5-7", "kind": "hold", "title": "串扰记录 30 min", "durationSec": 1800, "signals": ["tempC", "heatOutputPct"] },
+            { "id": "T5-8", "kind": "measure", "title": "邻路变化", "metrics": [
+              { "key": "pvBase", "label": "基线 PV 均值", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:T5-4" },
+              { "key": "pvHot", "label": "串扰期 PV 均值", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:T5-7" },
+              { "key": "dPv", "label": "邻路 PV 偏离 SP（串扰期）", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:T5-7", "reference": "sp", "direction": "twoSided" },
+              { "key": "outBase", "label": "基线输出% 均值", "formula": "mean", "unit": "%", "signal": "heatOutputPct", "window": "step:T5-4" },
+              { "key": "outHot", "label": "串扰期输出% 均值", "formula": "mean", "unit": "%", "signal": "heatOutputPct", "window": "step:T5-7" } ] },
+            { "id": "T5-9", "kind": "command", "title": "停止 RV{rv} 加热", "command": { "op": "heatStop" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "pvBase", "label": "PV 基线", "unit": "℃", "source": "metric:pvBase" },
+            { "key": "pvHot", "label": "PV 串扰期", "unit": "℃", "source": "metric:pvHot" },
+            { "key": "outBase", "label": "输出% 基线", "unit": "%", "source": "metric:outBase" },
+            { "key": "outHot", "label": "输出% 串扰期", "unit": "%", "source": "metric:outHot" } ]
+        },
+        {
+          "id": "T3",
+          "title": "曲线跟踪与自然冷却（二期）",
+          "purpose": "40 ℃ 保持 10 min，以 1/2/5 ℃/min 升到 140 ℃ 再保持 30 min；速率偏差 δv、跟踪误差 e_track、保持段超调、Newton 冷却 τ。",
+          "sourceRef": "§2 阶段4 T3（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "PT100 ×4",
+          "estimatedMinutes": 360,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期",
+          "steps": []
+        }
+      ]
+    },
+    {
+      "index": 5,
+      "name": "组合工况",
+      "items": [
+        {
+          "id": "C2-a",
+          "title": "热态 L2（100 ℃，硅油，500 rpm）",
+          "purpose": "室温逐步充压到约 0.69 MPa 表压后关全部阀；加热到 100 ℃，按实测压力曲线确定热态平衡时间；记录 2 h；自然冷却后再读室温压力。T1 全部指标 + 两温区模型 r + 热态泄漏率 + ΔP_cold + 带压转速。n=3。",
+          "sourceRef": "§2 阶段5 C2-a",
+          "targetChannels": [1, 2, 3, 4],
+          "preconditions": ["T1", "R0"],
+          "instrument": "标准压力表 · 大气压计 · 转速表 · PT100",
+          "estimatedMinutes": 360,
+          "hint": "自动 · 2 h + 录入",
+          "steps": [
+            { "id": "C2-1", "kind": "instruction", "title": "室温逐步充压并关阀", "text": "硅油（禁用水），N₂；按实测大气压与室温重新计算 P_cold（0.9 × P_hot,max,abs × T_cold/T_hot）；逐步充压到目标后关闭全部阀门；超压阈值按热态压力设。" },
+            { "id": "C2-2", "kind": "manualEntry", "title": "录入冷充参数", "fields": [
+              { "key": "pColdBefore", "label": "P_cold,before（表压）", "unit": "psi", "instrument": "标准表", "min": 0, "max": 600 },
+              { "key": "tAmb", "label": "T_amb", "unit": "℃", "instrument": "温度计", "min": -10, "max": 60 },
+              { "key": "pAtm", "label": "P_atm", "unit": "kPa", "instrument": "大气压计", "min": 80, "max": 110 } ] },
+            { "id": "C2-3", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
+            { "id": "C2-4", "kind": "command", "title": "搅拌 500 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 500, "on": true } } },
+            { "id": "C2-5", "kind": "command", "title": "RV{rv} SP 100 ℃", "command": { "op": "heatStart", "args": { "tempC": 100 }, "expectStatus": ["accepted", "confirmed"] } },
+            { "id": "C2-6", "kind": "waitStable", "title": "等待温度稳定", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.01, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "C2-7", "kind": "waitStable", "title": "等待热态压力平衡（|dP/dt| < 1 psi/10 min）", "signal": "pressurePsi", "maxSlopePerMin": 0.1, "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
+            { "id": "C2-8", "kind": "hold", "title": "热态记录 2 h", "durationSec": 7200, "signals": ["tempC", "pressurePsi", "pressureRaw", "rpm"] },
+            { "id": "C2-9", "kind": "manualEntry", "title": "带压转速与热态读数", "fields": [
+              { "key": "nHot", "label": "带压转速（转速表）", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 },
+              { "key": "tRef", "label": "T_ref 均值", "unit": "℃", "instrument": "PT100", "perChannel": true, "min": 0, "max": 300 } ] },
+            { "id": "C2-10", "kind": "measure", "title": "热态指标", "metrics": [
+              { "key": "pHot", "label": "P_hot 均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:C2-8" },
+              { "key": "leakHot", "label": "热态压降斜率（未补偿）", "formula": "slopePerHour", "unit": "psi/h", "signal": "pressurePsi", "window": "step:C2-8", "direction": "twoSided" },
+              { "key": "dTmean", "label": "ΔT_mean（PV）", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:C2-8", "reference": "sp", "direction": "twoSided" },
+              { "key": "dTf", "label": "ΔT_f（PV）", "formula": "p2p", "unit": "℃", "signal": "tempC", "window": "step:C2-8", "direction": "lowerBetter" },
+              { "key": "dTd", "label": "ΔT_d", "formula": "meanDeviation", "unit": "℃", "signal": "tempC", "window": "step:C2-8", "reference": "manual:tRef", "direction": "twoSided" },
+              { "key": "eN", "label": "带压转速误差", "formula": "rpmError", "unit": "%", "signal": "manual:nHot", "reference": "value", "value": 500, "perChannel": false, "direction": "twoSided" } ] },
+            { "id": "C2-11", "kind": "command", "title": "停止 RV{rv} 加热（自然冷却）", "command": { "op": "heatStop" }, "onFail": "continue" },
+            { "id": "C2-12", "kind": "instruction", "title": "自然冷却后读室温压力", "text": "釜温低于 50 ℃ 且回到室温后读 P_cold,after；按同温度、同大气压修正。" },
+            { "id": "C2-13", "kind": "manualEntry", "title": "录入 P_cold,after", "fields": [ { "key": "pColdAfter", "label": "P_cold,after（表压）", "unit": "psi", "instrument": "标准表", "min": 0, "max": 600 } ] },
+            { "id": "C2-14", "kind": "measure", "title": "室温压降", "metrics": [
+              { "key": "dPcold", "label": "ΔP_cold = before − after", "formula": "meanDeviation", "unit": "psi", "signal": "manual:pColdBefore", "reference": "manual:pColdAfter", "perChannel": false, "direction": "lowerBetter" } ] },
+            { "id": "C2-15", "kind": "command", "title": "停止搅拌", "perChannel": false, "command": { "op": "stirStop" }, "onFail": "continue" }
+          ],
+          "recordFields": [
+            { "key": "rv", "label": "通道", "source": "run.channel" },
+            { "key": "pBefore", "label": "P_cold,before", "unit": "psi", "source": "manual:pColdBefore" },
+            { "key": "pHot", "label": "P_hot", "unit": "psi", "source": "metric:pHot" },
+            { "key": "leak", "label": "热态斜率", "unit": "psi/h", "source": "metric:leakHot" },
+            { "key": "dTmean", "label": "ΔT_mean", "unit": "℃", "source": "metric:dTmean" },
+            { "key": "nHot", "label": "带压转速", "unit": "rpm", "source": "manual:nHot" },
+            { "key": "pAfter", "label": "P_cold,after", "unit": "psi", "source": "manual:pColdAfter" } ]
+        },
+        {
+          "id": "C1",
+          "title": "L3 气密（二期）",
+          "purpose": "与 P3 相同方法在 L3 下进行，n=6；补测 0–L3 的 P1 点。",
+          "sourceRef": "§2 阶段5 C1（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "标准压力表 · 大气压计",
+          "estimatedMinutes": 480,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期 · 额定值允许时",
+          "steps": []
+        },
+        {
+          "id": "C2-b",
+          "title": "高压热态 150 ℃（二期）",
+          "purpose": "150 ℃、500 rpm、硅油，热态压力上限按 §0.1-7 倒推；其余同 C2-a，n=3。",
+          "sourceRef": "§2 阶段5 C2-b（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "同 C2-a",
+          "estimatedMinutes": 480,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期 · 额定值允许时",
+          "steps": []
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "name": "长时稳定性",
+      "phase2": true,
+      "items": [
+        {
+          "id": "LT1",
+          "title": "24 h 连续运行（二期）",
+          "purpose": "RV1–4 100 ℃、热态 L2、300 rpm、硅油 24 h：每小时均值与漂移、波动度与一致性、热态泄漏率、通讯失败率（95% 单侧上限）、离线次数、每 4 h 转速复测。",
+          "sourceRef": "§2 阶段6 LT1（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "转速表 · 红外测温枪",
+          "estimatedMinutes": 1500,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期 · 需 A5–A7 / P0-4 全部有效",
+          "steps": []
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "name": "可选",
+      "phase2": true,
+      "items": [
+        {
+          "id": "M1",
+          "title": "模型反应通道一致性（二期可选）",
+          "purpose": "CO₂ 被 NaOH 吸收，闭釜批次法，RSD 与回收率离线计算。",
+          "sourceRef": "§2 阶段7 M1（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "CO₂ 钢瓶 · 天平",
+          "estimatedMinutes": 240,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期 · 化学安全评审",
+          "steps": []
+        },
+        {
+          "id": "LT2",
+          "title": "阀门循环与 SV 内漏趋势（二期可选）",
+          "purpose": "SV1–4 各开关 1000 次，每 250 次做一次 SV 内漏检查。",
+          "sourceRef": "§2 阶段7 LT2（二期）",
+          "targetChannels": [1, 2, 3, 4],
+          "instrument": "P2-2 阀门循环工具",
+          "estimatedMinutes": 240,
+          "hint": "二期",
+          "enabled": false,
+          "disabledReason": "二期 · 依赖 P2-2 工具",
+          "steps": []
+        }
+      ]
+    }
+  ]
+}

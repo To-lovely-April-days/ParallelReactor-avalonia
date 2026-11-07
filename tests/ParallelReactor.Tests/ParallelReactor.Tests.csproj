@@ -24,7 +24,6 @@
     <Compile Include="../../Models/AlarmLifecycle.cs" Link="Src/AlarmLifecycle.cs" />
     <Compile Include="../../Hardware/PriorityGate.cs" Link="Src/PriorityGate.cs" />
     <Compile Include="../../Service/EstopLatch.cs" Link="Src/EstopLatch.cs" />
-    <Compile Include="../../Models/StepType.cs" Link="Src/StepType.cs" />
     <Compile Include="../../Models/StepSnapshot.cs" Link="Src/StepSnapshot.cs" />
     <Compile Include="../../Models/ProgramLimits.cs" Link="Src/ProgramLimits.cs" />
     <Compile Include="../../Models/ProgramRunGuard.cs" Link="Src/ProgramRunGuard.cs" />
@@ -53,6 +52,11 @@
     <!-- P2 只读接口：Api/ 下的纯逻辑文件（不含 Api/Hmi/，那两个文件引用 Avalonia 与 ViewModels）+ 事件存储 -->
     <Compile Include="../../Service/EventStore.cs" Link="Src/EventStore.cs" />
     <Compile Include="../../Api/*.cs" Link="Src/Api/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- 线上类型（TelemetrySnapshot / DTO / ApiJsonContext / OpCodes / EventRecord / SessionManifest / StepType…）来自 Contracts 工程 -->
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
   </ItemGroup>
 
   <!-- 进程内集成测试要启动 Kestrel：与主工程一样只用共享框架引用，不加 NuGet 包 -->

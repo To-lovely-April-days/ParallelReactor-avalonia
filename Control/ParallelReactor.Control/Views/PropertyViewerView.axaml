@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.PropertyViewerView"
+             x:DataType="vm:MainViewModel">
+  <!-- .panel.property-viewer：2 列 × 3 行属性卡 -->
+  <Border Classes="panel">
+    <Grid RowDefinitions="24,*">
+      <Border Classes="panel-heading">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Classes="breadcrumb">
+            <c:IconView Geometry="{StaticResource IcoMove}" Size="10" />
+            <TextBlock Classes="strong" Text="属性查看器" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Classes="heading-actions">
+            <Button Classes="flat icon-button" ToolTip.Tip="恢复全部属性" Command="{Binding RestorePropertiesCommand}"><c:IconView Geometry="{StaticResource IcoRefresh}" Size="10" /></Button>
+            <Button Classes="flat icon-button" Classes.active="{Binding IsPropertyExpanded}" ToolTip.Tip="展开面板" Command="{Binding ToggleExpandCommand}" CommandParameter="property"><c:IconView Geometry="{StaticResource IcoExpand}" Size="10" /></Button>
+            <Button Classes="flat icon-button" ToolTip.Tip="关闭面板" Command="{Binding NotImplementedCommand}" CommandParameter="关闭面板"><c:IconView Geometry="{StaticResource IcoClose}" Size="10" /></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+      <ItemsControl Grid.Row="1" ItemsSource="{Binding Properties}" Margin="14,1,3,0">
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="2" Rows="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="vm:PropertyCardVm">
+            <Border Classes="property-card" Classes.green-edge="{Binding GreenEdge}" Classes.hidden="{Binding IsHidden}">
+              <Grid ColumnDefinitions="*,Auto">
+                <Grid RowDefinitions="18,38">
+                  <Grid Classes="property-path" ColumnDefinitions="Auto,*,Auto">
+                    <c:IconView Geometry="{StaticResource IcoTree}" Size="8" Foreground="#777777" Margin="0,0,3,0" />
+                    <TextBlock Grid.Column="1" Text="{Binding Path}" />
+                    <Button Grid.Column="2" Classes="flat icon-button property-close" ToolTip.Tip="隐藏属性"
+                            Command="{Binding $parent[v:PropertyViewerView].((vm:MainViewModel)DataContext).HidePropertyCommand}" CommandParameter="{Binding}">
+                      <c:IconView Geometry="{StaticResource IcoClose}" Size="8" />
+                    </Button>
+                  </Grid>
+                  <Grid Grid.Row="1" Classes="property-body" ColumnDefinitions="Auto,*,Auto">
+                    <c:IconView Geometry="{StaticResource IcoGauge}" Size="22" Stroke="1.7" Foreground="{DynamicResource Gauge}" Margin="5,0,8,0" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                      <TextBlock Classes="property-primary" Text="{Binding Primary}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="property-secondary" Text="{Binding Secondary}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Classes="property-reading">
+                      <TextBlock Classes="property-number" Classes.fault="{Binding IsFault}" Classes.offline="{Binding IsOffline}" Text="{Binding Number}" />
+                      <TextBlock Classes="property-unit" Text="{Binding Unit}" />
+                    </StackPanel>
+                  </Grid>
+                </Grid>
+                <Border Grid.Column="1" Classes="green-edge-bar" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Grid>
+  </Border>
+</UserControl>

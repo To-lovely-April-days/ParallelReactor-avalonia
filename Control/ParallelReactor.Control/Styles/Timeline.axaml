@@ -1,0 +1,86 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- .reactor-list / .reactor-row / .timeline / .track-actions / .action-row / .status-dot -->
+  <Style Selector="Border.reactor-list">
+    <Setter Property="Width" Value="118" />
+    <Setter Property="Background" Value="{DynamicResource ListBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ListLine}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+    <Setter Property="ZIndex" Value="4" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="Border.reactor-row">
+    <Setter Property="Height" Value="32" />
+    <Setter Property="Padding" Value="11,0,10,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RowLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.reactor-row TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.reactor-row StackPanel.reactor-status TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+  </Style>
+  <Style Selector="Border.reactor-row.disabled TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Disabled}" />
+  </Style>
+  <Style Selector="Border.reactor-row.alarm StackPanel.reactor-status TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="Border.voltage">
+    <Setter Property="BorderBrush" Value="{DynamicResource Voltage}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Padding" Value="1,0" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.voltage TextBlock">
+    <Setter Property="FontSize" Value="6" />
+    <Setter Property="LineHeight" Value="8" />
+  </Style>
+
+  <Style Selector="Border.timeline">
+    <Setter Property="Background" Value="{DynamicResource Timeline}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TimelineTop}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="Margin" Value="78,0,0,0" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.timeline-head">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TimelineLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.timeline-head TextBlock.time-label">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Label}" />
+  </Style>
+  <Style Selector="Border.track-actions">
+    <Setter Property="Width" Value="112" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+  <Style Selector="Border.action-row">
+    <Setter Property="Height" Value="25.5" />
+    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ActionLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.action-row.disabled Button.icon-button">
+    <Setter Property="Opacity" Value="0.4" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="Ellipse.status-dot">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Height" Value="9" />
+    <Setter Property="Fill" Value="{DynamicResource DotIdle}" />
+    <Setter Property="Stroke" Value="{DynamicResource DotIdleLine}" />
+    <Setter Property="StrokeThickness" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Ellipse.status-dot.running">
+    <Setter Property="Fill" Value="{DynamicResource DotRun}" />
+    <Setter Property="Stroke" Value="{DynamicResource DotRunLine}" />
+  </Style>
+</Styles>

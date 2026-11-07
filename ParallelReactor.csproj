@@ -34,6 +34,18 @@
     <None Remove="tests/**" />
   </ItemGroup>
 
+  <!-- 共用线上类型（Contracts/）与 PC 控制软件（Control/）各自是独立工程：主工程不得把它们的源文件卷进来 -->
+  <ItemGroup>
+    <Compile Remove="Contracts/**;Control/**" />
+    <None Remove="Contracts/**;Control/**" />
+    <AvaloniaResource Remove="Control/**" />
+    <AvaloniaXaml Remove="Control/**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />

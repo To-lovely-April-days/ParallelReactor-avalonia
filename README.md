@@ -82,7 +82,36 @@ Controls/      SchematicControl（气路图矢量绘制+命中检测）、Drawer
 Views/         MainWindow（顶栏/工具栏/首页面板/底栏/Toast 接线）
 Styles/        Controls.axaml（按钮/药丸/步进器/分段/开关样式）
 Converters/    值转换器
+Api/           对外接口（REST + WebSocket）：鉴权、控制权租约、写命令、会话（见 doc/接口使用说明.md）
+Contracts/     ParallelReactor.Contracts：HMI 与 PC 共用的线上类型（纯 net8.0，无 Avalonia）
+Control/       PC 控制软件（见下）
+tests/         HMI 单元测试（xunit）
 ```
+
+### 解决方案布局（ParallelReactor.sln）
+
+| 工程 | 说明 |
+|---|---|
+| `ParallelReactor.csproj`（根） | 触屏 HMI（Avalonia，Linux 1280×800）；`Compile Remove` 了 `Contracts/**`、`Control/**`、`tests/**` |
+| `Contracts/ParallelReactor.Contracts` | 线上类型：`TelemetrySnapshot`、REST / WS DTO、`ApiJsonContext`、错误码、`OpCodes`、`EventRecord`、`SessionManifest`、`StepType` |
+| `Control/ParallelReactor.Client` | PC 端接口客户端（REST + WS、租约 / 心跳状态机、重连 / 重同步、幂等重放），纯 BCL |
+| `Control/ParallelReactor.PerfTest` | RV1–RV4 摸底性能测试：方案 JSON、`PerfRunner` 引擎、指标、`report.html` / CSV / JSON |
+| `Control/ParallelReactor.Control` | PC 控制软件（Avalonia 11.1，`research/pc-control.html` 样稿 1:1）：系统视图 + 性能测试视图，Debug 带无头截图模式 |
+| `Control/tests/ParallelReactor.Control.Tests` | PC 端单元测试（Contracts 往返、Client、PerfTest） |
+| `Control/tools/ClientSmoke` | 对真 HMI 的接口走通工具 |
+| `tests/ParallelReactor.Tests` | HMI 单元测试 |
+
+## Control/ · PC 控制软件
+
+```bash
+dotnet run --project Control/ParallelReactor.Control        # 桌面窗口（1440×900）
+dotnet test Control/tests/ParallelReactor.Control.Tests     # PC 端测试
+```
+
+- 连接触屏 HMI 的接口（`api.json` 里 `enabled=true` + 令牌），申请控制权后可下发程序 / 加热 / 搅拌等命令；停止类与急停不需要控制权。
+- **性能测试**标签：按 `test-plan/RV1-4摸底性能测试方案.md` 的测试项（阶段 0–5；6–7 二期灰显）勾选 → 开始 → 现场确认 / 仪器读数录入 → 自动生成 `report.html` + `raw/telemetry.csv` + `result.json`（默认 `~/Documents/ParallelReactor/perf/<运行编号>/`）。
+- 截图 / 自动化：`PR_CONTROL_HEADLESS=1 PR_CONTROL_SHOT=<目录> PR_CONTROL_SCENARIO=main|perf|perf-report`。
+- 全部说明见 **doc/控制软件说明.md**（连接与控制权流程、每个界面与截图、性能测试流程、文件去向、环境变量、已知限制）。
 
 ## 备注
 

@@ -12,8 +12,7 @@ using ParallelReactor.Services;
 
 namespace ParallelReactor.Api;
 
-/// <summary>GET /files 的一项。from / to 为文件首末行时间（UTC；解析不到为 null）。</summary>
-public sealed record HistoryFileInfo(string Name, string Type, long Bytes, DateTime ModifiedAt, DateTime? From, DateTime? To, string? Day);
+// HistoryFileInfo 已移至 Contracts/ParallelReactor.Contracts/Api/HistoryFileInfo.cs。
 
 /// <summary>
 /// 历史文件的枚举与按时间段读取（设计稿 §9）。全部只读；打开文件一律 <c>FileShare.ReadWrite</c>（DataLogger 正在追加当天文件）；

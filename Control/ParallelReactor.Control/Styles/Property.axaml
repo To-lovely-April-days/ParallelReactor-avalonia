@@ -1,0 +1,75 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- .property-grid / .property-card -->
+  <Style Selector="UniformGrid.property-grid">
+    <Setter Property="Margin" Value="14,1,13,0" />
+  </Style>
+  <Style Selector="Border.property-card">
+    <Setter Property="Background" Value="{DynamicResource PropertyCardGradient}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PropertyLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="ClipToBounds" Value="True" />
+    <Setter Property="Margin" Value="0,0,10,0" />
+  </Style>
+  <Style Selector="Border.property-card.right">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="Border.property-card.green-edge">
+    <Setter Property="BorderBrush" Value="{DynamicResource PropertyLine}" />
+  </Style>
+  <Style Selector="Border.green-edge-bar">
+    <Setter Property="Width" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource GreenEdge}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Border.property-card.green-edge Border.green-edge-bar">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Border.property-card.hidden">
+    <Setter Property="Opacity" Value="0" />
+  </Style>
+  <Style Selector="Grid.property-path">
+    <Setter Property="Height" Value="18" />
+  </Style>
+  <Style Selector="Grid.property-path TextBlock">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Grid.property-body">
+    <Setter Property="Height" Value="38" />
+  </Style>
+  <Style Selector="TextBlock.property-primary">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="LineHeight" Value="11.6" />
+  </Style>
+  <Style Selector="TextBlock.property-secondary">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="LineHeight" Value="11.6" />
+  </Style>
+  <Style Selector="StackPanel.property-reading">
+    <Setter Property="Margin" Value="4,0,9,0" />
+    <Setter Property="MinWidth" Value="40" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.property-number">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.property-number.fault">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="TextBlock.property-number.offline">
+    <Setter Property="Foreground" Value="{DynamicResource Disabled}" />
+  </Style>
+  <Style Selector="TextBlock.property-unit">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Unit}" />
+    <Setter Property="Margin" Value="0,3,0,0" />
+    <Setter Property="TextAlignment" Value="Center" />
+  </Style>
+</Styles>

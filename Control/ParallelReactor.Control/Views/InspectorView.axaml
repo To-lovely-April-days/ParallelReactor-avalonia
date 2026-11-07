@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.InspectorView"
+             x:DataType="vm:MainViewModel">
+  <!-- .inspector：工具行 + .edit-plan 按钮列；主视图另加通道操作（需控制权的按钮按 CanControl 禁用，停止类始终可用） -->
+  <Border Classes="inspector">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Classes="inspector-tools">
+        <StackPanel Orientation="Horizontal" Spacing="5">
+          <Button Classes="flat icon-button" ToolTip.Tip="编辑" Command="{Binding ToggleEditCommand}"><c:IconView Geometry="{StaticResource IcoEdit}" Size="13" /></Button>
+          <Button Classes="flat icon-button" ToolTip.Tip="导出" Command="{Binding ExportCommand}"><c:IconView Geometry="{StaticResource IcoDownload}" Size="13" /></Button>
+          <Button Classes="flat icon-button" ToolTip.Tip="下发" Command="{Binding UploadProgramCommand}"><c:IconView Geometry="{StaticResource IcoUpload}" Size="13" /></Button>
+        </StackPanel>
+      </Border>
+      <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Panel>
+          <!-- 主视图工具 -->
+          <StackPanel IsVisible="{Binding IsMainView}">
+            <Button Classes="flat edit-plan" Content="{Binding EditButtonText}" Command="{Binding ToggleEditCommand}" />
+            <Button Classes="flat edit-plan" Content="下发程序" Command="{Binding UploadProgramCommand}" IsEnabled="{Binding CanControl}" />
+            <Button Classes="flat edit-plan" Content="导出" Command="{Binding ExportCommand}" />
+
+            <TextBlock Classes="inspector-label" Text="{Binding CurrentReactorName, StringFormat='操作 · {0}'}" />
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="启用" Command="{Binding EnableRvCommand}" IsEnabled="{Binding CanControl}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight" Margin="0" Content="停用" Command="{Binding DisableRvCommand}" IsEnabled="{Binding CanStopClass}" />
+            </Grid>
+            <Grid Classes="inspector-field" ColumnDefinitions="Auto,*,44">
+              <TextBlock Text="加热温度" />
+              <TextBlock Grid.Column="1" Text="℃" HorizontalAlignment="Right" Margin="0,0,4,0" />
+              <TextBox Grid.Column="2" Classes="flat reading" Text="{Binding HeatTempInput}" />
+            </Grid>
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="启动加热" Command="{Binding StartHeatCommand}" IsEnabled="{Binding CanControl}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight" Margin="0" Content="停止加热" Command="{Binding StopHeatCommand}" IsEnabled="{Binding CanStopClass}" />
+            </Grid>
+            <Grid Classes="inspector-field" ColumnDefinitions="Auto,*,44">
+              <TextBlock Text="设定值 SP" />
+              <TextBlock Grid.Column="1" Text="℃" HorizontalAlignment="Right" Margin="0,0,4,0" />
+              <TextBox Grid.Column="2" Classes="flat reading" Text="{Binding SpInput}" />
+            </Grid>
+            <Button Classes="flat edit-plan tight" Content="设定 SP" Command="{Binding SetSpCommand}" IsEnabled="{Binding CanControl}" />
+            <Grid Classes="inspector-field" ColumnDefinitions="Auto,*,44">
+              <TextBlock Text="{Binding StirText, StringFormat='搅拌（全局）{0}'}" />
+              <TextBlock Grid.Column="1" Text="rpm" HorizontalAlignment="Right" Margin="0,0,4,0" />
+              <TextBox Grid.Column="2" Classes="flat reading" Text="{Binding RpmInput}" />
+            </Grid>
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="搅拌 开" Command="{Binding StirOnCommand}" IsEnabled="{Binding CanControl}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight" Margin="0" Content="搅拌 停" Command="{Binding StirOffCommand}" IsEnabled="{Binding CanStopClass}" />
+            </Grid>
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="运行程序" Command="{Binding RunProgramCommand}" IsEnabled="{Binding CanControl}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight" Margin="0" Content="中止程序" Command="{Binding AbortProgramCommand}" IsEnabled="{Binding CanStopClass}" />
+            </Grid>
+            <Button Classes="flat edit-plan tight danger" Content="全部停止" Command="{Binding StopAllCommand}" IsEnabled="{Binding CanStopClass}" />
+
+            <TextBlock Classes="inspector-label" Text="控制权" />
+            <Button Classes="flat edit-plan tight" Content="申请控制权" Command="{Binding RequestControlCommand}" IsVisible="{Binding !CanControl}" IsEnabled="{Binding IsConnected}" />
+            <Button Classes="flat edit-plan tight" Content="释放控制权" Command="{Binding ReleaseControlCommand}" IsVisible="{Binding CanControl}" />
+            <Button Classes="flat edit-plan tight danger" Content="急停" Command="{Binding AskEstopCommand}" IsEnabled="{Binding IsConnected}" />
+          </StackPanel>
+
+          <!-- 性能测试工具（mock #perfTools：开始测试→暂停/继续 · 确认 / 继续 · 生成报告 · 下载报告 · 下载原始数据 · 返回测试项；另加 跳过 / 中止） -->
+          <StackPanel IsVisible="{Binding IsPerfView}">
+            <Button Classes="flat edit-plan" Content="{Binding Perf.StartButtonText}" Command="{Binding Perf.StartOrPauseCommand}" IsEnabled="{Binding Perf.CanStart}" />
+            <Button Classes="flat edit-plan" Content="确认 / 继续" Command="{Binding Perf.ConfirmContinueCommand}" IsEnabled="{Binding Perf.CanConfirm}" />
+            <Button Classes="flat edit-plan" Content="生成报告" Command="{Binding Perf.GenerateReportCommand}" IsEnabled="{Binding Perf.CanShowReport}" />
+            <Button Classes="flat edit-plan" Content="下载报告" Command="{Binding Perf.OpenReportCommand}" IsEnabled="{Binding Perf.HasReport}" />
+            <Button Classes="flat edit-plan" Content="下载原始数据" Command="{Binding Perf.OpenFolderCommand}" IsEnabled="{Binding Perf.HasReport}" />
+            <Button Classes="flat edit-plan" Content="返回测试项" Command="{Binding Perf.ResetViewCommand}" IsEnabled="{Binding !Perf.IsRunning}" />
+
+            <TextBlock Classes="inspector-label" Text="运行控制" />
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="跳过本步" Command="{Binding Perf.SkipPromptCommand}" IsEnabled="{Binding Perf.CanConfirm}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight danger" Margin="0" Content="中止" Command="{Binding Perf.AbortCommand}" IsEnabled="{Binding Perf.CanAbort}" />
+            </Grid>
+            <TextBlock Classes="inspector-label" Text="{Binding Perf.StatusText, StringFormat='状态 · {0}'}" />
+            <TextBlock Classes="inspector-label" Text="{Binding Perf.OutputDirName, StringFormat='输出 {0}'}" ToolTip.Tip="{Binding Perf.OutputDir}" IsVisible="{Binding Perf.HasReport}" />
+
+            <TextBlock Classes="inspector-label" Text="控制权" />
+            <Button Classes="flat edit-plan tight" Content="申请控制权" Command="{Binding RequestControlCommand}" IsVisible="{Binding !CanControl}" IsEnabled="{Binding IsConnected}" />
+            <Button Classes="flat edit-plan tight" Content="释放控制权" Command="{Binding ReleaseControlCommand}" IsVisible="{Binding CanControl}" />
+            <Button Classes="flat edit-plan tight danger" Content="急停" Command="{Binding AskEstopCommand}" IsEnabled="{Binding IsConnected}" />
+          </StackPanel>
+        </Panel>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

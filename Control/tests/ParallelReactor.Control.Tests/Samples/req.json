@@ -1,0 +1,1 @@
+{"ok":true,"opId":"3AE6943F-E607-43A2-BB01-76A4C90D574A","status":"accepted","result":{"requestId":"a7269bdf8f151c29","result":"granted","expiresAt":null,"leaseId":"4bda5369236bc3094016de28dacea828","leaseExpiresAt":"2026-11-07T06:10:45.8069735Z","heartbeatTimeoutSec":3,"leaseGraceSec":3,"requestKey":"8ee7d1b6723413c79fb9f510a28c576d"},"warnings":[],"opEventSeq":11}

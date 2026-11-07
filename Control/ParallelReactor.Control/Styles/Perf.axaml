@@ -1,0 +1,296 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 性能测试视图（pc-control.html data-view="perf"）：.perf-list / .check-group-title / .check-item / .channel-picker / .channel-chip /
+       .progress-body / .progress-bar / .progress-meta / .step-list / .step-row / .manual-grid / .report-table -->
+
+  <!-- .perf-list：padding 5 10 8 -->
+  <Style Selector="ScrollViewer.perf-list">
+    <Setter Property="Padding" Value="10,5,0,8" />
+    <Setter Property="Background" Value="{DynamicResource Panel}" />
+  </Style>
+
+  <!-- .check-group-title：8px 600 #55555c，底 1px #dedee1，padding 5 0 3，mt 4 -->
+  <Style Selector="Border.check-group-title">
+    <Setter Property="BorderBrush" Value="{DynamicResource SoftLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="0,5,0,3" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+  <Style Selector="Border.check-group-title TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Breadcrumb}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.check-group-title TextBlock.right">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource Label}" />
+  </Style>
+
+  <!-- .check-item：高 18，gap 5，8px，底 1px #eeeeef；checkbox 9×9 accent #765cc5 -->
+  <Style Selector="CheckBox.check-item">
+    <Setter Property="Height" Value="18" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Row" BorderBrush="{DynamicResource TrackLine}" BorderThickness="0,0,0,1" Background="Transparent">
+          <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Center">
+            <Border Name="PART_Box" Width="9" Height="9" BorderBrush="#a7a7ac" BorderThickness="1" CornerRadius="1.5" Background="{DynamicResource White}" Margin="0,0,5,0" VerticalAlignment="Center">
+              <Path Name="PART_Check" Data="M2 4.6 L3.9 6.4 L7.2 2.6" Stroke="{DynamicResource White}" StrokeThickness="1.3" StrokeLineCap="Round" StrokeJoin="Round" IsVisible="False" />
+            </Border>
+            <ContentPresenter Grid.Column="1" Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              VerticalAlignment="Center" Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" />
+          </Grid>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="CheckBox.check-item:checked /template/ Border#PART_Box">
+    <Setter Property="Background" Value="{DynamicResource Purple}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Purple}" />
+  </Style>
+  <Style Selector="CheckBox.check-item:checked /template/ Path#PART_Check">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="CheckBox.check-item:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Disabled}" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="CheckBox.check-item:disabled /template/ Border#PART_Box">
+    <Setter Property="Background" Value="{DynamicResource DisabledBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+  </Style>
+  <Style Selector="CheckBox.check-item.inline">
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector="CheckBox.check-item.inline /template/ Border#PART_Row">
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="TextBlock.check-right">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Label}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Margin" Value="6,0,0,0" />
+  </Style>
+  <Style Selector="TextBlock.check-text">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="TextBlock.check-text.disabled, TextBlock.check-right.disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Disabled}" />
+  </Style>
+
+  <!-- .channel-picker：换行，gap 4，padding 5 0 2 -->
+  <Style Selector="WrapPanel.channel-picker">
+    <Setter Property="Margin" Value="0,5,0,2" />
+  </Style>
+  <Style Selector="WrapPanel.channel-picker ToggleButton.channel-chip">
+    <Setter Property="Margin" Value="0,0,4,4" />
+  </Style>
+
+  <!-- .progress-body：padding 6 13 6 14 -->
+  <Style Selector="ScrollViewer.progress-body">
+    <Setter Property="Padding" Value="14,6,3,6" />
+  </Style>
+  <Style Selector="ScrollViewer.progress-body > ScrollContentPresenter > StackPanel">
+    <Setter Property="Margin" Value="0,0,10,0" />
+  </Style>
+  <!-- 人工录入卡：多次 / 多通道读数在卡内换行，卡体随之长高 -->
+  <Style Selector="Grid.property-body.grow">
+    <Setter Property="Height" Value="NaN" />
+    <Setter Property="MinHeight" Value="38" />
+  </Style>
+  <Style Selector="WrapPanel.entry-wrap">
+    <Setter Property="Margin" Value="4,2,9,2" />
+    <Setter Property="MaxWidth" Value="150" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="WrapPanel.entry-wrap StackPanel">
+    <Setter Property="Margin" Value="2,1" />
+  </Style>
+  <Style Selector="WrapPanel.entry-wrap TextBlock.property-unit">
+    <Setter Property="Margin" Value="0,1,0,0" />
+    <Setter Property="FontSize" Value="6" />
+  </Style>
+
+  <!-- .progress-bar：高 9，边 1px #d2d2d5，白底；填充 #efffe4→#d9fbb9 + 右边 1px #e1f3d2 -->
+  <Style Selector="Border.progress-bar">
+    <Setter Property="Height" Value="9" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RunBarLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!-- .progress-meta：两端对齐 7px #77777d，margin 3 0 6 -->
+  <Style Selector="Grid.progress-meta">
+    <Setter Property="Margin" Value="0,3,0,6" />
+  </Style>
+  <Style Selector="Grid.progress-meta TextBlock">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+  </Style>
+
+  <!-- .step-list：顶 1px #d5d5d8；.step-row：高 18，gap 6，padding 0 4，8px，底 1px #eeeeef -->
+  <Style Selector="Border.step-list">
+    <Setter Property="BorderBrush" Value="{DynamicResource PropertyLine}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="Border.step-row">
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TrackLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+  <Style Selector="Border.step-row.current">
+    <Setter Property="Background" Value="{DynamicResource PropertyCardGradient}" />
+  </Style>
+  <Style Selector="Border.step-row TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Border.step-row.current TextBlock">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.step-row TextBlock.right">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Foreground" Value="{DynamicResource Label2}" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="Margin" Value="6,0,0,0" />
+  </Style>
+  <Style Selector="Border.step-row.waiting TextBlock.right">
+    <Setter Property="Foreground" Value="{DynamicResource IconBtnActive}" />
+  </Style>
+  <Style Selector="Border.step-row.sub TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource Breadcrumb}" />
+  </Style>
+  <!-- .step-row .status-dot：7px 白底边 #c9c9cd；done #b7e99c/#a0d782；current #e5e0f5/#8a78cd -->
+  <Style Selector="Border.step-row Ellipse.step-dot">
+    <Setter Property="Width" Value="7" />
+    <Setter Property="Height" Value="7" />
+    <Setter Property="Fill" Value="{DynamicResource White}" />
+    <Setter Property="Stroke" Value="{DynamicResource Line}" />
+    <Setter Property="StrokeThickness" Value="1" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Margin" Value="0,0,6,0" />
+  </Style>
+  <Style Selector="Border.step-row.done Ellipse.step-dot">
+    <Setter Property="Fill" Value="{DynamicResource DotRun}" />
+    <Setter Property="Stroke" Value="{DynamicResource DotRunLine}" />
+  </Style>
+  <Style Selector="Border.step-row.current Ellipse.step-dot">
+    <Setter Property="Fill" Value="{DynamicResource DotCur}" />
+    <Setter Property="Stroke" Value="{DynamicResource DotCurLine}" />
+  </Style>
+
+  <!-- .manual-grid：2 列，column-gap 10，mt 6 -->
+  <Style Selector="UniformGrid.manual-grid">
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="UniformGrid.manual-grid Border.property-card">
+    <Setter Property="Margin" Value="0,0,10,0" />
+  </Style>
+  <Style Selector="UniformGrid.manual-grid Border.property-card.right">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <!-- 确认 / 检查表 / 安全 / 额外录入 卡：复用 property-card 的线与渐变 -->
+  <Style Selector="Border.prompt-card">
+    <Setter Property="Background" Value="{DynamicResource PropertyCardGradient}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PropertyLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="4,4,4,6" />
+    <Setter Property="Margin" Value="0,6,0,0" />
+  </Style>
+  <Style Selector="Border.prompt-card.safety">
+    <Setter Property="BorderBrush" Value="{DynamicResource Fail}" />
+    <Setter Property="BorderThickness" Value="0,0,4,1" />
+  </Style>
+  <Style Selector="Border.prompt-card TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+  <Style Selector="Border.prompt-card TextBlock.title">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.prompt-card TextBlock.path">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+  </Style>
+  <Style Selector="Border.prompt-card TextBlock.fail">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="Grid.entry-row">
+    <Setter Property="Height" Value="18" />
+  </Style>
+  <Style Selector="Grid.entry-row TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Grid.entry-row TextBlock.unit">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Unit}" />
+    <Setter Property="Margin" Value="4,0,0,0" />
+  </Style>
+  <Style Selector="TextBox.flat.reading.error /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="TextBlock.event-line">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Setter Property="Height" Value="11" />
+  </Style>
+
+  <!-- .report-table：8px；th/td padding 3 5 左对齐 nowrap 底 1px #e5e5e7；th 600 #55555c #fafafb；td.pass #5a8f3a td.fail #b85360 -->
+  <Style Selector="Border.report-head">
+    <Setter Property="Background" Value="{DynamicResource HeadingBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource RowLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.report-head TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Breadcrumb}" />
+    <Setter Property="Padding" Value="5,3" />
+  </Style>
+  <Style Selector="Border.report-row">
+    <Setter Property="BorderBrush" Value="{DynamicResource RowLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.report-row TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Padding" Value="5,3" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector="Border.report-row TextBlock.item">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.report-row TextBlock.pass">
+    <Setter Property="Foreground" Value="{DynamicResource Pass}" />
+  </Style>
+  <Style Selector="Border.report-row TextBlock.fail">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="TextBlock.simulated-banner">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+    <Setter Property="Margin" Value="0,0,0,4" />
+  </Style>
+</Styles>

@@ -1,0 +1,1 @@
+{"mode":"local","holder":null,"holderToken":null,"state":"local","leaseExpiresAt":null,"leaseHardExpiresAt":null,"pending":null,"autoGrant":true,"heartbeatTimeoutSec":5,"leaseGraceSec":5,"requestTimeoutSec":60,"onRemoteLost":"keep"}

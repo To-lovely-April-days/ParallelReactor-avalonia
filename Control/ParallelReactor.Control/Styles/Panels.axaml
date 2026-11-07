@@ -1,0 +1,147 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- .panel / .panel-heading / .icon-button / .inspector / .edit-plan / 曲线盒 -->
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{DynamicResource Panel}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TabBorder}" />
+    <Setter Property="BorderThickness" Value="0,0,1,1" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.panel.expanded">
+    <Setter Property="BorderBrush" Value="{DynamicResource ExpandedLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Margin" Value="35" />
+    <Setter Property="BoxShadow" Value="0 10 45 0 #40000000" />
+    <Setter Property="ZIndex" Value="50" />
+  </Style>
+  <Style Selector="Border.panel-heading">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Background" Value="{DynamicResource HeadingBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource HeadingLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="7,0" />
+  </Style>
+  <Style Selector="Border.panel-heading TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.panel-heading TextBlock.strong">
+    <Setter Property="FontWeight" Value="Medium" />
+  </Style>
+  <Style Selector="Border.panel-heading TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource HeadingMuted}" />
+  </Style>
+  <Style Selector="Border.panel-heading TextBlock.current-reactor">
+    <Setter Property="Foreground" Value="{DynamicResource Breadcrumb}" />
+  </Style>
+  <Style Selector="StackPanel.heading-actions">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="2" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="StackPanel.breadcrumb">
+    <Setter Property="Orientation" Value="Horizontal" />
+    <Setter Property="Spacing" Value="4" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <Style Selector="Button.icon-button">
+    <Setter Property="Width" Value="19" />
+    <Setter Property="Height" Value="19" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Foreground" Value="{DynamicResource IconBtn}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.icon-button:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource IconBtnHover}" />
+  </Style>
+  <Style Selector="Button.icon-button:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource IconBtnHoverBg}" />
+  </Style>
+  <Style Selector="Button.icon-button.active">
+    <Setter Property="Foreground" Value="{DynamicResource IconBtnActive}" />
+  </Style>
+  <Style Selector="Button.icon-button.active /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource IconBtnActiveBg}" />
+  </Style>
+  <Style Selector="Button.icon-button.canvas-tool">
+    <Setter Property="Width" Value="20" />
+    <Setter Property="Height" Value="20" />
+  </Style>
+  <Style Selector="Button.icon-button.property-close">
+    <Setter Property="Width" Value="15" />
+    <Setter Property="Height" Value="15" />
+  </Style>
+  <Style Selector="Button.icon-button.action">
+    <Setter Property="Width" Value="15" />
+    <Setter Property="Height" Value="18" />
+  </Style>
+
+  <!-- .inspector -->
+  <Style Selector="Border.inspector">
+    <Setter Property="Background" Value="{DynamicResource Inspector}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SoftLine}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+  <Style Selector="Border.inspector-tools">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Background" Value="{DynamicResource HeadingBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SoftLine}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Padding" Value="12,0" />
+  </Style>
+  <Style Selector="Button.edit-plan">
+    <Setter Property="Height" Value="19" />
+    <Setter Property="Margin" Value="12,11" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Background" Value="{DynamicResource BtnGradient}" />
+    <Setter Property="Foreground" Value="{DynamicResource BtnText}" />
+    <Setter Property="FontSize" Value="8" />
+  </Style>
+  <Style Selector="Button.edit-plan /template/ Border#PART_Bg">
+    <Setter Property="BoxShadow" Value="0 1 2 0 #14000000" />
+  </Style>
+  <Style Selector="Button.edit-plan:pointerover">
+    <Setter Property="Foreground" Value="{DynamicResource BtnHoverText}" />
+  </Style>
+  <Style Selector="Button.edit-plan:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource BtnHover}" />
+  </Style>
+  <Style Selector="Button.edit-plan.tight">
+    <Setter Property="Margin" Value="12,3" />
+  </Style>
+  <Style Selector="Button.edit-plan.danger">
+    <Setter Property="Foreground" Value="{DynamicResource Fail}" />
+  </Style>
+  <Style Selector="TextBlock.inspector-label">
+    <Setter Property="FontSize" Value="7" />
+    <Setter Property="Foreground" Value="{DynamicResource Label}" />
+    <Setter Property="Margin" Value="12,8,12,0" />
+  </Style>
+  <Style Selector="Grid.inspector-field">
+    <Setter Property="Margin" Value="12,3,12,0" />
+  </Style>
+  <Style Selector="Grid.inspector-field TextBlock">
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource Status}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 曲线 -->
+  <Style Selector="Border.chart-box">
+    <Setter Property="Background" Value="{DynamicResource ChartBg}" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+
+  <!-- 性能测试占位 -->
+  <Style Selector="TextBlock.placeholder">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+</Styles>

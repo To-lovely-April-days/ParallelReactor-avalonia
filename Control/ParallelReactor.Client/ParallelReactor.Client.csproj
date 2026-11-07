@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PC 控制软件的接口客户端：REST + WebSocket、租约 / 心跳状态机、重连 / 重同步、幂等键。
+       纯 BCL（HttpClient + ClientWebSocket + System.Text.Json），不引用 Avalonia、不加 NuGet 包；线上类型来自 Contracts。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Client</RootNamespace>
+    <AssemblyName>ParallelReactor.Client</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+  </ItemGroup>
+
+</Project>

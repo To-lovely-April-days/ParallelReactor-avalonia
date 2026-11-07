@@ -1,0 +1,123 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             x:Class="ParallelReactor.Control.Views.PlanEditorView"
+             x:DataType="vm:MainViewModel">
+  <!-- .panel.plan-editor：面包屑标题 + 绝对定位画布（步骤卡 / 时长块 / 连线 / 分隔线 / 硬件自检） -->
+  <Border Classes="panel">
+    <Grid RowDefinitions="24,*">
+      <Border Classes="panel-heading">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Classes="breadcrumb">
+            <c:IconView Geometry="{StaticResource IcoMove}" Size="10" />
+            <TextBlock Text="{Binding Plan.RootName}" />
+            <TextBlock Text="›" />
+            <TextBlock Classes="current-reactor" Text="{Binding Plan.ReactorName}" />
+            <TextBlock Text="›" />
+            <TextBlock Classes="strong" Text="{Binding Plan.ProgramName}" />
+            <TextBlock Classes="muted" Text="· 编辑中" IsVisible="{Binding Plan.IsEditing}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Classes="heading-actions">
+            <Button Classes="flat icon-button" Classes.active="{Binding IsPlanExpanded}" ToolTip.Tip="展开面板" Command="{Binding ToggleExpandCommand}" CommandParameter="plan"><c:IconView Geometry="{StaticResource IcoExpand}" Size="10" /></Button>
+            <Button Classes="flat icon-button" ToolTip.Tip="关闭面板" Command="{Binding NotImplementedCommand}" CommandParameter="关闭面板"><c:IconView Geometry="{StaticResource IcoClose}" Size="10" /></Button>
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <Border Grid.Row="1" Classes="plan-canvas" Name="CanvasHost">
+        <Panel>
+          <Border Classes="plan-canvas-sheen" />
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Visible">
+            <LayoutTransformControl>
+              <LayoutTransformControl.LayoutTransform>
+                <ScaleTransform ScaleX="{Binding Plan.Zoom}" ScaleY="{Binding Plan.Zoom}" />
+              </LayoutTransformControl.LayoutTransform>
+              <ItemsControl Name="PlanItems" ItemsSource="{Binding Plan.Items}" Height="{Binding Plan.CanvasHeight}" Width="{Binding Plan.CanvasWidth}" HorizontalAlignment="Left" VerticalAlignment="Top">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.DataTemplates>
+                  <!-- 步骤卡 132×185（第二列 140，绿渐变） -->
+                  <DataTemplate DataType="vm:StepCardVm">
+                    <Border Classes="step-card" Classes.green="{Binding IsGreen}" Classes.editing="{Binding IsEditing}" Classes.current="{Binding IsCurrent}" Width="{Binding Width}">
+                      <StackPanel>
+                        <Border Classes="step-title"><TextBlock Text="{Binding Title}" /></Border>
+                        <ItemsControl ItemsSource="{Binding Sections}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:StepSectionVm">
+                              <Border Classes="step-section">
+                                <StackPanel>
+                                  <TextBlock Classes="device-label" Text="{Binding DeviceLabel}" />
+                                  <TextBlock Classes="device-mode" Text="{Binding Mode}" />
+                                  <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Classes="setpoint-label" Text="{Binding Label}" />
+                                    <TextBlock Grid.Column="2" Classes="step-value" Text="{Binding Display}" IsVisible="{Binding !IsEditing}" />
+                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2" IsVisible="{Binding IsEditing}">
+                                      <TextBox Classes="flat step-value" Text="{Binding EditText}" />
+                                      <TextBlock Classes="step-value" Text="{Binding Unit}" />
+                                    </StackPanel>
+                                  </Grid>
+                                </StackPanel>
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                  <!-- 时长块 125×29，上方 1×12 竖线 -->
+                  <DataTemplate DataType="vm:DurationVm">
+                    <Panel Width="{Binding Width}">
+                      <Rectangle Classes="duration-tick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,-13,0,0" />
+                      <Border Classes="duration">
+                        <Grid ColumnDefinitions="*,Auto">
+                          <TextBlock Text="{Binding Text}" />
+                          <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Strong}" />
+                        </Grid>
+                      </Border>
+                    </Panel>
+                  </DataTemplate>
+                  <!-- 连线 66×1 + 右端 4px 三角 -->
+                  <DataTemplate DataType="vm:FlowLinkVm">
+                    <Panel Width="{Binding Width}" Height="4">
+                      <Rectangle Classes="flow-link" VerticalAlignment="Top" Margin="0,0,3,0" />
+                      <Path Classes="flow-arrow" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1.5,0,0" />
+                    </Panel>
+                  </DataTemplate>
+                  <DataTemplate DataType="vm:DividerVm">
+                    <Rectangle Classes="canvas-divider" Width="{Binding Width}" />
+                  </DataTemplate>
+                  <!-- 硬件自检 125×40 + 右下 L 形连线 -->
+                  <DataTemplate DataType="vm:HardwareCheckVm">
+                    <Panel Width="{Binding Width}" Height="40">
+                      <Border Classes="hardware-check">
+                        <StackPanel>
+                          <TextBlock Text="{Binding Rv}" />
+                          <Grid ColumnDefinitions="*,Auto" Margin="0,5,0,0">
+                            <TextBlock Text="硬件自检" />
+                            <TextBlock Grid.Column="1" Classes="strong" Text="{Binding Result}" />
+                          </Grid>
+                        </StackPanel>
+                      </Border>
+                      <Border Classes="hardware-elbow" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-14,-12" />
+                    </Panel>
+                  </DataTemplate>
+                  <DataTemplate DataType="vm:HardwareNoteVm">
+                    <Border Classes="hardware-note" Width="{Binding Width}"><TextBlock Text="{Binding Text}" TextWrapping="Wrap" /></Border>
+                  </DataTemplate>
+                </ItemsControl.DataTemplates>
+              </ItemsControl>
+            </LayoutTransformControl>
+          </ScrollViewer>
+          <!-- .canvas-tools：右上 top 2 right 7 -->
+          <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,2,15,0">
+            <Button Classes="flat icon-button canvas-tool" ToolTip.Tip="放大" Command="{Binding ZoomPlanCommand}" CommandParameter="in"><c:IconView Geometry="{StaticResource IcoSearch}" Size="10" /></Button>
+            <Button Classes="flat icon-button canvas-tool" ToolTip.Tip="缩小" Command="{Binding ZoomPlanCommand}" CommandParameter="out"><c:IconView Geometry="{StaticResource IcoZoomOut}" Size="10" /></Button>
+            <Button Classes="flat icon-button canvas-tool" ToolTip.Tip="平移" Command="{Binding NotImplementedCommand}" CommandParameter="平移"><c:IconView Geometry="{StaticResource IcoMove}" Size="10" /></Button>
+            <Button Classes="flat icon-button canvas-tool" ToolTip.Tip="适应视图" Command="{Binding ZoomPlanCommand}" CommandParameter="reset"><c:IconView Geometry="{StaticResource IcoExpand}" Size="10" /></Button>
+          </StackPanel>
+        </Panel>
+      </Border>
+    </Grid>
+  </Border>
+</UserControl>

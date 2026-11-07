@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PC 控制软件（Avalonia 桌面端）：research/pc-control.html 的 1:1 移植。
+       数据来自 Client（REST + WS），线上类型来自 Contracts；性能测试视图由 PerfTest 库的 PerfRunner 驱动（PerfViewModel）。
+       Debug 构建带 Avalonia.Headless + Skia：PR_CONTROL_HEADLESS=1 时无窗口渲染并按 PR_CONTROL_SHOT 场景截图。 -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Control</RootNamespace>
+    <AssemblyName>ParallelReactor.Control</AssemblyName>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+    <ProjectReference Include="../ParallelReactor.PerfTest/ParallelReactor.PerfTest.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.0" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.0" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+    <!-- 截图 / 无头模式仅 Debug：Release 发布包不带无头平台 -->
+    <PackageReference Include="Avalonia.Headless" Version="11.1.0" Condition="'$(Configuration)' == 'Debug'" />
+    <PackageReference Include="Avalonia.Skia" Version="11.1.0" Condition="'$(Configuration)' == 'Debug'" />
+  </ItemGroup>
+
+</Project>
