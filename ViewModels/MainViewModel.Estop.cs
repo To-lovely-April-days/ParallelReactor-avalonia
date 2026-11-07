@@ -69,6 +69,16 @@ public partial class MainViewModel
     /// <summary>急停锁定（UI 状态已置，或快速路径已锁、UI 流程尚未跑到）。</summary>
     public bool EstopLocked => Estopped || _estopFast;
 
+    /// <summary>本次急停的触发时刻（开机恢复时沿用上次）；复位后为 null。接口快照 estop.since 用。</summary>
+    internal DateTimeOffset? EstopAt { get; private set; }
+
+    /// <summary>本次锁定是开机从锁存文件恢复的（接口快照 estop.restoredOnBoot）。复位后清除。</summary>
+    internal bool EstopRestoredOnBoot { get; private set; }
+
+    /// <summary>锁存文件当前是否存在（接口快照 estop.latched）。缓存值：写入 / 清除 / 开机恢复时更新，Tick 里不做文件系统调用。</summary>
+    internal bool EstopLatched => _estopLatched;
+    private volatile bool _estopLatched;
+
     // 快速路径下发的那一轮（UI 流程首轮直接等它的结果，不重复发帧）
     private readonly object _fastEstopLock = new();
     private Task<EstopResult>? _fastEstopTask;
@@ -165,6 +175,7 @@ public partial class MainViewModel
         try
         {
             lock (_latchLock) _estopLatch.Write(new LatchInfo(DateTimeOffset.Now, source));
+            _estopLatched = true;
             LogFileEvent("info", "系统", "急停锁存已写入", _estopLatch.Path);
         }
         catch (Exception ex)
@@ -236,7 +247,10 @@ public partial class MainViewModel
     private void RestoreEstopLatch()
     {
         if (!_estopLatch.TryRead(out var info) || info == null) return;
+        _estopLatched = true;
         Estopped = true;   // OnEstoppedChanged 锁住三个服务
+        EstopAt = info.Time;
+        EstopRestoredOnBoot = true;
         EstopTimeText = $"触发时间 {info.Time.LocalDateTime:yyyy-MM-dd HH:mm:ss}（上次运行）";
         IsEstopPanelOpen = true;
         foreach (var r in EstopRows) r.Part = EstopPart.Pending;
@@ -276,7 +290,7 @@ public partial class MainViewModel
         }
         IsEstopPanelOpen = true;
         IsEstopResetConfirmOpen = false;
-        if (first && !restored) EstopTimeText = $"触发时间 {DateTime.Now:HH:mm:ss}";
+        if (first && !restored) { EstopTimeText = $"触发时间 {DateTime.Now:HH:mm:ss}"; EstopAt = DateTimeOffset.Now; EstopRestoredOnBoot = false; }
         Alarm.Log("err", "系统",
             restored ? "开机恢复急停锁定 · 重新下发停止指令" : first ? "急停按下 · 停止指令下发" : "急停再次按下 · 重新下发",
             $"来源 {source} · 加热 / 搅拌 / 阀门三路并行下发，各部分回应时刻见事件日志");
@@ -466,7 +480,10 @@ public partial class MainViewModel
         Interlocked.Exchange(ref _estopResetSeq, seenSeq);
         bool latchCleared;
         lock (_latchLock) latchCleared = _estopLatch.Clear();   // 只有本地复位才删除锁存（C23）
+        if (latchCleared) _estopLatched = false;
         Estopped = false;   // 只解除锁定：设备保持停止，需要时重新开始运行
+        EstopAt = null;
+        EstopRestoredOnBoot = false;
         // 复位途中另一线程又发起了急停（RequestEstop 已置锁）：OnEstoppedChanged 刚解了锁，这里立刻锁回去，
         // 它投递的界面流程随后重新进入急停并补写锁存
         if (Interlocked.Read(ref _estopReqSeq) != seenSeq)

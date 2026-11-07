@@ -10,6 +10,12 @@ internal static class Program
     public static void Main(string[] args)
     {
         bool drm = (Environment.GetEnvironmentVariable("PR_DRM") ?? "") is "1" or "true";
+        // 无头（PR_HEADLESS=1）：不接显示器 / 无 WindowServer 的开发机上跑完整的 VM、控制循环与对外接口（配合 PR_SIM=1 做接口验收）。
+        // 只在 Debug 构建里存在（Avalonia.Headless 包按 Configuration 条件引用）：Release 发布包不带无头平台，现场设了也无效
+        bool headless = false;
+#if DEBUG
+        headless = (Environment.GetEnvironmentVariable("PR_HEADLESS") ?? "") is "1" or "true";
+#endif
         double scale = double.TryParse(Environment.GetEnvironmentVariable("PR_UI_SCALE"), out var s) ? s : 1.5;
 
         // 强制 UI 高 DPI 渲染缩放：让文字/矢量按设备像素栅格化，显示锐利（而非把 720p 画面放大）。
@@ -19,6 +25,15 @@ internal static class Program
             Environment.SetEnvironmentVariable("AVALONIA_GLOBAL_SCALE_FACTOR",
                 scale.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
+#if DEBUG
+        if (headless)
+        {
+            Avalonia.Headless.AvaloniaHeadlessPlatformExtensions.UseHeadless(BuildAvaloniaApp(),
+                    new Avalonia.Headless.AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = true })
+                .StartWithClassicDesktopLifetime(args);
+        }
+        else
+#endif
         if (drm)
         {
             // 专用面板：DRM/KMS 直出，无需 X/Wayland。省掉 Xorg 的 CPU+内存+合成开销。

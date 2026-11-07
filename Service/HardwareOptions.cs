@@ -148,6 +148,17 @@ public static class HardwareOptions
             ? new ModbusRtuMaster(IoPort!, IoBaud, Parity.None, 8, StopBits.One)
             : new OfflineModbusMaster("阀门 IO16R（PR_IO_PORT）");
 
+    // ===== 已安装通道（PR_CHANNELS，设计稿 §1.4 / §6.1）=====
+
+    /// <summary>
+    /// 已安装（物理存在）的通道号，来自环境变量 <c>PR_CHANNELS</c>（如 "1-4"、"1,3,5-8"），默认 1–8。
+    /// 只影响对外接口 /device 的 installedChannels / channels[].installed，不改变任何控制、监视或记录行为（8 路照常判定）。
+    /// </summary>
+    public static int[] InstalledChannels { get; } = Api.ChannelRange.Parse(Env("PR_CHANNELS"));
+
+    /// <summary>该通道（1 起）是否在已安装列表中。</summary>
+    public static bool IsInstalled(int id) => Array.IndexOf(InstalledChannels, id) >= 0;
+
     private static string? Env(string key)
     {
         var v = Environment.GetEnvironmentVariable(key);

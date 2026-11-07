@@ -65,8 +65,12 @@ public partial class MainViewModel
     public void LogSetting(string key, string oldValue, string newValue)
     {
         if (oldValue == newValue) return;
+        SettingsRevision++;
         Alarm.Log("info", "设置", $"修改 · {key}", $"{oldValue} → {newValue}");
     }
+
+    /// <summary>设置修订号（设计稿 §6.7 revision）：每记一条设置修改事件加 1。尽力而为：开机从 0 起，不持久化（P2 只读接口用于区分「有没有改过」）。</summary>
+    internal long SettingsRevision { get; private set; }
 
     // ============ 超温切断（P0-4）============
 
@@ -480,8 +484,8 @@ public partial class MainViewModel
 
     // ============ 每 Tick 一行运行记录（P0-1）============
 
-    /// <summary>搅拌驱动器最近一次读到的报警码（null=尚未读到）。</summary>
-    private ushort? _stirAlarmCode;
+    /// <summary>搅拌驱动器最近一次读到的报警码（null=尚未读到）。接口快照只读。</summary>
+    internal ushort? _stirAlarmCode;
 
     private void LogTelemetry(bool realT, bool realP) => Logger.Telemetry(BuildTelemetryRow(realT, realP));
 

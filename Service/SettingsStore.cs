@@ -22,11 +22,16 @@ public static class SettingsStore
         public double[][][]? BandPids { get; set; }   // [通道8][档3][P,I,D]
     }
 
-    private static string Dir => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ParallelReactor");
+    /// <summary>配置目录：环境变量 PR_CONFIG_DIR 优先（开发 / 验收时不污染用户配置目录，与 PR_DATA_DIR 同理）；默认用户配置目录下的 ParallelReactor。</summary>
+    private static string Dir => Environment.GetEnvironmentVariable("PR_CONFIG_DIR") is { } d && !string.IsNullOrWhiteSpace(d)
+        ? d.Trim()
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "ParallelReactor");
 
     /// <summary>存档文件完整路径（设置页「数据存储」显示用）。</summary>
     public static string FilePath => Path.Combine(Dir, "settings.json");
+
+    /// <summary>对外接口部署参数文件（设计稿 §3.3）：与 settings.json 同目录；模拟模式用 api-sim.json（与 estop-sim.latch 同一约定）。</summary>
+    public static string ApiConfigPath => Path.Combine(Dir, HardwareOptions.Sim ? "api-sim.json" : "api.json");
 
     private static readonly JsonSerializerOptions JsonOpts = new() { WriteIndented = true };
     private static readonly object Lock = new();
