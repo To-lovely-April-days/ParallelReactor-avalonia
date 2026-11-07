@@ -74,12 +74,17 @@ public sealed class DataLogger
     public long DroppedLines => System.Threading.Interlocked.Read(ref _dropped);
     private long _dropped;
 
+    /// <summary>事件存储（带 seq 的 JSONL + 内存环，供对外接口；null = 只写 CSV）。</summary>
+    public EventStore? Events { get; }
+
     /// <param name="dir">数据目录（不存在时自动创建）。</param>
     /// <param name="onError">写盘失败时回调（在后台线程调用；调用方自行切回 UI 线程）。</param>
-    public DataLogger(string dir, Action<string>? onError = null)
+    /// <param name="events">事件存储：每条 <see cref="Event"/> 同时写入它（分配 seq、JSONL、环形缓冲）。</param>
+    public DataLogger(string dir, Action<string>? onError = null, EventStore? events = null)
     {
         Dir = dir;
         _onError = onError;
+        Events = events;
         _loop = Task.Run(LoopAsync);
     }
 
@@ -102,9 +107,13 @@ public sealed class DataLogger
         Enqueue(new RowJob(row.Time, TelemetryCsv.Format(row), sessionPath));
     }
 
-    /// <summary>入队一条事件。</summary>
+    /// <summary>入队一条事件（CSV）；配置了 <see cref="Events"/> 时同时写入事件存储（seq / JSONL / 环）。任意线程可调。</summary>
     public void Event(DateTimeOffset t, string level, string source, string title, string detail)
-        => Enqueue(new EventJob(t, TelemetryCsv.FormatEvent(t, level, source, title, detail)));
+    {
+        try { Events?.Append(t, level, source, title, detail); }
+        catch { /* 事件存储异常不影响 CSV 与调用方 */ }
+        Enqueue(new EventJob(t, TelemetryCsv.FormatEvent(t, level, source, title, detail)));
+    }
 
     /// <summary>
     /// 开始测试会话：之后的运行记录同时写入 <c>sessions/&lt;testId&gt;-&lt;yyyyMMdd-HHmmss&gt;.csv</c>。
@@ -172,7 +181,9 @@ public sealed class DataLogger
     public async Task StopAsync(TimeSpan? timeout = null)
     {
         _q.Writer.TryComplete();
-        await Task.WhenAny(_loop, Task.Delay(timeout ?? TimeSpan.FromSeconds(3))).ConfigureAwait(false);
+        var t = timeout ?? TimeSpan.FromSeconds(3);
+        var ev = Events?.StopAsync(t) ?? Task.CompletedTask;
+        await Task.WhenAny(Task.WhenAll(_loop, ev), Task.Delay(t)).ConfigureAwait(false);
     }
 
     /// <summary>同步停止（进程退出事件里用，最多阻塞 timeout）。</summary>
@@ -180,6 +191,7 @@ public sealed class DataLogger
     {
         _q.Writer.TryComplete();
         try { _loop.Wait(timeout ?? TimeSpan.FromSeconds(2)); } catch { }
+        try { Events?.Stop(timeout ?? TimeSpan.FromSeconds(2)); } catch { }
     }
 
     private void Enqueue(Job j)

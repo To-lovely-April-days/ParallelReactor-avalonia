@@ -219,6 +219,9 @@ public partial class LeakViewModel : ViewModelBase
 
     private LeakRecord? _rec;
 
+    /// <summary>正在进行的泄漏测试编号（leak-yyyyMMdd-HHmmss；无测试为 null）。接口快照只读。</summary>
+    internal string? CurrentRunId => _rec?.RunId;
+
     /// <summary>读一次 8 路压力（同 <see cref="MainViewModel.ReadPressuresAsync"/>），并把 cells 的这一点记入逐点数据。</summary>
     private async Task<double[]> SampleAsync(string phase, IEnumerable<LeakCell> cells)
     {

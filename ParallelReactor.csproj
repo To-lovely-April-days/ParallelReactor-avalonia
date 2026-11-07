@@ -13,7 +13,16 @@
     <!-- 单文件发布时把原生库(libSkiaSharp/libHarfBuzzSharp)解包到磁盘，
          否则 dlopen 找不到 .so，启动即崩(203/ABRT, libSkiaSharp not found)。 -->
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <!-- 对外接口（Api/）引入 ASP.NET Core 后仍用工作站 GC + 并发 GC（设计稿 §3.2）：不让 FrameworkReference 默认切到服务器 GC，
+         避免在 ARM 面板上多占内存、与 UI 线程抢核。不开 Trimming（JSON 用源生成即可）。 -->
+    <ServerGarbageCollection>false</ServerGarbageCollection>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
   </PropertyGroup>
+
+  <!-- 内嵌 Kestrel（REST + WebSocket，设计稿 §3.2）：共享框架引用，不加 NuGet 包；与 PublishReadyToRun / 单文件发布兼容 -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/**" />
@@ -35,6 +44,8 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <!-- 真实串口通讯（Modbus RTU over RS485） -->
     <PackageReference Include="System.IO.Ports" Version="8.0.0" />
+    <!-- 无头运行（PR_HEADLESS=1，开发 / 接口验收用：没有显示器或 WindowServer 时也能跑完整的 VM + 控制循环 + 接口）。只进 Debug 构建，不随发布包上面板 -->
+    <PackageReference Include="Avalonia.Headless" Version="11.1.0" Condition="'$(Configuration)' == 'Debug'" />
     <!-- 调试期可视化树查看器；正式发布可移除 -->
     <PackageReference Include="Avalonia.Diagnostics" Version="11.1.0" Condition="'$(Configuration)' == 'Debug'" />
   </ItemGroup>

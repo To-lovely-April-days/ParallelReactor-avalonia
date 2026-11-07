@@ -56,12 +56,14 @@ public partial class AlarmViewModel : ViewModelBase
             Id = (++_seq).ToString(System.Globalization.CultureInfo.InvariantCulture),
             K = kind, Rv = rv, Msg = msg, Sub = sub,
             Time = now.ToString("HH:mm:ss"),
+            At = now,
             Stat = kind == "info" ? AlarmLifecycle.Done : AlarmLifecycle.Active,
         };
         All.Insert(0, item);
         ApplyFilter();
         OnPropertyChanged(nameof(Total));
         OnPropertyChanged(nameof(ActiveCount));
+        PublishAlarm(item);
         return item;
     }
 
@@ -92,13 +94,16 @@ public partial class AlarmViewModel : ViewModelBase
         var items = _index.TakeActive(key);
         var t = System.DateTimeOffset.Now.ToString("HH:mm:ss");
         int n = 0;
+        var nowOff = System.DateTimeOffset.Now;
         foreach (var a in items)
         {
             var next = AlarmLifecycle.OnCleared(a.Stat);
             if (next == a.Stat) continue;
             a.Stat = next;
             a.ClearedTime = t;
+            a.ClearedAt = nowOff;
             n++;
+            PublishAlarm(a);
         }
         Log("info", rv, msg, n > 0 ? $"{sub} · 自动解除 {n} 条报警" : sub);   // 内含 ApplyFilter 与计数刷新
         return n;
@@ -118,7 +123,23 @@ public partial class AlarmViewModel : ViewModelBase
         a.Stat = AlarmLifecycle.OnAck(a.Stat);
         ApplyFilter();
         OnPropertyChanged(nameof(ActiveCount));
+        PublishAlarm(a);
     }
+
+    // ============ 对外接口的只读视图（GET /alarms、WS alarm）：列表副本放进 EventStore，接口线程不碰本 VM ============
+
+    /// <summary>列表有变化（新增 / 解除 / 确认）时把整表副本与变化的那条交给事件存储。无事件存储时不做任何事。</summary>
+    private void PublishAlarm(AlarmItem changed)
+    {
+        var ev = _logger?.Events;
+        if (ev == null) return;
+        var all = new Services.AlarmDto[All.Count];
+        for (int i = 0; i < all.Length; i++) all[i] = ToDto(All[i]);
+        ev.PublishAlarms(all, ToDto(changed));
+    }
+
+    internal static Services.AlarmDto ToDto(AlarmItem a) => new(a.Id, a.K, a.Rv, Services.EventKinds.ChannelOf(a.Rv), a.Msg, a.Sub,
+        a.At.UtcDateTime, a.Stat, a.ClearedAt?.UtcDateTime);
 
     private void ApplyFilter()
     {
@@ -145,6 +166,12 @@ public partial class AlarmItem : ObservableObject
     public string Rv { get; set; } = "";
     public string Msg { get; set; } = "";
     public string Time { get; set; } = "";
+
+    /// <summary>产生时刻（完整时间，对外接口 raisedAt）。</summary>
+    public System.DateTimeOffset At { get; init; }
+
+    /// <summary>自动解除的时刻（完整时间，对外接口 clearedAt；未解除为 null）。</summary>
+    public System.DateTimeOffset? ClearedAt { get; set; }
 
     [ObservableProperty] private string _sub = "";
     [ObservableProperty] private string _stat = AlarmLifecycle.Done;

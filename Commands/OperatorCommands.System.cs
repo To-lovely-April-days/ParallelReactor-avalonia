@@ -104,14 +104,15 @@ public sealed partial class OperatorCommands
             // 气路序列（泄漏测试 / 程序气路步骤）进行中不开始运行（C6）：确认框打开期间可能刚开始了序列
             if (_m.GasBusy) return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 无法开始运行").AsTask();
         }
-        _m.BuildPreRun();   // 弹窗打开期间模块可能掉线：确认时按最新状态重判
-        var checks = _m.PreRunChecks.Select(x => new { kind = x.Kind, title = x.Title, detail = x.Detail }).ToList();
+        // 弹窗打开期间模块可能掉线：确认时按最新状态重判。dryRun（GET /preflight）只算不写界面，不碰操作员正打开的确认框
+        var pre = dryRun ? _m.ComputePreRun() : _m.BuildPreRunAndGet();
+        var checks = pre.Checks.Select(x => new { kind = x.Kind, title = x.Title, detail = x.Detail }).ToList();
         var toHeat = _m.Reactors.Where(r => RunSelection.CanStartHeat(_m.RunChannelOf(r))).ToList();
         if (dryRun)
-            return (_m.PreRunCanRun
-                ? OpResult.Done(_m.PreRunSummary, "ok", new { canRun = true, checks, channels = toHeat.Select(c => c.Id).ToList() })
-                : OpResult.Fail(OpCodes.PreflightFailed, _m.PreRunSummary, "err", new { canRun = false, checks })).AsTask();
-        if (!_m.PreRunCanRun)
+            return (pre.CanRun
+                ? OpResult.Done(pre.Summary, "ok", new { canRun = true, checks, channels = toHeat.Select(c => c.Id).ToList() })
+                : OpResult.Fail(OpCodes.PreflightFailed, pre.Summary, "err", new { canRun = false, checks })).AsTask();
+        if (!pre.CanRun)
             return OpResult.Fail(OpCodes.PreflightFailed, "存在未处理的异常项，无法开始运行", "err", new { checks }).AsTask();
 
         // 开始运行即下发加热：只有已结束 / 已启用（待加热）且无超温 / 超压未解除的通道转入「升温中」并下发加热。
@@ -164,6 +165,8 @@ public sealed partial class OperatorCommands
         _m.EndTestSession();
         _m.Alarm.Log("info", "系统", "程序退出",
             $"停止搅拌 {(stir.Result ? "已确认" : "未确认")} · 停止加热 {(heat.Result ? "已确认" : "未确认")} · 阀门全关 {(valves.Result ? "已确认" : "未确认")}");
+        // 先停对外接口再停记录器：「接口已停止」事件才能落盘；WS 客户端收到关闭帧而不是 TCP 重置。幂等，ShutdownApp 里再调一次无害
+        try { _m.ApiStop?.Invoke(); } catch { }
         await _m.Logger.StopAsync(TimeSpan.FromSeconds(3));
 
         _m.ShutdownApp();   // 先停控制循环（等待期间 Tick 照常运行，与以前一致），再退出进程

@@ -35,6 +35,7 @@ public sealed class ControlLoop : IDisposable
     private IWarmupHost? _warmHost;
     private bool _warmStarted;
     private bool _stopped;
+    private int _snapFailLogged;
 
     public ControlLoop(MainViewModel vm)
     {
@@ -42,8 +43,15 @@ public sealed class ControlLoop : IDisposable
         Gate = new TickGate(TickInterval);
     }
 
-    /// <summary>防重入与超时统计（诊断 / 将来的 /device/comm 使用）。</summary>
+    /// <summary>防重入与超时统计（诊断 / /device/comm 使用）。</summary>
     public TickGate Gate { get; }
+
+    /// <summary>每个 Tick 结束后发布的只读快照（对外接口的唯一数据源，设计稿 §2.2 第 4 条）。</summary>
+    public Api.SnapshotStore Snapshots { get; } = new();
+
+    /// <summary>遥测帧序号：每 Tick 加 1，开机从 0 起（设计稿 §8.3）。</summary>
+    public long SnapshotSeq => _snapSeq;
+    private long _snapSeq;
 
     public bool Running => _tick?.IsEnabled == true;
 
@@ -71,7 +79,8 @@ public sealed class ControlLoop : IDisposable
     {
         if (!Gate.TryEnter()) return;
         var sw = Stopwatch.StartNew();
-        try { _vm.Tick(); }
+        bool ok = false;
+        try { _vm.Tick(); ok = true; }
         finally
         {
             if (Gate.Exit(sw.Elapsed, DateTime.UtcNow))
@@ -82,6 +91,19 @@ public sealed class ControlLoop : IDisposable
                         $"本次 Tick 耗时 {sw.Elapsed.TotalMilliseconds:0} ms（节拍 {TickInterval.TotalMilliseconds:0} ms）· 累计超时 {Gate.Overruns} 次 · 跳过重入 {Gate.Skipped} 次");
                 }
                 catch { /* 记录失败不影响控制循环，也不覆盖 Tick 本身的异常 */ }
+            }
+            // 快照在 Gate.Exit 之后生成（门闸统计已是本 Tick 的终值）；Tick 抛异常时不发布半套状态。
+            // 注意：因此 /device/comm.tick 的 lastTookMs / overruns 不含快照生成（约 8×16 段记录的分配）与 Published 回调的耗时，
+            // 门闸数字略低估每 Tick 的 UI 线程占用；验收指标以遥测 CSV 行间距为准。
+            // 发布只做一次 volatile 写 + 非阻塞入队（WsHub），绝不等待网络。失败不覆盖 Tick 的异常。
+            if (ok)
+            {
+                try { Snapshots.Publish(Api.Hmi.SnapshotBuilder.Build(_vm, ++_snapSeq, Gate, HardwareOptions.InstalledChannels)); }
+                catch (Exception ex)
+                {
+                    if (_snapFailLogged++ % 50 == 0)
+                        try { _vm.LogFileEvent("err", "接口", "快照生成失败", ex.GetBaseException().Message); } catch { }
+                }
             }
         }
     }

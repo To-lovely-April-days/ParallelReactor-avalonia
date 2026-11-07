@@ -209,7 +209,9 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel()
     {
         // 数据记录最先建：之后所有事件（含 AlarmViewModel 的每条记录）都会落盘
-        Logger = new Services.DataLogger(Services.DataLogger.DefaultDirFor(Services.HardwareOptions.Sim), OnLoggerError);
+        // 事件存储（带 seq 的 JSONL + 内存环，对外接口 /events 与 WS 重同步的来源）挂在 DataLogger.Event 后面：三个事件入口都经它
+        var dataDir = Services.DataLogger.DefaultDirFor(Services.HardwareOptions.Sim);
+        Logger = new Services.DataLogger(dataDir, OnLoggerError, new Services.EventStore(dataDir, OnLoggerError));
         // systemd 停服务（SIGTERM）/ 其他非「退出程序」路径：进程退出前尽力写完队列
         AppDomain.CurrentDomain.ProcessExit += (_, _) => Logger.Stop(TimeSpan.FromSeconds(2));
         // 急停锁存：数据目录下 estop.latch（模拟 estop-sim.latch，PR_DATA_DIR 下真机 / 模拟共用目录时也互不影响）
@@ -524,6 +526,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>控制循环（由 App 创建并赋值；退出前停止）。</summary>
     internal Services.ControlLoop? Loop { get; set; }
 
+    /// <summary>停止对外接口（由 App 在启动 Kestrel 后赋值；退出前调用，Kestrel 未启用时为 null）。</summary>
+    internal Action? ApiStop { get; set; }
+
     /// <summary>触屏入口的命令来源。</summary>
     internal static CommandSource Src => CommandSource.Local;
 
@@ -694,6 +699,7 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>退出进程（命令层 TryExitApp 收尾完成后调用）：先停控制循环，再按生命周期退出。</summary>
     internal void ShutdownApp()
     {
+        try { ApiStop?.Invoke(); } catch { /* 接口停止失败不阻塞退出 */ }
         Loop?.Stop();   // 退出前停控制循环（等待期间 Tick 照常运行，与以前一致）
         if (Avalonia.Application.Current?.ApplicationLifetime
                 is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
@@ -716,20 +722,36 @@ public partial class MainViewModel : ViewModelBase
     internal RunChannel RunChannelOf(Reactor r)
         => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id), Program.RunningRv == r.Id);
 
-    /// <summary>按当前设备状态生成预运行检查项。</summary>
-    internal void BuildPreRun()
+    /// <summary>按当前设备状态生成预运行检查项并写入界面（预运行确认框）。只在本地流程里调用。</summary>
+    internal void BuildPreRun() => BuildPreRunAndGet();
+
+    internal PreRunResult BuildPreRunAndGet()
     {
+        var r = ComputePreRun();
         PreRunChecks.Clear();
+        foreach (var c in r.Checks) PreRunChecks.Add(c);
+        PreRunCanRun = r.CanRun;
+        PreRunSummary = r.Summary;
+        return r;
+    }
+
+    /// <summary>
+    /// 预运行检查的纯计算：只读 VM 状态，不改任何界面绑定的集合 / 属性。
+    /// 本地确认框经 <see cref="BuildPreRun"/> 写入界面；远程 GET /preflight（UI 线程上）直接用本方法，不会闪动操作员正打开的确认框。
+    /// </summary>
+    internal PreRunResult ComputePreRun()
+    {
+        var checks = new List<PreRunCheck>();
 
         var hw = Services.HardwareOptions.UseRealTemp;   // 仅为缩短下面的判断
 
         // 急停（软件急停；硬件急停回路未接入软件，无法读取）
-        PreRunChecks.Add(EstopLocked
+        checks.Add(EstopLocked
             ? PreRunCheck.Err("急停", "急停已触发，必须先复位才能运行")
             : PreRunCheck.Ok("急停", "软件急停未触发"));
 
         // 温控：开始运行要下发加热，温控必须在线
-        PreRunChecks.Add(!hw
+        checks.Add(!hw
             ? PreRunCheck.Err("温控", "温控未配置串口（PR_TEMP_PORT），无法加热")
             : !Temp.Online
                 ? PreRunCheck.Err("温控", "温控离线（AI-8 通讯失败），请检查接线与串口")
@@ -737,7 +759,7 @@ public partial class MainViewModel : ViewModelBase
 
         // 压力：没有压力读数就无法做超压监视，不允许运行
         var hot = Reactors.Where(r => r.State != ReactorState.Idle && r.P >= Settings.OverPressure).ToList();
-        PreRunChecks.Add(!Services.HardwareOptions.UseRealAnalog
+        checks.Add(!Services.HardwareOptions.UseRealAnalog
             ? PreRunCheck.Err("压力 / 超压监视", "压力采集未配置串口（PR_PRESS_PORT），无法监视超压")
             : !_press.Online
                 ? PreRunCheck.Err("压力 / 超压监视", "压力采集离线（8AI 通讯失败），无法监视超压")
@@ -746,7 +768,7 @@ public partial class MainViewModel : ViewModelBase
                     : PreRunCheck.Ok("压力 / 超压监视", $"8 路在线 · 均低于超压报警值 {Units.FormatP(Settings.OverPressure)}"));
 
         // 阀门：本轮运行不使用气路；只核对排空阀与手动模式
-        PreRunChecks.Add(!RealIo
+        checks.Add(!RealIo
             ? PreRunCheck.Warn("阀门", "阀门未配置串口（PR_IO_PORT），无法确认阀门状态")
             : !_valves.Online
                 ? PreRunCheck.Warn("阀门", "阀门模块离线，无法确认阀门状态")
@@ -755,17 +777,17 @@ public partial class MainViewModel : ViewModelBase
                     : PreRunCheck.Ok("阀门", "IO16R 在线 · 排空阀已关闭"));
 
         // 气路：自动序列（泄漏测试 / 程序气路步骤）进行中不允许开始运行（C6）
-        PreRunChecks.Add(GasBusy
+        checks.Add(GasBusy
             ? PreRunCheck.Err("气路", $"{GasTask}进行中，请等待完成或先停止")
             : PreRunCheck.Ok("气路", "气路空闲"));
 
         // 控制模式
-        PreRunChecks.Add(ManualValve
+        checks.Add(ManualValve
             ? PreRunCheck.Warn("控制模式", "手动阀控仍开启，自动运行时建议关闭")
             : PreRunCheck.Ok("控制模式", "自动模式，手动阀控已关闭"));
 
         // 搅拌器（全局共用）：开始运行会自动开启搅拌
-        PreRunChecks.Add(!Services.HardwareOptions.UseRealStir
+        checks.Add(!Services.HardwareOptions.UseRealStir
             ? PreRunCheck.Warn("搅拌器", "搅拌未配置串口（PR_STIR_PORT），本次运行不搅拌")
             : !_stir.Online
                 ? PreRunCheck.Warn("搅拌器", "搅拌驱动器离线，开始运行后可能无法搅拌")
@@ -774,28 +796,28 @@ public partial class MainViewModel : ViewModelBase
         // 报警 / 超温 / 超压未解除的通道：阻塞运行（C19，任何原因、任何通道，含停用通道）
         var chans = Reactors.Select(RunChannelOf).ToList();
         var blocking = RunSelection.Blocking(chans);
-        PreRunChecks.Add(blocking.Count > 0
+        checks.Add(blocking.Count > 0
             ? PreRunCheck.Err("报警通道", $"{string.Join("、", blocking.Select(id => "RV" + id))} 存在报警或超温/超压未解除的通道，请先处理并停止 / 复位")
             : PreRunCheck.Ok("报警通道", "无报警或超温/超压未解除的通道"));
 
         // 正在执行程序的通道由程序控制，不参与本次运行（C20）
         if (Program.RunningRv is { } prv)
-            PreRunChecks.Add(PreRunCheck.Warn("程序通道",
+            checks.Add(PreRunCheck.Warn("程序通道",
                 $"RV{prv} 正在执行程序，不参与本次运行 · 注意搅拌器全机共用：开始运行会以 {StirRpm} rpm 开启搅拌（RV{prv} 也会被搅拌），程序的搅拌步骤结束 / 中止时也会停掉搅拌"));
 
         // 参与运行的通道：只有已启用 / 已结束的通道会转入升温（已在运行的通道不重复下发）
         int active = RunSelection.ToHeat(chans).Count;
-        PreRunChecks.Add(active > 0
+        checks.Add(active > 0
             ? PreRunCheck.Ok("运行通道", $"{active} / 8 个通道将参与本次运行")
             : PreRunCheck.Err("运行通道", "没有可开始的通道（已启用 / 已结束），请先启用至少一个反应釜"));
 
-        int ok = PreRunChecks.Count(c => c.Kind == "ok");
-        int warn = PreRunChecks.Count(c => c.Kind == "warn");
-        int err = PreRunChecks.Count(c => c.Kind == "err");
-        PreRunCanRun = err == 0;
-        PreRunSummary = err == 0
+        int ok = checks.Count(c => c.Kind == "ok");
+        int warn = checks.Count(c => c.Kind == "warn");
+        int err = checks.Count(c => c.Kind == "err");
+        string summary = err == 0
             ? $"检查通过 · {ok} 项正常" + (warn > 0 ? $" · {warn} 项提示" : "")
             : $"{err} 项异常需处理 · {warn} 项提示 · {ok} 项正常";
+        return new PreRunResult(checks, err == 0, summary);
     }
 
     /// <summary>底栏「← 退出」：未启用登录，按退出程序处理（弹确认框）。</summary>
@@ -905,6 +927,9 @@ public partial class MainViewModel : ViewModelBase
 }
 
 /// <summary>预运行检查的一项（正常 ok / 提示 warn / 异常 err，含主题配色与图标）。</summary>
+/// <summary>预运行检查的计算结果（<see cref="MainViewModel.ComputePreRun"/>）。</summary>
+public sealed record PreRunResult(List<PreRunCheck> Checks, bool CanRun, string Summary);
+
 public class PreRunCheck
 {
     public string Kind { get; init; } = "ok";   // ok | warn | err
