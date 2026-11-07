@@ -171,7 +171,8 @@ public class ControlArbiterTests
         Assert.False(CommandSource.Local.IsRemote);
         var r = CommandSource.Remote("id", "LIMS");
         Assert.True(r.IsRemote);
-        Assert.Equal("远程（LIMS）", r.Label);
+        Assert.Equal("远程（LIMS · 令牌 id）", r.Label);
+        Assert.Equal("远程（LIMS）", CommandSource.Remote("LIMS", "LIMS").Label);
     }
 }
 

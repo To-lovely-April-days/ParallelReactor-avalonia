@@ -34,6 +34,16 @@ public class ProgramRunGuardTests
     }
 
     [Fact]
+    public void ProgramRunning_IsPerChannel_AndConcurrencyCap()
+    {
+        Assert.Equal("该通道已有程序在执行 · 请等待完成或先中止", ProgramRunGuard.Reason(Ok with { ProgramRunning = true }));
+        Assert.Null(ProgramRunGuard.Reason(Ok with { RunningCount = 7 }));   // 其他通道在跑不阻塞本通道
+        var full = ProgramRunGuard.Check(Ok with { RunningCount = ProgramRunSet.MaxConcurrent });
+        Assert.Equal(ParallelReactor.Commands.OpCodes.ProgramRunning, full!.Value.Code);
+        Assert.Contains("并行程序已达 8 个", full.Value.Message);
+    }
+
+    [Fact]
     public void GasBusy_BlocksEvenWithoutGasSteps()
     {
         var r = ProgramRunGuard.Reason(Ok with { GasBusy = true, GasTask = "泄漏测试", NeedsGas = false });

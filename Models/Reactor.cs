@@ -47,6 +47,12 @@ public partial class Reactor : ObservableObject
 
     public PidParams Pid { get; } = new();
 
+    /// <summary>
+    /// 由谁启动（设计稿 §5.4 / §6.3 startedBy）：触屏 "local"、远程为来源标签「远程（客户端名）」；启用 / 启动加热 / 开始运行时写入，
+    /// 停止 / 停用 / 全部停止 / 急停时清空。onRemoteLost = stopHeat 据此只停该租约启动的通道。不是绑定属性（只供命令层与快照读）。
+    /// </summary>
+    public string? StartedBy { get; set; }
+
     // —— 温度设定方式：fixed=定值升温（直接写 SP），curve=曲线升温（16 段程序，上位机下发）——
     [ObservableProperty] private string _spMode = "fixed";
 

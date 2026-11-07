@@ -18,7 +18,7 @@ public sealed partial class OperatorCommands
         {
             if (!Services.HardwareOptions.UseRealStir)
                 return OpResult.Fail(OpCodes.HwNotConfigured, "搅拌未配置串口（PR_STIR_PORT），无法启动搅拌").AsTask();
-            if (_m.Program.RunningRv is { } rv && _m.FindReactor(rv)?.State == ReactorState.Stir)
+            if (_m.Program.StirStepRv is { } rv)
                 return OpResult.Fail(OpCodes.StirProgramOwned, $"RV{rv} 程序搅拌步骤进行中 · 搅拌由程序控制").AsTask();
         }
 
@@ -41,7 +41,7 @@ public sealed partial class OperatorCommands
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (Invalid(ValueRules.Rpm(rpm, _m.Settings.RpmMax)) is { } bad) return bad.AsTask();
-        if (CommandPolicy.Strict(src) && _m.Program.IsRunningProgram)
+        if (CommandPolicy.Strict(src) && _m.Program.AnyProgramRunning)
             return OpResult.Fail(OpCodes.StirProgramOwned, "程序执行中 · 搅拌转速由程序控制").AsTask();
 
         _m.LogSetting("搅拌转速", $"{_m.StirRpm} rpm", $"{rpm} rpm");

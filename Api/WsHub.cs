@@ -24,7 +24,8 @@ namespace ParallelReactor.Api;
 /// 中枢事件队列（容量 2000）满时同样不静默丢：计入 <see cref="ApiStats.DroppedEvents"/> 并把所有连接以 1008 断开，让客户端按 seq 重同步。
 /// 连接数上限用计数器先占位再握手（并发握手不会超额）；连接 / 断开审计按「令牌@IP」每 10 s 最多一条（重连风暴不刷事件文件）。
 /// </para>
-/// 客户端消息：subscribe（topics / resumeAfterEventSeq）、resync（afterSeq）、ping → pong、hb（保活，忽略）。缺口太大回 <c>gap</c>。
+/// 客户端消息：subscribe（topics / resumeAfterEventSeq）、resync（afterSeq）、ping → pong、hb（带 lease 时为租约心跳，否则只保活）。缺口太大回 <c>gap</c>。
+/// P3：<see cref="Broadcast"/> 推 <c>control</c>（不含 leaseId：同一令牌的另一台 PC 也在听，leaseId 只走 HTTP）与 <c>opEvent</c>；<see cref="BroadcastTargeted"/> 保留给将来按令牌定向的消息。
 /// </summary>
 public sealed class WsHub : IDisposable
 {
@@ -64,6 +65,16 @@ public sealed class WsHub : IDisposable
     private void OnEvent(EventRecord r) { if (!_conns.IsEmpty && !_misc.Writer.TryWrite(r)) OnMiscOverflow(); }
     private void OnAlarm(AlarmDto a) { if (!_conns.IsEmpty && !_misc.Writer.TryWrite(a)) OnMiscOverflow(); }
 
+    /// <summary>已序列化的控制 / opEvent 消息；Target 不为 null 时 TargetJson 只发给该令牌名的连接，其余连接收 Json（§8.2 leaseId 定向）。</summary>
+    private sealed record Targeted(string Json, string? Target, string? TargetJson);
+
+    /// <summary>向全部连接推送一条控制类消息（不受订阅开关过滤）。任意线程，非阻塞。</summary>
+    public void Broadcast(string json) { if (!_conns.IsEmpty && !_misc.Writer.TryWrite(new Targeted(json, null, null))) OnMiscOverflow(); }
+
+    /// <summary>定向推送：令牌名 = targetClient 的连接收 targetJson（带 leaseId），其他连接收 json。</summary>
+    public void BroadcastTargeted(string targetJson, string targetClient, string json)
+    { if (!_conns.IsEmpty && !_misc.Writer.TryWrite(new Targeted(json, targetClient, targetJson))) OnMiscOverflow(); }
+
     /// <summary>中枢事件队列满（扇出任务跟不上）：不是遥测丢帧，单独计数，并让全部连接走重同步（事件不静默丢）。</summary>
     private void OnMiscOverflow()
     {
@@ -84,6 +95,12 @@ public sealed class WsHub : IDisposable
                 while (_misc.Reader.TryRead(out var m))
                 {
                     did = true;
+                    if (m is Targeted t)
+                    {
+                        foreach (var c in _conns.Values)
+                            c.PostEvent(t.Target != null && c.Client == t.Target ? t.TargetJson! : t.Json, MsgKind.Control);
+                        continue;
+                    }
                     string json = m switch
                     {
                         EventRecord r => ApiJson.Serialize(EventMsg.From(r)),
@@ -221,7 +238,15 @@ public sealed class WsHub : IDisposable
                     c.PostEvent(ApiJson.Serialize(new PongMsg("pong", DateTime.UtcNow)), MsgKind.Control);
                     break;
                 case "hb":
-                    break;   // P2：只用于保活，没有租约语义
+                    {
+                        // §5.5：只有带当前有效租约的 hb 才计入远程心跳；不带租约的只用于保活。无效租约回 error（客户端据此重新申请）
+                        if (root.TryGetProperty("lease", out var lz) && lz.ValueKind == JsonValueKind.String && lz.GetString() is { Length: > 0 } lease)
+                        {
+                            var hb = _src.Lease.Heartbeat(lease, c.Client, _src.MonoNow);
+                            if (!hb.Ok) c.PostEvent(ApiJson.Serialize(new WsErrorMsg("error", hb.Code!, hb.Message!)), MsgKind.Control);
+                        }
+                        break;
+                    }
                 case "subscribe":
                     {
                         var topics = new List<string>();

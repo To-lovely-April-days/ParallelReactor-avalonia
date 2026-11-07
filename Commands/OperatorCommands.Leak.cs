@@ -23,7 +23,7 @@ public sealed partial class OperatorCommands
         if (ids.Count == 0) return OpResult.Fail(OpCodes.BadRequest, "请至少选择一个测试通道", "warn").AsTask();
         foreach (int id in ids)
             if (ChannelOr(id, out _) is { } nf) return nf.AsTask();
-        var nowBusy = ids.Where(id => _m.FindReactor(id) is not { } r || r.IsRunning || _m.Program.RunningRv == id)
+        var nowBusy = ids.Where(id => _m.FindReactor(id) is not { } r || r.IsRunning || _m.Program.IsProgramOwned(id))
                          .Select(id => "RV" + id).ToList();
         if (nowBusy.Count > 0)
             return OpResult.Fail(OpCodes.ChannelBusy,
@@ -36,7 +36,7 @@ public sealed partial class OperatorCommands
                 "err", new { testPsi = target, max = _m.Settings.OverPressure * SettingSpecs.LeakTestMaxRatio }).AsTask();
 
         _ = _m.Leak.RunAsync(ids, target);   // 同步部分已占用气路并锁定面板；之后的进度 / 结果由流程自己提示
-        return OpResult.Accepted("", "ok", new { channels = ids, testPsi = target }).AsTask();
+        return OpResult.Accepted("", "ok", new { runId = _m.Leak.CurrentRunId, channels = ids, testPsi = target }).AsTask();
     }
 
     /// <summary>

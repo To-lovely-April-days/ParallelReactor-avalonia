@@ -298,16 +298,18 @@ public partial class MainViewModel
         // —— 界面侧立即停：气路序列、程序执行、曲线、逼近、通道状态、搅拌开关、手动阀控、各确认弹窗 ——
         bool hadGas = GasBusy;
         AbortAllGas();   // 急停不看占用者：一律中止
-        Program.AbortProgram();   // 程序执行中也中止（非气路步骤如等待/反应倒计时，靠程序自己的取消令牌）
+        Program.AbortAllPrograms();   // 全部程序一并中止（非气路步骤如等待/反应倒计时，靠程序自己的取消令牌）
         foreach (var c in Reactors)
         {
             if (c.Profile.Running) c.Profile.Stop();
             c.Approach.Stop();
             // 报警通道保持报警（C19）：急停把它转成「已结束」的话，复位后再开始运行就会给报警通道重新加热
             if (c.State is not (ReactorState.Idle or ReactorState.Alarm)) c.State = ReactorState.Done;
+            c.StartedBy = null;
             c.Rpm = 0;
         }
         StirOn = false;        // Estopped 已为 true：setter 不另发停止帧，由下面统一下发并等结果
+        StirShare.Clear();     // 程序之间的搅拌引用全部清掉：急停停一切
         ManualValve = false;
         IsPreRunOpen = false;
         Program.CancelPendingRun();   // 关确认框并丢弃待运行程序（确认时还会再判急停，双保险）

@@ -42,6 +42,7 @@ public class AppSettings
     public double PressDeviation { get; set; } = 8;   // 压力偏离 SP 报警 psi
     public double LeakRate { get; set; } = 2;         // 泄漏率阈值 psi/hr
     public double LeakReminderDays { get; set; } = 7; // 泄漏测试提醒周期 天
+    public double ProgramGasWaitMin { get; set; } = 60;   // 程序气路步骤等待其他程序释放气路的上限 分钟（超时该步骤故障、程序中止）
 
     // 泄漏测试（惰性气体低压保压，见 LeakViewModel）
     public double LeakTestPsi { get; set; } = 50;     // 测试压力 psi（低压，安全优先）

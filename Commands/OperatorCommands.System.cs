@@ -30,7 +30,7 @@ public sealed partial class OperatorCommands
     }
 
     /// <summary>
-    /// 全部停止：中止任何气路占用者（C8）、中止程序，停全部通道加热并全关阀。默认不停搅拌（与今天一致）；
+    /// 全部停止：中止任何气路占用者（C8）、中止全部程序（搅拌引用一并清空），停全部通道加热并全关阀。默认不停搅拌（与今天一致）；
     /// stopStir = true 时一并停全局搅拌（远程 /stop-all 可选）。尾部等加热与阀门两条总线的结果。
     /// </summary>
     public Task<OpResult> TryStopAll(CommandSource src, bool stopStir = false)
@@ -38,13 +38,17 @@ public sealed partial class OperatorCommands
         if (Admit(src, ActionClass.Stop) is { } deny) return deny.AsTask();
         bool gas = _m.GasBusy;
         _m.AbortAllGas();   // 任何占用者的序列：收到取消后自己也会全关阀
-        bool programAborted = _m.Program.AbortProgram();   // 有程序在执行也一并中止（含后台稳压回路）
+        var programs = _m.Program.RunningIds;
+        int abortedN = _m.Program.AbortAllPrograms();   // 全部正在执行的程序一并中止（含后台稳压回路；最后一个释放搅拌引用时停搅拌）
+        _m.StirShare.Clear();
+        bool programAborted = abortedN > 0;
         var stopped = _m.Reactors.Where(c => c.State != ReactorState.Idle).Select(c => c.Id).ToList();
         foreach (var c in _m.Reactors)
         {
             if (c.Profile.Running) c.Profile.Stop();
             c.Approach.Stop();
             if (c.State != ReactorState.Idle) c.State = ReactorState.Done;
+            c.StartedBy = null;
             c.Rpm = 0;
         }
         bool stirStopped = false;
@@ -57,7 +61,7 @@ public sealed partial class OperatorCommands
         var heat = Services.HardwareOptions.UseRealTemp ? _m.Temp.StopAllChannelsAsync() : Task.FromResult(true);
         // report: false——失败不由 CloseAllValvesAsync 弹 Toast（远程 stop-all 不能在触屏上弹提示），由尾部记报警并经 OpResult 返回
         var valves = MainViewModel.RealIo ? _m.CloseAllValvesAsync(report: false) : Task.FromResult(true);
-        var data = new { gasAborted = gas, programAborted, channels = stopped, stirStopped };
+        var data = new { gasAborted = gas, programAborted, programsAborted = programs, channels = stopped, stirStopped };
         return StopAllTailAsync(heat, valves, gas, data);
     }
 
@@ -86,7 +90,7 @@ public sealed partial class OperatorCommands
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny;
         if (EstopOr("急停状态下不可启动 · 请先复位") is { } es) return es;
-        if (_m.GasBusy) return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 请等待完成或先停止", "warn");
+        if (_m.GasBusy && !_m.GasOwnedBy(GasOwner.Program)) return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 请等待完成或先停止", "warn");
         return OpResult.Silent;
     }
 
@@ -101,8 +105,8 @@ public sealed partial class OperatorCommands
         if (!dryRun)
         {
             if (EstopOr("急停状态下不可启动 · 请先复位") is { } es) return es.AsTask();
-            // 气路序列（泄漏测试 / 程序气路步骤）进行中不开始运行（C6）：确认框打开期间可能刚开始了序列
-            if (_m.GasBusy) return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 无法开始运行").AsTask();
+            // 泄漏测试进行中不开始运行（C6）：确认框打开期间可能刚开始了序列。程序的气路步骤占用不拒绝（程序通道不参与本次运行，本轮运行不使用气路）
+            if (_m.GasBusy && !_m.GasOwnedBy(GasOwner.Program)) return OpResult.Fail(OpCodes.GasBusy, $"{_m.GasTask}进行中 · 无法开始运行").AsTask();
         }
         // 弹窗打开期间模块可能掉线：确认时按最新状态重判。dryRun（GET /preflight）只算不写界面，不碰操作员正打开的确认框
         var pre = dryRun ? _m.ComputePreRun() : _m.BuildPreRunAndGet();
@@ -118,7 +122,7 @@ public sealed partial class OperatorCommands
         // 开始运行即下发加热：只有已结束 / 已启用（待加热）且无超温 / 超压未解除的通道转入「升温中」并下发加热。
         // 报警（任何原因）、停用、已在运行的通道一律不动（RunSelection.CanStartHeat）。阀门不在这里动：本轮运行不使用气路
         var skipped = _m.Reactors.Where(r => r.State != ReactorState.Idle && !toHeat.Contains(r)).Select(r => r.Id).ToList();
-        foreach (var c in toHeat) c.State = ReactorState.Heating;
+        foreach (var c in toHeat) { c.State = ReactorState.Heating; c.StartedBy = StartedByOf(src); }
 
         // 开始运行：开启全局搅拌并同步桨叶动画（搅拌未配置串口时跳过，预运行检查里已提示）
         if (!_m.StirOn && Services.HardwareOptions.UseRealStir) _m.StirOn = true;   // setter 会触发 ApplyStir

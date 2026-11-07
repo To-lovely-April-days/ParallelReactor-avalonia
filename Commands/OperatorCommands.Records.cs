@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -31,7 +32,7 @@ public sealed partial class OperatorCommands
         foreach (int id in channels.Distinct())
         {
             var rv = _m.FindReactor(id);
-            if (rv is null || rv.Id == _m.Program.RunningRv) continue;
+            if (rv is null || _m.Program.IsProgramOwned(rv.Id)) continue;
             rv.TSp = r.TSp;
             rv.PSp = r.PSp;
             rv.RpmSp = r.RpmSp;
@@ -68,16 +69,19 @@ public sealed partial class OperatorCommands
     /// 开始测试会话（之后的运行记录另写一份到 sessions/）。本地：已有会话时先结束它（今天的行为）；
     /// 严格守卫（远程）：已有会话时拒绝 SESSION_ACTIVE，不替别人结束会话（§5.1：只有创建者或本地操作员可以结束）。
     /// </summary>
-    public Task<OpResult> TryBeginSession(CommandSource src, string testId)
+    public Task<OpResult> TryBeginSession(CommandSource src, string testId, string? note = null)
     {
         if (Admit(src, ActionClass.Record) is { } deny) return deny.AsTask();
         if (string.IsNullOrWhiteSpace(testId)) return OpResult.Fail(OpCodes.BadRequest, "测试编号不能为空", "warn").AsTask();
-        if (CommandPolicy.Strict(src) && _m.Logger.SessionId is { } cur)
+        if (testId.Trim().Length > 64) return OpResult.Fail(OpCodes.BadRequest, "测试编号过长（≤ 64 字符）", "warn").AsTask();
+        if (CommandPolicy.Strict(src) && _m.Logger.SessionKey is { } cur)
             return OpResult.Fail(OpCodes.SessionActive, $"已有测试会话进行中（{cur}）· 请先结束", "warn", new { sessionId = cur }).AsTask();
-        var path = _m.BeginTestSession(testId.Trim());
-        var id = _m.Logger.SessionId;
-        _sessionOwner = id == null ? null : (id, src);
-        return OpResult.Done($"测试会话已开始 · {id}", "ok", new { sessionId = id, path }).AsTask();
+        var path = _m.BeginTestSession(testId.Trim(), src, note);
+        var key = _m.Logger.SessionKey;
+        _sessionOwner = key == null ? null : (key, src);
+        var m = _m.Sessions.Current;
+        return OpResult.Done($"测试会话已开始 · {key}", "ok",
+            new { id = key, testId = _m.Logger.SessionId, startedAt = m?.StartedAt, startEventSeq = m?.StartEventSeq, file = System.IO.Path.GetFileName(path) }).AsTask();
     }
 
     /// <summary>
@@ -87,21 +91,24 @@ public sealed partial class OperatorCommands
     public Task<OpResult> TryEndSession(CommandSource src)
     {
         if (Admit(src, ActionClass.Record) is { } deny) return deny.AsTask();
-        var id = _m.Logger.SessionId;
+        var id = _m.Logger.SessionKey;
         if (id == null) return OpResult.Silent.AsTask();
         if (src.IsRemote && !(SessionOwnerOf(id) is { IsRemote: true } o && o.ClientId.Length > 0 && o.ClientId == src.ClientId))
             return OpResult.Fail(OpCodes.SessionNotOwner, "只有会话创建者或设备触屏可以结束该会话", "warn", new { sessionId = id }).AsTask();
-        _m.EndTestSession();
+        _m.EndTestSession(src);
         _sessionOwner = null;
-        return OpResult.Done($"测试会话已结束 · {id}", "ok", new { sessionId = id }).AsTask();
+        return OpResult.Done($"测试会话已结束 · {id}", "ok", new { id, endedAt = DateTime.UtcNow }).AsTask();
     }
 
-    /// <summary>添加标记：出现在下一行运行记录的「标记」列，同时记一条事件。</summary>
+    /// <summary>添加标记：出现在下一行运行记录的「标记」列，同时记一条事件并写进会话 manifest（有会话时；无会话只记事件）。</summary>
     public Task<OpResult> TryAddMarker(CommandSource src, string text)
     {
         if (Admit(src, ActionClass.Record) is { } deny) return deny.AsTask();
         if (string.IsNullOrWhiteSpace(text)) return OpResult.Fail(OpCodes.BadRequest, "标记内容不能为空", "warn").AsTask();
-        _m.AddTestMarker(text);
-        return OpResult.Done("已添加标记", "ok", new { text }).AsTask();
+        if (text.Trim().Length > 200) return OpResult.Fail(OpCodes.BadRequest, "标记过长（≤ 200 字符）", "warn").AsTask();
+        if (CommandPolicy.Strict(src) && _m.Logger.SessionKey == null)
+            return OpResult.Fail(OpCodes.NotFound, "当前没有活动会话", "warn").AsTask();
+        var mk = _m.AddTestMarker(text.Trim(), src);
+        return OpResult.Done("已添加标记", "ok", new { id = mk?.Id, text = text.Trim(), ts = mk?.Ts, seq = mk?.Seq, sessionId = _m.Logger.SessionKey }).AsTask();
     }
 }

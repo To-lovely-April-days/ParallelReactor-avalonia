@@ -23,6 +23,9 @@
           </StackPanel>
           <TextBlock Text="PROGRAM MONITOR · 左侧看流程，右侧看趋势" FontSize="12"
                      Foreground="{DynamicResource Mute}" LetterSpacing="1.4" Margin="0,4,0,0" />
+          <!-- 多程序并行：监视显示选中通道的运行；其他通道有程序在跑时一行紧凑提示 -->
+          <TextBlock Text="{Binding RunningSummary}" IsVisible="{Binding HasOtherRuns}" FontSize="12"
+                     Foreground="{DynamicResource AccentBright}" Margin="0,3,0,0" />
         </StackPanel>
 
         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="34,0,20,0">

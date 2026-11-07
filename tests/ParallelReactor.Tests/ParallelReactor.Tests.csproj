@@ -29,10 +29,17 @@
     <Compile Include="../../Models/ProgramLimits.cs" Link="Src/ProgramLimits.cs" />
     <Compile Include="../../Models/ProgramRunGuard.cs" Link="Src/ProgramRunGuard.cs" />
     <Compile Include="../../Models/GasLease.cs" Link="Src/GasLease.cs" />
+    <!-- 多程序并行（api-phase3）：运行信息 / 气路排队 / 搅拌引用计数 -->
+    <Compile Include="../../Models/ProgramRunInfo.cs" Link="Src/ProgramRunInfo.cs" />
+    <Compile Include="../../Models/GasQueue.cs" Link="Src/GasQueue.cs" />
+    <Compile Include="../../Models/StirShare.cs" Link="Src/StirShare.cs" />
     <!-- 第 4 组：命令层纯逻辑 -->
     <Compile Include="../../Commands/OpResult.cs" Link="Src/OpResult.cs" />
     <Compile Include="../../Commands/CommandSource.cs" Link="Src/CommandSource.cs" />
     <Compile Include="../../Commands/ControlArbiter.cs" Link="Src/ControlArbiter.cs" />
+    <!-- P3 控制权租约状态机（纯逻辑，时间注入）+ P4 会话 manifest -->
+    <Compile Include="../../Commands/ControlLease.cs" Link="Src/ControlLease.cs" />
+    <Compile Include="../../Service/SessionManifest.cs" Link="Src/SessionManifest.cs" />
     <Compile Include="../../Commands/CommandPolicy.cs" Link="Src/CommandPolicy.cs" />
     <Compile Include="../../Commands/EntryAttributes.cs" Link="Src/EntryAttributes.cs" />
     <Compile Include="../../Service/TickGate.cs" Link="Src/TickGate.cs" />

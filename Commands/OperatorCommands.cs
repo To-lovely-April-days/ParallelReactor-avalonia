@@ -53,7 +53,7 @@ public sealed partial class OperatorCommands
     /// 文字与级别与原 DrawerViewModel.OwnedByProgram 一致。
     /// </summary>
     private OpResult? ProgramOwned(Reactor c)
-        => _m.Program.RunningRv != c.Id ? null
+        => !_m.Program.IsProgramOwned(c.Id) ? null
            : OpResult.Fail(OpCodes.ChannelProgramOwned, $"RV{c.Id} 正在执行程序 · 请先中止程序", "warn");
 
     /// <summary>急停锁定（含快速路径已锁、UI 流程尚未跑到）时拒绝启动类操作。msg 为各入口今天的原文。</summary>
@@ -71,4 +71,7 @@ public sealed partial class OperatorCommands
     /// <summary>数值越界 → PARAM_OUT_OF_RANGE（detail 带 min / max / value）。</summary>
     private static OpResult? Invalid(RuleViolation? v)
         => v == null ? null : OpResult.Fail(v.Code, v.Message, "err", v.Detail);
+
+    /// <summary>通道 / 程序的 startedBy 标签（§5.4 / §6.3）：触屏 "local"，远程「远程（客户端名）」——与 ProgramRun.StartedBy 同一规则。</summary>
+    internal static string StartedByOf(CommandSource src) => src.IsRemote ? src.Label : "local";
 }

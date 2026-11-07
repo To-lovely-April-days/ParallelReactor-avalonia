@@ -26,6 +26,7 @@ public sealed class FakeApiSources : IApiSources, IDisposable
         Directory.CreateDirectory(dataDir);
         Events = new EventStore(dataDir);
         Snapshots = new SnapshotStore();
+        Lease = new ParallelReactor.Commands.ControlLease(Arbiter, () => Clock);
         if (period is { } p) _timer = new Timer(_ => Tick(), null, TimeSpan.Zero, p);
     }
     public void Tick() => Snapshots.Publish(TelemetrySnapshotJsonTests.Sample(Interlocked.Increment(ref _seq)));
@@ -36,9 +37,25 @@ public sealed class FakeApiSources : IApiSources, IDisposable
     public string BootId => "test0001";
     public DateTime BootTime { get; } = DateTime.UtcNow;
     public bool? ClockSynced => null;
-    public ModeSnap Control => new("local", null);
+    public ModeSnap Control => new(Arbiter.Mode == ParallelReactor.Commands.ControlMode.Remote ? "remote" : "local",
+        Arbiter.Mode == ParallelReactor.Commands.ControlMode.Remote ? Arbiter.HolderName : null);
     public List<string> Audits { get; } = new();
     public int PreflightDelayMs { get; set; }
+    // —— P3：仲裁 / 租约（可注入时钟）/ 脚本化远程命令 ——
+    public ParallelReactor.Commands.ControlArbiter Arbiter { get; } = new();
+    public TimeSpan Clock = TimeSpan.FromSeconds(1000);
+    public ParallelReactor.Commands.ControlLease Lease { get; }
+    public TimeSpan MonoNow => Clock;
+    public FakeRemoteCommands Fake { get; } = new();
+    public IRemoteCommands Commands => Fake;
+    public SessionManifest? CurrentSession { get; set; }
+    public List<EventRecord> OpEvents { get; } = new();
+    public long Audit(string level, string title, string detail, string source, string? client, string? opId, string kind)
+    {
+        var rec = Events.Append(DateTimeOffset.Now, level, "接口", title, detail, source, client, opId, kind);
+        lock (Audits) { Audits.Add($"{level}|{title}|{detail}|{kind}"); OpEvents.Add(rec); }
+        return rec.Seq;
+    }
     public DeviceInfoDto Device(ApiConfig cfg) => new("ParallelReactor-8", cfg.Serial, "1.0.0+test", "1.0", 8,
         Enumerable.Range(1, 8).Select(i => new ChannelInstalledDto(i, i <= 4)).ToArray(), new[] { 1, 2, 3, 4 },
         new HardwareDto(new(true, "sim", 19200, null), new(true, "sim", 9600, 4.137), new(true, "sim", 38400, null), new(true, "sim", 9600, null)),

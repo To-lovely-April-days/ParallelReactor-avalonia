@@ -23,7 +23,7 @@ public sealed partial class OperatorCommands
         if (CommandPolicy.Strict(src))
         {
             if (Invalid(SettingSpecs.CrossCheck(_m.Settings, key, value)) is { } cross) return cross.AsTask();
-            if (_m.Program.IsRunningProgram || _m.GasBusy || _m.Reactors.Any(r => r.IsWorking))
+            if (_m.Program.AnyProgramRunning || _m.GasBusy || _m.Reactors.Any(r => r.IsWorking))
                 return OpResult.Fail(OpCodes.SystemBusy, "有通道或过程正在运行 · 请在全部停止后再修改设置").AsTask();
         }
 

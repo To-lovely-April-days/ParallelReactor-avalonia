@@ -14,20 +14,23 @@ using ParallelReactor.Commands;
 namespace ParallelReactor.Api;
 
 /// <summary>
-/// /api/v1 下的只读端点（设计稿 §7 GET 部分、§9 历史）。每个处理器只读快照 / 事件存储 / 文件，不进 UI 线程
-/// （唯一例外 /preflight，经 <see cref="IApiSources.PreflightAsync"/> 投递到 UI 线程并带 5 s 超时）。
+/// /api/v1 下的端点。本文件：只读端点（设计稿 §7 GET 部分、§9 历史），每个处理器只读快照 / 事件存储 / 文件，不进 UI 线程
+/// （例外 /preflight，经 <see cref="IApiSources.PreflightAsync"/> 投递到 UI 线程并带 5 s 超时）。
+/// P3 / P4：控制权（Endpoints.Control.cs）、写命令（Endpoints.Write.cs）、会话（Endpoints.Sessions.cs），都在 <see cref="MapFallback"/> 之前登记。
 /// </summary>
-public static class Endpoints
+public static partial class Endpoints
 {
     public const int EventsDefaultLimit = 500, EventsMaxLimit = 1000;
+
+    private static SnapshotBundle? Snap(IApiSources src) => src.Snapshots.Current;
+    private static IResult Starting() => ApiErrors.Result(OpCodes.Starting, "尚未产生第一个控制周期的快照，请稍后重试");
 
     public static void Map(RouteGroupBuilder g, ApiHost host)
     {
         var src = host.Sources;
         var cfg = host.Config;
 
-        SnapshotBundle? Snap() => src.Snapshots.Current;
-        IResult Starting() => ApiErrors.Result(OpCodes.Starting, "尚未产生第一个控制周期的快照，请稍后重试");
+        SnapshotBundle? Snap() => Endpoints.Snap(src);
 
         // —— §7.2 系统 ——
         g.MapGet("/health", () => ApiErrors.Ok(new HealthDto(true, ApiVersionInfo.ApiVersion, src.Simulated, src.BootId, DateTime.UtcNow)))
@@ -150,21 +153,14 @@ public static class Endpoints
             ? FileResult(src.DataDir, SafePath.Leak, runId + "-summary.csv")
             : ApiErrors.Result(OpCodes.NotFound, "runId 格式应为 leak-yyyyMMdd-HHmmss")).RequireRateLimiting(ApiHost.DownloadsPolicy);
 
-        g.MapGet("/sessions", () =>
-        {
-            var items = HistoryFiles.List(src.DataDir, SafePath.Sessions)
-                .Select(f =>
-                {
-                    var p = HistoryFiles.ParseSessionName(f.Name);
-                    return new SessionInfoDto(p?.TestId ?? f.Name, p?.StartedLocal?.ToUniversalTime(), f.Name, f.Bytes, f.From, f.To);
-                })
-                .OrderByDescending(s => s.File, StringComparer.Ordinal).ToArray();
-            return ApiErrors.Ok(new SessionsDto(items.Length, items, Snap()?.Frame.Session));
-        });
+        // —— §10 会话（GET 列表 / 当前 / 详情 + POST / DELETE，Endpoints.Sessions.cs）——
+        MapSessions(g, host);
 
-        g.MapGet("/sessions/current", () => Snap() is { } b
-            ? (b.Frame.Session.Active ? ApiErrors.Ok(b.Frame.Session) : ApiErrors.Result(OpCodes.NotFound, "当前没有活动会话"))
-            : Starting());
+        // —— §7.2 控制权（P3，Endpoints.Control.cs）——
+        MapControl(g, host);
+
+        // —— §7 写命令（P3，Endpoints.Write.cs）——
+        MapWrites(g, host);
 
         // —— §8 WebSocket ——
         g.Map("/ws", host.Hub.HandleAsync);

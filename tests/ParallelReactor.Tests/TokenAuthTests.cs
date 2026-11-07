@@ -57,6 +57,11 @@ public class TokenAuthTests
                       new ApiToken { Name = "watch-estop", Sha256 = TokenAuth.Hash("e"), Role = "viewer", Estop = true });
         Assert.False(TokenAuth.AuthenticateToken("w", cfg).Estop);
         Assert.True(TokenAuth.AuthenticateToken("e", cfg).Estop);
+        // operator 显式 "estop": false 可收回急停权限；未配置（null）按角色默认
+        var cfg2 = Cfg(new ApiToken { Name = "op-noestop", Sha256 = TokenAuth.Hash("n"), Role = "operator", Estop = false },
+                       new ApiToken { Name = "op-default", Sha256 = TokenAuth.Hash("d"), Role = "operator" });
+        Assert.False(TokenAuth.AuthenticateToken("n", cfg2).Estop);
+        Assert.True(TokenAuth.AuthenticateToken("d", cfg2).Estop);
         Assert.Equal("watch-estop", TokenAuth.AuthenticateToken("e", cfg).Name);
     }
 

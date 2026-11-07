@@ -15,7 +15,7 @@ public class SettingSpecsTests
         var keys = SettingSpecs.All.Select(s => s.Key).ToList();
         Assert.Equal(Enum.GetValues<SettingKey>().Length, keys.Count);
         Assert.Equal(keys.Count, keys.Distinct().Count());
-        Assert.Equal(24, keys.Count);   // 设置页「参数与报警」的 24 个数值行
+        Assert.Equal(25, keys.Count);   // 设置页「参数与报警」的 25 个数值行（含程序等待气路上限）
     }
 
     [Fact]

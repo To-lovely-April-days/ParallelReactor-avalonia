@@ -27,6 +27,11 @@ public static class SnapshotBuilder
 
     private static double? Fin(double v) => double.IsFinite(v) ? v : null;
 
+    private static ChannelProgramSnap? ChannelProgram(ProgramRunInfo? ri) => ri == null ? null
+        : new ChannelProgramSnap(ri.IsActive, ri.Index, ri.StepCount, ProgramRunSet.PhaseName(ri.Phase), ri.Message,
+            ri.StartedBy, ri.StartedAt.UtcDateTime, ri.WaitingGas);
+
+
     private static ModuleCommSnap Module(bool configured, bool online, CommStats s, DateTimeOffset? valuesAt = null)
         => new(configured, online, s.Polls, s.Fails, s.LastOkAt?.UtcDateTime, valuesAt?.UtcDateTime);
 
@@ -37,7 +42,7 @@ public static class SnapshotBuilder
         bool realP = vm._press.Online;
         var ps = vm._press.Last;
         bool pValid = realP && ps.At != DateTimeOffset.MinValue;
-        int? runningRv = vm.Program.RunningRv;
+        var runInfos = vm.Program.RunInfos;
 
         var full = new ChannelSnap[8];
         var frameCh = new ChannelSnap[8];
@@ -58,7 +63,7 @@ public static class SnapshotBuilder
                 AlarmCause: c.State == ReactorState.Alarm ? (c.OverTemp ? "overTemp" : "overPressure") : null,
                 OverTempTripped: vm.IsOverTempTripped(c.Id),
                 OverPressureTripped: vm.IsOverPressureTripped(c.Id),
-                StartedBy: null,   // P3（§5.4 Reactor.StartedBy）才有
+                StartedBy: c.State == ReactorState.Idle ? null : c.StartedBy,   // §5.4：local / 远程（客户端名）；停用为 null
                 TempC: tOnline ? Fin(tc.Pv) : null,
                 TempSpC: c.TSp,
                 TempSpDeviceC: tc.SpKnown ? Fin(tc.Sp) : null,
@@ -74,7 +79,8 @@ public static class SnapshotBuilder
                 PressureSpPsi: c.PSp,
                 GasConsumed: c.GasValid ? Fin(c.Gas) : null,
                 ValveOpen: c.Valve,
-                ProgramOwned: runningRv == c.Id);
+                ProgramOwned: ProgramRunSet.IsOwned(runInfos, c.Id),
+                Program: ChannelProgram(vm.Program.RunInfoOf(c.Id)));
             full[i] = ch;
             frameCh[i] = c.SpMode == "curve" ? ch : ch with { Profile = null };
         }
@@ -90,16 +96,25 @@ public static class SnapshotBuilder
             vm.VentOn, vm.ManualValve,
             vm.GasBusy ? vm.GasTask : null,
             vm.GasOwnedBy(GasOwner.Program) ? "program" : vm.GasOwnedBy(GasOwner.Leak) ? "leak" : null);
-        var p = vm.Program;
-        var program = new ProgramSnap(p.IsRunningProgram, runningRv, p.RunStatus, p.RunCurrentStepIndex, p.RunSteps.Count, p.RunMonitorPhase, p.RunMonitorDetail);
+        // 旧字段 program（已废弃，过渡一个版本）：首个正在执行的程序；没有在执行的则是最近结束的那次（与 v0.4 一样保留终态文字 / 最后步序）；
+        // 新字段 channels[i].program + programs
+        var first = ProgramRunSet.FirstRunning(runInfos) ?? vm.Program.LastEndedRunInfo;
+        var program = first != null
+            ? new ProgramSnap(first.IsActive, first.IsActive ? first.Rv : null, first.Status, first.Index, first.StepCount, first.PhaseText, first.Message)
+            : new ProgramSnap(false, null, "", -1, 0, "准备运行", "等待开始");
+        // waitingGas 只列步骤真正处于「等待气路」的程序（稳压脉冲的静默排队不算），与 channels[i].program.waitingGas 一致；顺序按队列
+        var waiting = vm.GasQueue.Waiting.Where(rv => runInfos.TryGetValue(rv, out var w) && w.WaitingGas).ToArray();
+        var programs = new ProgramsSnap(runInfos.Count, ProgramRunSet.RunningIds(runInfos).ToArray(), vm.GasHolderRv,
+            waiting, ProgramRunSet.Summary(runInfos));
         var leak = new LeakSnap(vm.Leak.Running, Math.Round(vm.Leak.Progress, 1), vm.Leak.Running ? vm.Leak.PhaseText : null, vm.Leak.CurrentRunId, vm.Leak.Done, vm.Leak.Failed);
+        // id = 会话文件主名（唯一键，接口的会话 id）；testId = 调用方给的测试编号（CSV「会话」列）
         var sid = vm.Logger.SessionId;
-        var session = new SessionSnap(sid != null, sid, sid, vm.Logger.SessionPath is { } sp ? System.IO.Path.GetFileName(sp) : null);
+        var session = new SessionSnap(sid != null, vm.Logger.SessionKey, sid, vm.Logger.SessionPath is { } sp ? System.IO.Path.GetFileName(sp) : null);
         var mode = new ModeSnap(vm.Arbiter.Mode == ControlMode.Remote ? "remote" : "local",
             vm.Arbiter.Mode == ControlMode.Remote ? vm.Arbiter.HolderName : null);
 
         var frame = new TelemetrySnapshot("telemetry", seq, now.UtcDateTime, HardwareOptions.Sim, vm.Logger.Events?.Head ?? 0,
-            mode, estop, new CommSnap(realT, realP, vm._stir.Online, vm._valves.Online), frameCh, stir, gas, program, leak, session);
+            mode, estop, new CommSnap(realT, realP, vm._stir.Online, vm._valves.Online), frameCh, stir, gas, program, programs, leak, session);
 
         var st = vm.Settings;
         var bands = vm.Temp.Bands.Select((b, i) => new TempBandSnap(i, b.Lo, b.Hi)).ToArray();

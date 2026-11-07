@@ -134,6 +134,9 @@ public partial class MainViewModel : ViewModelBase
     // ============ 退出程序确认 ============
     [ObservableProperty] private bool _isExitConfirmOpen;
 
+    /// <summary>程序之间的搅拌引用计数（全机一台搅拌器；最后一个释放者才停，见 <see cref="Models.StirShare"/>）。操作员手动开停不经这里。</summary>
+    internal readonly StirShare StirShare = new();
+
     partial void OnStirOnChanged(bool value)
     {
         OnPropertyChanged(nameof(StirStateText));
@@ -271,6 +274,8 @@ public partial class MainViewModel : ViewModelBase
         RecipePicker = new RecipeViewModel(this);
         Ops = new OperatorCommands(this, Arbiter);
         Keyboard.ResultSink = Local;   // 键盘确认回调返回 OpResult → 统一转 Toast
+        InitControl();                 // 远程控制租约：顶栏状态 / 申请弹窗订阅（MainViewModel.Control.cs）
+        InitSessions();                // 会话 manifest：开机把上次未结束的会话标为 interrupted（MainViewModel.Logging.cs）
 
         // 压力单位切换（psi/bar）：刷新各釜压力显示 + 气路图（内部仍以 psi 存储/判定）
         Models.Units.Changed += OnUnitsChanged;
@@ -517,8 +522,11 @@ public partial class MainViewModel : ViewModelBase
 
     // ============ 命令层（C25）：触屏入口统一经 Ops.Try*，结果转成 Toast ============
 
-    /// <summary>控制权仲裁（§5.1）。默认本地控制，本期没有切换界面。</summary>
+    /// <summary>控制权仲裁（§5.1）。默认本地控制；切换由 <see cref="ControlLease"/>（远程申请 / 触屏允许 / 切回本地 / 心跳）驱动。</summary>
     public ControlArbiter Arbiter { get; } = new();
+
+    /// <summary>远程控制租约状态机（§5.3，纯逻辑）：接口层申请 / 心跳 / 释放，触屏经 Ops.TryGrantControl / TryDenyControl / TryTakeBackControl。</summary>
+    public ControlLease ControlLease { get; private set; } = null!;
 
     /// <summary>操作员命令层：触屏与将来的远程接口共用的唯一写入口。</summary>
     public OperatorCommands Ops { get; }
@@ -720,7 +728,7 @@ public partial class MainViewModel : ViewModelBase
 
     /// <summary>开始运行筛选用的通道快照（见 <see cref="RunSelection"/>）。</summary>
     internal RunChannel RunChannelOf(Reactor r)
-        => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id), Program.RunningRv == r.Id);
+        => new(r.Id, r.State, IsOverTempTripped(r.Id), IsOverPressureTripped(r.Id), Program.IsProgramOwned(r.Id));
 
     /// <summary>按当前设备状态生成预运行检查项并写入界面（预运行确认框）。只在本地流程里调用。</summary>
     internal void BuildPreRun() => BuildPreRunAndGet();
@@ -776,10 +784,12 @@ public partial class MainViewModel : ViewModelBase
                     ? PreRunCheck.Err("阀门", "排空阀处于开启状态，运行前必须关闭")
                     : PreRunCheck.Ok("阀门", "IO16R 在线 · 排空阀已关闭"));
 
-        // 气路：自动序列（泄漏测试 / 程序气路步骤）进行中不允许开始运行（C6）
-        checks.Add(GasBusy
+        // 气路：泄漏测试进行中不允许开始运行（C6）；程序的气路步骤占用只提示（本轮运行不使用气路，程序通道不参与本次运行）
+        checks.Add(GasBusy && !GasOwnedBy(GasOwner.Program)
             ? PreRunCheck.Err("气路", $"{GasTask}进行中，请等待完成或先停止")
-            : PreRunCheck.Ok("气路", "气路空闲"));
+            : GasBusy
+                ? PreRunCheck.Warn("气路", $"{GasTask}进行中（程序通道由程序控制，本次运行不使用气路）")
+                : PreRunCheck.Ok("气路", "气路空闲"));
 
         // 控制模式
         checks.Add(ManualValve
@@ -801,9 +811,12 @@ public partial class MainViewModel : ViewModelBase
             : PreRunCheck.Ok("报警通道", "无报警或超温/超压未解除的通道"));
 
         // 正在执行程序的通道由程序控制，不参与本次运行（C20）
-        if (Program.RunningRv is { } prv)
+        if (Program.RunningIds is { Count: > 0 } prvs)
+        {
+            string names = string.Join("、", prvs.Select(x => "RV" + x));
             checks.Add(PreRunCheck.Warn("程序通道",
-                $"RV{prv} 正在执行程序，不参与本次运行 · 注意搅拌器全机共用：开始运行会以 {StirRpm} rpm 开启搅拌（RV{prv} 也会被搅拌），程序的搅拌步骤结束 / 中止时也会停掉搅拌"));
+                $"{names} 正在执行程序，不参与本次运行 · 注意搅拌器全机共用：开始运行会以 {StirRpm} rpm 开启搅拌（{names} 也会被搅拌），程序的搅拌步骤结束 / 中止时也会停掉搅拌"));
+        }
 
         // 参与运行的通道：只有已启用 / 已结束的通道会转入升温（已在运行的通道不重复下发）
         int active = RunSelection.ToHeat(chans).Count;
@@ -923,6 +936,7 @@ public partial class MainViewModel : ViewModelBase
         ClockDate = now.ToString("yyyy-MM-dd") + " " + Wk[(int)now.DayOfWeek];
         Setting.RefreshNetworkInfo();   // 周期刷新设置页的本机 IP（内部已节流约 5s）
         Setting.RefreshCommStatus();    // 通讯页模块在线状态 + 运行时长
+        ControlClockTick();             // 远程控制申请弹窗的倒计时
     }
 }
 

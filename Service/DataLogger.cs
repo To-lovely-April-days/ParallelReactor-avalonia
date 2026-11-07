@@ -63,9 +63,16 @@ public sealed class DataLogger
     private string? _marker;
     private string? _session;
     private string? _sessionPath;
+    private string? _sessionKey;
 
-    /// <summary>当前测试会话 id（未开始为 null）。</summary>
+    /// <summary>当前测试会话的测试编号（调用方给的 testId，可重复；未开始为 null）。CSV「会话」列写它。</summary>
     public string? SessionId { get { lock (_lock) return _session; } }
+
+    /// <summary>
+    /// 当前会话的唯一键 = 会话文件主名 <c>&lt;testId&gt;-&lt;yyyyMMdd-HHmmss&gt;</c>（对外接口的会话 id，§6.11；未开始为 null）。
+    /// 同一 testId 在同一秒内不会开两次会话（接口 / 触屏都经命令层串行），所以在本机唯一。
+    /// </summary>
+    public string? SessionKey { get { lock (_lock) return _sessionKey; } }
 
     /// <summary>当前会话文件的完整路径（未开始为 null）。</summary>
     public string? SessionPath { get { lock (_lock) return _sessionPath; } }
@@ -109,10 +116,20 @@ public sealed class DataLogger
 
     /// <summary>入队一条事件（CSV）；配置了 <see cref="Events"/> 时同时写入事件存储（seq / JSONL / 环）。任意线程可调。</summary>
     public void Event(DateTimeOffset t, string level, string source, string title, string detail)
+        => Event(t, level, source, title, detail, "system", null, null, null);
+
+    /// <summary>
+    /// 带来源分类 / 客户端 / opId / 显式 kind 的事件（P3 控制权与远程命令审计）。CSV 列不变（这些字段只进 JSONL / 环 / 推送）；
+    /// 返回事件存储分配的记录（未配置事件存储或写入异常为 null）。任意线程可调。
+    /// </summary>
+    public EventRecord? Event(DateTimeOffset t, string level, string source, string title, string detail,
+        string eventSource, string? client, string? opId, string? kind)
     {
-        try { Events?.Append(t, level, source, title, detail); }
+        EventRecord? rec = null;
+        try { rec = Events?.Append(t, level, source, title, detail, eventSource, client, opId, kind); }
         catch { /* 事件存储异常不影响 CSV 与调用方 */ }
         Enqueue(new EventJob(t, TelemetryCsv.FormatEvent(t, level, source, title, detail)));
+        return rec;
     }
 
     /// <summary>
@@ -128,6 +145,7 @@ public sealed class DataLogger
         {
             _session = id;
             _sessionPath = path;
+            _sessionKey = Path.GetFileNameWithoutExtension(path);
         }
         return path;
     }
@@ -147,6 +165,7 @@ public sealed class DataLogger
             path = _sessionPath;
             _session = null;
             _sessionPath = null;
+            _sessionKey = null;
         }
         if (finalRow != null)
         {

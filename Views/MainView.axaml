@@ -77,6 +77,15 @@
                   CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
             <TextBlock Text="模拟模式 · 非真实设备" FontSize="12" FontWeight="Bold" Foreground="White" />
           </Border>
+          <!-- 远程控制中（§5.1 顶部状态栏常驻显示模式）+ 切回本地（只有本地可以夺回，无需远程同意）-->
+          <Border IsVisible="{Binding IsRemoteControl}" Background="#1F5B96E4" BorderBrush="#665B96E4" BorderThickness="1"
+                  CornerRadius="4" Padding="8,2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock Text="{Binding RemoteControlText}" FontSize="12" FontWeight="Bold" Foreground="#7eb6ee" VerticalAlignment="Center" />
+              <Button Classes="mfbtn" Content="切回本地" Padding="10,2" FontSize="12" MinHeight="0" Height="26"
+                      Command="{Binding TakeBackControlCommand}" />
+            </StackPanel>
+          </Border>
           <!-- 服务热线 -->
           <StackPanel VerticalAlignment="Center">
             <TextBlock Text="服务热线" FontSize="10.5" Foreground="{DynamicResource Mute}"
@@ -1069,6 +1078,38 @@
                     Margin="0,0,6,0" Command="{Binding CancelExitCommand}" />
             <Button Grid.Column="1" Classes="mfbtn danger" Content="退出" HorizontalAlignment="Stretch"
                     Margin="6,0,0,0" Command="{Binding ConfirmExitCommand}" />
+          </Grid>
+        </StackPanel>
+      </Border>
+    </Border>
+
+    <!-- ============ 远程控制申请（§5.3：进入远程必须由本地确认；60 s 未处理 = 拒绝）============ -->
+    <Border Background="#B3000000" IsVisible="{Binding IsControlRequestOpen}">
+      <Border Width="420" CornerRadius="16" BorderThickness="1" Padding="24,22"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              BorderBrush="{DynamicResource GlassLine2}" Background="#ffffff">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="11">
+            <Border Width="40" Height="40" CornerRadius="20" Background="#1A5B96E4"
+                    BorderBrush="#595B96E4" BorderThickness="1">
+              <Path Data="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9 M2 20h20 M12 16v4"
+                    Stroke="#5B96E4" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round"
+                    Width="19" Height="19" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding ControlRequestText}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}" />
+              <TextBlock Text="REMOTE CONTROL REQUEST" FontSize="9" FontWeight="Medium"
+                         Foreground="{DynamicResource Mute}" LetterSpacing="2" Margin="0,2,0,0" />
+            </StackPanel>
+          </StackPanel>
+          <TextBlock Text="允许后触屏只能执行停止类操作（急停 / 停止 / 中止），启动与改设定由远程客户端进行；可随时点顶栏「切回本地」夺回。正在运行的过程不受影响。"
+                     FontSize="12.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" LineHeight="20" Margin="0,16,0,6" />
+          <TextBlock Text="{Binding ControlRequestCountdown}" FontSize="12" Foreground="{DynamicResource Mute}" Margin="0,0,0,16" />
+          <Grid ColumnDefinitions="*,*">
+            <Button Grid.Column="0" Classes="mfbtn" Content="拒绝" HorizontalAlignment="Stretch"
+                    Margin="0,0,6,0" Command="{Binding DenyControlRequestCommand}" />
+            <Button Grid.Column="1" Classes="mfbtn" Content="允许远程控制" HorizontalAlignment="Stretch"
+                    Margin="6,0,0,0" Command="{Binding AllowControlRequestCommand}" />
           </Grid>
         </StackPanel>
       </Border>

@@ -11,7 +11,7 @@ public enum SettingKey
     // 可设置参数范围
     TMaxSp, PMaxSp, RpmMax, VolMax,
     // 报警阈值
-    OverPressure, OverTemp, HeatTimeout, PressDeviation, LeakRate, LeakReminderDays,
+    OverPressure, OverTemp, HeatTimeout, PressDeviation, LeakRate, LeakReminderDays, ProgramGasWaitMin,
     // 泄漏测试
     LeakTestPsi, LeakSettleMin, LeakMeasureMin,
     // 定值加热防超调
@@ -58,6 +58,8 @@ public static class SettingSpecs
             "泄漏测试判定不通过的阈值"),
         S(SettingKey.LeakReminderDays, "泄漏测试提醒周期", "天", 1, 30, 1, s => s.LeakReminderDays, (s, v) => s.LeakReminderDays = v,
             "超过此天数未测试则提醒"),
+        S(SettingKey.ProgramGasWaitMin, "程序等待气路上限", "分钟", 1, 600, 5, s => s.ProgramGasWaitMin, (s, v) => s.ProgramGasWaitMin = v,
+            "多程序并行时气路步骤排队等待其他程序释放气路的上限；超时该步骤故障、程序中止"),
 
         S(SettingKey.LeakTestPsi, "测试压力", "psi", 10, 150, 5, s => s.LeakTestPsi, (s, v) => s.LeakTestPsi = v,
             "低压即可检出密封问题；须低于超压报警值的 90%，惰性气体减压阀调到略高于此值"),

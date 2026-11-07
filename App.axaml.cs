@@ -14,8 +14,10 @@ public partial class App : Application
     /// <summary>控制循环（C1）：在 View 之前创建并启动，与 View 是否加载无关。</summary>
     private ControlLoop? _loop;
 
-    /// <summary>对外只读接口（设计稿 P2）：api.json enabled=true 或 PR_API=1 时在后台启动 Kestrel；否则为 null。</summary>
+    /// <summary>对外接口（设计稿 P2 只读 + P3 控制权 / 写命令 + P4 会话）：api.json enabled=true 或 PR_API=1 时在后台启动 Kestrel；否则为 null。</summary>
     private ParallelReactor.Api.ApiHost? _api;
+    /// <summary>控制权的 HMI 侧桥（租约计时、onRemoteLost）；接口未启用为 null。</summary>
+    private ParallelReactor.Api.Hmi.ControlBridge? _controlBridge;
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -30,7 +32,14 @@ public partial class App : Application
         // 接口在 MainViewModel / ControlLoop 之后启动：Kestrel 线程只读 ControlLoop.Snapshots 与 Logger.Events，不碰 VM
         var apiCfg = ParallelReactor.Api.ApiConfig.LoadWithEnv(SettingsStore.ApiConfigPath, out var apiCfgError);
         _api = ParallelReactor.Api.ApiHost.TryStart(new ParallelReactor.Api.Hmi.HmiApiSources(vm, _loop), apiCfg, apiCfgError);
-        if (_api != null) vm.ApiStop = () => _api.Stop(System.TimeSpan.FromSeconds(2));
+        if (_api != null)
+        {
+            _controlBridge = new ParallelReactor.Api.Hmi.ControlBridge(vm, _api);
+            vm.ApiStop = () => { _controlBridge?.Dispose(); _api.Stop(System.TimeSpan.FromSeconds(2)); };
+        }
+#if DEBUG
+        DevHooks.Install(vm);   // 仅 Debug 构建 + PR_SIM=1 + PR_DEV_PROGRAMS 时生效（多程序并行的无头验收，经命令层下发）；发布构建不含此路径
+#endif
 
         // X11/桌面：窗口外壳 MainWindow 托管 MainView。
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

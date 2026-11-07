@@ -50,6 +50,9 @@
                   </StackPanel>
                   <Ellipse Width="6" Height="6" Fill="#b5750a" HorizontalAlignment="Right" VerticalAlignment="Top"
                            Margin="0,-6,-5,0" IsVisible="{Binding IsModified}" />
+                  <!-- 该通道有程序在执行：主题红点（与「已独立修改」橙点并列，程序执行中时靠左一格） -->
+                  <Ellipse Width="6" Height="6" Fill="#C11B2E" HorizontalAlignment="Right" VerticalAlignment="Top"
+                           Margin="0,-6,4,0" IsVisible="{Binding IsProgramRunning}" />
                 </Panel>
               </Button>
             </DataTemplate>
@@ -60,6 +63,8 @@
                   Margin="12,0,22,8">
         <Ellipse Width="6" Height="6" Fill="#b5750a" VerticalAlignment="Center" />
         <TextBlock Text="已独立修改" FontSize="12" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
+        <Ellipse Width="6" Height="6" Fill="#C11B2E" VerticalAlignment="Center" Margin="8,0,0,0" />
+        <TextBlock Text="程序执行中" FontSize="12" Foreground="{DynamicResource Mute}" VerticalAlignment="Center" />
       </StackPanel>
     </Grid>
 
@@ -230,6 +235,10 @@
             <TextBlock DockPanel.Dock="Right" Text="{Binding RunStatus}" IsVisible="{Binding IsRunningProgram}"
                        FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}"
                        VerticalAlignment="Center" Margin="0,0,12,0" />
+            <!-- 多程序并行：其他通道正在执行的程序一行摘要 -->
+            <TextBlock DockPanel.Dock="Right" Text="{Binding RunningSummary}" IsVisible="{Binding AnyProgramRunning}"
+                       FontSize="12.5" Foreground="{DynamicResource AccentBright}"
+                       VerticalAlignment="Center" Margin="0,0,14,0" />
             <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding ApplyOthersCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M9 9h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2z M5 15V5a2 2 0 0 1 2-2h10" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
