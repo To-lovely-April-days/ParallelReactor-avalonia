@@ -41,6 +41,36 @@ public static class UiText
         return j == "⁠" ? t : t.Replace("⁠", j);
     }
 
+    /// <summary>
+    /// 整段不断开（样稿 white-space: nowrap 的一小段，如急停红框里的「1号机触屏」：拉丁别名「ReactorLab-PR8-A」也不在连字符处折行）：
+    /// 每两个字之间插当前字体能显示的连接符、空格换成 NBSP。放不下时整段换到下一行。null → ""。
+    /// </summary>
+    public static string NoBreak(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        var j = Joiner;
+        var t = s.Replace(' ', '\u00a0');
+        if (j.Length == 0) return t;
+        var sb = new System.Text.StringBuilder(t.Length * 2);
+        for (int i = 0; i < t.Length; i++)
+        {
+            if (i > 0 && !char.IsLowSurrogate(t[i])) sb.Append(j);
+            sb.Append(t[i]);
+        }
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// <see cref="Keep"/> + 区间「RV1–RV4」的连接号两边不断开（UAX #14 允许在 – 后面断行，样稿在 WebKit 里是在「 · 」处换行：
+    /// 「HT-PR8 · 现场 ·」/「RV1–RV4（4/8 路）」）。null → ""。
+    /// </summary>
+    public static string KeepRange(string? s)
+    {
+        var t = Keep(s);
+        var j = Joiner;
+        return j.Length == 0 ? t : t.Replace("–", j + "–" + j);
+    }
+
     /// <summary>去掉连接符（U+2060 / U+FEFF）、NBSP 换回普通空格（提示、复制到剪贴板、无障碍名用）。null → ""。</summary>
     public static string Plain(string? s) => CoreKeep.Plain(s).Replace("﻿", "");
 }

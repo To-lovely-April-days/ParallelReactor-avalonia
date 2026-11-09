@@ -1,0 +1,221 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:fl="using:ParallelReactor.Control.Fleet"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.ExplorerView"
+             x:DataType="sh:ShellVm">
+  <!-- 设备资源管理器（样稿 .pr-explorer，shell.css「设备资源管理器」）：bg-side、右边 line-strong；停靠 300（从页签行开始，跨两行），浮层 320（ShadowPop，类 floating）。
+       标题栏（.pr-xhead）：高 44、bg-head、下边 line-strong、左 16 右 6、间距 4：「设备」16/600 · 「N 台」14 t-3 · 添加（紧凑按钮）· 状态图例 ⓘ · 收起 «（浮层时 ×）。
+       树（.pr-explorer-tree）：上 6 下 18、底部 18 px 渐隐；扁平行（Shell/ExplorerVm）：
+         设备头 68（.pr-xhd：36 行 展开箭头 28 · 设备图标 18 t-3 · 别名 16/600 · 型号 14 t-3（放得下才显示）；28 行 从图标下方开始：短控制权徽标 24 高 ·
+           报警标记 14/600 · 「运行 k/n」14 t-3 靠右；下 4）；断线细节条 30（.pr-xoff，左 30 右 10，bg-sunken）；
+         反应釜行 36（.pr-xrow（rv）：左 20 右 6：状态点 13 · RV 15/500 宽 37（16 路 40）· 状态字 15（不省略）· ℃ 列 73 · MPa 列 84，数字 16/600 + 单位 13 t-3）；
+         「RV5–RV8 未安装」14 t-3；设备之间 下 6 + 1 px line-soft + 上 2。
+       选中：a-tint + 左侧 3 px a-tab（列表项主题）；选中的反应釜藏在收起的设备里：设备头左侧 3 px a-line。单击选中、双击打开页签（code-behind）。 -->
+  <UserControl.Styles>
+    <!-- 浮层（类 floating）的阴影（ShadowPop：0 8 28，样稿 .pr-app.x-float .pr-explorer）画在框外：浮层时自己和模板里的 ContentPresenter 不裁剪
+         （Avalonia 11.1 的 UserControl 默认 ClipToBounds=true，阴影整个被裁掉）；停靠时没有阴影，照常裁剪 -->
+    <Style Selector="vs|ExplorerView.floating">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="vs|ExplorerView.floating /template/ ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <!-- 读数格：数字 16/600 t-1（没有读数时「—」t-dis 400、不带单位）+ 单位 13 t-3（左 3）；断线设备的数字 t-3 -->
+    <Style Selector="TextBlock.xv-b">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.xv-b.na">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Grid.off TextBlock.xv-b">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.rvname">
+      <Setter Property="Width" Value="37" />
+    </Style>
+    <Style Selector="TextBlock.rvname.wide">
+      <Setter Property="Width" Value="40" />
+    </Style>
+    <Style Selector="Panel.tcell">
+      <Setter Property="Width" Value="73" />
+    </Style>
+    <Style Selector="Panel.tcell.narrow">
+      <Setter Property="Width" Value="62" />
+    </Style>
+    <Style Selector="TextBlock.xv-u">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <!-- 设备头第二行的徽标（.pr-xmeta .pr-badge）：高 24、左右 8、图标与字间距 5；选中的设备头上，中性徽标（本地只读 / 已连接 / 已断开）换白底 -->
+    <Style Selector="pr|LeaseBadge.xmeta, pr|ConnBadge.xmeta">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="pr|LeaseBadge.xmeta /template/ StackPanel, pr|ConnBadge.xmeta /template/ StackPanel">
+      <Setter Property="Spacing" Value="5" />
+    </Style>
+    <Style Selector="pr|LeaseBadge.xmeta /template/ TextBlock#PART_Text, pr|ConnBadge.xmeta /template/ TextBlock#PART_Text">
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="pr|LeaseBadge.onsel:local, pr|ConnBadge.onsel:online, pr|ConnBadge.onsel:disconnected">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <!-- 树的行：列表项主题 PrTreeRow（悬停 bg-hover、按下 bg-press、选中 a-tint + 3 px a-tab），高度与内边距交给各行的模板；
+         不可选的行（间隔、断线细节、未安装）在 code-behind 里禁用：不悬停、不选中、键盘跳过 -->
+    <ControlTheme x:Key="XRowTheme" TargetType="ListBoxItem" BasedOn="{StaticResource PrTreeRow}">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    </ControlTheme>
+  </UserControl.Resources>
+
+  <!-- 浮层阴影画在外面这层（Shade，没有边框）：Avalonia 11.1 的 Border 边框粗细不一致（这里只有右边 1 px）时走几何路径，不画 BoxShadow -->
+  <Border Name="Shade" Background="{StaticResource BgSideBrush}">
+  <Border Name="Box" Background="{StaticResource BgSideBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,0,1,0">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Height="44" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}"
+              BorderThickness="0,0,0,1" Padding="16,0,6,0">
+        <DockPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+            <Button Classes="sm" Margin="0,0,2,0" b:Pr.Icon="plus" Content="添加" Command="{Binding Explorer.AddCommand}" />
+            <Button Name="Legend" Theme="{StaticResource PrIconButton}" b:Pr.Icon="info" ToolTip.Tip="状态图例">
+              <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2">
+                  <vs:ExplorerLegend />
+                </Flyout>
+              </Button.Flyout>
+            </Button>
+            <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="{Binding Explorer.CloseIcon}" ToolTip.Tip="{Binding Explorer.CloseTip}"
+                    Command="{Binding Explorer.ToggleCommand}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="设备" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Explorer.CountText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+
+      <Panel>
+        <ListBox Name="Tree" Theme="{StaticResource PrTreeList}" ItemsSource="{Binding Explorer.Rows}" SelectedItem="{Binding Explorer.SelectedRow}"
+                 ItemContainerTheme="{StaticResource XRowTheme}" Padding="0,6,0,18" SelectionMode="Single" AutoScrollToSelectedItem="False"
+                 ScrollViewer.HorizontalScrollBarVisibility="Disabled" AutomationProperties.Name="设备与反应釜">
+          <ListBox.DataTemplates>
+            <!-- 设备头（68）：第 1 行 36（展开箭头 28 上下各 4）、第 2 行 28、下 4 -->
+            <DataTemplate DataType="sh:XDeviceRow" x:DataType="sh:XDeviceRow">
+              <Panel Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource ALineBrush}" IsVisible="{Binding HasSel}" />
+                <StackPanel Margin="0,0,0,4">
+                  <pr:FlexRow Height="36" Margin="4,0,8,0" Spacing="6">
+                    <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="{Binding TwistIcon}" ToolTip.Tip="{Binding TwistTip}"
+                            AutomationProperties.Name="{Binding TwistTip}" Command="{Binding TwistCommand}" Focusable="False" />
+                    <c:IconView Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                    <TextBlock Classes="xname" Text="{Binding D.Alias}" Margin="2,0,0,0" pr:FlexRow.Shrink="1"
+                               FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                               TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding D.ModelLabel}" Margin="4,0,0,0" pr:FlexRow.FitOpt="True"
+                               FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  </pr:FlexRow>
+                  <pr:FlexRow Height="28" Margin="38,0,10,0" Spacing="8">
+                    <pr:LeaseBadge Classes="xmeta" Classes.onsel="{Binding IsSelected}" State="{Binding D.Lease}" Text="{Binding D.LeaseShort}"
+                                   ToolTip.Tip="{Binding D.LeaseText}" IsVisible="{Binding !D.IsOffline}" pr:FlexRow.Shrink="1" />
+                    <pr:ConnBadge Classes="xmeta" Classes.onsel="{Binding IsSelected}" State="{Binding D.Conn}" Text="{Binding D.ConnShort}"
+                                  ToolTip.Tip="{Binding D.ConnText}" IsVisible="{Binding D.IsOffline}" pr:FlexRow.Shrink="1" />
+                    <!-- 报警标记：急停（红图标 + 字）> 错误报警（红点 +「报警 n」）> 提醒（描边 ⚠ + 数）；字一律 t-1 600 -->
+                    <StackPanel Orientation="Horizontal" Spacing="5" Background="Transparent" ToolTip.Tip="{Binding D.MarkerTip}" IsVisible="{Binding D.HasMarker}">
+                      <c:IconView Icon="estop" Size="15" Foreground="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding D.IsEstopMarker}" />
+                      <Ellipse Width="8" Height="8" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding D.IsErrMarker}" />
+                      <c:IconView Icon="warn" Size="15" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" IsVisible="{Binding D.IsWarnMarker}" />
+                      <TextBlock Text="{Binding D.MarkerText}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                 VerticalAlignment="Center" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding D.RunText}" pr:FlexRow.PushRight="True" IsVisible="{Binding D.RunText, Converter={x:Static ObjectConverters.IsNotNull}}"
+                               FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  </pr:FlexRow>
+                </StackPanel>
+              </Panel>
+            </DataTemplate>
+
+            <!-- 反应釜行（36）：左 20 · 点 13 · 6 · RV（左 2 + 37 / 40）· 6 · 状态字 · ℃ 格 73（报警 62）· MPa 格 84 · 右 6 -->
+            <DataTemplate DataType="sh:XReactorRow" x:DataType="sh:XReactorRow">
+              <Grid Height="36" Background="Transparent" ToolTip.Tip="{Binding R.Tip}" Classes.off="{Binding D.IsOffline}"
+                    ColumnDefinitions="20,13,6,Auto,6,*,Auto,84,6">
+                <pr:KeyDot Grid.Column="1" Key="{Binding R.Key}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3" Classes="rvname" Classes.wide="{Binding D.WideRvNames}" Text="{Binding R.Rv}" Margin="2,0,0,0"
+                           FontSize="{StaticResource FsBody}" FontWeight="Medium" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="5" Classes="stword" Text="{Binding R.TreeWord}" FontSize="{StaticResource FsBody}"
+                           Foreground="{Binding R.Key, Converter={x:Static th:StateConverters.WordBrush}}"
+                           FontWeight="{Binding R.Key, Converter={x:Static th:StateConverters.WordWeight}}" VerticalAlignment="Center" />
+                <Panel Grid.Column="6" Classes="tcell" Classes.narrow="{Binding R.NarrowTemp}" IsVisible="{Binding R.ShowTemp}">
+                  <c:BaselineStack Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Classes="xv-b num" Classes.na="{Binding R.TempNa}" Text="{Binding R.TempText}" />
+                    <TextBlock Classes="xv-u" Text="℃" IsVisible="{Binding !R.TempNa}" />
+                  </c:BaselineStack>
+                </Panel>
+                <c:BaselineStack Grid.Column="7" Spacing="3" HorizontalAlignment="Right" VerticalAlignment="Center" IsVisible="{Binding R.ShowPress}">
+                  <TextBlock Classes="xv-b num" Classes.na="{Binding R.PressNa}" Text="{Binding R.PressText}" />
+                  <TextBlock Classes="xv-u" Text="{Binding R.PressUnit}" IsVisible="{Binding !R.PressNa}" />
+                </c:BaselineStack>
+              </Grid>
+            </DataTemplate>
+
+            <!-- 合并的「RV5–RV8 未安装」（不可点）：点的位置留空 -->
+            <DataTemplate DataType="sh:XUninstalledRow" x:DataType="sh:XUninstalledRow">
+              <Grid Height="36" ColumnDefinitions="20,13,6,*">
+                <TextBlock Grid.Column="3" Text="{Binding Text}" Margin="2,0,0,0" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                           VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Text}" />
+              </Grid>
+            </DataTemplate>
+
+            <!-- 断线细节条（.pr-xoff，中性）：连接（wifi-off / 从未连上 link）+「数据停在 …」；控制权宽限（钥匙） -->
+            <DataTemplate DataType="sh:XOffRow" x:DataType="sh:XOffRow">
+              <Border Height="30" Margin="30,2,10,4" Padding="10,0" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSunkenBrush}">
+                <Panel>
+                  <pr:FlexRow Spacing="8" IsVisible="{Binding IsConn}" Background="Transparent">
+                    <pr:FlexRow.Styles>
+                      <Style Selector="TextBlock"><Setter Property="FontSize" Value="{StaticResource Fs2}" /></Style>
+                    </pr:FlexRow.Styles>
+                    <c:IconView Icon="{Binding D.OffIcon}" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding D.OffText}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1"
+                               VerticalAlignment="Center" ToolTip.Tip="{Binding D.ConnText}" />
+                    <TextBlock Text="{Binding D.DataText}" Foreground="{StaticResource T3Brush}" pr:FlexRow.PushRight="True" VerticalAlignment="Center" />
+                  </pr:FlexRow>
+                  <pr:FlexRow Spacing="8" IsVisible="{Binding IsGrace}">
+                    <c:IconView Icon="key" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding D.GraceText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis"
+                               pr:FlexRow.Shrink="1" VerticalAlignment="Center" ToolTip.Tip="{Binding D.GraceText}" />
+                  </pr:FlexRow>
+                </Panel>
+              </Border>
+            </DataTemplate>
+
+            <!-- 间隔（设备之间：下 6 + 1 px line-soft + 上 2；子行上下各 2） -->
+            <DataTemplate DataType="sh:XGapRow" x:DataType="sh:XGapRow">
+              <Panel Height="{Binding Height}">
+                <Border Height="1" VerticalAlignment="Top" Margin="{Binding LineAt, Converter={x:Static vs:ExplorerView.TopMargin}}"
+                        Background="{StaticResource LineSoftBrush}" IsVisible="{Binding HasLine}" />
+              </Panel>
+            </DataTemplate>
+          </ListBox.DataTemplates>
+        </ListBox>
+
+        <!-- 还没有设备（样稿 ui.empty） -->
+        <pr:Empty Icon="devices" Title="还没有设备" Text="点「添加」连接第一台设备" VerticalAlignment="Top" Margin="0,24,0,0"
+                  IsVisible="{Binding Explorer.IsEmpty}" />
+      </Panel>
+    </DockPanel>
+  </Border>
+  </Border>
+</UserControl>

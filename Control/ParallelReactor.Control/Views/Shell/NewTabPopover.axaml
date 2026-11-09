@@ -1,0 +1,131 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.NewTabPopover"
+             x:DataType="sh:NewTabVm">
+  <!-- 「+」新页签（样稿 .pr-nt：宽 548，内边距 10 14 14）：
+       「设备与反应釜」：每台设备一张卡片（1 px line-2、圆角 6、白底，内边距 6 8 10、间距 10）—— 设备按钮（34 高：机器图标 18 · 别名 15/600 · 型号 14 t-3 · 打开图标）
+       + 反应釜芯片（每行 8 个、间距 4、高 32、圆角 4、14 px t-2：状态点 8 + RVn；未安装 = 虚线、t-dis、bg-head，原因「RV5 未安装」）；
+       「视图」：三列（38 高、15 px：图标 18 + 名称）。悬停 a-line 边 + a-tint，按下 a-soft。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.nt-sec">
+      <Setter Property="Margin" Value="2,6,2,8" />
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <!-- 设备按钮：透明、圆角 4；悬停 bg-hover、按下 bg-press -->
+    <Style Selector="Button.nt-dev">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.nt-dev:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Button.nt-dev:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <!-- 反应釜芯片 / 视图按钮：白底 line-2 边、圆角 4 -->
+    <Style Selector="Button.nt-rv, Button.nt-view">
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <Style Selector="Button.nt-rv">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
+    <Style Selector="Button.nt-view">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.nt-rv /template/ Border#PART_Body, Button.nt-view /template/ Border#PART_Body">
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="Button.nt-rv:pointerover, Button.nt-view:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <!-- 未安装：虚线框（Rectangle 画）、bg-head、t-dis -->
+    <Style Selector="Button.nt-rv.un">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Button.nt-rv.un:pointerover, Button.nt-rv.un:reason">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Width="548" Margin="14,10,14,14">
+    <TextBlock Classes="nt-sec" Text="设备与反应釜" />
+    <ItemsControl ItemsSource="{Binding Devices}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="sh:NewTabDeviceVm">
+          <Border Margin="0,0,0,10" Padding="8,6,8,10" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1"
+                  CornerRadius="{StaticResource Radius}" Background="{StaticResource BgCardBrush}">
+            <StackPanel>
+              <Button Classes="nt-dev" Theme="{StaticResource PrGhost}" Command="{Binding GoCommand}">
+                <!-- 宽度写死（弹出框 548 − 卡片边框 2 − 内边距 16 − 按钮内边距 12）：按钮模板里内容不拉伸，「打开」图标要贴右边（样稿 margin-left: auto） -->
+                <DockPanel Width="518">
+                  <c:IconView DockPanel.Dock="Left" Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                  <c:IconView DockPanel.Dock="Right" Icon="open" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Alias}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Model}" FontSize="{StaticResource Fs2}" FontWeight="Normal" Foreground="{StaticResource T3Brush}"
+                               VerticalAlignment="Center" />
+                  </StackPanel>
+                </DockPanel>
+              </Button>
+              <ItemsControl ItemsSource="{Binding Rvs}" Margin="0,6,-4,-4">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="8" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sh:NewTabRvVm">
+                    <Panel>
+                      <Button Classes="nt-rv" Classes.un="{Binding !Installed}" Command="{Binding GoCommand}" b:Pr.Reason="{Binding Reason}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                          <pr:KeyDot Key="{Binding Key}" Diameter="8" Slot="8" VerticalAlignment="Center" IsVisible="{Binding Installed}" />
+                          <TextBlock Text="{Binding Text}" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Button>
+                      <Rectangle Margin="0,0,4,4" RadiusX="4" RadiusY="4" Stroke="{StaticResource Line2Brush}" StrokeThickness="1" StrokeDashArray="3,2"
+                                 IsHitTestVisible="False" IsVisible="{Binding !Installed}" />
+                    </Panel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <TextBlock Classes="nt-sec" Text="视图" />
+    <ItemsControl ItemsSource="{Binding Views}" Margin="0,0,-6,-6">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Columns="3" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="sh:NewTabViewVm">
+          <Button Classes="nt-view" Command="{Binding GoCommand}" b:Pr.Icon="{Binding Icon}" Content="{Binding Title}" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

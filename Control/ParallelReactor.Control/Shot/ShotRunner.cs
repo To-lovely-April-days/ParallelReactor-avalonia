@@ -9,29 +9,36 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using ParallelReactor.Client;
-using ParallelReactor.Control.ViewModels;
+using ParallelReactor.Control.Core.State;
+using ParallelReactor.Control.Fleet;
+using ParallelReactor.Control.Pages;
+using ParallelReactor.Control.Services;
+using ParallelReactor.Control.Shell;
+using ParallelReactor.Control.Shell.Dialogs;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.Control.Shot;
 
 /// <summary>
-/// 截图模式（仅 Debug + PR_CONTROL_HEADLESS=1 + PR_CONTROL_SHOT=目录）。
+/// 截图模式（仅 Debug + PR_CONTROL_HEADLESS=1 + PR_CONTROL_SHOT=目录）：对一台<b>活的 HMI</b> 跑脚本（新外壳 + FleetVm 的实时设备 + DeviceActions）。
 /// 场景 PR_CONTROL_SCENARIO：
-///  main        连接 PR_CONTROL_URL（令牌 PR_CONTROL_TOKEN）→ 申请控制权 → 启用 RV1–RV4 → RV1 加热 60 ℃、RV2 80 ℃ → 搅拌 300 rpm →
-///              RV3 / RV4 下发 3 步程序并运行 → 等 ≥4 帧 → main-rv1.png / main-rv3.png / main-curves.png / main-overview.png / main-connect-dialog.png
-///  perf        连接 → 控制权 → 性能测试视图 → 勾 S1Q（最短合成项：搅拌 300 rpm 10 s + 3 次转速表读数）+ RV1 → perf-checklist.png →
+///  main        「连接设备」对话框填 PR_CONTROL_URL / PR_CONTROL_TOKEN（main-connect-dialog.png）→ 连接 → 申请控制权（等触屏 / autoGrant）→
+///              启用 RV1–RV4 → RV1 加热 60 ℃、RV2 80 ℃ → 搅拌 300 rpm → RV3 / RV4 下发 3 步程序并运行 → 等 ≥ 16 帧 →
+///              main-rv1.png（反应釜页 1/1）/ main-rv3.png / main-device1.png / main-overview.png / main-program.png（程序页，旧样式）→
+///              收尾（中止程序、停止加热与搅拌、释放控制权）
+///  perf        连接 → 控制权 → 性能测试页（旧样式）→ 勾 S1Q（最短合成项：搅拌 300 rpm 10 s + 3 次转速表读数）+ RV1 → perf-checklist.png →
 ///              开始 → Hold 中 perf-running.png → 等待录入时 perf-prompt.png → 自动填 300 提交 → 等结束 → 收尾
 ///  perf-report 同上但勾 T0Q + S1Q（≈1 min，含加热 60 ℃ 保温 30 s），全自动应答 → 生成报告视图 → perf-report.png；shot.log 记 report.html 路径
 ///  输出目录：PR_CONTROL_DATA/perf/&lt;runId&gt;/（截图时请把 PR_CONTROL_DATA 指到 scratch）。
-/// 全部完成 Shutdown(0)；异常写 &lt;dir&gt;/error.txt 并 Shutdown(2)。
+/// 全部完成 Shutdown(0)；异常写 &lt;dir&gt;/error.txt 并 Shutdown(2)。这些场景会真的下命令，<b>只对模拟 HMI / 测试台架运行</b>。
 /// 演示模式（PR_CONTROL_DEMO=1，不连接任何设备，按 ShotPlan 截图 + 审计 + 对照）见 ShotRunner.Demo.cs。
 /// </summary>
 public static partial class ShotRunner
 {
-    public static void Start(Window window, MainViewModel vm, IClassicDesktopStyleApplicationLifetime desktop, string dir)
-        => Dispatcher.UIThread.Post(() => _ = RunAsync(window, vm, desktop, dir), DispatcherPriority.Background);
+    public static void Start(Window window, ShellVm shell, IClassicDesktopStyleApplicationLifetime desktop, string dir)
+        => Dispatcher.UIThread.Post(() => _ = RunAsync(window, shell, desktop, dir), DispatcherPriority.Background);
 
-    private static async Task RunAsync(Window window, MainViewModel vm, IClassicDesktopStyleApplicationLifetime desktop, string dir)
+    private static async Task RunAsync(Window window, ShellVm shell, IClassicDesktopStyleApplicationLifetime desktop, string dir)
     {
         int code = 0;
         var log = new System.Text.StringBuilder();
@@ -43,31 +50,37 @@ public static partial class ShotRunner
             var token = Environment.GetEnvironmentVariable("PR_CONTROL_TOKEN") ?? "";
             log.AppendLine($"scenario={scenario} url={url}");
 
-            // 先截一张未连接 + 连接对话框
+            // 先截一张「连接设备」对话框（填好地址和令牌）
             await SettleAsync();
-            vm.OpenConnectDialog();
+            shell.OpenDialog("connect");
+            var dlg = shell.Dialogs.Current as ConnectDialogVm ?? throw new Exception("「连接设备」对话框没有注册");
             var u = new Uri(url);
-            vm.ConnectDialog.Host = u.Host; vm.ConnectDialog.Port = u.Port.ToString(); vm.ConnectDialog.Token = token;
+            dlg.Host = u.Host; dlg.Port = u.Port.ToString(); dlg.Token = token;
             await SettleAsync();
             Capture(window, Path.Combine(dir, "main-connect-dialog.png"), log);
 
-            await vm.ConnectAsync();
-            if (!vm.IsConnected) throw new Exception("连接失败：" + vm.ConnectDialog.Status);
-            log.AppendLine("connected: " + vm.DeviceText);
+            await dlg.ConnectAsync();
+            var d = shell.Fleet.LiveDevice ?? throw new Exception(dlg.Status);
+            log.AppendLine($"connected: {d.Alias} {d.ModelLabel} SN {d.Sn} · {d.ConnText}");
 
-            if (scenario is "perf" or "perf-report") { await PerfScenarioAsync(window, vm, dir, log, scenario == "perf-report"); return; }
+            if (scenario is "perf" or "perf-report") { await PerfScenarioAsync(window, shell, d, dir, log, scenario == "perf-report"); return; }
             if (scenario != "main") throw new NotSupportedException($"未知场景「{scenario}」（main / perf / perf-report）");
 
-            await vm.RequestControlAsync();
-            if (!vm.CanControl) throw new Exception("未取得控制权：" + vm.ControlBadge);
-            log.AppendLine("control: " + vm.ControlBadge);
-            var c = vm.Connection!;
+            await AcquireLeaseAsync(d, log);
+            var c = shell.Fleet.LiveConnection ?? throw new Exception("连接已断开");
+            var live = (LiveDeviceSource)d.Source;
             var ct = CancellationToken.None;
 
-            for (int rv = 1; rv <= 4; rv++) { var r = await c.Control.EnableChannelAsync(rv, ct); log.AppendLine($"enable rv{rv}: {r.HttpStatus} {r.Status}"); }
-            var h1 = await c.Control.StartHeatAsync(1, 60, ct); log.AppendLine($"heat rv1 60: {h1.HttpStatus} {h1.Status}");
-            var h2 = await c.Control.StartHeatAsync(2, 80, ct); log.AppendLine($"heat rv2 80: {h2.HttpStatus} {h2.Status}");
-            var st = await c.Control.SetStirAsync(true, 300, ct); log.AppendLine($"stir 300: {st.HttpStatus} {st.Status}");
+            // 操作一律走 DeviceActions（同界面上的按钮：执行前查守卫、结果 / 警告记进日志）；守卫拦下的（已启用、已在加热、搅拌已在运行…）只记一笔
+            async Task Act(string what, Core.Guard.DeviceAction a, Core.Guard.ActionPayload? p = null)
+            {
+                var o = await d.Actions.RunAsync(a, p, quiet: true);
+                log.AppendLine($"{what}: {(o.Ok ? "ok" : "skipped")} {o.Message}" + (o.Warnings.Count > 0 ? " · " + string.Join(",", o.Warnings) : ""));
+            }
+            for (int rv = 1; rv <= 4; rv++) await Act($"enable rv{rv}", Core.Guard.DeviceAction.Enable, Core.Guard.ActionPayload.Ch(rv));
+            await Act("heat rv1 60", Core.Guard.DeviceAction.HeatStart, new Core.Guard.ActionPayload(N: 1, Sp: 60));
+            await Act("heat rv2 80", Core.Guard.DeviceAction.HeatStart, new Core.Guard.ActionPayload(N: 2, Sp: 80));
+            await Act("stir 300", Core.Guard.DeviceAction.StirOn, new Core.Guard.ActionPayload(Rpm: 300));
 
             var schema = await c.Rest.ProgramSchemaAsync(ct);
             bool hasPurge = schema.StepTypes.Contains("purge");
@@ -80,33 +93,36 @@ public static partial class ShotRunner
             else p4.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
             p4.Add(StepType.Heat, new { mode = "fixed", temp = 45.0, wait = 0.1 });
             p4.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
-            var r3 = await c.Control.ReplaceProgramAsync(3, p3, ct); log.AppendLine($"put program rv3: {r3.HttpStatus}");
-            var r4 = await c.Control.ReplaceProgramAsync(4, p4, ct); log.AppendLine($"put program rv4: {r4.HttpStatus} (purge={hasPurge})");
-            vm.SetDraft(3, p3); vm.SetDraft(4, p4);
-            var run3 = await c.Control.RunProgramAsync(3, null, IdempotencyKeys.New("shot-run-rv3"), ct); log.AppendLine($"run rv3: {run3.HttpStatus} {run3.Status}");
-            var run4 = await c.Control.RunProgramAsync(4, null, IdempotencyKeys.New("shot-run-rv4"), ct); log.AppendLine($"run rv4: {run4.HttpStatus} {run4.Status}");
+            var r3 = await live.UploadProgramAsync(3, p3, ct); log.AppendLine($"put program rv3: {r3.Message}");
+            var r4 = await live.UploadProgramAsync(4, p4, ct); log.AppendLine($"put program rv4: {r4.Message} (purge={hasPurge})");
+            shell.Fleet.RefreshNow();
+            await Act("run rv3", Core.Guard.DeviceAction.ProgRun, Core.Guard.ActionPayload.Ch(3));
+            await Act("run rv4", Core.Guard.DeviceAction.ProgRun, Core.Guard.ActionPayload.Ch(4));
 
-            // 等 ≥ 4 帧遥测
-            int frames = 0; var tcs = new TaskCompletionSource();
-            Action<ParallelReactor.Api.TelemetrySnapshot> h = _ => { if (++frames >= 16) tcs.TrySetResult(); };
-            c.TelemetryReceived += h;
-            await Task.WhenAny(tcs.Task, Task.Delay(40000));
-            c.TelemetryReceived -= h;
-            log.AppendLine($"frames={frames} latest seq={c.Telemetry.Latest?.Seq}");
+            // 等 ≥ 16 帧遥测
+            await WaitFramesAsync(c, 16, 40000);
             var latest = c.Telemetry.Latest;
+            log.AppendLine($"latest seq={latest?.Seq}");
             if (latest != null) foreach (var ch in latest.Channels.Take(4)) log.AppendLine($"  rv{ch.Id} state={ch.State} sp={ch.TempSpC} pv={ch.TempC} prog={ch.Program?.State} {ch.Program?.StepIndex}/{ch.Program?.StepCount}");
+            foreach (var r in d.Reactors.Take(4)) log.AppendLine($"  vm RV{r.N} {r.Key} {r.Word} {r.TempText} ℃ {r.PressText} MPa");
 
-            vm.SelectReactor(1); await SettleAsync(); Capture(window, Path.Combine(dir, "main-rv1.png"), log);
-            vm.SelectReactor(3); await SettleAsync(); Capture(window, Path.Combine(dir, "main-rv3.png"), log);
-            vm.SelectKind(TabKind.Curves); await SettleAsync(); Capture(window, Path.Combine(dir, "main-curves.png"), log);
-            vm.SelectKind(TabKind.Overview); await SettleAsync(); Capture(window, Path.Combine(dir, "main-overview.png"), log);
-            vm.SelectReactor(1); vm.ToggleExpand("graph"); await SettleAsync(); Capture(window, Path.Combine(dir, "main-expanded-graph.png"), log); vm.CloseExpanded();
-            vm.OpenControlDialog(); await SettleAsync(); Capture(window, Path.Combine(dir, "main-control-dialog.png"), log); vm.CloseControlDialog();
+            shell.Navigate(Route.Reactor(1, 1)); await SettleAsync(); Capture(window, Path.Combine(dir, "main-rv1.png"), log);
+            shell.Navigate(Route.Reactor(1, 3)); await SettleAsync(); Capture(window, Path.Combine(dir, "main-rv3.png"), log);
+            shell.Navigate(Route.Device(1)); await SettleAsync(); Capture(window, Path.Combine(dir, "main-device1.png"), log);
+            shell.Navigate(Route.Overview); await SettleAsync(); Capture(window, Path.Combine(dir, "main-overview.png"), log);
+            shell.Navigate(Route.Placeholder("program"));
+            if (shell.OpenPage<LegacyProgramPageVm>() is { } prog) { prog.SetDraft(3, p3); prog.SelectRv(3); }
+            await SettleAsync(); Capture(window, Path.Combine(dir, "main-program.png"), log);
 
-            // 收尾：停掉自己开的东西，释放控制权
-            try { await c.Rest.AbortProgramAsync(3, ct); await c.Rest.AbortProgramAsync(4, ct); await c.Rest.StopHeatAsync(1, ct); await c.Rest.StopHeatAsync(2, ct); await c.Rest.StopStirAsync(ct); } catch (Exception ex) { log.AppendLine("cleanup: " + ex.Message); }
-            await vm.ReleaseControlAsync();
-            log.AppendLine("released: " + vm.ControlBadge);
+            // 收尾：停掉自己开的东西（停止类，同样走 DeviceActions），释放控制权
+            await Act("abort rv3", Core.Guard.DeviceAction.ProgAbort, Core.Guard.ActionPayload.Ch(3));
+            await Act("abort rv4", Core.Guard.DeviceAction.ProgAbort, Core.Guard.ActionPayload.Ch(4));
+            await Act("heat stop rv1", Core.Guard.DeviceAction.HeatStop, Core.Guard.ActionPayload.Ch(1));
+            await Act("heat stop rv2", Core.Guard.DeviceAction.HeatStop, Core.Guard.ActionPayload.Ch(2));
+            await Act("stir off", Core.Guard.DeviceAction.StirOff);
+            await d.Source.ReleaseLeaseAsync();
+            shell.Fleet.RefreshNow();
+            log.AppendLine("released: " + d.LeaseText);
         }
         catch (Exception ex)
         {
@@ -117,30 +133,45 @@ public static partial class ShotRunner
         finally
         {
             try { File.WriteAllText(Path.Combine(dir, "shot.log"), log.ToString()); } catch { }
-            try { await vm.ShutdownAsync(); } catch { }
+            try { await shell.ShutdownAsync(TimeSpan.FromSeconds(5)); } catch { }
             desktop.Shutdown(code);
         }
     }
 
-    private static async Task PerfScenarioAsync(Window window, MainViewModel vm, string dir, System.Text.StringBuilder log, bool report)
+    /// <summary>申请控制权并等到远程控制中（触屏确认或 autoGrant，最多 75 s）。</summary>
+    private static async Task AcquireLeaseAsync(DeviceVm d, System.Text.StringBuilder log)
     {
-        await vm.RequestControlAsync();
-        if (!vm.CanControl) throw new Exception("未取得控制权：" + vm.ControlBadge);
-        log.AppendLine("control: " + vm.ControlBadge);
-        var perf = vm.Perf;
-        vm.ShowView("perf");
+        var o = await d.Actions.RunAsync(Core.Guard.DeviceAction.LeaseRequest);
+        log.AppendLine("lease request: " + o.Message);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        while (d.LeaseStatus != LeaseStatus.Remote && sw.Elapsed < TimeSpan.FromSeconds(75))
+        {
+            await Task.Delay(250);
+            Dispatcher.UIThread.RunJobs();
+            d.Fleet.RefreshNow();
+        }
+        if (d.LeaseStatus != LeaseStatus.Remote) throw new Exception("未取得控制权：" + d.LeaseText);
+        log.AppendLine("control: " + d.LeaseText);
+    }
+
+    private static async Task PerfScenarioAsync(Window window, ShellVm shell, DeviceVm d, string dir, System.Text.StringBuilder log, bool report)
+    {
+        await AcquireLeaseAsync(d, log);
+        shell.Navigate(Route.Placeholder("perf"));
+        var page = shell.OpenPage<PerfPageVm>() ?? throw new Exception("性能测试页没有打开");
+        var perf = page.Perf;
         perf.ClearAll();
         perf.SelectChannels(1);
         if (report) perf.Check("T0Q");
         perf.Check("S1Q");
         log.AppendLine($"plan={perf.Plan.PlanId} items={perf.Plan.AllItems().Count()} selected={string.Join(",", perf.SelectedItemIds)} channels={string.Join(",", perf.SelectedChannels)}");
         // 等几帧遥测，让实时卡 / 曲线有数据
-        await WaitFramesAsync(vm.Connection!, 3, 10000);
+        await WaitFramesAsync(shell.Fleet.LiveConnection!, 3, 10000);
         await SettleAsync();
         if (!report) Capture(window, Path.Combine(dir, "perf-checklist.png"), log);
 
         var run = perf.StartAsync();   // 引擎在线程池跑；本方法在 UI 线程继续观察
-        if (!perf.IsRunning) throw new Exception("性能测试未能开始（见 Toast）：" + vm.ToastText);
+        if (!perf.IsRunning) throw new Exception("性能测试未能开始（见 Toast）：" + shell.Toasts.Items.LastOrDefault()?.Text);
         log.AppendLine("started: " + perf.StatusText);
 
         bool gotRunning = false, gotPrompt = false;
@@ -192,8 +223,9 @@ public static partial class ShotRunner
             await SettleAsync();
             Capture(window, Path.Combine(dir, "perf-finished.png"), log);
         }
-        await vm.ReleaseControlAsync();
-        log.AppendLine("released: " + vm.ControlBadge);
+        await d.Source.ReleaseLeaseAsync();
+        shell.Fleet.RefreshNow();
+        log.AppendLine("released: " + d.LeaseText);
     }
 
     private static async Task WaitFramesAsync(IReactorConnection c, int n, int timeoutMs)

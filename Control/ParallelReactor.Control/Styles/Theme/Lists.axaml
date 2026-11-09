@@ -26,6 +26,22 @@
     </Setter>
   </ControlTheme>
 
+  <!-- 资源管理器树的列表：同 PrListBox，滚动条是浮层（PrScrollViewerOverlay，不占行宽） -->
+  <ControlTheme x:Key="PrTreeList" TargetType="ListBox" BasedOn="{StaticResource PrListBox}">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+          <ScrollViewer Name="PART_ScrollViewer" Theme="{StaticResource PrScrollViewerOverlay}"
+                        HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                        VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Margin="{TemplateBinding Padding}" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
   <ControlTheme x:Key="PrTreeRow" TargetType="ListBoxItem">
     <Setter Property="Height" Value="{StaticResource RowH}" />
     <Setter Property="Padding" Value="4,0,8,0" />

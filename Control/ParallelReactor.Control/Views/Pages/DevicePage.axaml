@@ -1,0 +1,19 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.DevicePage"
+             x:DataType="pg:DevicePageVm">
+  <!-- 设备页骨架（M2；内容在 M4）：上 = 「1号机 › 反应釜」面板（卡片大一号、带釜体），下 = 共用资源 · 设备信息 · 报警与事件。
+       面板之间 1 px 线（line-2）。面板标题照抄样稿。 -->
+  <Grid RowDefinitions="52*,48*" ColumnDefinitions="*,*,*" Background="{StaticResource Line2Brush}">
+    <pr:PrPanel Grid.ColumnSpan="3" Margin="0,0,0,1">
+      <pr:PrPanel.Title>
+        <pr:Crumb Text="{Binding Alias, StringFormat='{}{0} › 反应釜'}" />
+      </pr:PrPanel.Title>
+    </pr:PrPanel>
+    <pr:PrPanel Grid.Row="1" Margin="0,0,1,0" Title="共用资源" Sub="只读 · 设置在检查器" />
+    <pr:PrPanel Grid.Row="1" Grid.Column="1" Margin="0,0,1,0" Title="设备信息" />
+    <pr:PrPanel Grid.Row="1" Grid.Column="2" Title="报警与事件" />
+  </Grid>
+</UserControl>

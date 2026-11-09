@@ -2,7 +2,7 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:c="using:ParallelReactor.Control.Controls"
                     xmlns:b="using:ParallelReactor.Control.Behaviors">
-  <!-- 按钮（PORT-PLAN §4.6；样稿 base.css .pr-btn* / .pr-linkbtn / .pr-icon-btn）。全部带 x:Key，显式使用（M2 起改为默认主题）。
+  <!-- 按钮（PORT-PLAN §4.6；样稿 base.css .pr-btn* / .pr-linkbtn / .pr-icon-btn）。全部带 x:Key；PrButton 是 Button 的默认主题（Styles/Theme/Defaults.axaml，M2），其余显式使用。
        次要（默认）= 白底 line 边框，悬停 a-tint / a-line；主要 = 紫色实心，每个区域只放一个；停止类 = 次要按钮 + 深灰实心方块；
        单台急停 = 白底红字红框（只在检查器）；红色实心只给全局急停和急停对话框里的确认。
        图标用附加属性 b:Pr.Icon；尺寸类 sm（34）/ lg（40）/ wide；禁用（IsEnabled=false）与 b:Pr.Reason（伪类 :reason）同样的外观，

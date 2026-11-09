@@ -1,6 +1,157 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!-- .panel / .panel-heading / .icon-button / .inspector / .edit-plan / 曲线盒 -->
+  <!-- 旧样式页面的宿主（Views/Legacy/LegacyHost：StyleKey = ContentControl，类 legacy）：旧界面的字号 9 / 字体 / 字色 / 底色
+       （原来写在 MainWindow 的旧界面模板里；M2 起程序页与性能测试页在新外壳里用它，M7 删除）。 -->
+  <Style Selector="ContentControl.legacy">
+    <Setter Property="FontSize" Value="9" />
+    <Setter Property="FontFamily" Value="{DynamicResource LegacyUiFont}" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="Background" Value="{DynamicResource AppBg}" />
+  </Style>
+
+  <!-- 以下三段从旧的 Styles/Shell.axaml 搬来（M2 删除旧外壳时，旧的程序编辑 / 性能测试视图还要用）：平面按钮模板、平面文本框、.legacy 子树的滚动条 -->
+  <!-- 平面按钮模板：Border + ContentPresenter，Fluent 的一切 chrome 被替换；:focus-visible 画 mock 的 2px #8b78d6 内描边 -->
+  <Style Selector="Button.flat, ToggleButton.flat, RepeatButton.flat">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+                              Foreground="{TemplateBinding Foreground}" FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}" />
+          </Border>
+          <Border Name="PART_Inset" Height="2" VerticalAlignment="Top" Background="{DynamicResource TabInset}" IsVisible="False" />
+          <Border Name="PART_Focus" BorderBrush="{DynamicResource Focus}" BorderThickness="2" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="Button.flat:focus-visible /template/ Border#PART_Focus, ToggleButton.flat:focus-visible /template/ Border#PART_Focus">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Button.flat:disabled, ToggleButton.flat:disabled">
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Opacity" Value="0.55" />
+  </Style>
+  <!-- Fluent 对 ContentPresenter#PART_ContentPresenter 的 :checked / :pressed / :disabled / :pointerover Foreground 直接 setter 会盖过本样式（白字 / 双重变淡）：全部钉回 TemplateBinding -->
+  <Style Selector="Button.flat /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat /template/ ContentPresenter#PART_ContentPresenter, RepeatButton.flat /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:pressed /template/ ContentPresenter#PART_ContentPresenter,
+                   Button.flat:disabled /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:disabled /template/ ContentPresenter#PART_ContentPresenter,
+                   ToggleButton.flat:checked /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter,
+                   ToggleButton.flat:checked:pressed /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.flat:checked:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Foreground" Value="{TemplateBinding Foreground}" />
+  </Style>
+
+  <!-- 文本框：mock .property-reading input / 对话框字段 -->
+  <Style Selector="TextBox.flat">
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Padding" Value="3,1" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="FontSize" Value="8" />
+    <Setter Property="Foreground" Value="{DynamicResource Ink}" />
+    <Setter Property="CaretBrush" Value="{DynamicResource Ink}" />
+    <Setter Property="SelectionBrush" Value="{DynamicResource ChipActiveBg}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_BorderElement" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ScrollViewer Name="PART_ScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <Panel>
+              <TextBlock Name="PART_Watermark" Text="{TemplateBinding Watermark}" Foreground="{DynamicResource Label}" FontSize="{TemplateBinding FontSize}" VerticalAlignment="Center" TextAlignment="{TemplateBinding TextAlignment}" IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+              <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}" SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                             TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="NoWrap" PasswordChar="{TemplateBinding PasswordChar}" RevealPassword="{TemplateBinding RevealPassword}"
+                             SelectionBrush="{TemplateBinding SelectionBrush}" SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}" CaretBrush="{TemplateBinding CaretBrush}"
+                             VerticalAlignment="Center" />
+            </Panel>
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="TextBox.flat:pointerover /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+  </Style>
+  <Style Selector="TextBox.flat:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource Focus}" />
+  </Style>
+  <Style Selector="TextBox.flat:disabled /template/ Border#PART_BorderElement">
+    <Setter Property="Background" Value="{DynamicResource DisabledBg}" />
+  </Style>
+  <Style Selector="TextBox.flat.reading">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="FontWeight" Value="600" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="Padding" Value="2,1" />
+  </Style>
+  <!-- 编辑态 .step-value：白底 + 1px 虚线 #8b78cd -->
+  <Style Selector="TextBox.flat.step-value">
+    <Setter Property="CornerRadius" Value="0" />
+    <Setter Property="Padding" Value="2,0" />
+    <Setter Property="MinWidth" Value="44" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_BorderElement" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <ScrollViewer Name="PART_ScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+              <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}" SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                             TextAlignment="{TemplateBinding TextAlignment}" TextWrapping="NoWrap" SelectionBrush="{TemplateBinding SelectionBrush}" CaretBrush="{TemplateBinding CaretBrush}" VerticalAlignment="Center" />
+            </ScrollViewer>
+          </Border>
+          <Rectangle Stroke="{DynamicResource Focus}" StrokeThickness="1" StrokeDashArray="2,1.5" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+
+  <!-- 通用：所有 TextBlock 默认继承字体；ScrollViewer 滚动条按 mock .vertical-scroll（8px，#eeeeef，拇指 #b9b9bd） -->
+  <!-- 自写模板（Fluent 的展开态根元素宽于 8px 会盖住内容）：轨道 8px #eeeeef 左边 1px #dedee1，拇指 7px #b9b9bd 下圆 3 -->
+  <!-- M2：只作用于旧界面（Views/Legacy/LegacyHost 带 legacy 类）；新外壳的滚动条是 PrScrollBar -->
+  <Style Selector=".legacy ScrollBar:vertical">
+    <Setter Property="Width" Value="8" />
+    <Setter Property="Background" Value="{DynamicResource Scroll}" />
+    <Setter Property="AllowAutoHide" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{DynamicResource SoftLine}" BorderThickness="1,0,0,0" Width="8">
+          <Track Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value, Mode=TwoWay}"
+                 ViewportSize="{TemplateBinding ViewportSize}" Orientation="Vertical" IsDirectionReversed="True">
+            <Track.DecreaseButton><RepeatButton Name="PART_PageUpButton" Classes="flat" Background="Transparent" /></Track.DecreaseButton>
+            <Track.IncreaseButton><RepeatButton Name="PART_PageDownButton" Classes="flat" Background="Transparent" /></Track.IncreaseButton>
+            <Thumb Name="thumb" Width="7" HorizontalAlignment="Right" MinHeight="20">
+              <Thumb.Template><ControlTemplate><Border Background="{DynamicResource ScrollThumb}" CornerRadius="0,0,3,3" /></ControlTemplate></Thumb.Template>
+            </Thumb>
+          </Track>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </Style>
+  <Style Selector=".legacy ScrollBar:horizontal">
+    <Setter Property="Height" Value="8" />
+    <Setter Property="AllowAutoHide" Value="False" />
+  </Style>
   <Style Selector="Border.panel">
     <Setter Property="Background" Value="{DynamicResource Panel}" />
     <Setter Property="BorderBrush" Value="{DynamicResource TabBorder}" />

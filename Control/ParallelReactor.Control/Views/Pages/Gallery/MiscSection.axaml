@@ -5,7 +5,7 @@
              x:Class="ParallelReactor.Control.Views.Pages.Gallery.MiscSection">
   <!-- 提示 · 表格 · 键值 · 倒计时 · 空状态（MOCK #/gallery 最后一个分区）：3 列 ——
        ① 四种提示条（中性带粗体 / 提醒 / 报警 / 强调），间距 10；② 设备表（第 1 行选中）+ 键值表；③ 倒计时环 128 + 空状态，间距 24 -->
-  <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="16">
+  <g:GalleryGrid x:Name="Grid3" Columns="3" ColumnGap="24" RowGap="16">
     <StackPanel Spacing="10">
       <pr:Note>
         <!-- 粗体段：pr:Note 自动套用 b:Pr.CjkRuns（11.1 回退缺陷的绕过，粗体段和它后面的一段改用 UiFontCjk） -->
@@ -20,8 +20,8 @@
 
     <StackPanel x:Name="TableHost" Grid.IsSharedSizeScope="True">
       <!-- 表格：表头 40（bg-head、下边 line-2、14 px 600 t-3）+ 行 44（下边 line-faint；可点行悬停 bg-hover，选中 a-soft），单元格左右 12；
-           列宽同样稿 1920 时的自动表格布局（77 / 剩余 / 134）；放不下型号全文时状态列只占内容宽度、把空间先让给型号列（同自动表格布局），
-           还放不下才省略型号（带提示），别名和状态不缩（代码见 MiscSection.axaml.cs） -->
+           列宽同样稿的自动表格布局：放得下时 1920 的 77 / 剩余 / 134；放不下时三列都按内容宽，型号从不省略 ——
+           格子太窄时表格比格子宽、伸进列间距里（同样稿 1600 时的样子；代码见 MiscSection.axaml.cs） -->
       <ContentControl Theme="{StaticResource PrTableHead}">
         <Grid>
             <Grid.ColumnDefinitions>

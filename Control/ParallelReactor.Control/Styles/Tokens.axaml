@@ -201,8 +201,14 @@
   <x:Double x:Key="FsRead">26</x:Double>
   <x:Double x:Key="FsRead28">28</x:Double>
   <x:Double x:Key="FsRead30">30</x:Double>
-  <!-- 正文行高 15 × 1.45 -->
-  <x:Double x:Key="LhBody">22</x:Double>
+  <!-- 行高：样稿 body line-height 1.45；参照图是 WebKit 拍的，它把行高截成整数 px（15 × 1.45 = 21.75 → 21），
+       外框与页面一律用同样的整数（M2 决定；M1 的组件陈列页就是这样逐像素对上参照图的）。
+       Avalonia 的 LineHeight 是绝对值、会继承：只在多行文字、上下堆叠的文字上显式设置，单行居中的文字不用设 -->
+  <x:Double x:Key="LhNum">18</x:Double>
+  <x:Double x:Key="Lh2">20</x:Double>
+  <x:Double x:Key="LhBody">21</x:Double>
+  <x:Double x:Key="LhTitle">23</x:Double>
+  <x:Double x:Key="LhHead">26</x:Double>
 
   <!-- 外框（§3.1 / §4.4） -->
   <x:Double x:Key="MenuH">34</x:Double>

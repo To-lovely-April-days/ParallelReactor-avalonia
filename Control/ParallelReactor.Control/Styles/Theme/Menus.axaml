@@ -5,7 +5,8 @@
   <!-- 菜单（PORT-PLAN §4.6；样稿 shell.css .pr-menuitem / .pr-menu / .pr-menu-item）。
        菜单栏项高 28、15 px、圆角 4（悬停 / 展开 bg-hover，按下 bg-press）；下拉面板白底 line 边、圆角 6、ShadowPop、上下 6、最小宽 220、最宽 480；
        菜单项高 36、15 px t-2、左 12 右 16、图标列 20（图标 17 t-3）+ 间距 10；悬停 bg-hover + t-1，按下 bg-press；
-       勾选项 17 px ✓（a-d，描边 2）；分隔 1 px line-faint（上下 6）；标题项（类 head）14 px 600 t-3；
+       提示（b:Pr.Hint，14 px t-3）跟在标签后面；勾选项在最右侧画 17 px ✓（a-d，描边 2），图标照常（同样稿 .pr-menu-check）；
+       红点（b:Pr.Dot，8 px r）压在图标右上角（溢出菜单里有错误报警的页签）；分隔 1 px line-faint（上下 6）；标题项（类 head）14 px 600 t-3；
        类 danger = r-ink 字 + r 图标、悬停 r-bg；类 stop = 深灰实心方块；禁用项 t-dis，原因写在 ToolTip 里（b:Pr.Reason，ToolTip.ShowOnDisabled）。
        右键菜单 PrContextMenu、菜单弹出 PrMenuFlyout、自定义内容的弹出框 PrPopover 与下拉面板同一外观。 -->
 
@@ -39,20 +40,25 @@
       <ControlTemplate>
         <Panel>
           <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-            <Grid ColumnDefinitions="20,*,Auto">
-              <Panel Width="20" VerticalAlignment="Center">
+            <Grid ColumnDefinitions="20,*,Auto,Auto,Auto">
+              <Panel Width="20" VerticalAlignment="Center" ClipToBounds="False">
                 <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Size="17" Foreground="{StaticResource T3Brush}"
                             HorizontalAlignment="Center"
                             IsVisible="{TemplateBinding (b:Pr.Icon), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
-                <c:IconView Name="PART_Check" Icon="check" Size="17" StrokeWidth="2" Foreground="{StaticResource ADBrush}"
-                            HorizontalAlignment="Center" IsVisible="False" />
+                <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource RBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-3,-2,0" IsVisible="{TemplateBinding (b:Pr.Dot)}" />
               </Panel>
               <ContentPresenter Name="PART_HeaderPresenter" Grid.Column="1" Margin="10,0,0,0"
                                 Content="{TemplateBinding Header}"
                                 ContentTemplate="{TemplateBinding HeaderTemplate}"
                                 Foreground="{TemplateBinding Foreground}"
                                 VerticalAlignment="Center" RecognizesAccessKey="True" />
-              <c:IconView Name="PART_Chevron" Grid.Column="2" Icon="right" Size="16" Margin="12,0,0,0"
+              <TextBlock Name="PART_Hint" Grid.Column="2" Margin="10,0,0,0" Text="{TemplateBinding (b:Pr.Hint)}"
+                         FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
+                         IsVisible="{TemplateBinding (b:Pr.Hint), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <c:IconView Name="PART_Check" Grid.Column="3" Icon="check" Size="17" StrokeWidth="2" Foreground="{StaticResource ADBrush}"
+                          Margin="10,0,0,0" VerticalAlignment="Center" IsVisible="False" />
+              <c:IconView Name="PART_Chevron" Grid.Column="4" Icon="right" Size="16" Margin="12,0,0,0"
                           Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
             </Grid>
           </Border>
@@ -88,9 +94,6 @@
     </Style>
     <Style Selector="^:checked /template/ c|IconView#PART_Check">
       <Setter Property="IsVisible" Value="True" />
-    </Style>
-    <Style Selector="^:checked /template/ c|IconView#PART_Icon">
-      <Setter Property="IsVisible" Value="False" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
@@ -171,11 +174,12 @@
       <ControlTemplate>
         <Panel>
           <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+            <!-- 行高 21（样稿 15 px × 1.45，WebKit 取整）：28 px 高的项里文字的基线与参照图一致 -->
             <ContentPresenter Name="PART_HeaderPresenter"
                               Content="{TemplateBinding Header}"
                               ContentTemplate="{TemplateBinding HeaderTemplate}"
                               Foreground="{TemplateBinding Foreground}"
-                              Margin="{TemplateBinding Padding}"
+                              Margin="{TemplateBinding Padding}" LineHeight="{StaticResource LhBody}"
                               VerticalAlignment="Center" RecognizesAccessKey="True" />
           </Border>
           <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="{TemplateBinding CornerRadius}"

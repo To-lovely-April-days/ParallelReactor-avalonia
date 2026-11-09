@@ -57,6 +57,27 @@ public sealed class StepBar : Avalonia.Controls.Control
     public static readonly StyledProperty<bool> ShowLabelsProperty = AvaloniaProperty.Register<StepBar, bool>(nameof(ShowLabels));
     public static readonly StyledProperty<bool> IsRunningProperty = AvaloniaProperty.Register<StepBar, bool>(nameof(IsRunning));
 
+    /// <summary>
+    /// 绑定用的段列表（视图模型自己持有 <see cref="StepSeg"/> 实例、每次刷新就地改它们的属性）：设置后 <see cref="Segments"/> 按位置同步成同一批实例 ——
+    /// 实例没变的位置不动（进度只重画），段数变了才增删。null = 不同步（XAML 里直接写段时用）。
+    /// </summary>
+    public static readonly StyledProperty<IReadOnlyList<StepSeg>?> SegmentsSourceProperty =
+        AvaloniaProperty.Register<StepBar, IReadOnlyList<StepSeg>?>(nameof(SegmentsSource));
+
+    public IReadOnlyList<StepSeg>? SegmentsSource { get => GetValue(SegmentsSourceProperty); set => SetValue(SegmentsSourceProperty, value); }
+
+    private void SyncSource()
+    {
+        var src = SegmentsSource;
+        if (src is null) return;
+        for (int i = 0; i < src.Count; i++)
+        {
+            if (i < Segments.Count) { if (!ReferenceEquals(Segments[i], src[i])) Segments[i] = src[i]; }
+            else Segments.Add(src[i]);
+        }
+        while (Segments.Count > src.Count) Segments.RemoveAt(Segments.Count - 1);
+    }
+
     static StepBar()
     {
         AffectsMeasure<StepBar>(ShowLabelsProperty);
@@ -160,6 +181,7 @@ public sealed class StepBar : Avalonia.Controls.Control
     {
         base.OnPropertyChanged(change);
         if (change.Property == ShowLabelsProperty) Rebuild();
+        else if (change.Property == SegmentsSourceProperty) SyncSource();
         else if (change.Property == IsRunningProperty || change.Property == IsVisibleProperty || change.Property == Frozen.IsFrozenProperty) UpdatePulse();
     }
 

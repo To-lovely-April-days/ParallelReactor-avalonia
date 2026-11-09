@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 默认主题（PORT-PLAN §4.6「启用时机」，M2）：M1 的 Pr 主题成为这些控件的默认 ControlTheme（键 = 控件类型），
+       新外壳里看不到任何 Fluent 模板。放在 Application.Resources 里：控件找默认主题时先查应用资源、再查 FluentTheme，所以这里的优先。
+       Fluent 只剩弹出层设施（PopupRoot、OverlayPopupHost）和这里没有列出、新界面也不用的控件（RadioButton、Slider、TabControl …）。
+       旧界面（Views/Legacy/LegacyHost 承载的 MainView、程序编辑、性能测试）在宿主里把这些键换回 Fluent 的主题，外观不变。
+       必须排在 Theme/*.axaml 之后（BasedOn 用 StaticResource）。 -->
+
+  <ControlTheme x:Key="{x:Type Button}" TargetType="Button" BasedOn="{StaticResource PrButton}" />
+
+  <!-- 普通 ToggleButton（新界面的切换类都显式用 PrSegItem / PrPTab / PrChip / PrSideItem / PrDocTab / PrCheck）：
+       次要按钮的样子，按下状态 = 芯片「开」的颜色（a-soft 底 + a-line 边 + a-ink 字） -->
+  <ControlTheme x:Key="PrToggleButton" TargetType="ToggleButton" BasedOn="{StaticResource PrButton}">
+    <Style Selector="^:checked">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <!-- 禁用写在选中之后（派生主题的样式排在基础主题之后，选中不会盖过禁用） -->
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+  <ControlTheme x:Key="{x:Type ToggleButton}" TargetType="ToggleButton" BasedOn="{StaticResource PrToggleButton}" />
+
+  <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox" BasedOn="{StaticResource PrCheck}" />
+  <ControlTheme x:Key="{x:Type TextBox}" TargetType="TextBox" BasedOn="{StaticResource PrInput}" />
+  <ControlTheme x:Key="{x:Type ComboBox}" TargetType="ComboBox" BasedOn="{StaticResource PrSelect}" />
+  <ControlTheme x:Key="{x:Type ComboBoxItem}" TargetType="ComboBoxItem" BasedOn="{StaticResource PrSelectItem}" />
+
+  <!-- 菜单：Menu 的顶层项由 PrMenu 的 ItemContainerTheme 给 PrMenuBarItem；其余菜单项（下拉、右键、MenuFlyout）都是 PrMenuItem -->
+  <ControlTheme x:Key="{x:Type Menu}" TargetType="Menu" BasedOn="{StaticResource PrMenu}" />
+  <ControlTheme x:Key="{x:Type MenuItem}" TargetType="MenuItem" BasedOn="{StaticResource PrMenuItem}" />
+  <ControlTheme x:Key="{x:Type ContextMenu}" TargetType="ContextMenu" BasedOn="{StaticResource PrContextMenu}" />
+  <ControlTheme x:Key="{x:Type MenuFlyoutPresenter}" TargetType="MenuFlyoutPresenter" BasedOn="{StaticResource PrMenuFlyout}" />
+  <ControlTheme x:Key="{x:Type FlyoutPresenter}" TargetType="FlyoutPresenter" BasedOn="{StaticResource PrPopover}" />
+  <ControlTheme x:Key="{x:Type Separator}" TargetType="Separator" BasedOn="{StaticResource PrMenuSeparator}" />
+
+  <!-- 列表：资源管理器树行的样子（表格显式用 PrTableRow） -->
+  <ControlTheme x:Key="{x:Type ListBox}" TargetType="ListBox" BasedOn="{StaticResource PrListBox}" />
+  <ControlTheme x:Key="{x:Type ListBoxItem}" TargetType="ListBoxItem" BasedOn="{StaticResource PrTreeRow}" />
+
+  <ControlTheme x:Key="{x:Type ScrollViewer}" TargetType="ScrollViewer" BasedOn="{StaticResource PrScrollViewer}" />
+  <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar" BasedOn="{StaticResource PrScrollBar}" />
+  <ControlTheme x:Key="{x:Type ToolTip}" TargetType="ToolTip" BasedOn="{StaticResource PrTip}" />
+</ResourceDictionary>

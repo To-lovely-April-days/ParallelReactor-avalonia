@@ -24,10 +24,11 @@ namespace ParallelReactor.Control.ViewModels;
 /// 右下实时曲线；检查器按钮（开始 / 暂停 / 继续 · 确认 / 继续 · 中止 · 生成报告 · 下载报告 · 下载原始数据 · 返回测试项）。
 /// 同时实现 <see cref="IOperatorPrompt"/>：引擎线程上的确认 / 录入 / 安全询问被投递到 UI 线程，在 TaskCompletionSource 上等待操作员点「确认 / 继续」。
 /// 引擎 = PerfTest 库的 <see cref="PerfRunner"/>（会话 / 打点经 HMI sessions API，HMI 自己的 CSV 也带上标记）。
+/// 宿主（连接、客户端名、是否在看、toast）是 <see cref="IPerfHost"/>（M2 起 = 新外壳的性能测试页 Pages/PerfPageVm，不再依赖旧的主视图模型）。
 /// </summary>
 public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
 {
-    private readonly MainViewModel _main;
+    private readonly IPerfHost _main;
     private PerfRunner? _runner;
     private TelemetryFeedAdapter? _feed;
     private Task<RunResult>? _runTask;
@@ -121,7 +122,7 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
     public bool ShowRunView => !ShowReport;
     public string ChartSubtitle => $"{LiveRv} 温度 · 压力 · 全局转速";
 
-    public PerfViewModel(MainViewModel main, TestPlan plan)
+    public PerfViewModel(IPerfHost main, TestPlan plan)
     {
         _main = main; Plan = plan;
         Chart = new ChartVm("实时曲线", ChartSubtitle, new[]
@@ -234,7 +235,7 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
         var req = new RunRequest
         {
             PlanId = Plan.PlanId, ItemIds = ids, Channels = chans,
-            Operator = _main.Config.ClientName, SoftwareVersion = "pc-" + (typeof(PerfViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0"),
+            Operator = _main.ClientName, SoftwareVersion = "pc-" + (typeof(PerfViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0"),
             OutputRoot = ResultStore.DefaultRoot(), R0SignedOff = _r0Passed,
         };
         _runStartedUtc = DateTime.UtcNow;
@@ -695,10 +696,10 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
 
     // ───────────────────────── 遥测 → 曲线 ─────────────────────────
 
-    /// <summary>MainViewModel 每帧调用：运行中按首个目标通道画温度 / 压力 / 全局转速（rpm 原值）。</summary>
+    /// <summary>宿主每次刷新调用（最新一帧）：运行中按首个目标通道画温度 / 压力 / 全局转速（rpm 原值）。</summary>
     public void OnTelemetry(IReactorConnection c, TelemetrySnapshot f)
     {
-        if (!_main.IsPerfView && !IsRunning) return;
+        if (!_main.IsVisible && !IsRunning) return;
         int rv = int.TryParse(LiveRv.AsSpan(2), out var r) ? r : 1;
         var origin = _runStartedUtc ?? (c.Telemetry.Snapshot().FirstOrDefault()?.Ts ?? f.Ts);
         foreach (var s in Chart.Series) s.Points.Clear();
@@ -712,7 +713,7 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
             if (cs?.PressurePsi is double p) { Chart.Series[1].Points.Add(new Point(x, p)); maxR = Math.Max(maxR, p); }
             var rpm = fr.Stir.On ? fr.Stir.RpmSp : 0; Chart.Series[2].Points.Add(new Point(x, rpm)); maxR = Math.Max(maxR, rpm);
         }
-        Chart.XMax = MainViewModel.NiceXMax(maxX);
+        Chart.XMax = NiceXMax(maxX);
         Chart.LeftMax = maxT <= 200 ? 200 : 300;
         Chart.RightMax = Math.Max(1000, Math.Ceiling(maxR / 500) * 500);
         Chart.Revision++;
@@ -725,6 +726,10 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
     }
 
     // ───────────────────────── 工具 ─────────────────────────
+
+    /// <summary>X 轴范围：无数据 / 超过 70 min 时用 mock 的 88 min 格；短数据按 1 / 2 / 5 / 10 / 20 / 40 min 档位放大，曲线可见（原在旧主视图模型里）。</summary>
+    internal static double NiceXMax(double spanMin)
+        => spanMin <= 0 ? 88 : spanMin < 0.9 ? 1 : spanMin < 1.8 ? 2 : spanMin < 4.5 ? 5 : spanMin < 9 ? 10 : spanMin < 18 ? 20 : spanMin < 36 ? 40 : spanMin < 70 ? 88 : Math.Ceiling(spanMin * 1.1 / 10) * 10;
 
     private static string Fmt(TimeSpan t, bool hours = true)
         => hours || t.TotalHours >= 1 ? $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";

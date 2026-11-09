@@ -7,7 +7,7 @@ namespace ParallelReactor.Control.Theme;
 /// Fluent 仍是弹出层、ComboBox、ToolTip、ContextMenu 等的底层设施；这些覆盖让它们不再出现系统蓝。
 /// 必须合并进 Application.Resources：Fluent 的派生画刷（AccentButtonBackground、CheckBoxCheckBackgroundFillChecked …）在应用级解析，
 /// 只放进某个窗口的 Resources 时 SystemAccentColor 变了、这些画刷仍是系统蓝（M1 实测）。
-/// M1：只在演示进程（组件陈列窗口，Shot/GalleryWindow）里合并，旧界面不受影响；M2 删除旧外壳时在 App 里全局合并。
+/// M2 起在 App.Initialize 里全局合并（旧界面的强调色也随之变成紫色，旧视图在 M7 重做）。
 /// </summary>
 public static class FluentOverrides
 {

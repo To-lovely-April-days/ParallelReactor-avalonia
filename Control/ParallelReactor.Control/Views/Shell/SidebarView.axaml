@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.SidebarView"
+             x:DataType="sh:ShellVm">
+  <!-- 紫色图标栏 64 px（样稿 .pr-sidebar）：180° side-1 → side-2 渐变 + 20 % side-line 薄纱，右边 1 px side-line，上 8 下 6；
+       项高 60（PrSideItem：图标 20 + 14 px 白字），底部「收起 / 展开」高 54。
+       设备 = 资源管理器开关（只用图标亮度表示开 / 关）；当前项 = 加深 + 左侧 3 px 白条；报警 = 白底错误报警数 + 红点。 -->
+  <Border Background="{StaticResource SideGradientBrush}" BorderBrush="{StaticResource SideLineBrush}" BorderThickness="0,0,1,0">
+    <Panel Background="{StaticResource SideVeilBrush}">
+      <DockPanel Margin="0,8,0,6">
+        <cs:NavToggle DockPanel.Dock="Bottom" Theme="{StaticResource PrSideItem}" Classes="bottom"
+                      b:Pr.Icon="{Binding Sidebar.FocusIcon}" Content="{Binding Sidebar.FocusLabel}"
+                      AutomationProperties.Name="{Binding Sidebar.FocusLabel}" Command="{Binding Sidebar.ToggleFocusCommand}" />
+        <StackPanel>
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" Classes="toggle" Classes.open="{Binding Sidebar.ExplorerOpen}"
+                        b:Pr.Icon="devices" Content="设备" AutomationProperties.Name="设备"
+                        ToolTip.Tip="{Binding Sidebar.ExplorerTip}" Command="{Binding Sidebar.ToggleExplorerCommand}" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="overview" Content="总览" AutomationProperties.Name="总览"
+                        IsChecked="{Binding Sidebar.OverviewOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="overview" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="program" Content="程序" AutomationProperties.Name="程序"
+                        IsChecked="{Binding Sidebar.ProgramOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/program" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="curves" Content="曲线" AutomationProperties.Name="曲线"
+                        IsChecked="{Binding Sidebar.CurvesOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/curves" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="records" Content="记录" AutomationProperties.Name="记录"
+                        IsChecked="{Binding Sidebar.RecordsOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/records" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="bell" Content="报警" AutomationProperties.Name="报警"
+                        b:Pr.Count="{Binding Sidebar.AlarmBadge}" b:Pr.Dot="{Binding Sidebar.AlarmBadge, Converter={x:Static ObjectConverters.IsNotNull}}"
+                        ToolTip.Tip="{Binding Sidebar.AlarmTip}"
+                        IsChecked="{Binding Sidebar.AlarmsOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/alarms" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="perf" Content="测试" AutomationProperties.Name="测试"
+                        IsChecked="{Binding Sidebar.PerfOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/perf" />
+          <cs:NavToggle Theme="{StaticResource PrSideItem}" b:Pr.Icon="settings" Content="设置" AutomationProperties.Name="设置"
+                        IsChecked="{Binding Sidebar.SettingsOn, Mode=OneWay}" Command="{Binding Sidebar.GoCommand}" CommandParameter="placeholder/settings" />
+        </StackPanel>
+      </DockPanel>
+    </Panel>
+  </Border>
+</UserControl>

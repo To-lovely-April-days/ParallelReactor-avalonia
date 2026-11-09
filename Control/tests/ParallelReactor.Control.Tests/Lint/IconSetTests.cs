@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -9,7 +10,7 @@ namespace ParallelReactor.Control.Tests.Lint;
 /// <summary>
 /// 图标集（PORT-PLAN §5 M1「IconSetTests」）：Styles/Icons.axaml 与 Controls/IconSet.g.cs 由 tools/gen-icons.py 从样稿 js/ui.js 的 ICONS 生成。
 /// 期望名单抄自 ui.js 的 ICON_NAMES（76 个，同序）；样稿目录在仓库旁边时再直接读 ui.js 交叉核对一次。
-/// 另查：每个图标有非空几何、填充子图形（rec 的录制点）存在、旧界面的 23 个 Ico* 键仍在（M7 删除）。
+/// 另查：每个图标有非空几何、填充子图形（rec 的录制点）存在、旧界面的 Ico* 键只留旧视图还在用的（只许变少，M7 删除）。
 /// </summary>
 public class IconSetTests
 {
@@ -59,15 +60,28 @@ public class IconSetTests
         Assert.Matches(@"WithFill = new\[\] \{ ""rec"" \}", src);
     }
 
+    /// <summary>
+    /// 旧界面的 Ico* 键（M7 随旧视图一起删）：旧视图引用的键都还在；而且<b>只留还有人用的</b> —— 名单只许变短：
+    /// 一个键没有任何产品代码引用了（只剩核对表 Shot/IconSheet 列着它），就从 tools/gen-icons.py 的 LEGACY 里删掉、重新生成（同 PaletteLint / TypeScaleLint 的 StillNeeded）。
+    /// </summary>
     [Fact]
-    public void LegacyIcoKeys_StillPresent()
+    public void LegacyIcoKeys_PresentWhileUsed_AndOnlyWhileUsed()
     {
         var legacy = Geo.Matches(IconsAxaml).Select(m => m.Groups[1].Value).Where(k => k.StartsWith("Ico", StringComparison.Ordinal) && !k.StartsWith("Icon.", StringComparison.Ordinal)).ToList();
-        Assert.Equal(23, legacy.Count);
-        // 旧视图引用的键都还在（M7 随旧视图一起删）
-        foreach (var (rel, full) in AppSource.Sources().Where(f => f.Rel.EndsWith(".axaml", StringComparison.Ordinal)))
-            foreach (Match m in Regex.Matches(File.ReadAllText(full), @"\{(?:StaticResource|DynamicResource) (Ico[A-Z]\w*)\}"))
-                Assert.True(legacy.Contains(m.Groups[1].Value), $"{rel} 引用的 {m.Groups[1].Value} 不在 Icons.axaml 里");
+        Assert.True(legacy.Count <= 9, $"旧 Ico* 键只许变少（M2 删到 9 个），现在 {legacy.Count} 个");
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var (rel, full) in AppSource.Sources().Where(f => f.Rel.EndsWith(".axaml", StringComparison.Ordinal) || f.Rel.EndsWith(".cs", StringComparison.Ordinal)))
+        {
+            if (rel.EndsWith("Styles/Icons.axaml", StringComparison.Ordinal) || rel.EndsWith("Shot/IconSheet.cs", StringComparison.Ordinal)) continue;
+            var text = File.ReadAllText(full);
+            // 旧视图（axaml）引用的键都还在（.cs 里只有说明用法的注释，例如 IconView 的「{StaticResource IcoX}」）
+            if (rel.EndsWith(".axaml", StringComparison.Ordinal))
+                foreach (Match m in Regex.Matches(text, @"\{(?:StaticResource|DynamicResource) (Ico[A-Z]\w*)\}"))
+                    Assert.True(legacy.Contains(m.Groups[1].Value), $"{rel} 引用的 {m.Groups[1].Value} 不在 Icons.axaml 里");
+            foreach (var k in legacy) if (Regex.IsMatch(text, @"\b" + k + @"\b")) used.Add(k);
+        }
+        var unused = legacy.Where(k => !used.Contains(k)).ToList();
+        Assert.True(unused.Count == 0, "没人用的旧图标键（从 tools/gen-icons.py 的 LEGACY 和 Shot/IconSheet 里删掉、重新生成）：" + string.Join("、", unused));
     }
 
     [Fact]

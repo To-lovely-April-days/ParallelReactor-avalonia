@@ -30,6 +30,10 @@ public static partial class Pr
     public static readonly AttachedProperty<string?> CountProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Count", typeof(Pr));
 
+    /// <summary>菜单项的提示文字（PrMenuItem：标签右侧 14 px t-3，样稿 .pr-menu-hint，如「不需要控制权」「未显示」）。</summary>
+    public static readonly AttachedProperty<string?> HintProperty =
+        AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Hint", typeof(Pr));
+
     /// <summary>文档页签的关闭命令（PrDocTab 的 ×）；null = 固定页签，不显示 ×。</summary>
     public static readonly AttachedProperty<ICommand?> CloseCommandProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, ICommand?>("CloseCommand", typeof(Pr));
@@ -42,6 +46,8 @@ public static partial class Pr
     public static void SetDot(AvaloniaObject o, bool v) => o.SetValue(DotProperty, v);
     public static string? GetCount(AvaloniaObject o) => o.GetValue(CountProperty);
     public static void SetCount(AvaloniaObject o, string? v) => o.SetValue(CountProperty, v);
+    public static string? GetHint(AvaloniaObject o) => o.GetValue(HintProperty);
+    public static void SetHint(AvaloniaObject o, string? v) => o.SetValue(HintProperty, v);
     public static ICommand? GetCloseCommand(AvaloniaObject o) => o.GetValue(CloseCommandProperty);
     public static void SetCloseCommand(AvaloniaObject o, ICommand? v) => o.SetValue(CloseCommandProperty, v);
 

@@ -71,18 +71,21 @@
     </Setter>
   </ControlTheme>
 
-  <!-- 空状态：居中一列，图标 32 t-dis、标题 15/600 t-2、说明 14 t-3，间距 8，内边距 32 16 -->
+  <!-- 空状态：居中一列，图标 32 t-dis、标题 15/600 t-2、说明 14 t-3，间距 8，内边距 32 16。
+       文字铺满整列宽、靠 TextAlignment 居中（不是「自动宽度 + 居中放」）：Avalonia 11.1 的 TextBlock 按测量时的宽度排居中偏移，
+       容器宽度变了（例如窗口跨过 1920，检查器 300 → 330）而文字框本身没变时，不会按排版宽度重排，居中的文字整段偏出自己的框、被裁掉。
+       铺满时测量宽度 = 排版宽度，不会出这个问题；看起来一样（一行居中，折行时每行居中）。 -->
   <ControlTheme x:Key="{x:Type pr:Empty}" TargetType="pr:Empty">
     <Setter Property="Padding" Value="16,32" />
     <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
     <Setter Property="Template">
       <ControlTemplate>
-        <StackPanel Spacing="8" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="8" Margin="{TemplateBinding Padding}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
           <c:IconView Icon="{TemplateBinding Icon}" Size="32" Foreground="{StaticResource TDisBrush}" HorizontalAlignment="Center" />
           <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold"
-                     Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" />
+                     Foreground="{StaticResource T2Brush}" HorizontalAlignment="Stretch" TextAlignment="Center" TextWrapping="Wrap" />
           <TextBlock Text="{TemplateBinding Text}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
-                     HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
+                     HorizontalAlignment="Stretch" TextAlignment="Center" TextWrapping="Wrap"
                      IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         </StackPanel>
       </ControlTemplate>

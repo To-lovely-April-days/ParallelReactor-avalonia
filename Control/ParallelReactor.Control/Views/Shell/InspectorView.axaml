@@ -1,0 +1,735 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:svc="using:ParallelReactor.Control.Services"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             x:Class="ParallelReactor.Control.Views.Shell.InspectorView"
+             x:DataType="sh:ShellVm">
+  <!-- 检查器（样稿 .pr-insp，css/shell.css「检查器」）：bg-side、左边 line-2；330（窄于 1920 时 300）。
+       标题栏（.pr-insp-head）：高 42、bg-head、下边 line-2、左 16 右 6、间距 8：布局图标 18 t-3 · 「检查器」16/600 · 路径 14 t-3（「/别名」可省略，「/RVn」完整）· 打开。
+       正文（.pr-insp-body）：上 16 左右 16 下 28，纵向滚动（浮层滚动条，不占宽度）；内容是 Shell/Inspector 的三种正文视图模型之一（下面三个 DataTemplate）。
+       数值：分区上边 1 px line-soft、上下 16；控件 36；两列按钮间距 8、上边距 10；正文 15 px 行高 21，说明 14 px 行高 20（WebKit 取整）。
+       选择器：说明条 / 状态格 / 读数行里的文字样式只用子选择器（「Border.note > DockPanel > TextBlock」），不用后代选择器「Border.note TextBlock」——
+       外框里按钮的字符串内容是 pr:PrText（样式键 TextBlock，见 ShellView），后代选择器会连说明条里链接按钮（「设置」「去N号机」）的字一起匹配，
+       把 PrLink 的紫色 a-d 盖成 t-2、带原因时的 t-dis 也盖掉（M2 复核）。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.meta">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.t14">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="TextBlock.wrap">
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <!-- 对象标题第二行（.pr-insp-obj-m）：14 px t-3 行高 20，最多两行 -->
+    <Style Selector="TextBlock.objm">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- 分区（.pr-insp-sec）：上边 1 px line-soft、上下 16 -->
+    <Style Selector="Border.sec">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+      <Setter Property="Padding" Value="0,16" />
+    </Style>
+    <!-- 状态格（.pr-insp-state）：和按钮一样大（36）、bg-sunken、圆角 6、15/500 t-2，点 / 图标 + 字居中，间距 7 -->
+    <Style Selector="Border.state">
+      <Setter Property="Height" Value="{StaticResource CtlH}" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="Border.state > StackPanel">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="7" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.state > StackPanel > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.state c|IconView">
+      <Setter Property="Size" Value="16" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.state pr|KeyDot">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 两列按钮（.pr-insp-row2 .pr-btn）：撑满、左右 8 -->
+    <Style Selector="Button.r2">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <!-- 说明条（.pr-insp-note）：上 10、内边距 10 12、圆角 6、bg-sunken、14 px t-2；图标 17 t-3 -->
+    <Style Selector="Border.note">
+      <Setter Property="Margin" Value="0,10,0,0" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    </Style>
+    <Style Selector="Border.note > DockPanel > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.note > DockPanel > c|IconView">
+      <Setter Property="Size" Value="17" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <!-- 读数行（.pr-insp-live）：14 px t-3；数字 22/600 t-1（左 4 右 2）；断线时数字 t-3 -->
+    <Style Selector="c|BaselineStack.live > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="c|BaselineStack.live > TextBlock.big">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="LineHeight" Value="31" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Margin" Value="4,0,2,0" />
+    </Style>
+    <Style Selector="c|BaselineStack.live > TextBlock.big.stale">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <!-- 数值框一行（.pr-insp-field）：标签 60 宽 14 px t-3（300 px 宽时放到控件上方）· 数值框 · 设定 -->
+    <Style Selector="TextBlock.fl">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 报警卡片（.pr-insp-alarm）：上 10、内边距 10 10 8 12、圆角 6、line-2 边、白底；错误报警 r-bg + r-line；已确认 70 % 不透明 -->
+    <Style Selector="Border.alarm">
+      <Setter Property="Padding" Value="12,10,10,8" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.alarm.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="Border.alarm.acked">
+      <Setter Property="Opacity" Value="0.7" />
+    </Style>
+    <Style Selector="Border.alarm c|IconView.al-ic">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.alarm c|IconView.al-ic.err">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="DockPanel.al-foot">
+      <Setter Property="MinHeight" Value="30" />
+    </Style>
+    <Style Selector="DockPanel.al-foot.owned">
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+    <!-- 列表里的卡片：第一张不留上边距的地方用 TopAlarms（标题下面紧接），其它分区里的卡片上 10 -->
+    <Style Selector="ItemsControl.cards > ContentPresenter">
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+    <Style Selector="ItemsControl.top > ContentPresenter">
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+    <Style Selector="ItemsControl.top > ContentPresenter:nth-child(1)">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <!-- 最近事件（.pr-insp-events li）：上下 7、下边 1 px line-faint（最后一条没有）；时间 13 t-3 · 错误 ⚠ 15 r · 文字 14 t-2 两行 -->
+    <Style Selector="Border.ev">
+      <Setter Property="Padding" Value="0,7" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="ItemsControl.events > ContentPresenter:nth-last-child(1) Border.ev">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.ev-t">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.ev-t.emph">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="FontWeight" Value="Medium" />
+    </Style>
+    <!-- 控制权卡（.pr-insp-lease）：内边距 12、line-2 边、圆角 6、白底、ShadowCard；申请中 a-line 边；正在连接 line 边 -->
+    <Style Selector="Border.lease">
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+    </Style>
+    <!-- 卡片阴影画在框外：放它的 ContentControl / ContentPresenter 不裁剪（Avalonia 11.1 默认裁剪） -->
+    <Style Selector="ContentControl.noclip">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="ContentControl.noclip /template/ ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="Border.lease.req">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="Border.lease.conn">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.DataTemplates>
+    <!-- 控制权卡 -->
+    <DataTemplate DataType="sh:LeaseBoxVm" x:DataType="sh:LeaseBoxVm">
+      <Border Classes="lease" Classes.req="{Binding IsRequested}" Classes.conn="{Binding IsConnecting}">
+        <StackPanel>
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Classes="sm" Margin="8,0,0,0" Content="{Binding BtnLabel}" b:Pr.Icon="{Binding BtnIcon}"
+                    b:Pr.Reason="{Binding BtnReason}" Command="{Binding BtnCommand}" IsVisible="{Binding HasBtn}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <TextBlock Classes="t14" Text="控制权" VerticalAlignment="Center" IsVisible="{Binding ShowKey}" />
+              <pr:LeaseBadge State="{Binding LeaseState}" Text="{Binding LeaseText}" ToolTip.Tip="{Binding LeaseTip}" IsVisible="{Binding ShowLease}" />
+              <pr:ConnBadge State="{Binding ConnState}" Text="{Binding ConnText}" ToolTip.Tip="{Binding ConnTip}" IsVisible="{Binding !ShowLease}" />
+            </StackPanel>
+          </DockPanel>
+          <TextBlock Classes="t14 wrap" Margin="0,8,0,0" LineHeight="21" MaxLines="3" TextTrimming="CharacterEllipsis"
+                     Text="{Binding Note, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding NoteTip}" />
+          <Button Theme="{StaticResource PrPrimary}" HorizontalAlignment="Stretch" Margin="0,10,0,0" Content="{Binding CtaLabel}" b:Pr.Icon="{Binding CtaIcon}"
+                  b:Pr.Reason="{Binding CtaReason}" Command="{Binding CtaCommand}" IsVisible="{Binding HasCtaPrimary}" />
+          <Button HorizontalAlignment="Stretch" Margin="0,10,0,0" Content="{Binding CtaLabel}" b:Pr.Icon="{Binding CtaIcon}"
+                  b:Pr.Reason="{Binding CtaReason}" Command="{Binding CtaCommand}" IsVisible="{Binding HasCtaPlain}" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <!-- 报警 / 提醒卡片 -->
+    <DataTemplate DataType="sh:InspAlarmVm" x:DataType="sh:InspAlarmVm">
+      <Border Classes="alarm" Classes.err="{Binding IsErrCard}" Classes.acked="{Binding A.Acked}">
+        <DockPanel>
+          <c:IconView DockPanel.Dock="Left" Classes="al-ic" Classes.err="{Binding IsErr}" Icon="{Binding Icon}" Size="17" Margin="0,2,10,0" VerticalAlignment="Top" />
+          <StackPanel Spacing="4">
+            <TextBlock Text="{Binding Text, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding A.Text}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                       LineHeight="{StaticResource Lh2}" TextWrapping="Wrap" />
+            <DockPanel Classes="al-foot" Classes.owned="{Binding Where, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <Button DockPanel.Dock="Right" Classes="sm" Content="确认" b:Pr.Icon="check" Command="{Binding A.AckCommand}" b:Pr.Reason="{Binding A.AckReason}"
+                      IsVisible="{Binding ShowAck}" VerticalAlignment="Center" />
+              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <TextBlock Classes="num" Text="{Binding A.AtText}" FontSize="{StaticResource FsNum}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <TextBlock Classes="t14" Text="{Binding LevelText}" VerticalAlignment="Center" />
+              </StackPanel>
+            </DockPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,0,2" IsVisible="{Binding WhereText, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <c:IconView Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+              <TextBlock Classes="t14" Text="{Binding WhereText}" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+
+    <!-- 设备检查器 -->
+    <DataTemplate DataType="sh:DeviceInspectorVm" x:DataType="sh:DeviceInspectorVm">
+      <StackPanel>
+        <!-- 对象标题：设备图标 30 · 别名 18/600（放不下 16 / 15 / 折行）· 连接徽标；第二行型号 · 已安装（4/8 路）；地址 · SN -->
+        <StackPanel IsVisible="{Binding HasHead}">
+          <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,14">
+            <c:IconView Icon="machine" Size="30" Foreground="{StaticResource T3Brush}" Margin="0,0,12,0" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="1" Spacing="2">
+              <DockPanel>
+                <Panel DockPanel.Dock="Right" Margin="12,0,0,0" VerticalAlignment="Center">
+                  <pr:ConnBadge State="{Binding Conn}" Text="{Binding ConnShort}" ToolTip.Tip="{Binding ConnTip}" IsVisible="{Binding Online}" />
+                  <pr:StateBadge Classes="badge" Key="Offline" Text="{Binding OffWord}" ToolTip.Tip="{Binding ConnTip}" IsVisible="{Binding !Online}" />
+                </Panel>
+                <cs:InspObjName Alias="{Binding Alias}" VerticalAlignment="Center" />
+              </DockPanel>
+              <TextBlock Classes="objm" Text="{Binding Sub, Converter={x:Static th:TextConverters.KeepRange}}" ToolTip.Tip="{Binding SubTip}" />
+            </StackPanel>
+          </Grid>
+          <WrapPanel Margin="42,-8,0,12">
+            <TextBlock Classes="num" Text="{Binding HostPort}" FontSize="{StaticResource FsNum}" Foreground="{StaticResource T3Brush}" LineHeight="{StaticResource LhNum}" Margin="0,0,14,2" />
+            <TextBlock Classes="num" Text="{Binding SnText}" FontSize="{StaticResource FsNum}" Foreground="{StaticResource T3Brush}" LineHeight="{StaticResource LhNum}" Margin="0,0,14,2" />
+          </WrapPanel>
+        </StackPanel>
+        <!-- 急停中：红框说明放在对象标题正下方 -->
+        <Border Margin="0,0,0,12" Padding="12,10" BorderBrush="{StaticResource RLineBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                Background="{StaticResource RBgBrush}" IsVisible="{Binding EstopOn}">
+          <DockPanel>
+            <c:IconView DockPanel.Dock="Left" Icon="estop" Size="18" Foreground="{StaticResource RBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+            <WrapPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding EstopText}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+              <TextBlock Text=" · 复位只能在" FontSize="{StaticResource Fs2}" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+              <TextBlock Text="{Binding EstopWhere, Converter={x:Static th:TextConverters.NoBreak}}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+            </WrapPanel>
+          </DockPanel>
+        </Border>
+        <ContentControl Classes="noclip" Content="{Binding Lease}" />
+        <!-- 运行 -->
+        <Border Classes="sec" Margin="0,16,0,0">
+          <StackPanel>
+            <pr:Subhead Title="运行">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding RunMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding AllRunning}">
+                  <StackPanel>
+                    <pr:KeyDot Key="React" />
+                    <TextBlock Text="全部运行中" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding RunAll}" IsVisible="{Binding !AllRunning}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding StopAll}" />
+            </Grid>
+            <TextBlock Classes="t14 wrap" Margin="0,8,0,0" Text="{Binding Hint, Converter={x:Static th:TextConverters.Keep}}" />
+            <DockPanel Margin="0,12,0,0" IsVisible="{Binding !EstopOn}">
+              <Button DockPanel.Dock="Left" Theme="{StaticResource PrEstopOutline}" Classes="sm" Margin="0,0,10,0" VerticalAlignment="Center" vs:InspBind.Act="{Binding Estop}" />
+              <TextBlock Classes="t14 wrap" LineHeight="19" VerticalAlignment="Center" Text="{Binding EstopNote, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding EstopNoteTip}" />
+            </DockPanel>
+          </StackPanel>
+        </Border>
+        <!-- 共用搅拌（设置只在这里） -->
+        <Border Classes="sec" IsVisible="{Binding SharedStir}">
+          <StackPanel>
+            <pr:Subhead Title="共用搅拌">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding StirMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <StackPanel Margin="0,10,0,0">
+              <TextBlock Classes="fl" Text="转速" Margin="0,0,0,6" IsVisible="{Binding Narrow}" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Classes="fl" Text="转速" Width="60" Margin="0,0,8,0" IsVisible="{Binding !Narrow}" />
+                <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding StirSet}" />
+                <pr:NumBox Name="SharedRpm" Value="{Binding RpmValue}" Minimum="{Binding RpmMin}" Maximum="{Binding RpmMax}" Step="50" Decimals="0" Unit="rpm"
+                           Label="共用转速" b:Pr.Reason="{Binding RpmReason}" />
+              </DockPanel>
+            </StackPanel>
+            <c:BaselineStack Classes="live" Spacing="0" Margin="2,10,2,0">
+              <TextBlock Text="当前" />
+              <TextBlock Classes="big num" Classes.stale="{Binding LiveRpmStale}" Text="{Binding LiveRpm}" />
+              <TextBlock Classes="num" Text="{Binding LiveRpmUnit}" />
+              <TextBlock Text="{Binding LiveStirText}" c:BaselineStack.PushRight="True" />
+            </c:BaselineStack>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding StirRunning}">
+                  <StackPanel>
+                    <c:IconView Icon="fan" />
+                    <TextBlock Text="搅拌运行中" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding StirOn}" IsVisible="{Binding !StirRunning}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding StirOff}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <!-- 各釜独立搅拌：一行说明 -->
+        <Border Classes="sec" IsVisible="{Binding !SharedStir}">
+          <StackPanel>
+            <pr:Subhead Title="搅拌" />
+            <Border Classes="note">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Left" Icon="fan" />
+                <TextBlock Text="{Binding StirNote, Converter={x:Static th:TextConverters.Keep}}" />
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+        <!-- 会话 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <pr:Subhead Title="会话">
+              <pr:Subhead.Right>
+                <Panel>
+                  <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding SessionActive}" VerticalAlignment="Center">
+                    <c:IconView Icon="rec" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                    <TextBlock Classes="meta" Text="记录中" Foreground="{StaticResource T2Brush}" />
+                  </StackPanel>
+                  <TextBlock Classes="meta" Text="未记录" IsVisible="{Binding !SessionActive}" />
+                </Panel>
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <StackPanel Spacing="2" Margin="0,8,0,0" IsVisible="{Binding SessionActive}">
+              <TextBlock Classes="num" Text="{Binding SessionId}" ToolTip.Tip="{Binding SessionId}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold"
+                         Foreground="{StaticResource T1Brush}" LineHeight="{StaticResource LhBody}" TextTrimming="CharacterEllipsis" />
+              <TextBlock Classes="t14" Text="{Binding SessionText}" />
+            </StackPanel>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0" IsVisible="{Binding SessionActive}">
+              <Button Classes="r2" vs:InspBind.Act="{Binding SessionMark}" />
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding SessionEnd}" />
+            </Grid>
+            <Button Classes="r2" Margin="0,10,0,0" vs:InspBind.Act="{Binding SessionStart}" IsVisible="{Binding !SessionActive}" />
+          </StackPanel>
+        </Border>
+        <!-- 报警（前 4 条） -->
+        <Border Classes="sec" IsVisible="{Binding ShowLog}">
+          <StackPanel>
+            <pr:Subhead Title="报警">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding AlarmMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <ItemsControl Classes="cards" ItemsSource="{Binding Alarms}" IsVisible="{Binding HasAlarms}" />
+            <TextBlock Classes="t14" Margin="0,10,0,0" Text="没有报警" IsVisible="{Binding !HasAlarms}" />
+          </StackPanel>
+        </Border>
+        <!-- 最近事件（前 5 条） -->
+        <Border Classes="sec" IsVisible="{Binding ShowLog}">
+          <StackPanel>
+            <pr:Subhead Title="最近事件">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding EventMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <ItemsControl Classes="events" Margin="0,8,0,0" ItemsSource="{Binding Events}" IsVisible="{Binding HasEvents}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sh:InspEventVm">
+                  <Border Classes="ev">
+                    <c:BaselineStack Spacing="10">
+                      <TextBlock Classes="num" Text="{Binding AtText}" FontSize="{StaticResource FsNum}" Foreground="{StaticResource T3Brush}" />
+                      <c:IconView Icon="alert" Size="15" Foreground="{StaticResource RBrush}" Margin="0,0,-4,2" IsVisible="{Binding IsErr}" />
+                      <TextBlock Classes="ev-t" Classes.emph="{Binding Emph}" Text="{Binding Text, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding Tip}" />
+                    </c:BaselineStack>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="t14" Margin="0,10,0,0" Text="暂无事件" IsVisible="{Binding !HasEvents}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 未安装的位置：反应釜标题 + 说明 +「整机操作」+ 设备检查器（不带标题） -->
+    <DataTemplate DataType="sh:UninstalledInspectorVm" x:DataType="sh:UninstalledInspectorVm">
+      <StackPanel>
+        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,14">
+          <pr:VesselGlyph Key="Uninstalled" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Spacing="2">
+            <DockPanel>
+              <pr:Badge DockPanel.Dock="Right" Margin="12,0,0,0" Text="未安装" Tone="Mute" ShowDot="False" VerticalAlignment="Center" />
+              <cs:InspObjName Alias="{Binding Alias}" Rv="{Binding Rv}" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="objm" Text="{Binding Sub, Converter={x:Static th:TextConverters.KeepRange}}" />
+          </StackPanel>
+        </Grid>
+        <!-- 说明框（.pr-insp-unnote）：1 px line 虚线边（3 / 3）、圆角 6、bg-head；ⓘ 17 t-3 · 15 px t-2 -->
+        <Panel Margin="0,0,0,14">
+          <Rectangle Fill="{StaticResource BgHeadBrush}" Stroke="{StaticResource LineBrush}" StrokeThickness="1" StrokeDashArray="3,3" RadiusX="6" RadiusY="6" />
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,10">
+            <c:IconView Icon="info" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Note}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource LhBody}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Panel>
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,12">
+          <c:IconView Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Alias}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+          <TextBlock Classes="t14" Text="整机操作" VerticalAlignment="Center" />
+        </StackPanel>
+        <ContentControl Content="{Binding Device}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 反应釜检查器 -->
+    <DataTemplate DataType="sh:ReactorInspectorVm" x:DataType="sh:ReactorInspectorVm">
+      <StackPanel>
+        <!-- 对象标题：小釜体 30 · 「1号机 · RV1」18/600（放不下 16 / 15 / 两行，RV 从不省略）· 状态点 + 字；第二行型号 · 釜 -->
+        <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,14">
+          <pr:VesselGlyph Key="{Binding Key}" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Spacing="2">
+            <DockPanel>
+              <pr:StateBadge DockPanel.Dock="Right" Classes="badge" Margin="12,0,0,0" Key="{Binding Key}" Text="{Binding Word}" NeverConnected="{Binding NeverConnected}" />
+              <cs:InspObjName Alias="{Binding Alias}" Rv="{Binding Rv}" VerticalAlignment="Center" />
+            </DockPanel>
+            <TextBlock Classes="objm" Text="{Binding Sub, Converter={x:Static th:TextConverters.KeepRange}}" ToolTip.Tip="{Binding SubTip}" />
+          </StackPanel>
+        </Grid>
+        <Border Margin="0,0,0,12" Padding="12,10" BorderBrush="{StaticResource RLineBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                Background="{StaticResource RBgBrush}" IsVisible="{Binding EstopOn}">
+          <DockPanel>
+            <c:IconView DockPanel.Dock="Left" Icon="estop" Size="18" Foreground="{StaticResource RBrush}" Margin="0,0,10,0" VerticalAlignment="Center" />
+            <WrapPanel VerticalAlignment="Center">
+              <TextBlock Text="{Binding EstopText}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+              <TextBlock Text=" · 复位只能在" FontSize="{StaticResource Fs2}" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+              <TextBlock Text="{Binding EstopWhere, Converter={x:Static th:TextConverters.NoBreak}}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource RInkBrush}" LineHeight="19" />
+            </WrapPanel>
+          </DockPanel>
+        </Border>
+        <ItemsControl Classes="top" Margin="0,0,0,12" ItemsSource="{Binding TopAlarms}" IsVisible="{Binding HasTopAlarms}" />
+        <ContentControl Classes="noclip" Content="{Binding Lease}" />
+        <DockPanel Margin="0,12,0,0" IsVisible="{Binding !EstopOn}">
+          <Button DockPanel.Dock="Left" Theme="{StaticResource PrEstopOutline}" Classes="sm" Margin="0,0,10,0" VerticalAlignment="Center" vs:InspBind.Act="{Binding Estop}" />
+          <TextBlock Classes="t14 wrap" LineHeight="19" VerticalAlignment="Center" Text="{Binding EstopNote, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding EstopNoteTip}" />
+        </DockPanel>
+        <!-- 运行 -->
+        <Border Classes="sec" Margin="0,16,0,0">
+          <StackPanel>
+            <pr:Subhead Title="运行">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding RunMeta}" IsVisible="{Binding RunMeta, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding EnabledCell}">
+                  <StackPanel>
+                    <c:IconView Icon="check" />
+                    <TextBlock Text="已启用" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding Enable}" IsVisible="{Binding !EnabledCell}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding Disable}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding RunCell}" ToolTip.Tip="{Binding RunCellTip}">
+                  <StackPanel>
+                    <c:IconView Icon="pause" IsVisible="{Binding RunCellHeld}" />
+                    <pr:KeyDot Key="{Binding Key}" IsVisible="{Binding !RunCellHeld}" />
+                    <TextBlock Text="{Binding RunCellText}" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding Start}" IsVisible="{Binding !RunCell}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding Stop}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <!-- 加热 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <pr:Subhead Title="加热">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding HeatMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <StackPanel Margin="0,10,0,0">
+              <TextBlock Classes="fl" Text="设定温度" Margin="0,0,0,6" IsVisible="{Binding Narrow}" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Classes="fl" Text="设定温度" Width="60" Margin="0,0,8,0" IsVisible="{Binding !Narrow}" />
+                <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding SetSp}" />
+                <pr:NumBox Value="{Binding SpValue}" Minimum="0" Maximum="{Binding SpMax}" Step="1" Decimals="1" Unit="℃" Label="设定温度"
+                           b:Pr.Reason="{Binding HeatReason}" />
+              </DockPanel>
+            </StackPanel>
+            <c:BaselineStack Classes="live" Spacing="0" Margin="2,10,2,0">
+              <TextBlock Text="当前" />
+              <TextBlock Classes="big num" Text="{Binding TempNow}" />
+              <TextBlock Text="℃" />
+              <TextBlock Text="加热输出" c:BaselineStack.PushRight="True" />
+              <TextBlock Classes="big num" Text="{Binding HeaterNow}" />
+              <TextBlock Text="%" />
+            </c:BaselineStack>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding HeatingCell}">
+                  <StackPanel>
+                    <c:IconView Icon="flame" />
+                    <TextBlock Text="加热中" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding HeatStart}" IsVisible="{Binding !HeatingCell}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding HeatStop}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <!-- 搅拌：独立型号（本釜转速） -->
+        <Border Classes="sec" IsVisible="{Binding Independent}">
+          <StackPanel>
+            <pr:Subhead Title="搅拌（本釜）">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding StirMeta}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <StackPanel Margin="0,10,0,0">
+              <TextBlock Classes="fl" Text="转速" Margin="0,0,0,6" IsVisible="{Binding Narrow}" />
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Classes="fl" Text="转速" Width="60" Margin="0,0,8,0" IsVisible="{Binding !Narrow}" />
+                <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding ChStirSet}" />
+                <pr:NumBox Value="{Binding RpmValue}" Minimum="{Binding RpmMin}" Maximum="{Binding RpmMax}" Step="50" Decimals="0" Unit="rpm" Label="转速"
+                           b:Pr.Reason="{Binding RpmReason}" />
+              </DockPanel>
+            </StackPanel>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding StirCell}" ToolTip.Tip="{Binding StirCellTip}">
+                  <StackPanel>
+                    <c:IconView Icon="fan" />
+                    <TextBlock Text="搅拌中" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding ChStirOn}" IsVisible="{Binding !StirCell}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding ChStirOff}" />
+            </Grid>
+          </StackPanel>
+        </Border>
+        <!-- 搅拌：共用型号（一行说明 +「设置」） -->
+        <Border Classes="sec" IsVisible="{Binding !Independent}">
+          <StackPanel>
+            <pr:Subhead Title="搅拌" />
+            <Border Classes="note">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Left" Icon="fan" />
+                <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Margin="8,0,0,0" VerticalAlignment="Center" vs:InspBind.Act="{Binding StirLink}"
+                        ToolTip.Tip="{Binding StirLinkTip}" />
+                <TextBlock Text="{Binding StirNote, Converter={x:Static th:TextConverters.Keep}}" />
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+        <!-- 程序 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <pr:Subhead Title="程序">
+              <pr:Subhead.Right>
+                <TextBlock Classes="meta" Text="{Binding ProgMeta}" IsVisible="{Binding ProgMeta, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <Border Margin="0,10,0,0" Padding="12" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                    Background="{StaticResource BgCardBrush}" IsVisible="{Binding HasProgram}">
+              <StackPanel>
+                <DockPanel Margin="0,0,0,10">
+                  <TextBlock DockPanel.Dock="Right" Classes="t14" Margin="8,0,0,0" VerticalAlignment="Bottom" Text="{Binding ProgText}" />
+                  <TextBlock Text="{Binding ProgName}" ToolTip.Tip="{Binding ProgName}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold"
+                             Foreground="{StaticResource T1Brush}" LineHeight="{StaticResource LhBody}" TextTrimming="CharacterEllipsis" VerticalAlignment="Bottom" />
+                </DockPanel>
+                <pr:StepBar ShowLabels="True" SegmentsSource="{Binding Steps}" IsRunning="{Binding StepsRunning}" />
+              </StackPanel>
+            </Border>
+            <TextBlock Classes="t14" Margin="0,10,0,0" Text="没有程序 · 选择后下发" IsVisible="{Binding !HasProgram}" />
+            <Border Margin="0,10,0,0" Padding="12,10" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                    Background="{StaticResource BgHeadBrush}" IsVisible="{Binding WaitText, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Left" Icon="hand" Size="16" Foreground="{StaticResource T3Brush}" Margin="0,2,8,0" VerticalAlignment="Top" />
+                <TextBlock Text="{Binding WaitText, Converter={x:Static th:TextConverters.Keep}}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="21" TextWrapping="Wrap" />
+              </DockPanel>
+            </Border>
+            <DockPanel Margin="0,10,0,0">
+              <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding ProgLoad}" />
+              <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Programs}" SelectedItem="{Binding SelectedProgram}" b:Pr.Reason="{Binding ProgReason}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="svc:ProgramChoice">
+                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </DockPanel>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,10,0,0">
+              <Panel>
+                <Border Classes="state" IsVisible="{Binding ProgCell}">
+                  <StackPanel>
+                    <c:IconView Icon="pause" IsVisible="{Binding ProgCellHeld}" />
+                    <pr:KeyDot Key="React" IsVisible="{Binding !ProgCellHeld}" />
+                    <TextBlock Text="{Binding ProgCellText}" />
+                  </StackPanel>
+                </Border>
+                <Button Classes="r2" vs:InspBind.Act="{Binding ProgRun}" IsVisible="{Binding !ProgCell}" />
+              </Panel>
+              <Button Grid.Column="2" Theme="{StaticResource PrStop}" Classes="r2" vs:InspBind.Act="{Binding ProgAbort}" />
+            </Grid>
+            <Button Classes="r2" Margin="0,10,0,0" vs:InspBind.Act="{Binding EditProgram}" />
+          </StackPanel>
+        </Border>
+        <!-- 记录 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <pr:Subhead Title="记录">
+              <pr:Subhead.Right>
+                <Panel>
+                  <TextBlock Classes="meta num" Text="{Binding SessionId}" ToolTip.Tip="{Binding SessionId}" TextTrimming="CharacterEllipsis" IsVisible="{Binding SessionActive}" />
+                  <TextBlock Classes="meta" Text="未记录" IsVisible="{Binding !SessionActive}" />
+                </Panel>
+              </pr:Subhead.Right>
+            </pr:Subhead>
+            <Button Classes="r2" Margin="0,10,0,0" vs:InspBind.Act="{Binding Mark}" IsVisible="{Binding SessionActive}" />
+            <Border Classes="note" IsVisible="{Binding !SessionActive}">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Left" Icon="rec" />
+                <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Margin="8,0,0,0" VerticalAlignment="Center" vs:InspBind.Act="{Binding GoDevice}" />
+                <TextBlock Text="{Binding RecNote, Converter={x:Static th:TextConverters.Keep}}" />
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Border Background="{StaticResource BgSideBrush}" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1,0,0,0">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Height="{StaticResource HeadH}" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource Line2Brush}"
+              BorderThickness="0,0,0,1" Padding="16,0,6,0">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="open" ToolTip.Tip="{Binding Inspector.OpenTip}"
+                  Command="{Binding Inspector.OpenCommand}" IsVisible="{Binding Inspector.HasSelection}" />
+          <c:IconView DockPanel.Dock="Left" Icon="layout" Size="18" Foreground="{StaticResource T3Brush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+          <pr:PrText DockPanel.Dock="Left" Text="检查器" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                     Margin="0,0,8,0" VerticalAlignment="Center" />
+          <!-- 路径「/1号机/RV1」：两段（别名可以省略，「/RV1」永远完整）都用 pr:PrText（按 WebKit 量宽），中间不留空 -->
+          <DockPanel Background="Transparent" ToolTip.Tip="{Binding Inspector.PathTip}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0">
+            <pr:PrText DockPanel.Dock="Right" Classes="num" Text="{Binding Inspector.PathRv}" FontSize="{StaticResource Fs2}"
+                       Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            <pr:PrText Classes="num" Text="{Binding Inspector.PathAlias}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </DockPanel>
+        </DockPanel>
+      </Border>
+      <Panel>
+        <ScrollViewer Name="Scroll" Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !Inspector.IsEmpty}">
+          <StackPanel Name="Body" Margin="16,16,16,28">
+            <!-- 检查器对象 ≠ 当前页签：顶部提示条（a-tint 底、a-soft 边），避免对错的设备操作 -->
+            <Border Margin="0,-4,0,14" Padding="12,8,8,8" BorderBrush="{StaticResource ASoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                    Background="{StaticResource ATintBrush}" IsVisible="{Binding Inspector.HasOther}">
+              <!-- 图标 · 说明（放不下时换行）…「回到 …」靠右（样稿 flex-wrap + margin-left: auto） -->
+              <cs:WrapEnd RowGap="2">
+                <c:IconView Icon="info" Size="16" Foreground="{StaticResource ADBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
+                <TextBlock Text="检查器：" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource Lh2}" />
+                <TextBlock Text="{Binding Inspector.OtherName}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                           LineHeight="{StaticResource Lh2}" TextWrapping="Wrap" />
+                <TextBlock Text="（不是当前页签）" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource Lh2}" />
+                <Button Theme="{StaticResource PrLink}" Margin="6,0,0,0" Content="{Binding Inspector.OtherBack}" Command="{Binding Inspector.BackCommand}" />
+              </cs:WrapEnd>
+            </Border>
+            <ContentControl Content="{Binding Inspector.Body}" />
+          </StackPanel>
+        </ScrollViewer>
+        <pr:Empty Icon="devices" Title="没有选中对象" Text="在左侧资源管理器选择设备或反应釜" VerticalAlignment="Top" Margin="16,16,16,0"
+                  IsVisible="{Binding Inspector.IsEmpty}" />
+      </Panel>
+    </DockPanel>
+  </Border>
+</UserControl>

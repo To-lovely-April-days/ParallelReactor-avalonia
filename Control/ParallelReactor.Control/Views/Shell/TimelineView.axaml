@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.TimelineView"
+             x:DataType="sh:ShellVm">
+  <!-- 时间轴（样稿 .pr-tl）：bg-head、上边 line-strong；高 220（矮于 1000 时 200，收起 40）。横跨资源管理器列和工作区列。
+       标题栏 40（.pr-tl-head，下边 line-2，收起时没有）：三列 = 标签列（资源管理器停靠时 300，否则 248 / 窄 220）| 刻度 | 行操作列 128。
+         标签列：收起 / 展开（28）· 「时间轴」16/600 · 「运行 18/24」14 t-3（只数已连接的设备，另注断线台数）；
+         刻度：时间 13 px t-3（上 11）+「现在 10:12」小框（下 4，14/500，line-strong 边）；
+         行操作列：放大 · 缩小 · 跨度「2 h」（13 px t-3）。
+       正文（.pr-tl-body，纵向滚动，浮层滚动条）：按设备分组，组下边 1 px line-2；组头 36（吸顶，bg-head，下边 line-2）：
+         标签（左 6 右 10、间距 6：展开箭头 28 · 设备图标 17（窄于 1600 不画）· 别名 15/600 · 型号 14 t-3 放得下才显示）|
+         摘要（左右 14，14 px t-3：运行 k/n 600 t-2 · 急停 / 报警（红点 + 600 t-1）· 提醒 · 控制权；断线时连接 + 数据停在 …）| 全部停止 · 打开。
+         反应釜行 36（下边 line-faint，bg-head，悬停 bg-hover，选中 a-tint + 标签左侧 3 px a-tab；断线设备 bg-panel）：
+         标签（左 36 右 10、间距 8：状态点 · RV 44 宽 16/600 · 状态字 15 · 程序名 15 t-3 靠右）| 轨道（Views/Shell/TimelineTrack 自绘）|
+         运行 · 停止 · 打开（悬停 / 选中 / 键盘聚焦时出现）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.tlrow">
+      <Setter Property="Height" Value="{StaticResource RowH}" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.tlrow.off">
+      <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+    </Style>
+    <Style Selector="Border.tlrow:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Border.tlrow.sel">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <!-- 行操作：平时不画，悬停 / 选中 / 键盘聚焦时出现（样稿 .pr-tl-acts > * opacity） -->
+    <Style Selector="Border.tlrow StackPanel.acts > Button">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.tlrow:pointerover StackPanel.acts > Button, Border.tlrow.sel StackPanel.acts > Button, Border.tlrow:focus-within StackPanel.acts > Button">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="Border.tllabel">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,1,0" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.tllabel:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="TextBlock.tl14">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.tlbold">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,1,0,0">
+    <DockPanel>
+      <Border Name="Head" DockPanel.Dock="Top" Height="40" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1">
+        <Grid Name="HeadGrid">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="128" />
+          </Grid.ColumnDefinitions>
+          <!-- 标签列 -->
+          <Border BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0" Padding="8,0,12,0">
+            <pr:FlexRow Spacing="8">
+              <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="{Binding Timeline.ToggleIcon}" ToolTip.Tip="{Binding Timeline.ToggleTip}"
+                      Command="{Binding Timeline.ToggleCommand}" />
+              <TextBlock Text="时间轴" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+              <TextBlock Text="{Binding Timeline.RunText}" ToolTip.Tip="{Binding Timeline.RunTip}" FontSize="{StaticResource Fs2}"
+                         Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1" />
+              <!-- 断线台数：放得下才显示（样稿 .pr-fitopt），紧跟「运行 24/24」 -->
+              <TextBlock Text="{Binding Timeline.OffText}" ToolTip.Tip="{Binding Timeline.OffTip}" FontSize="{StaticResource Fs2}"
+                         Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="-4,0,0,0" pr:FlexRow.FitOpt="True"
+                         IsVisible="{Binding Timeline.OffText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </pr:FlexRow>
+          </Border>
+          <!-- 刻度 -->
+          <Panel Grid.Column="1" ClipToBounds="True">
+            <!-- 刻度文字由 TimelineView.axaml.cs 按 Timeline.Ticks 生成（只在刻度变化时重建） -->
+            <cs:RelXPanel Name="Ticks" />
+            <cs:RelXPanel>
+              <Border cs:RelXPanel.X="{Binding Timeline.NowX}" VerticalAlignment="Bottom" Margin="0,0,0,4" Padding="7,0"
+                      BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusS}"
+                      Background="{StaticResource BgCardBrush}">
+                <TextBlock Classes="num" Text="{Binding Timeline.NowText}" FontSize="{StaticResource Fs2}" FontWeight="Medium"
+                           Foreground="{StaticResource T1Brush}" LineHeight="18" />
+              </Border>
+            </cs:RelXPanel>
+          </Panel>
+          <!-- 行操作列 -->
+          <Border Grid.Column="2" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1,0,0,0" Padding="8,0">
+            <StackPanel Orientation="Horizontal" Spacing="2" HorizontalAlignment="Right" VerticalAlignment="Center">
+              <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomin" ToolTip.Tip="放大（缩短时间范围）" b:Pr.Reason="{Binding Timeline.ZoomInReason}"
+                      Command="{Binding Timeline.ZoomCommand}" CommandParameter="-1" />
+              <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomout" ToolTip.Tip="缩小（加长时间范围）" b:Pr.Reason="{Binding Timeline.ZoomOutReason}"
+                      Command="{Binding Timeline.ZoomCommand}" CommandParameter="1" />
+              <TextBlock Classes="num" Text="{Binding Timeline.SpanText}" MinWidth="28" TextAlignment="Right" FontSize="{StaticResource FsNum}"
+                         Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </Grid>
+      </Border>
+
+      <ScrollViewer Name="Body" Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !Timeline.Folded}">
+        <ItemsControl Name="Groups" ItemsSource="{Binding Timeline.Groups}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sh:TlGroupVm">
+              <Border BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1">
+                <vs:StickyHeadPanel>
+                  <!-- 组头（吸顶） -->
+                  <Border Height="{StaticResource RowH}" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                      <Border Classes="glabel" Width="{Binding Tl.LabelWidth}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0"
+                              Padding="6,0,10,0" Background="Transparent" Cursor="Hand" ToolTip.Tip="{Binding LabelTip}">
+                        <pr:FlexRow Spacing="6">
+                          <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="{Binding TwistIcon}" ToolTip.Tip="{Binding TwistTip}"
+                                  AutomationProperties.Name="{Binding TwistTip}" Command="{Binding ToggleCommand}" Focusable="False" />
+                          <c:IconView Icon="machine" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding !Tl.Narrow}" />
+                          <TextBlock Text="{Binding D.Alias}" Margin="2,0,0,0" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                     TextTrimming="CharacterEllipsis" VerticalAlignment="Center" pr:FlexRow.Shrink="1" />
+                          <TextBlock Text="{Binding ModelLabel}" Margin="4,0,0,0" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                                     VerticalAlignment="Center" pr:FlexRow.FitOpt="True" />
+                        </pr:FlexRow>
+                      </Border>
+                      <!-- 摘要 -->
+                      <Panel Grid.Column="1" Margin="14,0" ClipToBounds="True">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsOff}">
+                          <c:IconView Icon="{Binding OffIcon}" Size="16" Foreground="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding !IsNew}" />
+                          <c:IconView Icon="{Binding OffIcon}" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding IsNew}" />
+                          <TextBlock Text="{Binding OffText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center"
+                                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding OffText}" />
+                        </StackPanel>
+                        <pr:FlexRow Spacing="0" IsVisible="{Binding !IsOff}">
+                          <TextBlock Text="{Binding RunText}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                          <TextBlock Classes="tl14" Text=" · " />
+                          <StackPanel Orientation="Horizontal" IsVisible="{Binding EstopText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource RBrush}" Margin="0,1,5,0" VerticalAlignment="Center" />
+                            <TextBlock Classes="tlbold" Text="{Binding EstopText}" />
+                            <TextBlock Classes="tl14" Text=" · " />
+                          </StackPanel>
+                          <StackPanel Orientation="Horizontal" IsVisible="{Binding ErrText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <Ellipse Width="8" Height="8" Fill="{StaticResource RBrush}" Margin="0,1,5,0" VerticalAlignment="Center" />
+                            <TextBlock Classes="tlbold" Text="{Binding ErrText}" />
+                            <TextBlock Classes="tl14" Text=" · " />
+                          </StackPanel>
+                          <StackPanel Orientation="Horizontal" IsVisible="{Binding WarnText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                            <TextBlock Classes="tlbold" Text="{Binding WarnText}" />
+                            <TextBlock Classes="tl14" Text=" · " />
+                          </StackPanel>
+                          <TextBlock Classes="tl14" Text="{Binding LeaseText}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding LeaseText}" pr:FlexRow.Shrink="1" />
+                        </pr:FlexRow>
+                      </Panel>
+                      <Border Grid.Column="2" Width="128" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1,0,0,0" Padding="10,0">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                          <Button Theme="{StaticResource PrIconButton}" Classes="stop" vs:InspBind.Act="{Binding StopAll}" />
+                          <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="open" ToolTip.Tip="{Binding OpenTip}" Command="{Binding OpenCommand}" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                  </Border>
+                  <!-- 行 -->
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.DataTemplates>
+                      <DataTemplate DataType="sh:TlRowVm" x:DataType="sh:TlRowVm">
+                        <Border Classes="tlrow" Classes.sel="{Binding IsSelected}" Classes.off="{Binding Offline}">
+                          <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Classes="tllabel" Width="{Binding Tl.LabelWidth}" Padding="36,0,10,0" ToolTip.Tip="{Binding R.Tip}">
+                              <Panel>
+                                <pr:FlexRow Spacing="8">
+                                  <pr:KeyDot Key="{Binding R.Key}" VerticalAlignment="Center" />
+                                  <TextBlock Text="{Binding R.Rv}" Width="44" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                             VerticalAlignment="Center" />
+                                  <TextBlock Classes="stword" Text="{Binding R.TreeWord}" FontSize="{StaticResource FsBody}" VerticalAlignment="Center"
+                                             Foreground="{Binding R.Key, Converter={x:Static th:StateConverters.WordBrush}}"
+                                             FontWeight="{Binding R.Key, Converter={x:Static th:StateConverters.WordWeight}}" />
+                                  <TextBlock Text="{Binding ProgName}" ToolTip.Tip="{Binding ProgName}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T3Brush}"
+                                             TextTrimming="CharacterEllipsis" VerticalAlignment="Center" pr:FlexRow.PushRight="True" pr:FlexRow.Shrink="1">
+                                    <TextBlock.IsVisible>
+                                      <MultiBinding Converter="{x:Static BoolConverters.And}">
+                                        <Binding Path="ProgName" Converter="{x:Static ObjectConverters.IsNotNull}" />
+                                        <Binding Path="!Tl.Narrow" />
+                                      </MultiBinding>
+                                    </TextBlock.IsVisible>
+                                  </TextBlock>
+                                </pr:FlexRow>
+                              </Panel>
+                            </Border>
+                            <!-- 选中行：标签列左侧 3 px a-tab -->
+                            <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource ATabBrush}" IsVisible="{Binding IsSelected}" />
+                            <vs:TimelineTrack Grid.Column="1" Row="{Binding}" />
+                            <Border Grid.Column="2" Width="128" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1,0,0,0" Padding="10,0">
+                              <StackPanel Classes="acts" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <Button Theme="{StaticResource PrIconButton}" Classes.on="{Binding IsRunning}" vs:InspBind.Act="{Binding Run}" />
+                                <Button Theme="{StaticResource PrIconButton}" Classes="stop" vs:InspBind.Act="{Binding Stop}" />
+                                <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="open" ToolTip.Tip="{Binding OpenTip}" Command="{Binding OpenCommand}" />
+                              </StackPanel>
+                            </Border>
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                      <DataTemplate DataType="sh:TlUnRowVm" x:DataType="sh:TlUnRowVm">
+                        <Border Classes="tlrow un">
+                          <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Width="{Binding Tl.LabelWidth}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0" Padding="36,0,10,0">
+                              <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                <pr:KeyDot Key="Uninstalled" VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding Text}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                              </StackPanel>
+                            </Border>
+                            <vs:TimelineTrack Grid.Column="1" Timeline="{Binding Tl}" />
+                            <Border Grid.Column="2" Width="128" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1,0,0,0" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                  </ItemsControl>
+                </vs:StickyHeadPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

@@ -9,7 +9,7 @@ namespace ParallelReactor.Control.Shot;
 /// <summary>
 /// 图标核对表（PR_CONTROL_DEMO=1 + PR_CONTROL_ICON_SHEET=1）：76 个 pc-v3 图标按 8 列排开，每格 150×96，
 /// 同一图标画 18 / 24 / 32 px（描边都应是 1.6 px），格子下方写名字。样稿用 snap 注入同样排布的 SVG 拍参照，左右对照检查 gen-icons.py 的换算。
-/// 下方另有一行旧用法（Geometry + viewBox 单位描边）的 23 个旧键，以及填充用法（停止方块、录制点）。
+/// 下方另有一行旧用法（Geometry + viewBox 单位描边）的 9 个旧键（旧视图还在用的），以及填充用法（停止方块、录制点）。
 /// </summary>
 public static class IconSheet
 {
@@ -40,8 +40,7 @@ public static class IconSheet
         Add(c, new IconView { Icon = "minus", Size = 72, Foreground = Palette.T1Brush }, 230, y0);
         // 旧用法（M7 删除）：Geometry + Size + viewBox 单位描边
         int j = 0;
-        foreach (var key in new[] { "IcoLogo", "IcoGauge", "IcoFlask", "IcoRefresh", "IcoClock", "IcoList", "IcoChevron", "IcoClose", "IcoExpand", "IcoMove", "IcoSearch", "IcoZoomOut",
-                                     "IcoTree", "IcoEdit", "IcoDownload", "IcoUpload", "IcoPlay", "IcoStop", "IcoSkip", "IcoBook", "IcoPlus", "IcoCheck", "IcoGear" })
+        foreach (var key in new[] { "IcoGauge", "IcoClock", "IcoList", "IcoClose", "IcoExpand", "IcoMove", "IcoSearch", "IcoZoomOut", "IcoTree" })
         {
             var iv = new IconView { Size = 16, Foreground = Palette.T3Brush };
             if (Avalonia.Application.Current!.TryFindResource(key, out var g) && g is Geometry geo) iv.Geometry = geo;

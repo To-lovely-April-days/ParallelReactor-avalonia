@@ -1,0 +1,55 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.TabBarView"
+             x:DataType="sh:ShellVm">
+  <!-- 文档页签栏 44 px（样稿 .pr-tabbar）：bg-head + 下边 line-strong；页签（PrDocTab，最宽 250，左右 16、间距 8、右边 1 px line-soft）
+       由 DocTabStrip（TabOverflowPanel）排：放不下时从右往左收进「›」（总览和当前页签始终显示）。右端「+」新页签弹出框、「›」全部页签菜单（未显示的个数写在箭头左边）。 -->
+  <UserControl.Styles>
+    <!-- 设备 / 反应釜页签断线时的 wifi-off 图标（16，t-3） -->
+    <Style Selector="c|IconView.tab-off">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,0,0,1">
+    <DockPanel>
+      <Button Name="More" DockPanel.Dock="Right" Theme="{StaticResource PrTabBarButton}" Classes="more" Classes.has-more="{Binding Tabs.HasHidden}"
+              b:Pr.Icon="right" b:Pr.Count="{Binding Tabs.HiddenCountText}" ToolTip.Tip="{Binding Tabs.MoreTip}"
+              AutomationProperties.Name="全部页签">
+        <Button.Flyout>
+          <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" VerticalOffset="2" />
+        </Button.Flyout>
+      </Button>
+      <Button Name="Add" DockPanel.Dock="Right" Theme="{StaticResource PrTabBarButton}" Classes="add" b:Pr.Icon="plus"
+              ToolTip.Tip="打开新页签" AutomationProperties.Name="打开新页签">
+        <Button.Flyout>
+          <Flyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2" />
+        </Button.Flyout>
+      </Button>
+      <cs:DocTabStrip Name="Strip" ItemsSource="{Binding Tabs.Tabs}">
+        <cs:DocTabStrip.ItemTemplate>
+          <DataTemplate x:DataType="sh:DocTabVm">
+            <cs:NavToggle Theme="{StaticResource PrDocTab}" Classes.pinned="{Binding Pinned}"
+                          IsChecked="{Binding IsActive, Mode=OneWay}" Command="{Binding ActivateCommand}"
+                          b:Pr.Icon="{Binding Icon}" b:Pr.Dot="{Binding ErrAlarm}" b:Pr.CloseCommand="{Binding CloseCommand}"
+                          ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Label}">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Left" Classes="tab-off" Icon="wifioff" Size="16" Margin="0,0,8,0" VerticalAlignment="Center"
+                            IsVisible="{Binding Offline}" />
+                <!-- 反应釜页签：只有别名会省略，「 · RV16」永远完整。pr:PrText 按 WebKit 量宽（不加墨迹外伸）：两段之间不留空，
+                     一排页签的总宽同样稿（放得下的页签不会被挤进「›」） -->
+                <pr:PrText DockPanel.Dock="Right" Text="{Binding RvPart}" IsVisible="{Binding HasRvPart}" VerticalAlignment="Center" />
+                <pr:PrText Text="{Binding Alias}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+              </DockPanel>
+            </cs:NavToggle>
+          </DataTemplate>
+        </cs:DocTabStrip.ItemTemplate>
+      </cs:DocTabStrip>
+    </DockPanel>
+  </Border>
+</UserControl>

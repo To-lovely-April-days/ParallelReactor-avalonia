@@ -1,0 +1,59 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             x:Class="ParallelReactor.Control.Views.Shell.ExplorerLegend">
+  <!-- 状态图例（资源管理器标题栏 ⓘ 弹出；样稿 shell.js legendHTML / .pr-xlegend）：宽 360、内边距 14 16；
+       每行 32 高：状态点（18 列）· 名称（86 列，500 t-1）· 说明（14 px t-3）；最后一段说明上边 line-faint。颜色只表示三件事。 -->
+  <UserControl.Styles>
+    <Style Selector="Grid.lg">
+      <Setter Property="MinHeight" Value="32" />
+    </Style>
+    <Style Selector="Grid.lg > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Grid.lg > TextBlock.k">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="TextWrapping" Value="NoWrap" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Width="360" Margin="16,14">
+    <TextBlock Text="状态图例" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Margin="0,0,0,8" />
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <pr:KeyDot Key="React" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Classes="k" Text="运行中" />
+      <TextBlock Grid.Column="4" Text="升温 · 升压 · 反应 · 降温 · 等待" />
+    </Grid>
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <pr:KeyDot Key="Alarm" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Classes="k" Text="报警" />
+      <TextBlock Grid.Column="4" Text="超压报警等错误报警" />
+    </Grid>
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <pr:KeyDot Key="Ready" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Classes="k" Text="未运行" />
+      <TextBlock Grid.Column="4" Text="已启用 · 停用 · 已停止" />
+    </Grid>
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <pr:KeyDot Key="Done" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Classes="k" Text="已结束" />
+      <TextBlock Grid.Column="4" Text="程序已走完" />
+    </Grid>
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <pr:KeyDot Key="Offline" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      <TextBlock Grid.Column="2" Classes="k" Text="离线" />
+      <TextBlock Grid.Column="4" Text="设备断线，读数停在断线时刻" />
+    </Grid>
+    <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
+      <TextBlock Grid.Column="2" Classes="k" Text="未安装" />
+      <TextBlock Grid.Column="4" Text="型号里有、现场没装的位置" />
+    </Grid>
+    <Border Margin="0,10,0,0" Padding="0,10,0,0" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,1,0,0">
+      <TextBlock Text="颜色只表示三件事：浅绿 = 正在运行，红 = 报警，灰 = 其它。具体状态看点旁边的文字。" FontSize="{StaticResource Fs2}"
+                 Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" LineHeight="21" />
+    </Border>
+  </StackPanel>
+</UserControl>

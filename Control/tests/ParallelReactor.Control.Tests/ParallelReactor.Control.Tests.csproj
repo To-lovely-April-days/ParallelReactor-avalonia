@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- PC 控制软件的单元测试：Contracts 线上类型（对照实测抓取的 JSON 样本）、Client 的 REST / 租约状态机 / WS 重同步（进程内假服务端）。
-       后续阶段再加 PerfTest 引擎 / 报告与 ViewModel 测试。 -->
+  <!-- PC 控制软件的单元测试：Contracts 线上类型（对照实测抓取的 JSON 样本）、Client 的 REST / 租约状态机 / WS 重同步（进程内假服务端）、
+       PerfTest 引擎与报告、Core（格式化、型号、状态映射、守卫、演示数据）、App 的视图模型与数据源（M2 起）。 -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -16,6 +16,11 @@
     <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
     <ProjectReference Include="../../ParallelReactor.PerfTest/ParallelReactor.PerfTest.csproj" />
     <ProjectReference Include="../../ParallelReactor.Control.Core/ParallelReactor.Control.Core.csproj" />
+    <!-- M2 起：App 的视图模型与数据源（Fleet/、Shell/、Services/ 的 LiveDeviceSource）也要回归测试（R13）。只用不依赖界面平台的部分：
+         视图模型（CommunityToolkit.Mvvm）、数据源（假连接 + 手动的「排到 UI 线程」），不创建窗口、不启动 Avalonia。
+         这与 PORT-PLAN §1.1 / §4.7 写的「测试工程不引用 App」不同，是有意的决定（记在 doc/控制软件说明.md §1）：视图模型、守卫接线、实时数据源
+         只能这样测；色板 / 字号检查（Lint/）仍然只扫源码（PR_LINT_APP_DIR），不依赖这个引用。 -->
+    <ProjectReference Include="../../ParallelReactor.Control/ParallelReactor.Control.csproj" />
   </ItemGroup>
 
   <!-- 从真 HMI（PR_SIM）抓取的响应样本：Samples/*.json(l)，随测试输出复制 -->

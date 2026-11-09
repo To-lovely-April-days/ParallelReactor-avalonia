@@ -31,6 +31,7 @@ namespace ParallelReactor.Control.Shot;
 ///    读数（类 num 或 FitText 里的文字）被省略一律报（number truncated：「11…」看起来像另一个数，带提示也不行）；
 ///  · [audit] lines dropped：多行文字没排完又没有省略号（MaxLines、或框的高度不够，后面的行悄悄丢了）；clipped vertically：文字比自己的框高；
 ///  · [audit] 不省略的单行文字比自己的框宽（溢出，会压到旁边）；输入框的文字比输入框宽（input text clipped）；
+///  · [audit] text drawn outside its box：行的对齐偏移（居中 / 右对齐）加行宽超出自己的框 —— TextLayout 是按另一个宽度排的，整段偏出去被裁掉；
 ///  · [audit] clipped：文字被 ClipToBounds 的祖先横向 / 纵向裁掉（同 MOCK 的 clipped；滚动区里的不算）；
 ///  · [audit] outside：文字横向超出所在的框（最近的有底色 / 边框的 Border 或有底色的 Panel）—— 布局没收住、压到框外面；
 ///    BarFitPanel 有意藏起来的剩余时间不算（同 MOCK 的 .pr-fitopt）；
@@ -42,7 +43,8 @@ namespace ParallelReactor.Control.Shot;
 ///    （忽略透明度；阴影色只许在阴影里）；
 ///  · 自绘文字的控件（<see cref="IAuditText"/>）报告的文字：字号、颜色、重叠同上（drawn text）；
 ///  · [audit] 横向溢出 / 横向滚动条（ScrollViewer 的 Extent.Width &gt; Viewport.Width，或横向 ScrollBar 可见；输入框自己的滚动区按 input text clipped 报）。
-/// 约定：类 audit-skip 的子树不查（同 data-audit-skip）；类 audit-ctl 的元素按「控件」参与重叠检查；类 audit-hscroll-ok 的 ScrollViewer 允许横向滚动。
+/// 约定：类 audit-skip 的子树不查（同 data-audit-skip）；类 audit-ctl 的元素按「控件」参与重叠检查；类 audit-hscroll-ok 的 ScrollViewer 允许横向滚动；
+/// 类 audit-layer 的子树是浮在上面的一层（窄屏的浮层资源管理器）：重叠只在同一层里比（浮层盖住下面是设计如此，同 MOCK 不同层叠上下文不比）。
 /// 干净时返回空列表（&lt;name&gt;-&lt;w&gt;.audit.txt 为空文件）。
 /// </summary>
 public static class ShotAudit
@@ -207,6 +209,11 @@ public static class ShotAudit
         var availH = tb.Bounds.Height - tb.Padding.Top - tb.Padding.Bottom;
         var widest = layout.TextLines.Count == 0 ? 0 : layout.TextLines.Max(l => l.Width);
         bool overflow = !collapsed && widest > avail + 1;
+        // 画到框外：行的起点（居中 / 右对齐的偏移）加行宽超出了框 —— TextLayout 是按另一个宽度排的（居中的自动宽度文字，容器变宽以后
+        // 测量宽度 ≠ 排版宽度，见 pr:Empty / PlaceholderPage），文字整段偏出去、被自己的框裁掉
+        var firstStart = layout.TextLines.Count == 0 ? 0 : layout.TextLines.Min(l => l.Start);
+        var lastRight = layout.TextLines.Count == 0 ? 0 : layout.TextLines.Max(l => l.Start + l.Width);
+        bool shifted = !collapsed && !overflow && (lastRight > avail + 1 || firstStart < -1);
         int dropped = collapsed ? 0 : DroppedChars(tb, layout);
         if (stword && (collapsed || overflow))
             ctx.Issues.Add($"[audit] state word truncated {Px(collapsed ? FullWidth(tb, text) : widest)}>{Px(avail)}px: {Describe(tb)} \"{Snip(text, 20)}\"");
@@ -216,6 +223,8 @@ public static class ShotAudit
             ctx.Issues.Add($"[audit] trimmed without tooltip: {Describe(tb)} \"{Snip(text, 50)}\"");
         else if (overflow)
             ctx.Issues.Add($"[audit] overflow {Px(widest)}>{Px(avail)}px: {Describe(tb)} \"{Snip(text, 50)}\"");
+        else if (shifted)
+            ctx.Issues.Add($"[audit] text drawn outside its box（行从 {Px(firstStart)} 到 {Px(lastRight)} px，框只有 {Px(avail)} px：TextLayout 按别的宽度排，居中 / 右对齐偏到框外）: {Describe(tb)} \"{Snip(text, 40)}\"");
         else if (dropped > 0)
             ctx.Issues.Add($"[audit] lines dropped ({dropped} 字没排出来，MaxLines={tb.MaxLines} 或框太矮、又没有省略号): {Describe(tb)} \"{Snip(text, 40)}\"");
         else if (!collapsed && layout.Height > availH + 1.5)
@@ -449,10 +458,12 @@ public static class ShotAudit
         var h0 = r.Height;
         for (var a = v.GetVisualParent(); a != null && a != ctx.Root; a = a.GetVisualParent())
         {
-            if (!a.ClipToBounds) continue;
+            // 裁剪：ClipToBounds 的框，或 Clip 几何（例如时间轴吸顶组头下面被裁掉的行，Views/Shell/StickyHeadPanel）
+            if (!a.ClipToBounds && a.Clip == null) continue;
             var am = a.TransformToVisual(ctx.Root);
             if (am == null) continue;
-            r = r.Intersect(new Rect(a.Bounds.Size).TransformToAABB(am.Value));
+            if (a.ClipToBounds) r = r.Intersect(new Rect(a.Bounds.Size).TransformToAABB(am.Value));
+            if (a.Clip is { } clip) r = r.Intersect(clip.Bounds.TransformToAABB(am.Value));
         }
         if (r.Width <= 0 || r.Height <= 0 || (h0 > 0 && r.Height < h0 * 0.6)) return null;
         return r;
@@ -476,28 +487,39 @@ public static class ShotAudit
 
     private static bool Nested(Visual a, Visual b) => a == b || a.IsVisualAncestorOf(b) || b.IsVisualAncestorOf(a);
 
+    /// <summary>元素所在的浮层（最近的类 audit-layer 的祖先，含自己）；不在浮层里为 null。</summary>
+    private static Visual? LayerOf(Dictionary<Visual, Visual?> cache, Visual v)
+    {
+        if (cache.TryGetValue(v, out var l)) return l;
+        l = v.GetSelfAndVisualAncestors().OfType<StyledElement>().FirstOrDefault(a => a.Classes.Contains("audit-layer")) as Visual;
+        cache[v] = l;
+        return l;
+    }
+
     private static void Overlaps(Ctx ctx)
     {
         var seen = new HashSet<(Visual, Visual)>();
+        var layers = new Dictionary<Visual, Visual?>();
+        bool Apart(Visual a, Visual b) => !ReferenceEquals(LayerOf(layers, a), LayerOf(layers, b));
         for (int i = 0; i < ctx.Texts.Count; i++)
         {
             var A = ctx.Texts[i];
             for (int j = i + 1; j < ctx.Texts.Count; j++)
             {
                 var B = ctx.Texts[j];
-                if (Nested(A.El, B.El) || !seen.Add((A.El, B.El))) continue;
+                if (Nested(A.El, B.El) || Apart(A.El, B.El) || !seen.Add((A.El, B.El))) continue;
                 if (Inter(A.Rc, B.Rc) > 3) ctx.Issues.Add($"[overlap] text × text: \"{Snip(A.Text, 18)}\" × \"{Snip(B.Text, 18)}\" ({Describe(A.El)})");
                 else seen.Remove((A.El, B.El));
             }
             foreach (var B in ctx.Controls)
             {
-                if (Nested(A.El, B.El) || !seen.Add((A.El, B.El))) continue;
+                if (Nested(A.El, B.El) || Apart(A.El, B.El) || !seen.Add((A.El, B.El))) continue;
                 if (Inter(A.Rc, B.Rc) > 3) ctx.Issues.Add($"[overlap] text × control: \"{Snip(A.Text, 18)}\" × {Describe(B.El)}");
                 else seen.Remove((A.El, B.El));
             }
             foreach (var F in ctx.Figures)
             {
-                if (Nested(A.El, F.El) || !seen.Add((A.El, F.El))) continue;
+                if (Nested(A.El, F.El) || Apart(A.El, F.El) || !seen.Add((A.El, F.El))) continue;
                 if (Cover(F.Rc.Deflate(1), A.Rc) > 0) ctx.Issues.Add($"[overlap] text × figure: \"{Snip(A.Text, 18)}\" × {Describe(F.El)}（{(F.El as IconView)?.Icon}）");
                 else seen.Remove((A.El, F.El));
             }
@@ -507,7 +529,7 @@ public static class ShotAudit
             {
                 var A = ctx.Leaves[i];
                 var B = ctx.Leaves[j];
-                if (Nested(A.El, B.El)) continue;
+                if (Nested(A.El, B.El) || Apart(A.El, B.El)) continue;
                 if (Inter(A.Rc, B.Rc) > 3) ctx.Issues.Add($"[overlap] control × control: {Describe(A.El)} × {Describe(B.El)}");
             }
     }

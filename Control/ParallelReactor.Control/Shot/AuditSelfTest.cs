@@ -1,4 +1,5 @@
 #if DEBUG
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -51,6 +52,7 @@ public static class AuditSelfTest
         ("状态字被省略", "state word truncated"),
         ("读数被省略（带提示也报）", "[audit] number truncated"),
         ("文字溢出自己的框", "[audit] overflow"),
+        ("居中文字按别的宽度排、画到框外", "[audit] text drawn outside its box"),
         ("MaxLines 悄悄丢掉后面的行", "MaxLines=1 或框太矮"),
         ("框太矮、后面的行被丢掉", "\"竖向溢出卡片"),
         ("横向滚动", "[audit] horizontal"),
@@ -76,6 +78,8 @@ public static class AuditSelfTest
         ("放得下的步骤条", "BarOk"),
         ("带换行的多段文字（LineBreak）", "换行合法"),
         ("放得下的读数", "合法读数"),
+        ("铺满框、居中对齐的文字", "居中合法"),
+        ("浮层（audit-layer）盖住下面的文字", "浮层合法"),
         ("pr:PrToggle 带原因", "SafeToggle"),
         ("用了 UiFontCjk 的粗体段", "粗体合法"),
         ("UiText.Keep 处理过的句子（当前字体的连接符）", "连接符合法"),
@@ -98,6 +102,16 @@ public static class AuditSelfTest
         {
             get { var t = Text(); yield return new AuditTextRun(Label, Size, new Rect(0, 2, t.Width, t.Height), Palette.T3Color); }
         }
+    }
+
+    /// <summary>
+    /// 居中文字按测量时的宽度排、排版时不重排（模拟 pr:Empty 里居中的自动宽度文字在容器变宽以后的样子：TextLayout 还是按容器宽度居中的，
+    /// 框却只有文字那么宽 —— 文字整段偏到框外）。
+    /// </summary>
+    private sealed class StaleCenteredSample : TextBlock
+    {
+        protected override Type StyleKeyOverride => typeof(TextBlock);
+        protected override Size ArrangeOverride(Size finalSize) => finalSize;
     }
 
     public static Avalonia.Controls.Control Build()
@@ -153,6 +167,14 @@ public static class AuditSelfTest
         At(new Border { Width = 120, Child = new FitText { Text = "合法读数 1", Sizes = "15" } }, 380, 275);
         // 溢出：不省略、比自己的框宽
         At(new TextBlock { Text = "溢出自己框的一段文字", Width = 60, FontSize = 15, Foreground = Palette.T2Brush }, 380, 240);
+        // 画到框外：居中文字的 TextLayout 按 300 宽排、框只有文字宽（报）；铺满框、居中对齐（不报）
+        At(new Border { Width = 300, Child = new StaleCenteredSample { Text = "按别的宽度居中", FontSize = 15, Foreground = Palette.T2Brush,
+            HorizontalAlignment = HorizontalAlignment.Center, TextAlignment = TextAlignment.Center } }, 380, 690);
+        At(new Border { Width = 200, Child = new TextBlock { Text = "居中合法", FontSize = 15, Foreground = Palette.T2Brush,
+            HorizontalAlignment = HorizontalAlignment.Stretch, TextAlignment = TextAlignment.Center } }, 380, 730);
+        // 浮层（类 audit-layer，例如窄屏的浮层资源管理器）盖住下面一层的文字：不算重叠
+        At(T("被浮层盖住的字"), 660, 690);
+        At(new Border { Width = 160, Height = 40, Background = Palette.BgCardBrush, Classes = { "audit-layer" }, Child = T("浮层合法") }, 640, 680);
         // 透明度变体：t-1 @ 40 %（合法）
         At(new Border { Width = 60, Height = 20, Background = new SolidColorBrush(Palette.T1Color, 0.4) }, 540, 240);
         // 丢行：MaxLines = 1 没有省略号；固定高度的框里换行的文字（后面的行被悄悄丢掉）

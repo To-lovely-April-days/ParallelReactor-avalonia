@@ -160,7 +160,9 @@ public class LeaseStateMachineTests
         await using var r = new Rig();
         r.Http.On("POST", "/control/request", call => ScriptedHttpHandler.Command(call, true, new ControlRequestResultDto("rq", "granted", null, "L1", r.Clock.UtcNow.AddSeconds(4), 4, 4, "k")));
         int hb = 0;
-        r.Http.On("POST", "/control/heartbeat", call => { hb++; return ScriptedHttpHandler.Command(call, false, new HeartbeatResultDto(hb == 1 ? "remote" : "remote", hb >= 2, r.Clock.UtcNow.AddSeconds(4), r.Clock.UtcNow.AddSeconds(8), 4)); });
+        // 第一次 REST 心跳：服务端还在 remoteLost（没恢复）；第二次：resumed。以前第一次就回 "remote" —— 第一次心跳就回到 Holding，
+        // 第二次推进时心跳循环已经走 WS 了，wsHb 是不是 0 要看断言和心跳循环谁先跑（偶发失败）
+        r.Http.On("POST", "/control/heartbeat", call => { hb++; return ScriptedHttpHandler.Command(call, false, new HeartbeatResultDto(hb == 1 ? "remoteLost" : "remote", hb >= 2, r.Clock.UtcNow.AddSeconds(4), r.Clock.UtcNow.AddSeconds(8), 4)); });
         var wsHb = 0;
         r.Lease.WsHeartbeat = (_, _) => { wsHb++; return Task.FromResult(true); };
         Assert.True(await r.Lease.AcquireAsync(CancellationToken.None));
@@ -173,7 +175,9 @@ public class LeaseStateMachineTests
         // Lost 时不走 WS，走 REST 拿 resumed
         await FakeClock.WaitUntil(() => hb == 1, what: "REST 心跳");
         await FakeClock.WaitUntil(() => r.Clock.Pending >= 1);
+        Assert.Equal(LeaseState.Lost, r.Lease.State);                 // 服务端还没恢复：仍在宽限中
         r.Clock.Advance(TimeSpan.FromSeconds(2));
+        await FakeClock.WaitUntil(() => hb == 2, what: "第二次 REST 心跳");
         await FakeClock.WaitUntil(() => r.Lease.State == LeaseState.Holding, what: "resumed → Holding");
         Assert.Equal(0, wsHb);
         Assert.Contains("Holding->Lost:lost", r.Reasons());

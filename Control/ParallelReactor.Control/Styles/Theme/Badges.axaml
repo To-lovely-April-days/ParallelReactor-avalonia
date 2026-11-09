@@ -27,7 +27,8 @@
             <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="False" />
             <c:IconView Name="PART_Icon" Icon="{TemplateBinding ShownIcon}" Size="15" Foreground="{TemplateBinding Foreground}"
                         VerticalAlignment="Center" IsVisible="False" />
-            <TextBlock Name="PART_Text" Text="{TemplateBinding ShownText}" VerticalAlignment="Center" />
+            <!-- 字用 pr:PrText（按 WebKit 量宽：不加 11.1 的墨迹外伸，中文徽标不再每个宽 2 px；样式照旧按 TextBlock 匹配） -->
+            <pr:PrText Name="PART_Text" Text="{TemplateBinding ShownText}" VerticalAlignment="Center" />
           </StackPanel>
         </Border>
       </ControlTemplate>
@@ -136,7 +137,7 @@
       <ControlTemplate>
         <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" Margin="{TemplateBinding Padding}">
           <pr:KeyDot Name="PART_Dot" Key="{TemplateBinding Key}" VerticalAlignment="Center" />
-          <TextBlock Name="PART_Word" Classes="stword" Text="{TemplateBinding ShownText}"
+          <pr:PrText Name="PART_Word" Classes="stword" Text="{TemplateBinding ShownText}"
                      Foreground="{TemplateBinding WordBrush}" FontWeight="{TemplateBinding WordWeight}" VerticalAlignment="Center"
                      LineHeight="21" />
         </StackPanel>

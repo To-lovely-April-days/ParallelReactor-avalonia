@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.ReactorPage"
+             x:DataType="pg:ReactorPageVm">
+  <!-- 反应釜页骨架（M2；内容在 M5）：左 = 程序面板（面包屑「1号机 › RV1」，程序名在 M5 的程序台账之后）；
+       右 = 「釜体 / 属性查看器」面板标题页签 + 曲线面板。面板之间 1 px 线（line-2）。 -->
+  <Grid ColumnDefinitions="46*,54*" RowDefinitions="52*,48*" Background="{StaticResource Line2Brush}">
+    <pr:PrPanel Grid.RowSpan="2" Margin="0,0,1,0">
+      <pr:PrPanel.Title>
+        <pr:Crumb Text="{Binding Crumb}" />
+      </pr:PrPanel.Title>
+    </pr:PrPanel>
+    <pr:PrPanel Grid.Column="1" Margin="0,0,0,1">
+      <pr:PrPanel.Title>
+        <pr:PTabs Value="vessel">
+          <pr:SegOption Value="vessel" Label="釜体" />
+          <pr:SegOption Value="props" Label="属性查看器" />
+        </pr:PTabs>
+      </pr:PrPanel.Title>
+    </pr:PrPanel>
+    <pr:PrPanel Grid.Row="1" Grid.Column="1" Icon="curves" Title="曲线" />
+  </Grid>
+</UserControl>

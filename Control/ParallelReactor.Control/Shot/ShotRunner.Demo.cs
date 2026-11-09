@@ -8,10 +8,17 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using ParallelReactor.Control.Core.Demo;
+using ParallelReactor.Control.Fleet;
+using ParallelReactor.Control.Services;
+using ParallelReactor.Control.Shell;
 using ParallelReactor.Control.Theme;
+using ParallelReactor.Control.Views;
 
 namespace ParallelReactor.Control.Shot;
 
@@ -23,11 +30,15 @@ namespace ParallelReactor.Control.Shot;
 ///  · PR_CONTROL_AUDIT_SELFTEST=1：只渲染故意做坏的自检视图（AuditSelfTest），写 audit-selftest-&lt;w&gt;.{png,audit.txt,result.txt}；漏报或误报时退出码 3。
 ///  · PR_CONTROL_FONT_PROBE=1：字体探针（font-probe.txt + font-probe-&lt;w&gt;.png）。
 ///  · PR_CONTROL_ICON_SHEET=1：图标核对表（icon-sheet-&lt;w&gt;.png，与样稿同样排布的 snap 参照对照）。
+///  · PR_CONTROL_SHELL_CHECKS=1：新外壳的行为核对（Shot/ShellChecks：区域尺寸、菜单、资源管理器开关、页签、新页签弹出框、溢出、原因 toast、
+///    对话框宿主、面板放大 / 关闭 / 重置）→ shell-checks-&lt;w&gt;.txt + shell-popup-*.png 等；有 FAIL 时退出码 5。
 ///  · PR_CONTROL_THEME_SHEET=1：主题核对表（Shot/ThemeSheet：各主题的悬停 / 按下 / 焦点 / 禁用 / 原因状态、菜单、弹出、列表、页签、对话框、
 ///    BarFitPanel / FitText / SizeClasses / Keep 断行）+ 审计 + 无头点击的行为核对（theme-sheet-&lt;w&gt;.{png,audit.txt,checks.txt}，
 ///    真正弹出的下拉 / 子菜单 / 提示框另存 theme-popup-*.png）；有 FAIL 时退出码 4。
-///  · 没有 PR_CONTROL_SHOT：打开普通窗口显示组件陈列页（设计用）。
-/// 截图时页面根元素带 frozen（Theme/Frozen.cs）：没有过渡和动画。
+///  · 没有 PR_CONTROL_SHOT：打开新外壳的主窗口（演示数据，路由 PR_CONTROL_ROUTE = 「路径?参数」，默认总览；不冻结时每秒推进），交互走查用。
+/// 截图路由（overview、device/1、reactor/1/1、gallery …）都在新外壳里显示（Views/MainWindow + Shell/ShellVm + Fleet/FleetVm，数据 = Core 的 DemoFleet）；
+/// 路由参数同样稿（README「常用查询参数」：devs、sel、lease、offline、alarm、estop、explorer、tl、stress、dialog …），截图一律 freeze=1
+/// （同样稿的参照图 ?bare=1&amp;freeze=1）。截图时窗口带 frozen（Theme/Frozen.cs）：没有过渡和动画，toast 不自动消失。
 /// </summary>
 public static partial class ShotRunner
 {
@@ -53,7 +64,22 @@ public static partial class ShotRunner
         else if (Flag("PR_CONTROL_AUDIT_SELFTEST")) window = PlainWindow("审计自检", AuditSelfTest.Build());
         else if (Flag("PR_CONTROL_ICON_SHEET")) window = PlainWindow("图标核对", IconSheet.Build());
         else if (Flag("PR_CONTROL_THEME_SHEET")) window = PlainWindow("主题核对", ThemeSheet.Build());
-        else window = new GalleryWindow();
+        else
+        {
+            // 演示数据（Core 的 DemoFleet，样稿 sim.js 的移植）：截图时冻结在 2026-11-08 10:12:00；交互走查时每秒推进（UiTicker）
+            var (startRoute, startQuery) = SplitRoute(Environment.GetEnvironmentVariable("PR_CONTROL_ROUTE"));
+            var p0 = DemoParams.Parse(startQuery);
+            if (shot) p0 = p0 with { Freeze = true };
+            var fleet = FleetVm.CreateDemo(p0, App.PostToUi);
+            var shellVm = new ShellVm(fleet);
+            shellVm.Toasts.Frozen = shot;
+            var ticker = new UiTicker { Frozen = shot || p0.Freeze };
+            ticker.Tick += fleet.OnTick;
+            if (!shot) ticker.Start();
+            window = new MainWindow { DataContext = shellVm };
+            window.Closed += (_, _) => { ticker.Dispose(); shellVm.Dispose(); };
+            if (!shot) shellVm.ApplyDemoParams(p0, Shell.Route.Parse(startRoute));
+        }
 
         window.Width = size.Width; window.Height = size.Height;
         if (shot)
@@ -118,6 +144,18 @@ public static partial class ShotRunner
                 return;
             }
 
+            if (Flag("PR_CONTROL_SHELL_CHECKS") && window.DataContext is ShellVm svm)
+            {
+                svm.Layout.Update(new Size(size.Width, size.Height));
+                Frozen.Apply(window);
+                await SettleAsync();
+                var (fails, lines) = await ShellChecks.RunAsync(window, svm, dir, size.Width);
+                File.WriteAllText(Path.Combine(dir, $"shell-checks-{size.Width}.txt"), string.Join("\n", lines) + "\n");
+                log.AppendLine($"shell checks {size.Width}: {fails} fail(s)");
+                code = fails > 0 ? 5 : 0;
+                return;
+            }
+
             var specs = ShotPlan.Select(size, ShotPlan.NamesFromEnv());
             if (specs.Count == 0) throw new InvalidOperationException($"截图计划里没有 {size.Width}x{size.Height} 的条目（用 PR_CONTROL_SHOT_NAMES 指定名字）");
             var refDir = Environment.GetEnvironmentVariable("PR_CONTROL_SHOT_REF");
@@ -125,7 +163,17 @@ public static partial class ShotRunner
 
             foreach (var spec in specs)
             {
-                Show(window, spec, size);
+                if (spec.From is { } from)
+                {
+                    // 先按另一个窗口尺寸排一遍，再改成截图尺寸（截窗口尺寸变化之后的样子）
+                    window.Width = from.Width; window.Height = from.Height;
+                    Show(window, spec, from);
+                    await SettleAsync();
+                    window.Width = size.Width; window.Height = size.Height;
+                    if (window.DataContext is ShellVm rvm) rvm.Layout.Update(new Size(size.Width, size.Height));
+                    log.AppendLine($"  {spec.Name}: laid out at {from.Width}x{from.Height}, then resized to {size.Width}x{size.Height}");
+                }
+                else Show(window, spec, size);
                 await SettleAsync();
                 var stem = $"{spec.Name}-{size.Width}";
                 var png = Path.Combine(dir, stem + ".png");
@@ -136,6 +184,7 @@ public static partial class ShotRunner
                 File.WriteAllText(Path.Combine(dir, stem + ".audit.txt"), issues.Count == 0 ? "" : string.Join("\n", issues) + "\n");
                 log.AppendLine($"audit {stem}: {issues.Count} issue(s) · {ShotAudit.LastStats}");
                 if (issues.Count > 0) code = 1;
+                if (Flag("PR_CONTROL_TREE_DUMP")) File.WriteAllText(Path.Combine(dir, stem + ".tree.txt"), TreeDump(window));
 
                 var refPng = string.IsNullOrWhiteSpace(refDir) ? null : Path.Combine(refDir, spec.RefFile(size.Width));
                 if (refPng != null && File.Exists(refPng) && File.Exists(png))
@@ -160,18 +209,35 @@ public static partial class ShotRunner
         }
     }
 
-    /// <summary>按路由显示截图内容。M1 只有 gallery（GalleryWindow）；M2 起由新外壳的路由处理。</summary>
+    /// <summary>
+    /// 按路由显示截图内容（新外壳）：样稿的地址参数（devs、lease、offline、alarm、estop、stress、explorer、tl、sel、dialog …）一律加 freeze=1，
+    /// 交给 ShellVm.ApplyDemoParams（数据 → FleetVm，外框 → ShellLayout，再导航、选中、打开对话框）。整个窗口冻结。
+    /// </summary>
     private static void Show(Window window, ShotPlan.Spec spec, PixelSize size)
     {
-        switch (spec.Route)
+        if (window.DataContext is not ShellVm vm) throw new InvalidOperationException("截图窗口不是新外壳（ShellVm）");
+        var route = Shell.Route.Parse(spec.Route) ?? throw new NotSupportedException($"演示路由「{spec.Route}」不认识（overview、device/k、reactor/k/n、placeholder/名字、gallery）");
+        vm.Layout.Update(new Size(size.Width, size.Height));
+        vm.Fleet.ResetDemo(DemoParams.Parse(spec.Query) with { Freeze = true });   // 每张都从头生成演示数据（上一张的急停 / 断线不留下来）
+        vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true });
+        if (spec.Setup == "nodevices" && vm.Fleet.DemoData is { } demo)
         {
-            case "gallery" when window is GalleryWindow gw:
-                gw.SetFrame(spec.Params.TryGetValue("frame", out var f) ? f : null, size.Width);
-                Frozen.Apply(gw.Page);
-                break;
-            default:
-                throw new NotSupportedException($"演示路由「{spec.Route}」还没有实现（M1 只有 gallery）");
+            // 空状态：移除全部演示设备（同样稿「移除…」；下一张截图 ResetDemo 时重新生成）
+            foreach (var d in demo.Devices.ToList()) demo.Act(d, Core.Guard.DeviceAction.Remove, null, quiet: true);
+            vm.Fleet.RefreshNow();
         }
+        else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices）");
+        vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
+        vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true }, route);
+        Frozen.Apply(window);
+    }
+
+    /// <summary>「reactor/3/11?sel=3/11」→（路径, 查询串）。</summary>
+    private static (string? Route, string? Query) SplitRoute(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return (null, null);
+        int q = s.IndexOf('?');
+        return q < 0 ? (s, null) : (s[..q], s[(q + 1)..]);
     }
 
     /// <summary>截图后的几条事实（写进 shot.log）：Fluent 覆盖是否生效、num 类是否带上 +tnum、页面是否冻结。</summary>
@@ -183,8 +249,38 @@ public static partial class ShotRunner
                        + $" · CheckBoxCheckBackgroundFillChecked = {R("CheckBoxCheckBackgroundFillChecked")} · ControlContentThemeFontSize = {R("ControlContentThemeFontSize")}");
         var num = window.GetVisualDescendants().OfType<TextBlock>().FirstOrDefault(t => t.Classes.Contains("num"));
         if (num != null) log.AppendLine($"  first .num TextBlock \"{num.Text}\" FontFeatures = {string.Join(" ", num.FontFeatures?.Select(f => f.ToString()) ?? Array.Empty<string>())}");
-        var frozen = window.GetVisualDescendants().OfType<StyledElement>().FirstOrDefault(e => e.Classes.Contains("frozen"));
+        var frozen = window.GetSelfAndVisualDescendants().OfType<StyledElement>().FirstOrDefault(e => e.Classes.Contains("frozen"));
         log.AppendLine($"  frozen root = {(frozen == null ? "(none)" : frozen.GetType().Name)} · IsFrozen = {(frozen == null ? false : Frozen.GetIsFrozen(frozen))}");
+    }
+
+    /// <summary>
+    /// 可视树转储（PR_CONTROL_TREE_DUMP=1，排查版面用）：每个可见元素一行 —— 缩进、类型、名字、类、在窗口里的矩形、文字。
+    /// 写 &lt;name&gt;-&lt;w&gt;.tree.txt。
+    /// </summary>
+    private static string TreeDump(Window window)
+    {
+        var sb = new StringBuilder();
+        void Walk(Visual v, int depth)
+        {
+            if (!v.IsVisible) return;
+            var m = v.TransformToVisual(window);
+            var r = m == null ? default : new Rect(v.Bounds.Size).TransformToAABB(m.Value);
+            var name = v is StyledElement se ? (se.Name is { Length: > 0 } n ? "#" + n : "") + (se.Classes.Count > 0 ? "." + string.Join(".", se.Classes) : "") : "";
+            var text = v is TextBlock tb ? " \"" + (tb.Text ?? tb.Inlines?.Text ?? "") + "\""
+                + FormattableString.Invariant($" w={tb.TextLayout.Width:0.##} h={tb.TextLayout.Height:0.##} fw={tb.FontWeight}")
+                + string.Concat(tb.TextLayout.TextLines.SelectMany(l => l.TextRuns).OfType<Avalonia.Media.TextFormatting.ShapedTextRun>()
+                    .Select(r => " [" + r.ShapedBuffer.GlyphTypeface.FamilyName + " " + r.ShapedBuffer.GlyphTypeface.Weight + " " + r.ShapedBuffer.GlyphTypeface.FontSimulations + "]")) : "";
+            if (v is TextBlock or TemplatedControl or ContentPresenter)
+            {
+                var d = Avalonia.Diagnostics.AvaloniaObjectExtensions.GetDiagnostic((AvaloniaObject)v, Avalonia.Controls.Documents.TextElement.FontSizeProperty);
+                text += FormattableString.Invariant($" fs={d.Value} ({d.Priority})");
+            }
+            sb.Append(' ', depth * 2).Append(v.GetType().Name).Append(name)
+              .Append(FormattableString.Invariant($" [{r.X:0.##},{r.Y:0.##} {r.Width:0.##}×{r.Height:0.##}]")).AppendLine(text);
+            foreach (var c in v.GetVisualChildren()) Walk(c, depth + 1);
+        }
+        Walk(window, 0);
+        return sb.ToString();
     }
 
     private static int SelfTest(Window window, string dir, PixelSize size, StringBuilder log)

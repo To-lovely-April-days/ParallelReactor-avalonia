@@ -244,8 +244,10 @@
 
   <ControlTheme x:Key="{x:Type pr:Chip}" TargetType="pr:Chip" BasedOn="{StaticResource PrChip}" />
 
-  <!-- 图标栏项（M2 的图标栏用）：高 60，图标 20 + 14 px 500 白字（间距 5）；悬停 / 按下 / 当前 = side-line 加深 30 / 62 / 55 %，
-       当前项左侧 3 px 白条；焦点环 t-inv，画在内侧 4 px -->
+  <!-- 图标栏项（M2 的图标栏用）：高 60，图标 20 + 14 px 500 白字（行高 1，间距 5）；悬停 / 按下 / 当前 = side-line 加深 30 / 62 / 55 %，
+       当前项左侧 3 px 白条；焦点环 t-inv，画在内侧 4 px。
+       计数（b:Pr.Count）：右上角白底数字（18 高、圆角 9、13 px 600 a-ink，上 6 右 4）；b:Pr.Dot = 数字左上角的红点（错误报警，外圈 1.5 px 白）。
+       类 toggle（资源管理器开关）：不是「当前页面」，只用图标亮度表示开 / 关（66 % / 类 open 100 %）；类 bottom（底部「收起」）：高 54、图标 18。 -->
   <ControlTheme x:Key="PrSideItem" TargetType="ToggleButton">
     <Setter Property="Height" Value="60" />
     <Setter Property="Background" Value="Transparent" />
@@ -265,15 +267,27 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Panel Background="{TemplateBinding Background}">
-          <StackPanel Spacing="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+          <!-- 上边 1 px：内容（39 / 37 高）在 60 / 54 里居中落在半像素上，WebKit 往下取整、Avalonia 往偶数取整，这样与参照图同一行 -->
+          <StackPanel Spacing="5" Margin="0,1,0,0" HorizontalAlignment="Center" VerticalAlignment="Center">
             <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Size="20" Foreground="{TemplateBinding Foreground}"
                         HorizontalAlignment="Center" />
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                               ContentTemplate="{TemplateBinding ContentTemplate}"
-                              Foreground="{StaticResource TInvBrush}" HorizontalAlignment="Center" />
+                              Foreground="{StaticResource TInvBrush}" HorizontalAlignment="Center" LineHeight="14" />
           </StackPanel>
           <Border Name="PART_Bar" Width="3" Margin="0,8" HorizontalAlignment="Left" CornerRadius="0,2,2,0"
                   Background="{StaticResource TInvBrush}" IsVisible="False" />
+          <Panel Name="PART_Badge" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,4,0" ClipToBounds="False"
+                 IsVisible="{TemplateBinding (b:Pr.Count), Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <Border MinWidth="18" Height="18" Padding="5,0" CornerRadius="9" Background="{StaticResource BgCardBrush}">
+              <TextBlock Text="{TemplateBinding (b:Pr.Count)}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold"
+                         Foreground="{StaticResource AInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <Ellipse Width="11" Height="11" Margin="-5.5,-4.5,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                     Fill="{StaticResource BgCardBrush}" IsVisible="{TemplateBinding (b:Pr.Dot)}" />
+            <Ellipse Width="8" Height="8" Margin="-4,-3,0,0" HorizontalAlignment="Left" VerticalAlignment="Top"
+                     Fill="{StaticResource RBrush}" IsVisible="{TemplateBinding (b:Pr.Dot)}" />
+          </Panel>
           <Border Name="PART_Focus" Margin="4" BorderThickness="2" BorderBrush="{StaticResource TInvBrush}" CornerRadius="{StaticResource RadiusS}"
                   IsVisible="False" IsHitTestVisible="False" />
         </Panel>
@@ -293,6 +307,18 @@
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.toggle /template/ c|IconView#PART_Icon">
+      <Setter Property="Opacity" Value="0.66" />
+    </Style>
+    <Style Selector="^.toggle.open /template/ c|IconView#PART_Icon">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^.bottom">
+      <Setter Property="Height" Value="54" />
+    </Style>
+    <Style Selector="^.bottom /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="18" />
     </Style>
   </ControlTheme>
 
@@ -334,19 +360,20 @@
         <Panel>
           <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
-            <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <StackPanel.RenderTransform>
+            <!-- DockPanel（不是 StackPanel）：页签到了最宽 250 时，中间的名字拿到受限的宽度、可以省略 -->
+            <DockPanel Name="PART_Row" VerticalAlignment="Center">
+              <DockPanel.RenderTransform>
                 <TranslateTransform />
-              </StackPanel.RenderTransform>
-              <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Size="18" Foreground="{StaticResource T3Brush}"
-                          VerticalAlignment="Center"
+              </DockPanel.RenderTransform>
+              <c:IconView Name="PART_Icon" DockPanel.Dock="Left" Margin="0,0,8,0" Icon="{TemplateBinding (b:Pr.Icon)}" Size="18"
+                          Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
                           IsVisible="{TemplateBinding (b:Pr.Icon), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Ellipse Name="PART_Dot" DockPanel.Dock="Right" Margin="8,0,0,0" Width="8" Height="8" Fill="{StaticResource RBrush}"
+                       VerticalAlignment="Center" IsVisible="{TemplateBinding (b:Pr.Dot)}" />
               <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
                                 ContentTemplate="{TemplateBinding ContentTemplate}"
                                 Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
-              <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource RBrush}" VerticalAlignment="Center"
-                       IsVisible="{TemplateBinding (b:Pr.Dot)}" />
-            </StackPanel>
+            </DockPanel>
           </Border>
           <Border Name="PART_Top" Height="2" VerticalAlignment="Top" Background="{StaticResource ATabBrush}" IsVisible="False" />
           <Button Name="PART_Close" Theme="{StaticResource PrTabClose}" b:Pr.Icon="x" ToolTip.Tip="关闭页签"
@@ -365,7 +392,7 @@
     <Style Selector="^:pointerover /template/ Button#PART_Close">
       <Setter Property="Opacity" Value="1" />
     </Style>
-    <Style Selector="^:pointerover:not(:checked):not(.pinned) /template/ StackPanel#PART_Row">
+    <Style Selector="^:pointerover:not(:checked):not(.pinned) /template/ DockPanel#PART_Row">
       <Setter Property="RenderTransform" Value="translateX(-10px)" />
     </Style>
     <Style Selector="^:pressed">

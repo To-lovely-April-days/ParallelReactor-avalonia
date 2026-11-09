@@ -15,7 +15,17 @@ public sealed class BaselineStack : Panel
     public static readonly StyledProperty<double> SpacingProperty = AvaloniaProperty.Register<BaselineStack, double>(nameof(Spacing), 8);
     public static readonly StyledProperty<double> FirstWidthProperty = AvaloniaProperty.Register<BaselineStack, double>(nameof(FirstWidth), double.NaN);
 
-    static BaselineStack() => AffectsMeasure<BaselineStack>(SpacingProperty, FirstWidthProperty);
+    /// <summary>这个子元素（和它后面的）靠右（CSS justify-content: space-between / margin-left: auto）；基线照样对齐。</summary>
+    public static readonly AttachedProperty<bool> PushRightProperty = AvaloniaProperty.RegisterAttached<BaselineStack, Layoutable, bool>("PushRight");
+
+    public static bool GetPushRight(Layoutable c) => c.GetValue(PushRightProperty);
+    public static void SetPushRight(Layoutable c, bool v) => c.SetValue(PushRightProperty, v);
+
+    static BaselineStack()
+    {
+        AffectsMeasure<BaselineStack>(SpacingProperty, FirstWidthProperty);
+        AffectsParentArrange<BaselineStack>(PushRightProperty);
+    }
 
     public double Spacing { get => GetValue(SpacingProperty); set => SetValue(SpacingProperty, value); }
     public double FirstWidth { get => GetValue(FirstWidthProperty); set => SetValue(FirstWidthProperty, value); }
@@ -36,8 +46,23 @@ public sealed class BaselineStack : Panel
     private double SlotWidth(int i, int n, Size size, double x)
     {
         if (i == 0 && !double.IsNaN(FirstWidth)) return FirstWidth;
-        if (i == n - 1 && !double.IsInfinity(size.Width)) return Math.Max(0, size.Width - x);
+        if (i == n - 1 && !double.IsInfinity(size.Width) && !GetPushRight(Children[i])) return Math.Max(0, size.Width - x);
         return double.PositiveInfinity;
+    }
+
+    /// <summary>从第 i 个子元素起（含）到最后的宽度（含间距）：靠右的子元素从这里排起。</summary>
+    private double TailWidth(int i)
+    {
+        double w = 0;
+        int k = 0;
+        for (int j = i; j < Children.Count; j++)
+        {
+            var c = Children[j];
+            if (!c.IsVisible) continue;
+            if (k++ > 0) w += Spacing;
+            w += c.DesiredSize.Width;
+        }
+        return w;
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -71,6 +96,7 @@ public sealed class BaselineStack : Panel
             var c = Children[i];
             if (!c.IsVisible) continue;
             if (k++ > 0) x += Spacing;
+            if (GetPushRight(c) && !double.IsInfinity(finalSize.Width)) x = Math.Max(x, finalSize.Width - TailWidth(i));
             var w = SlotWidth(i, n, finalSize, x);
             if (double.IsInfinity(w)) w = c.DesiredSize.Width;
             c.Arrange(new Rect(x, _above - BaselineOf(c), w, c.DesiredSize.Height));

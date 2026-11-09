@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:lg="using:ParallelReactor.Control.Views.Legacy"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.PerfPage"
+             x:DataType="pg:PerfPageVm">
+  <!-- 性能测试页（旧样式，D5：M2 起挂在新外壳的「性能测试」页签里，M7 换新组件并加设备选择）。
+       布局同旧界面：左 测试项与通道 | 右 测试进度 55 % + 实时曲线 45 % | 200 旧检查器的性能测试工具（开始 / 暂停 / 继续 · 确认 / 继续 · 生成报告 ·
+       下载报告 · 下载原始数据 · 返回测试项 · 跳过本步 · 中止）。「展开面板」= 这一页只显示那块面板（旧界面是覆盖层副本）。
+       旧视图的字号 9 / 旧配色在 LegacyHost 里；整棵子树 audit-skip（有意保留的旧样子，外框其余部分照常审计）。 -->
+  <lg:LegacyHost Classes="audit-skip">
+    <Grid ColumnDefinitions="*,200">
+      <Grid ColumnDefinitions="1.04*,*" IsVisible="{Binding ShowChecklist}">
+        <v:PerfChecklistView DataContext="{Binding Perf}" />
+        <Grid Grid.Column="1" RowDefinitions="55*,45*">
+          <v:PerfProgressView DataContext="{Binding Perf}" />
+          <v:GraphView Grid.Row="1" MinHeight="160" DataContext="{Binding Perf.Chart}" PanelKey="perfgraph" />
+        </Grid>
+      </Grid>
+      <Panel IsVisible="{Binding IsProgressExpanded}">
+        <v:PerfProgressView DataContext="{Binding Perf}" />
+      </Panel>
+      <Panel IsVisible="{Binding IsGraphExpanded}">
+        <v:GraphView DataContext="{Binding Perf.Chart}" PanelKey="perfgraph" />
+      </Panel>
+
+      <Border Grid.Column="1" Classes="inspector">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Button Classes="flat edit-plan" Content="{Binding Perf.StartButtonText}" Command="{Binding Perf.StartOrPauseCommand}" IsEnabled="{Binding Perf.CanStart}" />
+            <Button Classes="flat edit-plan" Content="确认 / 继续" Command="{Binding Perf.ConfirmContinueCommand}" IsEnabled="{Binding Perf.CanConfirm}" />
+            <Button Classes="flat edit-plan" Content="生成报告" Command="{Binding Perf.GenerateReportCommand}" IsEnabled="{Binding Perf.CanShowReport}" />
+            <Button Classes="flat edit-plan" Content="下载报告" Command="{Binding Perf.OpenReportCommand}" IsEnabled="{Binding Perf.HasReport}" />
+            <Button Classes="flat edit-plan" Content="下载原始数据" Command="{Binding Perf.OpenFolderCommand}" IsEnabled="{Binding Perf.HasReport}" />
+            <Button Classes="flat edit-plan" Content="返回测试项" Command="{Binding Perf.ResetViewCommand}" IsEnabled="{Binding !Perf.IsRunning}" />
+            <TextBlock Classes="inspector-label" Text="运行控制" />
+            <Grid Classes="inspector-field" ColumnDefinitions="*,6,*">
+              <Button Classes="flat edit-plan tight" Margin="0" Content="跳过本步" Command="{Binding Perf.SkipPromptCommand}" IsEnabled="{Binding Perf.CanConfirm}" />
+              <Button Grid.Column="2" Classes="flat edit-plan tight" Margin="0" Content="中止" Command="{Binding Perf.AbortCommand}" IsEnabled="{Binding Perf.CanAbort}" />
+            </Grid>
+            <TextBlock Classes="inspector-label" Text="{Binding Perf.StatusText, StringFormat='状态 · {0}'}" />
+            <TextBlock Classes="inspector-label" Text="{Binding Perf.OutputDirName, StringFormat='输出 {0}'}" ToolTip.Tip="{Binding Perf.OutputDir}" IsVisible="{Binding Perf.HasReport}" />
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </lg:LegacyHost>
+</UserControl>

@@ -2,7 +2,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="ParallelReactor.Control.App"
              RequestedThemeVariant="Light">
-  <!-- Fluent 只做基础模板；所有可见控件由 Styles/*.axaml 按 research/pc-control.html 的 CSS 逐项覆盖 -->
+  <!-- 新外壳（pc-v3，PORT-PLAN M2）：Styles/Theme/*.axaml 的 Pr 主题是各控件的默认主题（Theme/Defaults.axaml），Fluent 只剩弹出层设施；
+       Fluent 资源覆盖（强调色 / 内容字体 / 字号，Theme/FluentOverrides.cs）在 App.Initialize 里全局合并。
+       旧样式的页面（程序编辑、性能测试，D5，M7 重做）由 Views/Legacy/LegacyHost 承载：宿主里换回 Fluent 主题 + 旧字体字号，
+       旧样式（Styles/Panels.axaml 等，按 research/pc-control.html 逐项覆盖）只对类名 / .legacy 子树生效。M2 删掉了旧外壳（MainView 等）。 -->
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -10,7 +13,7 @@
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/LegacyTokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Tokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Icons.axaml" />
-        <!-- pc-v3 控件主题（PORT-PLAN §4.6）：全部带 x:Key（或以 Pr 自己的控件类型为键），旧界面不会用到；按依赖顺序合并 -->
+        <!-- pc-v3 控件主题（PORT-PLAN §4.6）：带 x:Key（或以 Pr 自己的控件类型为键）；按依赖顺序合并，Defaults 最后（把它们设为默认主题） -->
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ScrollBars.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ToolTips.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Buttons.axaml" />
@@ -22,19 +25,20 @@
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Panels.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Components.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Dialogs.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Shell.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Defaults.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
-    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Shell.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Panels.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Plan.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Property.axaml" />
-    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Timeline.axaml" />
-    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Dialogs.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Perf.axaml" />
     <!-- 新样式（pc-v3）：只匹配新类名（num、frozen …），旧视图不受影响 -->
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Typography.axaml" />
+    <!-- .frozen（演示冻结、截图）：去掉过渡（M2 起全局） -->
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Frozen.axaml" />
   </Application.Styles>
 </Application>

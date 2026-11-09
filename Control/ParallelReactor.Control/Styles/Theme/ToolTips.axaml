@@ -3,7 +3,7 @@
   <!-- 悬停提示 PrTip（样稿 shell.css .pr-tip）：toast 深色底 + 白字 14 px、行高 1.5、内边距 7 11、圆角 6、最宽 400、ShadowPop。
        显示延时是挂在宿主控件上的附加属性（ToolTip.ShowDelay 400 / BetweenShowDelay 300）：Pr 主题的可交互控件都设了；
        原因提示（Behaviors/Reason.cs）直接给出套了本主题的 ToolTip，前面一个 14 px 锁图标。
-       M1 的组件陈列页把本主题设成页内 ToolTip 的默认主题；M2 起全局默认。 -->
+       本主题是全局的 ToolTip 默认主题（Styles/Theme/Defaults.axaml，M2）；旧界面（LegacyHost）里换回 Fluent 的。 -->
   <ControlTheme x:Key="PrTip" TargetType="ToolTip">
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
     <Setter Property="ClipToBounds" Value="False" />

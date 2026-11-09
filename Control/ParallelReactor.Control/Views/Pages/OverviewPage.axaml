@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             x:Class="ParallelReactor.Control.Views.Pages.OverviewPage"
+             x:DataType="pg:OverviewPageVm">
+  <!-- 总览骨架（M2；卡片网格、报警条、温度趋势在 M4）：每台设备一个分区面板 —— 分区头 = 别名 18/600 + 型号 14 t-3，
+       右侧「打开」（设备页）+「⋯」（这台设备的菜单，同右键菜单）+ 放大（分区不能关闭，同样稿）。分区内容先空着（bg-panel）。 -->
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <ItemsControl ItemsSource="{Binding Sections}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="pg:OverviewSectionVm">
+          <Border BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1">
+            <pr:PrPanel CanClose="False" Height="200">
+              <pr:PrPanel.Title>
+                <c:BaselineStack Spacing="8">
+                  <TextBlock Text="{Binding Alias}" FontSize="{StaticResource FsHead}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                  <TextBlock Text="{Binding Model}" FontSize="{StaticResource Fs2}" FontWeight="Normal" Foreground="{StaticResource T3Brush}" />
+                </c:BaselineStack>
+              </pr:PrPanel.Title>
+              <pr:PrPanel.Actions>
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                  <Button Theme="{StaticResource PrGhost}" Classes="sm" b:Pr.Icon="open" Content="打开"
+                          ToolTip.Tip="{Binding Alias, StringFormat='打开{0}设备页'}" Command="{Binding OpenCommand}" />
+                  <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="more" ToolTip.Tip="{Binding Alias, StringFormat='{}{0} · 更多操作'}">
+                    <Button.Flyout>
+                      <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" Opening="OnMoreOpening" />
+                    </Button.Flyout>
+                  </Button>
+                </StackPanel>
+              </pr:PrPanel.Actions>
+            </pr:PrPanel>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</UserControl>

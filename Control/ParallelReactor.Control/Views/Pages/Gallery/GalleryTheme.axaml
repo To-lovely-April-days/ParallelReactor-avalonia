@@ -42,8 +42,9 @@
               <c:BaselineStack Spacing="12">
                 <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold"
                            LineHeight="{StaticResource GalleryLh16}" Foreground="{StaticResource T1Brush}" />
-                <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" LineHeight="{StaticResource GalleryLh14}"
-                           Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Sub}" />
+                <!-- 文字 / 内联图标由 GallerySection.FillSub 填（说明里的「⚠」画成线描图标） -->
+                <TextBlock Name="PART_Sub" FontSize="{StaticResource Fs2}" LineHeight="{StaticResource GalleryLh14}"
+                           Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis" />
               </c:BaselineStack>
             </Border>
             <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"

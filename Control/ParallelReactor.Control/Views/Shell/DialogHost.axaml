@@ -1,0 +1,165 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.DialogHost"
+             x:DataType="sh:ShellVm"
+             IsVisible="{Binding Dialogs.IsOpen}">
+  <!-- 对话框宿主（样稿 .pr-layer / .pr-modal）：遮罩铺满外框（OverlayBrush，ZIndex 200，点遮罩关闭）+ 居中的 DialogFrame
+       （宽 = DialogVm.Width，四周至少留 24）。全局停止格 ZIndex 201，在遮罩之上。正式的 9 个对话框在 M3；
+       这里有 M2 的临时对话框（Shell/Dialogs/DialogSet.cs，实时模式）：「连接设备」、急停 / 全部停止的确认、「全部运行」的清单确认（内容的模板在下面）。 -->
+  <UserControl.DataTemplates>
+    <!-- 「连接设备」表单（样稿 .dlg-form：两列，间距 16 × 20；字段 = 标签 14/500 t-3 + 控件） -->
+    <DataTemplate DataType="dlg:ConnectDialogVm" x:DataType="dlg:ConnectDialogVm">
+      <Grid ColumnDefinitions="*,20,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto" Margin="0,0,0,2">
+        <Grid.Styles>
+          <Style Selector="TextBlock.flabel">
+            <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+            <Setter Property="FontWeight" Value="Medium" />
+            <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+          </Style>
+        </Grid.Styles>
+        <StackPanel>
+          <TextBlock Classes="flabel" Text="地址" />
+          <TextBox Text="{Binding Host}" Watermark="IP 或主机名" IsEnabled="{Binding !Busy}" />
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Classes="flabel" Text="端口" />
+          <TextBox Text="{Binding Port}" IsEnabled="{Binding !Busy}" />
+        </StackPanel>
+        <StackPanel Grid.Row="2" Grid.ColumnSpan="3">
+          <TextBlock Classes="flabel" Text="访问令牌" />
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Margin="8,0,0,0" Theme="{StaticResource PrIconButton}" b:Pr.Icon="{Binding EyeIcon}"
+                    ToolTip.Tip="{Binding EyeTip}" AutomationProperties.Name="{Binding EyeTip}" Command="{Binding EyeCommand}" />
+            <TextBox Text="{Binding Token}" PasswordChar="{Binding TokenChar}" IsEnabled="{Binding !Busy}" />
+          </DockPanel>
+        </StackPanel>
+        <StackPanel Grid.Row="4" Grid.ColumnSpan="3">
+          <TextBlock Classes="flabel" Text="客户端名" />
+          <TextBox Text="{Binding ClientName}" IsEnabled="{Binding !Busy}" />
+        </StackPanel>
+        <StackPanel Grid.Row="6" Grid.ColumnSpan="3">
+          <TextBlock Classes="flabel" Text="令牌落盘" />
+          <CheckBox Content="记住令牌（默认只存地址）" IsChecked="{Binding RememberToken}" IsEnabled="{Binding !Busy}" />
+        </StackPanel>
+      </Grid>
+    </DataTemplate>
+    <DataTemplate DataType="dlg:ConnectStatusVm" x:DataType="dlg:ConnectStatusVm">
+      <TextBlock Text="{Binding Dialog.Status}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis"
+                 MaxWidth="300" ToolTip.Tip="{Binding Dialog.Status}" Classes.err="{Binding Dialog.HasError}">
+        <TextBlock.Styles>
+          <Style Selector="TextBlock.err">
+            <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+          </Style>
+        </TextBlock.Styles>
+      </TextBlock>
+    </DataTemplate>
+    <DataTemplate DataType="dlg:ConnectFooterVm" x:DataType="dlg:ConnectFooterVm">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Content="取消" Command="{Binding Dialog.CancelCommand}" />
+        <Button Theme="{StaticResource PrPrimary}" Classes="lg" b:Pr.Icon="link" Content="连接" Command="{Binding Dialog.ConnectCommand}"
+                IsEnabled="{Binding !Dialog.Busy}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 急停 / 全部停止（临时：对象 = 全部已连接的设备，不能勾选；M3 换成样稿的多选对话框） -->
+    <DataTemplate DataType="dlg:StopDialogVm" x:DataType="dlg:StopDialogVm">
+      <StackPanel Spacing="16">
+        <ItemsControl ItemsSource="{Binding Targets}" IsVisible="{Binding HasTargets}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="dlg:StopTargetVm">
+              <Border MinHeight="58" Padding="14,8" BorderBrush="{StaticResource ALineBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                      Background="{StaticResource ATintBrush}">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Right" Text="{Binding RunText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}"
+                             VerticalAlignment="Center" Margin="14,0,0,0" />
+                  <StackPanel Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Alias}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Alias}" />
+                    <TextBlock Text="{Binding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis"
+                               ToolTip.Tip="{Binding Sub}" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <pr:Note Content="{Binding Note}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="dlg:StopFooterVm" x:DataType="dlg:StopFooterVm">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Content="取消" Command="{Binding Dialog.CancelCommand}" />
+        <Panel>
+          <Button Theme="{StaticResource PrDanger}" Classes="lg" b:Pr.Icon="estop" Content="{Binding Dialog.GoText}" Command="{Binding Dialog.GoCommand}"
+                  b:Pr.Reason="{Binding Dialog.GoReason}" IsVisible="{Binding Dialog.IsEstop}" />
+          <Button Theme="{StaticResource PrPrimary}" Classes="lg" b:Pr.Icon="stop" Content="{Binding Dialog.GoText}" Command="{Binding Dialog.GoCommand}"
+                  b:Pr.Reason="{Binding Dialog.GoReason}" IsVisible="{Binding !Dialog.IsEstop}" />
+        </Panel>
+      </StackPanel>
+    </DataTemplate>
+
+    <!-- 「全部运行」确认（临时，真机，D6：先列清单）：每行 = 反应釜 · 程序名 · 程序状态；确认后逐个运行程序 -->
+    <DataTemplate DataType="dlg:RunAllDialogVm" x:DataType="dlg:RunAllDialogVm">
+      <ItemsControl ItemsSource="{Binding Targets}" IsVisible="{Binding HasTargets}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="dlg:StopTargetVm">
+            <Border MinHeight="58" Padding="14,8" BorderBrush="{StaticResource ALineBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                    Background="{StaticResource ATintBrush}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Right" Text="{Binding RunText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}"
+                           VerticalAlignment="Center" Margin="14,0,0,0" />
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                  <TextBlock Text="{Binding Alias}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Alias}" />
+                  <TextBlock Text="{Binding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Sub}" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+    <DataTemplate DataType="dlg:RunAllFooterVm" x:DataType="dlg:RunAllFooterVm">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Button Content="取消" Command="{Binding Dialog.CancelCommand}" />
+        <Button Theme="{StaticResource PrPrimary}" Classes="lg" b:Pr.Icon="play" Content="{Binding Dialog.GoText}" Command="{Binding Dialog.GoCommand}"
+                b:Pr.Reason="{Binding Dialog.GoReason}" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <UserControl.Styles>
+    <!-- 对话框的阴影（ShadowDlg：0 10 45，样稿 .pr-modal）画在框外：居中放它的 ContentControl 和模板里的 ContentPresenter 不裁剪
+         （Avalonia 11.1 的模板控件默认 ClipToBounds=true，框多大就裁多大 —— 阴影整个被裁掉） -->
+    <Style Selector="ContentControl#Holder">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="ContentControl#Holder /template/ ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+  </UserControl.Styles>
+  <Panel>
+    <Border Name="Scrim" Background="{StaticResource OverlayBrush}" />
+    <ContentControl Name="Holder" Content="{Binding Dialogs.Current}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="sh:DialogVm">
+          <pr:DialogFrame Width="{Binding Width}" Title="{Binding Title}" Sub="{Binding Sub}" Icon="{Binding Icon}" IsDanger="{Binding IsDanger}"
+                          Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}" />
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+  </Panel>
+</UserControl>

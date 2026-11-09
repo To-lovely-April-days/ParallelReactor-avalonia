@@ -6,14 +6,13 @@
              Background="{StaticResource BgAppBrush}">
   <!-- 组件陈列页（MOCK #/gallery，设计 / 自检用，不在菜单里）：分区与样稿相同，每个分区是 Gallery/ 下一个独立的 UserControl。
        M1：色板、字号、按钮、输入、徽标与状态、进度、面板 · 属性卡片、提示 · 表格 · 键值 · 倒计时 · 空状态；
-       步骤卡片、釜体、曲线三个分区只放中性说明（M4 / M5 补，不画半成品）。截图时根元素带 frozen 类（Theme/Frozen.cs）。 -->
+       步骤卡片、釜体、曲线三个分区只放中性说明（M4 / M5 补，不画半成品）。M2 起是新外壳里的路由页（PageHost 放进纵向滚动区），
+       截图时窗口带 frozen 类（Theme/Frozen.cs）。悬停提示是全局默认的 PrTip。 -->
   <UserControl.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://ParallelReactor.Control/Views/Pages/Gallery/GalleryTheme.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <!-- 页内的悬停提示用 PrTip（M2 起全局默认） -->
-      <ControlTheme x:Key="{x:Type ToolTip}" TargetType="ToolTip" BasedOn="{StaticResource PrTip}" />
     </ResourceDictionary>
   </UserControl.Resources>
 

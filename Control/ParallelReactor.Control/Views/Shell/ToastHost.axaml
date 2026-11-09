@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:sv="using:ParallelReactor.Control.Services"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.ToastHost"
+             x:DataType="sh:ShellVm"
+             IsHitTestVisible="False">
+  <!-- Toast（样稿 .pr-toasts / .pr-toast）：距外框底 48、水平居中、上下堆叠间距 8，不接收指针；
+       每条：toast 深色底、圆角 6、内边距 11 20 11 16、15 px 白字、ShadowPop、最宽 820、不换行；
+       语气：ok = 白色 ✓（16，描边 2.2；成功不用绿色）· info = a-line 点 · warn = n-dot 点 · err = r 点 + 2 px 白环（8 px 点）。 -->
+  <ItemsControl ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Spacing="8" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="sv:ToastItem">
+        <Border HorizontalAlignment="Center" MaxWidth="820" Padding="16,11,20,11" CornerRadius="{StaticResource Radius}"
+                Background="{StaticResource ToastBrush}" BoxShadow="{StaticResource ShadowPop}">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <c:IconView Icon="check" Size="16" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}" VerticalAlignment="Center"
+                        IsVisible="{Binding IsOk}" />
+            <Panel Width="8" Height="8" VerticalAlignment="Center" ClipToBounds="False" IsVisible="{Binding IsErr}">
+              <Ellipse Width="12" Height="12" Margin="-2" Fill="{StaticResource TInvBrush}" Opacity="0.85" />
+              <Ellipse Width="8" Height="8" Fill="{StaticResource RBrush}" />
+            </Panel>
+            <Ellipse Width="8" Height="8" Fill="{StaticResource ALineBrush}" VerticalAlignment="Center" IsVisible="{Binding IsInfo}" />
+            <Ellipse Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="{Binding IsWarn}" />
+            <TextBlock Text="{Binding Text}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource TInvBrush}"
+                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

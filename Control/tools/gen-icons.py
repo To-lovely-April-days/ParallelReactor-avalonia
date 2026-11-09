@@ -6,7 +6,8 @@
   · <path d> 全部换算成绝对坐标（M L H V C Q A Z；S / T 展开成 C / Q），多个 <path> 拼在一起时不会互相影响；
   · <circle> 拆成两段圆弧；<rect>（带 rx 时）转成圆弧路径；<line> / <polyline> / <polygon> / <ellipse> 同理；
   · logo 的 viewBox 是 24×28（写进 IconSet.ViewBoxes），其它都是 24×24；
-  · 旧界面的 23 个键（Ico*，pc-control.html 的图标）原样保留在文件末尾：几何不变，旧视图外观不变；M7 删除。
+  · 旧界面还在用的 9 个键（Ico*，pc-control.html 的图标；程序编辑 / 性能测试的旧视图引用）原样保留在文件末尾：几何不变，旧视图外观不变；M7 删除。
+    M2 删掉了只剩核对表在用的 14 个（旧 MainView 等删除之后没人引用了）。
 用法：python3 Control/tools/gen-icons.py [--mock <pc-v3 目录>] [--check]
 """
 import argparse
@@ -19,31 +20,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.normpath(os.path.join(HERE, '..', 'ParallelReactor.Control'))
 DEFAULT_MOCK = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'research', 'pc-v3'))
 
-# 旧界面（research/pc-control.html）的 23 个图标：原样照抄 M1 之前的 Styles/Icons.axaml，不做任何换算
+# 旧界面（research/pc-control.html）还在用的图标：原样照抄 M1 之前的 Styles/Icons.axaml，不做任何换算（只留旧视图引用的键；Lint/IconSetTests 核对）
 LEGACY = [
-    ('IcoLogo', 'M12 2 21 7 12 12 3 7Z m-9 10 9 5 9-5M3 17l9 5 9-5M3 22l9 5 9-5'),
     ('IcoGauge', 'M4 17a8 8 0 1 1 16 0 M12 13 17 8M7 17h10M5 14l-2-1M19 14l2-1M12 5V3 M11 13a1 1 0 1 0 2 0a1 1 0 1 0 -2 0'),
-    ('IcoFlask', 'M9 3h6M10 3v6L4 19c-.5 1 0 2 1 2h14c1 0 1.5-1 1-2l-6-10V3M8 14h8'),
-    ('IcoRefresh', 'M20 7v5h-5M4 17v-5h5 M18.5 9A7 7 0 0 0 6 6.5L4 9m2 6a7 7 0 0 0 12 2.5l2-2.5'),
     ('IcoClock', 'M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M12 7v5l3 2'),
     ('IcoList', 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'),
-    ('IcoChevron', 'm7 10 5 5 5-5'),
     ('IcoClose', 'm6 6 12 12M18 6 6 18'),
     ('IcoExpand', 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5M3 8l6-6M21 8l-6-6M3 16l6 6M21 16l-6 6'),
     ('IcoMove', 'M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M22 12l-3-3M22 12l-3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3'),
     ('IcoSearch', 'M4 10a6 6 0 1 0 12 0a6 6 0 1 0 -12 0 m11 5 6 6M7 10h6M10 7v6'),
     ('IcoZoomOut', 'M4 10a6 6 0 1 0 12 0a6 6 0 1 0 -12 0 m11 5 6 6M7 10h6'),
     ('IcoTree', 'M12 3v5M5 13v5M19 13v5M5 13h14M12 8v5M5 8h14 M10 4a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M3 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M17 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0'),
-    ('IcoEdit', 'm4 16-1 5 5-1L20 8l-4-4Z M14 6l4 4M3 3h7v7H3Z'),
-    ('IcoDownload', 'M12 3v12M7 10l5 5 5-5M4 17v4h16v-4'),
-    ('IcoUpload', 'M12 16V4M7 9l5-5 5 5M4 16v5h16v-5'),
-    ('IcoPlay', 'm8 5 11 7-11 7Z'),
-    ('IcoStop', 'M6 6H18V18H6Z'),
-    ('IcoSkip', 'm5 5 10 7-10 7ZM18 5v14'),
-    ('IcoBook', 'M4 4h6a3 3 0 0 1 3 3v13a3 3 0 0 0-3-3H4ZM20 4h-4a3 3 0 0 0-3 3v13a3 3 0 0 1 3-3h4Z'),
-    ('IcoPlus', 'M12 4v16M4 12h16'),
-    ('IcoCheck', 'M9 4h6v3H9ZM5 6h2v15h10V6h2M8 13l3 3 5-6'),
-    ('IcoGear', 'M9 12a3 3 0 1 0 6 0a3 3 0 1 0 -6 0 M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1'),
 ]
 
 
@@ -279,7 +266,7 @@ def gen_axaml(icons, converted):
         if fill:
             L.append(f'  <StreamGeometry x:Key="Icon.{name}.Fill">{fill}</StreamGeometry>')
     L.append('')
-    L.append('  <!-- 旧界面（research/pc-control.html）的 23 个图标，键 Ico*：几何原样保留（旧视图外观不变，旧 IconView 用法按 viewBox 单位描边），M7 删除。 -->')
+    L.append(f'  <!-- 旧界面（research/pc-control.html）还在用的 {len(LEGACY)} 个图标，键 Ico*：几何原样保留（旧视图外观不变，旧 IconView 用法按 viewBox 单位描边），M7 删除。 -->')
     for k, v in LEGACY:
         L.append(f'  <StreamGeometry x:Key="{k}">{v}</StreamGeometry>')
     L.append('</ResourceDictionary>')

@@ -24,19 +24,12 @@ public class TypeScaleLintTests
     public static readonly string[] LegacyAllowList =
     {
         "Styles/LegacyTokens.axaml",   // 旧令牌里的 Fs6–Fs11
-        "Styles/Dialogs.axaml",
-        "Styles/Panels.axaml",
+        "Styles/Panels.axaml",         // M2 起也有旧样式页面的宿主（ContentControl.legacy：字号 9）与从旧 Shell.axaml 搬来的平面按钮 / 文本框
         "Styles/Perf.axaml",
         "Styles/Plan.axaml",
         "Styles/Property.axaml",
-        "Styles/Shell.axaml",
-        "Styles/Timeline.axaml",
-        "Views/MainView.axaml",
-        "Views/MainWindow.axaml",
-        "Views/OverviewView.axaml",
         // 自绘的 7 px 刻度 / 标签（FormattedText 字面量规则，M1 复核补上）
         "Controls/ProcessChart.cs",
-        "Controls/TimelineTracks.cs",
     };
 
     private const string Num = @"(\d+(?:\.\d+)?)";
