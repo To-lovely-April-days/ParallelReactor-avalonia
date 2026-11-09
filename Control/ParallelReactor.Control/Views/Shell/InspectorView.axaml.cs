@@ -34,12 +34,14 @@ public partial class InspectorView : UserControl
         if (e.PropertyName == nameof(InspectorVm.BodyKey)) Scroll.Offset = default;
     }
 
-    /// <summary>「设置」（共用转速）：选中设备之后，把转速框滚到可见处、聚焦它（等新正文排好版）。</summary>
+    /// <summary>
+    /// 「设置」（共用转速；HT-PR4 每釜独立搅拌时是反应釜检查器的「转速」）：选中对象之后，把转速框滚到可见处、聚焦它（等新正文排好版；样稿 inspFocus）。
+    /// </summary>
     private void OnFocus(object? sender, string name)
     {
         Dispatcher.UIThread.Post(() =>
         {
-            var box = Body.GetVisualDescendants().OfType<NumBox>().FirstOrDefault(n => n.Name == "SharedRpm" && n.IsEffectivelyVisible);
+            var box = Body.GetVisualDescendants().OfType<NumBox>().FirstOrDefault(n => n.Name is "SharedRpm" or "ReactorRpm" && n.IsEffectivelyVisible);
             if (box == null) return;
             box.BringIntoView();
             box.GetVisualDescendants().OfType<TextBox>().FirstOrDefault()?.Focus();

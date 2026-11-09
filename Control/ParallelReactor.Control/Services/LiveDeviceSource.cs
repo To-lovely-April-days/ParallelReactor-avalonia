@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using ParallelReactor.Api;
 using ParallelReactor.Client;
 using ParallelReactor.Control.Core;
+using ParallelReactor.Control.Core.Alarms;
+using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Guard;
 using ParallelReactor.Control.Core.Models;
@@ -52,11 +54,16 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     private readonly IClock _clock;
     private string _clientName;
     private readonly LiveHistoryView _history;
-    private readonly Dictionary<string, AlarmItem> _alarmMap = new(StringComparer.Ordinal);
-    private readonly List<EventItem> _events = new();
+    /// <summary>报警簿（M4）：GET /alarms 整个替换（连上 / HMI 重启后）+ WS alarm 增量；身份 = bootId/id。</summary>
+    private readonly AlarmBook _alarmBook = new();
+    /// <summary>事件簿（M4）：GET /events（最近 200 条，分页续取）+ WS event；身份 = 序号纪元:序号。</summary>
+    private readonly EventBook _eventBook = new();
     private readonly Dictionary<int, ProgramDoc> _downloaded = new();
 
+    /// <summary>报警 / 事件簿的投影（AlarmItem / EventItem，外框与检查器用），簿的 Version 变了才重建。</summary>
     private IReadOnlyList<AlarmItem> _alarms = Array.Empty<AlarmItem>();
+    private IReadOnlyList<EventItem> _events = Array.Empty<EventItem>();
+    private int _alarmVersion = -1, _eventVersion = -1;
     private TelemetrySnapshot? _pending;
     private SourceChange _dirty;
     private bool _flushPending, _disposed;
@@ -154,7 +161,8 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     public bool StopReachable => Connection != null && _restOk && _conn != ConnStatus.Disconnected && !_disposed;
     public DeviceInfoDto? Info { get; private set; }
     public SettingsDto? Settings { get; private set; }
-    public CommDto? Comm => null;
+    /// <summary>GET /device/comm 的最近一次结果（连上时取一次，之后在线时每 <see cref="CommPollInterval"/> 一次）；还没取到为 null。</summary>
+    public CommDto? Comm { get; private set; }
     /// <summary>本机令牌的权限（第一个 403 之后学到，缓存到换令牌为止，见 <see cref="UpdateConfigAsync"/>）。</summary>
     public TokenRole Role => _role;
 
@@ -168,8 +176,85 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     }
     public TelemetrySnapshot? Latest { get; private set; }
     public DateTime? DataAt => Latest is { } f ? f.Ts.ToLocalTime() : null;
-    public IReadOnlyList<AlarmItem> Alarms => _alarms;
-    public IReadOnlyList<EventItem> Events => _events;
+    public AlarmBook AlarmBook => _alarmBook;
+    public EventBook EventBook => _eventBook;
+
+    public IReadOnlyList<AlarmItem> Alarms
+    {
+        get
+        {
+            if (_alarmBook.Version != _alarmVersion)
+            {
+                _alarmVersion = _alarmBook.Version;
+                _alarms = _alarmBook.Current.Select(a => new AlarmItem(a.Id, a.Level, a.Ch, a.Code, a.Text, a.At, a.Acked, a.AckBy)).ToArray();
+            }
+            return _alarms;
+        }
+    }
+
+    public IReadOnlyList<EventItem> Events
+    {
+        get
+        {
+            if (_eventBook.Version != _eventVersion)
+            {
+                _eventVersion = _eventBook.Version;
+                _events = _eventBook.Items.Select(e => new EventItem(e.Key, e.At, e.Level, e.N, e.Text)).ToArray();
+            }
+            return _events;
+        }
+    }
+
+    /// <summary>
+    /// 模块通讯（设备信息面板）：型号表的模块（名称、数量；真机的模块表在 HMI 补接口之前取型号表，D2）+ 在线（最新一帧的 CommSnap，没有帧时取 GET /device/comm）
+    /// + 最近成功（GET /device/comm 的 lastOkAt，本地时间）。
+    /// </summary>
+    public IReadOnlyList<ModuleComm> Modules
+    {
+        get
+        {
+            var frame = Latest?.Comm;
+            var dto = Comm;
+            var list = new List<ModuleComm>(Model.Comm.Count);
+            foreach (var m in Model.Comm)
+            {
+                var snap = ModuleOf(dto, m.Key);
+                bool online = m.OnlineIn(frame) ?? snap?.Online ?? false;
+                DateTime? last = snap?.LastOkAt is { } t ? t.ToLocalTime() : null;
+                list.Add(new ModuleComm(m.Key, m.Name, m.Count, online, last));
+            }
+            return list;
+        }
+    }
+
+    /// <summary>GET /device/comm 里这一类模块（temp / press / stir / valve → temp / pressure / stir / io）。</summary>
+    private static ModuleCommSnap? ModuleOf(CommDto? c, string key) => c is null ? null : key switch
+    {
+        "temp" => c.Temp,
+        "press" => c.Pressure,
+        "stir" => c.Stir,
+        "valve" => c.Io,
+        _ => null,
+    };
+
+    /// <summary>HMI 版本：/device 的 hmiVersion 去掉「+提交号」（"1.0.0+abc" → "1.0.0"）；还没连上过为「—」。</summary>
+    public string HmiVersion
+    {
+        get
+        {
+            var v = Info?.HmiVersion;
+            if (string.IsNullOrEmpty(v)) return Fmt.Dash;
+            int plus = v.IndexOf('+');
+            return plus > 0 ? v[..plus] : v;
+        }
+    }
+
+    /// <summary>接口版本：/device 的 apiVersion，写法同样稿（「v1.2」）—— HMI 给的是「1.0」，数字开头时补「v」；还没连上过为「—」。</summary>
+    public string ApiVersion => ApiVersionText(Info?.ApiVersion);
+
+    /// <summary>「1.0」→「v1.0」；已经带「v」的、不是数字开头的原样；空 →「—」。</summary>
+    public static string ApiVersionText(string? v) =>
+        string.IsNullOrWhiteSpace(v) ? Fmt.Dash : char.IsAsciiDigit(v.Trim()[0]) ? "v" + v.Trim() : v.Trim();
     public IChannelHistory History => _history;
 
     public ModelProfile Model => _model ??= _models.Get(InitialModelKey) ?? _models.Get(_models.FallbackKey) ?? _models.All[0];
@@ -196,36 +281,28 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         if (_disposed) return;
         var d = _dirty;
         _dirty = SourceChange.None;
-        if (_pending != null) { Latest = _pending; _pending = null; }
+        if (_pending != null)
+        {
+            Latest = _pending;
+            _pending = null;
+            // 报警簿跟着急停状态：急停中已确认的急停报警照样列出，复位后退出（AlarmBook.Current）
+            if (_alarmBook.SetEstop(Latest.Estop is { Active: true })) d |= SourceChange.Alarms;
+        }
         if (d != SourceChange.None) Changed?.Invoke(d);
     }
 
-    // ———————————————————— 报警 / 事件归一化（M4 换成 Core 的 AlarmBook / EventBook） ————————————————————
-
-    private static readonly Regex RvRe = new(@"^RV(\d+)", RegexOptions.CultureInvariant);
-
-    private void UpsertAlarm(AlarmDto a)
-    {
-        if (a.Level == "info" || a.ClearedAt != null) { _alarmMap.Remove(a.Id); }
-        else
-        {
-            int? ch = a.Channel ?? (RvRe.Match(a.Title ?? "") is { Success: true } m ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : null);
-            var text = a.Title + (string.IsNullOrWhiteSpace(a.Message) ? "" : " · " + a.Message);
-            _alarmMap[a.Id] = new AlarmItem(a.Id, a.Level is "err" or "error" ? AlarmLevel.Err : AlarmLevel.Warn, ch, AlarmCode(a.Title), text,
-                a.RaisedAt.ToLocalTime(), a.State is "ack" or "done");
-        }
-        _alarms = _alarmMap.Values.OrderByDescending(x => x.At).ToArray();
-    }
+    // ———————————————————— 报警 / 事件（M4：Core 的 AlarmBook / EventBook） ————————————————————
 
     /// <summary>当前报警整个换成 GET /alarms 的结果（每次（重新）连上、HMI 重启后：断线期间的变化与旧启动的报警都不留下）。</summary>
     private void ReplaceAlarms(IEnumerable<AlarmDto> items)
     {
-        _alarmMap.Clear();
-        _alarms = Array.Empty<AlarmItem>();
-        foreach (var dto in items) UpsertAlarm(dto);
+        if (_alarmBook.Load(items, _bootId)) MarkDirty(SourceChange.Alarms);
     }
 
-    /// <summary>报警代码按关键字推断（HMI 的 AlarmDto 没有 code，A6）。</summary>
+    /// <summary>
+    /// 报警代码按关键字推断（HMI 的 AlarmDto 没有 code，A6）—— M4 起报警簿用 Core 的 AlarmCodes.Infer（只有「超压」算 P-HIGH）；
+    /// 这个旧的写法只为兼容保留。
+    /// </summary>
     public static string AlarmCode(string? title)
     {
         var t = title ?? "";
@@ -234,23 +311,6 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         if (t.Contains("超温")) return "T-HIGH";
         if (t.Contains("升温")) return "HEAT-SLOW";
         return "ALARM";
-    }
-
-    /// <summary>事件的身份 = 「序号纪元:序号」（HMI 重启后序号从头计，纪元随之变：新旧事件不会撞号、也不会被当成重复丢掉）。</summary>
-    private static string EventId(int epoch, long seq) =>
-        epoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + seq.ToString(System.Globalization.CultureInfo.InvariantCulture);
-
-    private void AddEvent(string id, DateTime ts, string level, string kind, int? channel, string title, string message)
-    {
-        if (_events.Any(e => e.Id == id)) return;
-        var lv = kind.StartsWith("op.", StringComparison.Ordinal) || kind.StartsWith("control.", StringComparison.Ordinal) || kind.StartsWith("session.", StringComparison.Ordinal)
-            ? EventLevel.Op
-            : level switch { "warn" => EventLevel.Warn, "err" or "error" => EventLevel.Err, _ => EventLevel.Info };
-        int? n = channel ?? (RvRe.Match(title ?? "") is { Success: true } m ? int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : null);
-        var item = new EventItem(id, ts.ToLocalTime(), lv, n, title + (string.IsNullOrWhiteSpace(message) ? "" : " · " + message));
-        int at = _events.FindIndex(e => e.At < item.At);
-        if (at < 0) _events.Add(item); else _events.Insert(at, item);
-        while (_events.Count > 200) _events.RemoveAt(_events.Count - 1);
     }
 
     // ———————————————————— 读 ————————————————————
@@ -325,7 +385,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             ProgramIds = null,
             SessionActive = Session is { Active: true },
             SessionId = Session?.Id,
-            Alarms = _alarms.Select(a => new AlarmFacts(a.Id, a.Acked)).ToArray(),
+            Alarms = Alarms.Select(a => new AlarmFacts(a.Id, a.Acked)).ToArray(),
         };
     }
 
@@ -519,9 +579,11 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             }
             case DeviceAction.AlarmAck:
             {
-                var al = _alarmMap.TryGetValue(a.Id ?? "", out var x) ? x : null;
+                var al = _alarmBook.Find(a.Id);
                 var r = await c.Rest.AckAlarmAsync(a.Id ?? "", ct).ConfigureAwait(true);
-                string what = al is null || al.Level != AlarmLevel.Err ? "提醒" : al.Code == "P-HIGH" ? "超压报警" : al.Code == "ESTOP" ? "急停报警" : "报警";
+                // 确认成功：本地先标上（确认人 = 本机这条连接的客户端名，HMI 没有确认人字段，A6），不等 WS 推来 ack 状态
+                if (a.Id is { } ackId && _alarmBook.MarkAcked(ackId, LeaseClientName)) MarkDirty(SourceChange.Alarms);
+                string what = al is null || al.Level != AlarmLevel.Err ? "提醒" : al.Code == AlarmCodes.PressureHigh ? "超压报警" : al.Code == AlarmCodes.Estop ? "急停报警" : "报警";
                 return Ok((al?.Ch is int ac ? "RV" + ac + " " : "") + what + "已确认", r.Warnings);
             }
             case DeviceAction.LeaseRequest:

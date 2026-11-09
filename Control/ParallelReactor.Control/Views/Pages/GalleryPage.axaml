@@ -5,8 +5,8 @@
              x:Class="ParallelReactor.Control.Views.Pages.GalleryPage"
              Background="{StaticResource BgAppBrush}">
   <!-- 组件陈列页（MOCK #/gallery，设计 / 自检用，不在菜单里）：分区与样稿相同，每个分区是 Gallery/ 下一个独立的 UserControl。
-       M1：色板、字号、按钮、输入、徽标与状态、进度、面板 · 属性卡片、提示 · 表格 · 键值 · 倒计时 · 空状态；
-       步骤卡片、釜体、曲线三个分区只放中性说明（M4 / M5 补，不画半成品）。M2 起是新外壳里的路由页（PageHost 放进纵向滚动区），
+       M1：色板、字号、按钮、输入、徽标与状态、进度、面板 · 属性卡片、提示 · 表格 · 键值 · 倒计时 · 空状态；M4：釜体（ReactorVessel / VesselGlyph）；
+       步骤卡片、曲线两个分区只放中性说明（M5 补，不画半成品）。M2 起是新外壳里的路由页（PageHost 放进纵向滚动区），
        截图时窗口带 frozen 类（Theme/Frozen.cs）。悬停提示是全局默认的 PrTip。 -->
   <UserControl.Resources>
     <ResourceDictionary>
@@ -43,7 +43,7 @@
       <pr:Note Content="步骤卡片画布（StepFlowPanel、步骤卡片、条件框）在 M5 与反应釜页一起移植；这里先不画半成品。" />
     </g:GallerySection>
     <g:GallerySection Title="釜体" Sub="线描去色：液体按状态 · 加热 = 实线夹套 + 单色火焰 + HT · 报警红圈">
-      <pr:Note Content="反应釜线描（ReactorVessel、VesselGlyph、引线标注）在 M4 / M5 移植；这里先不画半成品。" />
+      <g:VesselSection />
     </g:GallerySection>
     <g:GallerySection Title="曲线" Sub="温度灰 · 压力灰绿 · 设定值虚线 · 标记紫色虚线 · 上限只在接近 / 超过时出现">
       <pr:Note Content="曲线（TimeSeriesChart：双轴分带、设定值虚线、事件标记、悬停读数）在 M5 移植；这里先不画半成品。" />

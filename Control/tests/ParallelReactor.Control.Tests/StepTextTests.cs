@@ -122,6 +122,23 @@ public class StepTextTests
         Assert.Equal(Fmt.Dash, PressureDisplay.WithUnit(Pr84, null));
     }
 
+    [Fact]
+    public void PressureDisplay_NegativeZero_WrittenAsZero_OtherNegativesKept()
+    {
+        // 真机静置时的零点漂移：取整后是 0 的负读数不写负号（Fmt 照样稿 JS toFixed 保留「-0.000」，压力读数在 PressureDisplay 去掉）
+        Assert.Equal("-0.000", Fmt.Mpa(-0.0004));
+        Assert.Equal("0.000", PressureDisplay.Value(Pr84, -0.0004));
+        Assert.Equal("0.000 MPa", PressureDisplay.WithUnit(Pr84, -0.0004));
+        Assert.Equal("0.00 MPa", PressureDisplay.WithUnit(Pr4, -0.004));
+        Assert.Equal("0.0", PressureDisplay.SecondaryValue(Pr84, -0.0002));         // -0.029 psi
+        // 不是 0 的照写（触屏的 "0.000" 格式也写「-0.001」）
+        Assert.Equal("-0.001", PressureDisplay.Value(Pr84, -0.001034));
+        Assert.Equal("-0.15 MPa", PressureDisplay.WithUnit(Pr4, -0.15));
+        Assert.Equal("-0.1", PressureDisplay.SecondaryValue(Pr84, -0.001034));        // -0.150 psi
+        Assert.Equal("0.000", PressureDisplay.Value(Pr84, 0));
+        Assert.Equal(Fmt.Dash, PressureDisplay.Value(Pr84, double.NaN));
+    }
+
     // ———————————————————— HMI 程序 → 步骤 ————————————————————
 
     private static ProgramDoc Doc()

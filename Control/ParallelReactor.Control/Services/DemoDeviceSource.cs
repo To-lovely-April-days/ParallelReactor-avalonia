@@ -4,7 +4,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
+using ParallelReactor.Control.Core.Alarms;
 using ParallelReactor.Control.Core.Demo;
+using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Guard;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
@@ -23,10 +25,13 @@ public sealed class DemoDeviceSource : IDeviceSource
 {
     private readonly DemoFleet _fleet;
     private readonly DemoHistoryView _history;
+    private readonly AlarmBook _alarmBook;
+    private readonly EventBook _eventBook;
     private IReadOnlyList<AlarmItem> _alarms = Array.Empty<AlarmItem>();
     private IReadOnlyList<EventItem> _events = Array.Empty<EventItem>();
-    private (int Count, string? First, int Acked) _alarmKey = (-1, null, 0);
+    private int _alarmVersion = -1, _eventVersion = -1;
     private (int Count, string? First) _eventKey = (-1, null);
+    private IReadOnlyList<ModuleComm>? _modules;
     private bool _disposed;
 
     public DemoDeviceSource(DemoFleet fleet, DemoDevice device)
@@ -35,6 +40,8 @@ public sealed class DemoDeviceSource : IDeviceSource
         Device = device ?? throw new ArgumentNullException(nameof(device));
         Id = IdFor(device.K);
         _history = new DemoHistoryView(device);
+        _alarmBook = new AlarmBook();
+        _eventBook = new EventBook();
         _fleet.Changed += OnFleetChanged;
     }
 
@@ -68,16 +75,84 @@ public sealed class DemoDeviceSource : IDeviceSource
 
     public SessionInfo? Session => Device.Session is { } s ? new SessionInfo(s.Active, s.Id, s.StartAt, s.Markers.Count) : null;
 
-    public IReadOnlyList<AlarmItem> Alarms
+    /// <summary>
+    /// 报警簿：DemoDevice.Alarms 变了（换了条目、或某条确认了）才照它同步（Core 的 AlarmBook.Sync）；没变时直接返回，不分配（R10：
+    /// 每秒刷新里分区头、报警条、页面拥有的报警、检查器都会读好几次 —— M4 复核）。比较的是条目实例与可变的确认状态，不靠 DemoFleet.Changed
+    /// （FleetVm 的刷新可能比这台设备自己的 Changed 处理先跑：测试里刷新是立即执行的）。
+    /// </summary>
+    public AlarmBook AlarmBook
     {
         get
         {
             var src = Device.Alarms;
-            var key = (src.Count, src.Count > 0 ? src[0].Id : null, src.Count(a => a.Acked));
-            if (key != _alarmKey)
+            if (!SameAlarms(src))
             {
-                _alarmKey = key;
-                _alarms = src.Select(a => new AlarmItem(a.Id, a.Level, a.Ch, a.Code, a.Text, a.At, a.Acked, a.AckBy)).ToArray();
+                _alarmBook.Sync(src);
+                Remember(src);
+            }
+            return _alarmBook;
+        }
+    }
+
+    // 上一次同步时的条目（实例 + 确认状态）：DemoAlarm 只有 Acked / AckBy 会变，其余字段不变
+    private DemoAlarm[] _seenAlarms = Array.Empty<DemoAlarm>();
+    private bool[] _seenAcked = Array.Empty<bool>();
+    private string?[] _seenAckBy = Array.Empty<string?>();
+    private bool _alarmsSynced;
+
+    private bool SameAlarms(IReadOnlyList<DemoAlarm> src)
+    {
+        if (!_alarmsSynced || src.Count != _seenAlarms.Length) return false;
+        for (int i = 0; i < src.Count; i++)
+        {
+            var a = src[i];
+            if (!ReferenceEquals(a, _seenAlarms[i]) || a.Acked != _seenAcked[i] || !string.Equals(a.AckBy, _seenAckBy[i], StringComparison.Ordinal)) return false;
+        }
+        return true;
+    }
+
+    private void Remember(IReadOnlyList<DemoAlarm> src)
+    {
+        if (_seenAlarms.Length != src.Count)
+        {
+            _seenAlarms = new DemoAlarm[src.Count];
+            _seenAcked = new bool[src.Count];
+            _seenAckBy = new string?[src.Count];
+        }
+        for (int i = 0; i < src.Count; i++)
+        {
+            _seenAlarms[i] = src[i];
+            _seenAcked[i] = src[i].Acked;
+            _seenAckBy[i] = src[i].AckBy;
+        }
+        _alarmsSynced = true;
+    }
+
+    /// <summary>事件簿：DemoDevice.Events 只在前面追加、从后面淘汰 —— 条数或最新一条变了才重新同步。</summary>
+    public EventBook EventBook
+    {
+        get
+        {
+            var src = Device.Events;
+            var key = (src.Count, src.Count > 0 ? src[0].Id : null);
+            if (key != _eventKey)
+            {
+                _eventKey = key;
+                _eventBook.Sync(src);
+            }
+            return _eventBook;
+        }
+    }
+
+    public IReadOnlyList<AlarmItem> Alarms
+    {
+        get
+        {
+            var book = AlarmBook;
+            if (book.Version != _alarmVersion)
+            {
+                _alarmVersion = book.Version;
+                _alarms = book.Current.Select(a => new AlarmItem(a.Id, a.Level, a.Ch, a.Code, a.Text, a.At, a.Acked, a.AckBy)).ToArray();
             }
             return _alarms;
         }
@@ -87,16 +162,33 @@ public sealed class DemoDeviceSource : IDeviceSource
     {
         get
         {
-            var src = Device.Events;
-            var key = (src.Count, src.Count > 0 ? src[0].Id : null);
-            if (key != _eventKey)
+            var book = EventBook;
+            if (book.Version != _eventVersion)
             {
-                _eventKey = key;
-                _events = src.Select(e => new EventItem(e.Id, e.At, e.Level, e.N, e.Text)).ToArray();
+                _eventVersion = book.Version;
+                _events = book.Items.Select(e => new EventItem(e.Key, e.At, e.Level, e.N, e.Text)).ToArray();
             }
             return _events;
         }
     }
+
+    /// <summary>模块通讯（DemoDevice.Comm：在线 / 最近成功由 DemoFleet 每秒推进；断线时停在断线前）。</summary>
+    public IReadOnlyList<ModuleComm> Modules
+    {
+        get
+        {
+            var src = Device.Comm;
+            var cur = _modules;
+            bool same = cur != null && cur.Count == src.Count;
+            for (int i = 0; same && i < src.Count; i++)
+                same = cur![i].Key == src[i].Key && cur[i].Online == src[i].Online && cur[i].LastOk == src[i].LastOk && cur[i].Count == src[i].Count;
+            if (!same) _modules = src.Select(c => new ModuleComm(c.Key, c.Name, c.Count, c.Online, c.LastOk)).ToArray();
+            return _modules!;
+        }
+    }
+
+    public string HmiVersion => string.IsNullOrEmpty(Device.HmiVersion) ? Core.Format.Fmt.Dash : Device.HmiVersion;
+    public string ApiVersion => string.IsNullOrEmpty(Device.ApiVersion) ? Core.Format.Fmt.Dash : Device.ApiVersion;
 
     public ChannelExtras? Extras(int n)
     {

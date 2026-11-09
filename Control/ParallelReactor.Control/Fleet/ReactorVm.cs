@@ -3,6 +3,7 @@ using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
 using ParallelReactor.Control.Core.State;
+using ParallelReactor.Control.Core.Vessel;
 using ParallelReactor.Control.Services;
 using ParallelReactor.Control.Shell;
 
@@ -52,6 +53,15 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
     [ObservableProperty] private double? _rpm;
     [ObservableProperty] private bool _heating;
     [ObservableProperty] private bool _valve;
+    /// <summary>冷却水降温中（演示才有，ChannelExtras.Cooling；真机为 false）：釜体画长虚线夹套 + 雪花。</summary>
+    [ObservableProperty] private bool _cooling;
+    /// <summary>搅拌在转（有效转速 &gt; 0：共用搅拌看整机的设定值，独立搅拌看本釜）：釜体的桨在运行类状态下动。</summary>
+    [ObservableProperty] private bool _stirring;
+    /// <summary>
+    /// 釜体的液位 = 体积 / 釜容积（Core 的 Vessel/VesselAnchors.Level，同样稿 levelY）：演示有体积；真机没有（HMI 不报，§3）→ 按型号溶液上限的一半。
+    /// 未安装为 NaN（釜体只画虚线轮廓）。
+    /// </summary>
+    [ObservableProperty] private double _vesselLevel = double.NaN;
 
     /// <summary>温度数值文字（'119.8' / '—'）。</summary>
     [ObservableProperty] private string _tempText = Fmt.Dash;
@@ -106,6 +116,9 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
         Valve = r.Valve;
         Hmi = r.Hmi;
         Extras = extras;
+        Cooling = extras?.Cooling ?? false;
+        Stirring = (r.Rpm ?? 0) > 0;
+        VesselLevel = r.Installed ? VesselAnchors.Level(extras?.VolumeMl, model) : double.NaN;
 
         var t = Fmt.Temp(r.TempC);
         var p = PressureDisplay.Value(model, r.PressureMPa);

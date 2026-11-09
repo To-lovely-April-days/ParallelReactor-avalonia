@@ -209,6 +209,7 @@ public sealed partial class LiveDeviceSource
         _wsErrorSeen = null;
         _leaseUsed = false;
         StopProbe();
+        StopPoll();
         Connection = c;
         Attach(c);
         try
@@ -234,6 +235,7 @@ public sealed partial class LiveDeviceSource
         MarkDirty(SourceChange.All);
         UpdateConnFromWs();
         _ = LoadExtrasAsync(c, refetchDevice: false);
+        StartPoll(c);
     }
 
     /// <summary>
@@ -274,6 +276,7 @@ public sealed partial class LiveDeviceSource
             }
             catch { }
         }
+        _settingsAt = _clock.UtcNow;
         try
         {
             var s = await c.Rest.SettingsAsync(CancellationToken.None).ConfigureAwait(true);
@@ -288,16 +291,113 @@ public sealed partial class LiveDeviceSource
             var a = await c.Rest.AlarmsAsync(null, CancellationToken.None).ConfigureAwait(true);
             if (!ReferenceEquals(c, Connection)) return;
             ReplaceAlarms(a.Items);
-            MarkDirty(SourceChange.Alarms);
         }
         catch { }
         try
         {
-            long head = Info?.EventSeqHead ?? 0;
-            var page = await c.Rest.EventsAsync(Math.Max(0, head - 200), 200, CancellationToken.None).ConfigureAwait(true);
-            if (!ReferenceEquals(c, Connection)) return;
-            foreach (var r in page.Items) AddEvent(EventId(r.SeqEpoch, r.Seq), r.Ts, r.Level, r.Kind, r.Channel, r.Title, r.Message);
-            MarkDirty(SourceChange.Events);
+            // 最近 200 条（PORT-PLAN §3.2 第 8 条：afterSeq = max(0, EventSeqHead − 200)）；还有更多时用簿的续取序号接着取（最多几页，之后跟随 WS）
+            long after = Core.Events.EventBook.InitialAfterSeq(Info?.EventSeqHead ?? 0);
+            for (int page = 0; page < EventPagesMax; page++)
+            {
+                var p = await c.Rest.EventsAsync(after, Core.Events.EventBook.InitialBack, CancellationToken.None).ConfigureAwait(true);
+                if (!ReferenceEquals(c, Connection)) return;
+                if (_eventBook.Load(p)) MarkDirty(SourceChange.Events);
+                if (!_eventBook.More || _eventBook.NextAfterSeq <= after) break;
+                after = _eventBook.NextAfterSeq;
+            }
+        }
+        catch { }
+        await PollCommAsync(c).ConfigureAwait(true);
+    }
+
+    // ———————————————————— M4：/device/comm 与 /settings 轮询 ————————————————————
+
+    /// <summary>
+    /// 在线时 GET /device/comm 的间隔（PORT-PLAN §5 M4「数据」：每 5–10 s；设备信息面板「模块通讯」的在线 / 最近成功）。
+    /// 模块是否在线另外每帧都有（CommSnap），这里主要是「最近成功」的时刻。
+    /// </summary>
+    public static readonly TimeSpan CommPollInterval = TimeSpan.FromSeconds(5);
+
+    /// <summary>GET /settings 的间隔（连上时取一次，之后每 60 s 一次：量程、溶液上限、搅拌上限在触屏上改了之后型号表跟着变）。</summary>
+    public static readonly TimeSpan SettingsPollInterval = TimeSpan.FromSeconds(60);
+
+    /// <summary>连上时最多续取几页事件（每页 200 条）。</summary>
+    private const int EventPagesMax = 5;
+
+    /// <summary>最近一次取 /settings 的时刻（<see cref="IClock"/>）；轮询按它算下一次。</summary>
+    private DateTime _settingsAt;
+
+    /// <summary>非空 = 在轮询（每条连接一个循环，换连接 / 断开 / 释放时取消）。</summary>
+    private CancellationTokenSource? _poll;
+
+    /// <summary>开始轮询这条连接（已经在轮询、连接换了或已释放时什么都不做）。</summary>
+    private void StartPoll(IReactorConnection c)
+    {
+        if (_poll != null || _disposed || !ReferenceEquals(c, Connection)) return;
+        var cts = new CancellationTokenSource();
+        _poll = cts;
+        _ = PollLoopAsync(c, cts);
+    }
+
+    private void StopPoll()
+    {
+        var p = _poll;
+        _poll = null;
+        if (p != null) { try { p.Cancel(); } catch { } }
+    }
+
+    /// <summary>
+    /// 轮询循环（UI 线程上开始，续体回到 UI 线程；时间按 <see cref="IClock"/>，测试用假时钟）：每 <see cref="CommPollInterval"/> 一次，在线（WS hello）时
+    /// GET /device/comm；距上次取 /settings 满 <see cref="SettingsPollInterval"/> 时再取 /settings（型号的量程跟着重新解析）。断线时只等、不请求。
+    /// 换连接、断开、释放时停。请求失败不提示（下一轮再试；连接状态另有监督）。
+    /// </summary>
+    private async Task PollLoopAsync(IReactorConnection c, CancellationTokenSource cts)
+    {
+        var ct = cts.Token;
+        try
+        {
+            while (!ct.IsCancellationRequested)
+            {
+                await _clock.Delay(CommPollInterval, ct).ConfigureAwait(true);
+                if (ct.IsCancellationRequested || !ReferenceEquals(c, Connection) || _disposed) return;
+                if (_conn != ConnStatus.Online) continue;
+                await PollCommAsync(c).ConfigureAwait(true);
+                if (_clock.UtcNow - _settingsAt >= SettingsPollInterval - TimeSpan.FromMilliseconds(1)) await PollSettingsAsync(c).ConfigureAwait(true);
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch { }
+        finally
+        {
+            if (ReferenceEquals(_poll, cts)) _poll = null;
+            cts.Dispose();
+        }
+    }
+
+    /// <summary>GET /device/comm 一次（失败不提示）。</summary>
+    private async Task PollCommAsync(IReactorConnection c)
+    {
+        try
+        {
+            var comm = await c.Rest.CommAsync(CancellationToken.None).ConfigureAwait(true);
+            if (!ReferenceEquals(c, Connection) || _disposed) return;
+            Comm = comm;
+            MarkDirty(SourceChange.Info);
+        }
+        catch { }
+    }
+
+    /// <summary>GET /settings 一次：型号的量程按它重新解析（失败不提示）。</summary>
+    private async Task PollSettingsAsync(IReactorConnection c)
+    {
+        _settingsAt = _clock.UtcNow;
+        try
+        {
+            var s = await c.Rest.SettingsAsync(CancellationToken.None).ConfigureAwait(true);
+            if (!ReferenceEquals(c, Connection) || _disposed) return;
+            Settings = s;
+            if (Info != null) _model = _models.Resolve(Info, s);
+            MarkDirty(SourceChange.Info);
         }
         catch { }
     }
@@ -379,6 +479,7 @@ public sealed partial class LiveDeviceSource
         Detach(c);
         Connection = null;
         StopProbe();
+        StopPoll();
         _restReady = false;
         _restOk = false;
         _wsErrorSeen = null;
@@ -665,16 +766,14 @@ public sealed partial class LiveDeviceSource
 
     private void OnAlarm(AlarmMsg a)
     {
-        UpsertAlarm(a.Alarm);
-        MarkDirty(SourceChange.Alarms);
+        if (_alarmBook.Apply(a, _bootId)) MarkDirty(SourceChange.Alarms);
         if (a.Alarm.Level is "err" or "error" || a.Alarm.State == "active" && a.Alarm.Level == "warn")
             Notice?.Invoke("报警 " + a.Alarm.Rv + "：" + a.Alarm.Title, a.Alarm.Level is "err" or "error" ? ToastKind.Err : ToastKind.Warn);
     }
 
     private void OnEvent(EventMsg e)
     {
-        AddEvent(EventId(e.SeqEpoch, e.Seq), e.Ts, e.Level, e.Kind, e.Channel, e.Title, e.Message);
-        MarkDirty(SourceChange.Events);
+        if (_eventBook.Add(e)) MarkDirty(SourceChange.Events);
     }
 
     private void OnError(Exception ex) => MarkDirty(SourceChange.Lease);   // 心跳异常时控制权的说明要跟着变
@@ -687,8 +786,7 @@ public sealed partial class LiveDeviceSource
 
     private void OnRestartedCore(bool refetch)
     {
-        _alarmMap.Clear();
-        _alarms = Array.Empty<AlarmItem>();
+        _alarmBook.Clear();
         // 令牌的角色在 HMI 的配置里，改了要重启 HMI 才生效：重启后之前学到的权限（R9）作废，下一个 403 再学（M3 复核）
         _role = TokenRole.Unknown;
         // HMI 重启后它手里的程序不一定还是本机下发的那份：「启动」回到启用 + 加热（D6），「全部运行」没有对象，要先重新下发

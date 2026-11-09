@@ -139,12 +139,17 @@ public partial class LiveDeviceSourceTests
         Assert.Equal((AlarmLevel.Err, 1, "P-HIGH"), (a[0].Level, a[0].Ch!.Value, a[0].Code));
         Assert.Equal((AlarmLevel.Warn, 3, "RV3 升温较慢 · 已用 18 min"), (a[1].Level, a[1].Ch!.Value, a[1].Text));
         Assert.False(a[1].Acked);
+        // 确认：条件型（超压：HMI 在条件消失时自己解除）照样列出；没有条件的（HMI 永远不解除）确认了就退出当前报警，留在报警簿的全部里
+        fake().RaiseAlarm(new AlarmMsg("alarm", new AlarmDto("3", "err", "RV1", 1, "RV1 超压", "3.12 MPa", t.AddSeconds(5), "ack", null)));
+        Assert.True(src.Alarms.Single(x => x.Id == "3").Acked);
         fake().RaiseAlarm(new AlarmMsg("alarm", new AlarmDto("2", "warn", "RV3", null, "RV3 升温较慢", "已用 18 min", t, "ack", null)));
-        Assert.True(src.Alarms.Single(x => x.Id == "2").Acked);
+        Assert.DoesNotContain(src.Alarms, x => x.Id == "2");
+        Assert.True(src.AlarmBook.Find("2")!.Acked);
+        Assert.Equal(2, src.AlarmBook.All.Count);
         fake().RaiseAlarm(new AlarmMsg("alarm", new AlarmDto("3", "err", "RV1", 1, "RV1 超压", "", t, "done", t.AddMinutes(1))));
         Assert.DoesNotContain(src.Alarms, x => x.Id == "3");                 // 清除了
         var facts = src.Facts();
-        Assert.Single(facts.Alarms);
+        Assert.Empty(facts.Alarms);
         post.Run();
         await src.DisposeAsync();
     }

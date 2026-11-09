@@ -84,6 +84,23 @@ public static class Keep
         return sb?.ToString() ?? s;
     }
 
+    /// <summary>
+    /// 整段不断开（样稿 white-space: nowrap 的一小段，如进气阀列表的「SV1 开」「开 SV1–SV6」「全部关闭」、急停红框里的「1号机触屏」）：
+    /// 每两个字之间插 U+2060（代理对中间不插）、空格换成 U+00A0。界面上请经 App 的 Theme.UiText.Joiners / NoBreak 换成当前字体能显示的连接符。null → ""。
+    /// </summary>
+    public static string NoBreak(string? s)
+    {
+        if (string.IsNullOrEmpty(s)) return "";
+        string t = s.Replace(' ', NoBreakSpace);
+        var sb = new StringBuilder(t.Length * 2);
+        for (int i = 0; i < t.Length; i++)
+        {
+            if (i > 0 && !char.IsLowSurrogate(t[i])) sb.Append(WordJoiner);
+            sb.Append(t[i]);
+        }
+        return sb.ToString();
+    }
+
     /// <summary>去掉 U+2060、把 U+00A0 换回普通空格（提示、复制到剪贴板用）。null → ""。</summary>
     public static string Plain(string? s) => s is null ? "" : s.Replace(WordJoiner.ToString(), "").Replace(NoBreakSpace, ' ');
 

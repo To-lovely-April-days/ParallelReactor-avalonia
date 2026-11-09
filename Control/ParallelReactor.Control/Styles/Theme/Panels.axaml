@@ -14,9 +14,10 @@
     <Setter Property="Template">
       <ControlTemplate>
         <DockPanel Background="{TemplateBinding Background}">
-          <Border Name="PART_Head" DockPanel.Dock="Top" Height="{StaticResource HeadH}" Background="{StaticResource BgHeadBrush}"
+          <!-- 标题栏的底色与间距写在下面的样式里（不写成模板里的本地值）：页面可以按类改（总览分区头：悬停 bg-hover、选中 a-tint、间距 10） -->
+          <Border Name="PART_Head" DockPanel.Dock="Top" Height="{StaticResource HeadH}"
                   BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1" Padding="10,0,6,0">
-            <pr:FlexRow Spacing="8">
+            <pr:FlexRow Name="PART_HeadRow">
               <Border Name="PART_Grip" Width="20" Height="32" Background="Transparent" Cursor="SizeAll"
                       ToolTip.Tip="拖动停靠（第二阶段）" IsVisible="{TemplateBinding ShowGrip}">
                 <c:IconView Icon="move" Size="16" Foreground="{StaticResource TDisBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -28,6 +29,8 @@
                                   FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
                                   VerticalAlignment="Center" />
               </Border>
+              <!-- 副标题前的红点（设备页「报警与事件」：有未确认的错误报警，样稿 .device-rdot：8 px、右 6 —— 负外边距抵掉行间距的 2 px） -->
+              <Ellipse Name="PART_SubDot" Width="8" Height="8" Margin="0,0,-2,0" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="False" />
               <TextBlock Name="PART_Sub" Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
                          TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Sub}" pr:FlexRow.Shrink="100"
                          IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -48,6 +51,15 @@
         </DockPanel>
       </ControlTemplate>
     </Setter>
+    <Style Selector="^ /template/ Border#PART_Head">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+    </Style>
+    <Style Selector="^ /template/ pr|FlexRow#PART_HeadRow">
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="^:subdot /template/ Ellipse#PART_SubDot">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
     <Style Selector="^:closed">
       <Setter Property="IsVisible" Value="False" />
     </Style>

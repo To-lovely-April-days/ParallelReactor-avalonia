@@ -1,3 +1,4 @@
+using System;
 using ParallelReactor.Control.Core.Models;
 
 namespace ParallelReactor.Control.Core.Format;
@@ -10,6 +11,7 @@ public enum PressureUnit { MPa, Psi }
 /// 「→ 0.350 MPa」、读数、提示都经这里格式化。用户要改成 psi 为主时，只改 <see cref="Primary"/> 这一行。
 /// MPa 按型号的小数位（量程 ≥ 5 MPa 用 2 位，否则 3 位，同样稿 PR.sim.fmtP）；psi 一律 1 位小数，按 <see cref="Units.PsiPerMpa"/> 换算。
 /// 演示数据里的原文（报警 / 事件句子、程序说明）是数据，不经这里改写。
+/// 取整后是 0 的负读数（真机静置时传感器的零点漂移，例如 −0.0004 MPa）写成「0.000」，不写「-0.000」；「-0.001」这类不是 0 的照写（触屏也这样写）。
 /// </summary>
 public static class PressureDisplay
 {
@@ -41,7 +43,11 @@ public static class PressureDisplay
 
     /// <summary>指定单位格式化（不带单位）。</summary>
     public static string Format(PressureUnit unit, ModelProfile? model, double? mpa) =>
-        unit == PressureUnit.Psi ? Fmt.Num(Units.MpaToPsi(mpa), 1) : Units.FmtP(model, mpa);
+        NoNegativeZero(unit == PressureUnit.Psi ? Fmt.Num(Units.MpaToPsi(mpa), 1) : Units.FmtP(model, mpa));
+
+    /// <summary>「-0.000」「-0.00」「-0.0」→ 去掉负号（JS toFixed 对很小的负数保留负号，Fmt 照样稿逐字节保留；压力读数在这里去掉）。</summary>
+    private static string NoNegativeZero(string s) =>
+        s.Length > 1 && s[0] == '-' && s.AsSpan(1).IndexOfAnyExcept('0', '.') < 0 ? s[1..] : s;
 
     /// <summary>指定单位格式化 + 单位；null → '—'。</summary>
     public static string FormatU(PressureUnit unit, ModelProfile? model, double? mpa)

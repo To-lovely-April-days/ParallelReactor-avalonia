@@ -82,6 +82,10 @@ internal sealed class ScriptedHmi
     /// <summary>这些「方法 路径」（如 "POST /stop-all"）回 403 FORBIDDEN_ROLE。</summary>
     public HashSet<string> Forbid { get; } = new(StringComparer.Ordinal);
     public List<AlarmDto> Alarms { get; } = new();
+    /// <summary>GET /events 回的事件（M4：事件簿的初次加载；按 afterSeq 过滤，最多 limit 条）。</summary>
+    public List<ParallelReactor.Services.EventRecord> Events { get; } = new();
+    /// <summary>GET /device/comm 里各模块在不在线（M4：设备信息面板的模块通讯）。</summary>
+    public volatile bool CommOnline = true;
     /// <summary>POST /control/release 带的租约号（按顺序）。</summary>
     public List<string?> Released { get; } = new();
 
@@ -155,6 +159,12 @@ internal sealed class ScriptedHmi
     /// <summary>推一帧遥测。</summary>
     public void PushFrame(long? seq = null) => Open?.Push(ApiJson.Serialize(Frame(seq)));
 
+    /// <summary>推一条 WS alarm 消息（M4：报警簿的增量）。</summary>
+    public void PushAlarm(AlarmDto a) => Open?.Push(ApiJson.Serialize(new AlarmMsg("alarm", a)));
+
+    /// <summary>推一条 WS event 消息（M4：事件簿的增量）。</summary>
+    public void PushEvent(ParallelReactor.Services.EventRecord r) => Open?.Push(ApiJson.Serialize(EventMsg.From(r)));
+
     /// <summary>推一条 WS control 消息。</summary>
     public void PushControl(string ev, string state, string? holder, string? requestId = null, string mode = "remote", string detail = "")
         => Open?.Push(ApiJson.Serialize(new ControlMsg("control", ev, mode, holder, state, requestId, null, null, null, 10, detail, ServerNow)));
@@ -187,7 +197,25 @@ internal sealed class ScriptedHmi
         Http.On("GET", "/snapshot", _ => ScriptedHttpHandler.Ok(Frame()));
         Http.On("GET", "/settings", _ => ScriptedHttpHandler.Json(200, Samples.Read("live-settings.json")));
         Http.On("GET", "/alarms", _ => { lock (_lock) return ScriptedHttpHandler.Ok(new AlarmsDto(Alarms.Count, Alarms.ToArray())); });
-        Http.On("GET", @"/events\?.*", _ => ScriptedHttpHandler.Ok(new EventsPageDto(SeqEpoch, 10, 0, 0, false, Array.Empty<ParallelReactor.Services.EventRecord>())));
+        Http.On("GET", @"/events\?.*", call =>
+        {
+            var q = System.Web.HttpUtility.ParseQueryString(new Uri("http://x" + call.Path).Query);
+            long after = long.TryParse(q["afterSeq"], out var a) ? a : 0;
+            int limit = int.TryParse(q["limit"], out var l) ? l : 200;
+            lock (_lock)
+            {
+                var items = Events.Where(e => e.SeqEpoch == SeqEpoch && e.Seq > after).OrderBy(e => e.Seq).ToList();
+                var page = items.Take(limit).ToArray();
+                long head = Events.Count > 0 ? Events.Max(e => e.Seq) : 10;
+                return ScriptedHttpHandler.Ok(new EventsPageDto(SeqEpoch, head, after, page.Length, items.Count > page.Length, page));
+            }
+        });
+        Http.On("GET", "/device/comm", _ =>
+        {
+            var m = new ModuleCommSnap(true, CommOnline, 10, CommOnline ? 0 : 3, ServerNow.AddSeconds(-1), ServerNow);
+            return ScriptedHttpHandler.Ok(new CommDto(ServerNow, 100, m, m, m with { ValuesAt = null }, m with { ValuesAt = null }, null,
+                new ApiStatsDto(1, 4, 0, 0, 0, 0, 0, 0, null, "0.0.0.0", Port), new LoggerStatsDto(0, 0, 10, 1)));
+        });
         Http.On("POST", "/control/request", call =>
         {
             if (AutoGrant)

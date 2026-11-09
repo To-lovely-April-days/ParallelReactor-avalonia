@@ -56,6 +56,9 @@ public sealed class StepBar : Avalonia.Controls.Control
 
     public static readonly StyledProperty<bool> ShowLabelsProperty = AvaloniaProperty.Register<StepBar, bool>(nameof(ShowLabels));
     public static readonly StyledProperty<bool> IsRunningProperty = AvaloniaProperty.Register<StepBar, bool>(nameof(IsRunning));
+    public static readonly StyledProperty<bool> IsGrayProperty = AvaloniaProperty.Register<StepBar, bool>(nameof(IsGray));
+    /// <summary>轨道高（默认 <see cref="TrackHeight"/> = 10；设备页窄紧凑卡 8，样稿 .device-cards.is-narrow .pr-stepbar-track）。</summary>
+    public static readonly StyledProperty<double> TrackProperty = AvaloniaProperty.Register<StepBar, double>(nameof(Track), TrackHeight);
 
     /// <summary>
     /// 绑定用的段列表（视图模型自己持有 <see cref="StepSeg"/> 实例、每次刷新就地改它们的属性）：设置后 <see cref="Segments"/> 按位置同步成同一批实例 ——
@@ -80,8 +83,8 @@ public sealed class StepBar : Avalonia.Controls.Control
 
     static StepBar()
     {
-        AffectsMeasure<StepBar>(ShowLabelsProperty);
-        AffectsRender<StepBar>(IsRunningProperty);
+        AffectsMeasure<StepBar>(ShowLabelsProperty, TrackProperty);
+        AffectsRender<StepBar>(IsRunningProperty, IsGrayProperty);
     }
 
     public StepBar()
@@ -97,8 +100,18 @@ public sealed class StepBar : Avalonia.Controls.Control
     public AvaloniaList<StepSeg> Segments { get; } = new();
 
     public bool ShowLabels { get => GetValue(ShowLabelsProperty); set => SetValue(ShowLabelsProperty, value); }
+    public double Track { get => GetValue(TrackProperty); set => SetValue(TrackProperty, value); }
     /// <summary>当前段在运行（呼吸）；离线 / 等待进气时为 false。</summary>
     public bool IsRunning { get => GetValue(IsRunningProperty); set => SetValue(IsRunningProperty, value); }
+
+    /// <summary>
+    /// 灰显（样稿断线设备的 .overview-dev.is-off .pr-stepbar { filter: grayscale(1) }）：浅绿换成色板里最接近的灰（按亮度换算，各通道差 ≤ 6）——
+    /// 已完成 g-2 → g-3 ≈ bg-head → bg-panel；当前段 g-2 → g-4 ≈ bg-head → bg-sunken；末端 1 px g-dot-line ≈ n-dot。不呼吸。
+    /// </summary>
+    public bool IsGray { get => GetValue(IsGrayProperty); set => SetValue(IsGrayProperty, value); }
+
+    private static readonly IBrush GrayDoneFill = ProgressPr.Gradient(Palette.BgHeadColor, Palette.BgPanelColor);
+    private static readonly IBrush GrayRunFill = ProgressPr.Gradient(Palette.BgHeadColor, Palette.BgSunkenColor);
 
     /// <summary>n 段时步骤条的最小宽度（每段 6 px + 段间 3 px）。</summary>
     public static double MinBarWidth(int segments) => segments <= 1 ? MinSegment : segments * MinSegment + (segments - 1) * Gap;
@@ -182,7 +195,7 @@ public sealed class StepBar : Avalonia.Controls.Control
         base.OnPropertyChanged(change);
         if (change.Property == ShowLabelsProperty) Rebuild();
         else if (change.Property == SegmentsSourceProperty) SyncSource();
-        else if (change.Property == IsRunningProperty || change.Property == IsVisibleProperty || change.Property == Frozen.IsFrozenProperty) UpdatePulse();
+        else if (change.Property == IsRunningProperty || change.Property == IsGrayProperty || change.Property == IsVisibleProperty || change.Property == Frozen.IsFrozenProperty) UpdatePulse();
     }
 
     /// <summary>整体重建（ShowLabels 切换、Move / Reset）：重新订阅所有段、重建全部标签。</summary>
@@ -248,7 +261,7 @@ public sealed class StepBar : Avalonia.Controls.Control
             l.Measure(new Size(segW, double.PositiveInfinity));
             labelH = Math.Max(labelH, l.DesiredSize.Height);
         }
-        var h = TrackHeight + (_labels.Count > 0 ? LabelGap + labelH : 0);
+        var h = Track + (_labels.Count > 0 ? LabelGap + labelH : 0);
         return new Size(MinBarWidthSelf, h);
     }
 
@@ -266,7 +279,7 @@ public sealed class StepBar : Avalonia.Controls.Control
         for (int i = 0; i < _labels.Count; i++)
         {
             var (x, w) = Seg(i, finalSize.Width);
-            _labels[i].Arrange(new Rect(x, TrackHeight + LabelGap, w, _labels[i].DesiredSize.Height));
+            _labels[i].Arrange(new Rect(x, Track + LabelGap, w, _labels[i].DesiredSize.Height));
         }
         return finalSize;
     }
@@ -275,27 +288,27 @@ public sealed class StepBar : Avalonia.Controls.Control
     {
         if (Segments.Count == 0)
         {
-            DrawTrack(context, new Rect(0, 0, Bounds.Width, TrackHeight), Palette.Line2Color);
+            DrawTrack(context, new Rect(0, 0, Bounds.Width, Track), Palette.Line2Color);
             return;
         }
         for (int i = 0; i < Segments.Count; i++)
         {
             var s = Segments[i];
             var (x, w) = Seg(i, Bounds.Width);
-            var r = new Rect(x, 0, w, TrackHeight);
+            var r = new Rect(x, 0, w, Track);
             DrawTrack(context, r, s.State == StepSegState.Held ? Palette.LineColor : Palette.Line2Color);
             var inner = r.Deflate(1);
             switch (s.State)
             {
                 case StepSegState.Done:
-                    context.DrawRectangle(ProgressPr.DoneFill, null, inner);
+                    context.DrawRectangle(IsGray ? GrayDoneFill : ProgressPr.DoneFill, null, inner);
                     break;
                 case StepSegState.Current:
                 {
                     var f = Fill(inner, s.Fraction);
-                    context.DrawRectangle(ProgressPr.RunFill, null, f);
-                    context.DrawRectangle(Palette.GDotLineBrush, null, new Rect(f.Right - 1, f.Y, 1, f.Height));
-                    if (_pulsing) context.DrawRectangle(PulseClock.Overlay, null, f);
+                    context.DrawRectangle(IsGray ? GrayRunFill : ProgressPr.RunFill, null, f);
+                    context.DrawRectangle(IsGray ? Palette.NDotBrush : Palette.GDotLineBrush, null, new Rect(f.Right - 1, f.Y, 1, f.Height));
+                    if (_pulsing && !IsGray) context.DrawRectangle(PulseClock.Overlay, null, f);
                     break;
                 }
                 case StepSegState.Held:
@@ -339,7 +352,7 @@ public sealed class StepBar : Avalonia.Controls.Control
     {
         bool hasCur = false;
         foreach (var s in Segments) if (s.State == StepSegState.Current) hasCur = true;
-        bool on = hasCur && IsRunning && IsVisible && _attached && !Frozen.GetIsFrozen(this);
+        bool on = hasCur && IsRunning && !IsGray && IsVisible && _attached && !Frozen.GetIsFrozen(this);
         if (on == _pulsing) return;
         _pulsing = on;
         PulseClock.Set(this, on);

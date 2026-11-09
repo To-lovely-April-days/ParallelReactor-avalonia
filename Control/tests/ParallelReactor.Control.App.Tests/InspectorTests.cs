@@ -4,6 +4,7 @@ using Avalonia;
 using ParallelReactor.Control.Controls.Pr;
 using ParallelReactor.Control.Core.Demo;
 using ParallelReactor.Control.Fleet;
+using ParallelReactor.Control.Pages;
 using ParallelReactor.Control.Shell;
 using Xunit;
 
@@ -177,10 +178,15 @@ public class InspectorTests
         Assert.Equal("立即重连", d.Lease.BtnLabel);
         Assert.Matches(@"^重连中 \d+ s · 数据停在 \d\d:\d\d:\d\d\n", d.Lease.Note);
         Assert.StartsWith("断线前运行 ", d.RunMeta);
-        // 打开的页签就是这台设备：页面有断线说明条时「立即重连」只在页面上（一个动作只放一个地方）；
-        // M2 的设备页是骨架、还没有说明条（PageVm.ShowsReconnect = false），按钮留在检查器里
+        // 打开的页签就是这台设备：设备页（M4）有断线说明条，「立即重连」只在页面上（一个动作只放一个地方，样稿 shell.js leaseBox）——
+        // 检查器的控制权卡不再放第二个
         s.Navigate(Route.Device(1));
-        Assert.False(s.Page!.ShowsReconnect);
+        Assert.True(s.Page!.ShowsReconnect);
+        var page = Assert.IsType<DevicePageVm>(s.Page);
+        Assert.Equal((true, "立即重连"), (page.HasOffBar, page.OffButton));
+        Assert.Null(((DeviceInspectorVm)s.Inspector.Body!).Lease.BtnLabel);
+        // 换到别的页面（总览）：按钮回到检查器
+        s.Navigate(Route.Overview);
         Assert.Equal("立即重连", ((DeviceInspectorVm)s.Inspector.Body!).Lease.BtnLabel);
     }
 

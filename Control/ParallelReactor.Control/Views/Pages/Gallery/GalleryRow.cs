@@ -2,22 +2,28 @@ using System;
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Layout;
 
 namespace ParallelReactor.Control.Views.Pages.Gallery;
 
 /// <summary>
 /// 陈列页的一行（样稿 .gallery-row：<c>display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px</c>）：
-/// 子元素按自然宽度从左排，放不下换行；每行内纵向居中，行高 = 这一行最高的子元素。
+/// 子元素按自然宽度从左排，放不下换行；每行内纵向居中（<see cref="ItemsAlignment"/>：釜体分区 .gallery-vs 是 align-items: flex-end，靠下），
+/// 行高 = 这一行最高的子元素。
 /// </summary>
 public sealed class GalleryRow : Panel
 {
     public static readonly StyledProperty<double> ColumnGapProperty = AvaloniaProperty.Register<GalleryRow, double>(nameof(ColumnGap), 12);
     public static readonly StyledProperty<double> RowGapProperty = AvaloniaProperty.Register<GalleryRow, double>(nameof(RowGap), 10);
+    public static readonly StyledProperty<VerticalAlignment> ItemsAlignmentProperty =
+        AvaloniaProperty.Register<GalleryRow, VerticalAlignment>(nameof(ItemsAlignment), VerticalAlignment.Center);
 
-    static GalleryRow() => AffectsMeasure<GalleryRow>(ColumnGapProperty, RowGapProperty);
+    static GalleryRow() => AffectsMeasure<GalleryRow>(ColumnGapProperty, RowGapProperty, ItemsAlignmentProperty);
 
     public double ColumnGap { get => GetValue(ColumnGapProperty); set => SetValue(ColumnGapProperty, value); }
     public double RowGap { get => GetValue(RowGapProperty); set => SetValue(RowGapProperty, value); }
+    /// <summary>一行之内子元素的纵向对齐（align-items）：Center（默认）、Bottom（flex-end）、Top（flex-start）。</summary>
+    public VerticalAlignment ItemsAlignment { get => GetValue(ItemsAlignmentProperty); set => SetValue(ItemsAlignmentProperty, value); }
 
     private readonly List<(int From, int To, double Height)> _lines = new();
 
@@ -61,7 +67,13 @@ public sealed class GalleryRow : Panel
                 if (!first) x += ColumnGap;
                 first = false;
                 var w = c.DesiredSize.Width;
-                c.Arrange(new Rect(x, y + (h - c.DesiredSize.Height) / 2, w, c.DesiredSize.Height));
+                var dy = ItemsAlignment switch
+                {
+                    VerticalAlignment.Top => 0,
+                    VerticalAlignment.Bottom => h - c.DesiredSize.Height,
+                    _ => (h - c.DesiredSize.Height) / 2,
+                };
+                c.Arrange(new Rect(x, y + dy, w, c.DesiredSize.Height));
                 x += w;
             }
             y += h + RowGap;

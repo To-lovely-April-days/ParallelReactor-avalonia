@@ -26,6 +26,16 @@ public sealed class PageHost : Panel
     private readonly Dictionary<PageVm, Avalonia.Controls.Control> _views = new();
     private ShellVm? _vm;
 
+    /// <summary>
+    /// 页面自己放大这个面板（样稿总览：放大的分区以滚动区为定位框 —— 顶部报警条照常显示，滚动区停在顶部，还原后回到原来的滚动位置）：
+    /// 宿主不再「藏兄弟 + 跨满网格」，只记着它（Esc、视图 › 重置布局照常还原它）。
+    /// </summary>
+    public static readonly AttachedProperty<bool> InPlaceMaxProperty =
+        AvaloniaProperty.RegisterAttached<PageHost, PrPanel, bool>("InPlaceMax");
+
+    public static bool GetInPlaceMax(PrPanel p) => p.GetValue(InPlaceMaxProperty);
+    public static void SetInPlaceMax(PrPanel p, bool v) => p.SetValue(InPlaceMaxProperty, v);
+
     static PageHost()
     {
         PrPanel.IsMaximizedProperty.Changed.AddClassHandler<PrPanel>((p, e) =>
@@ -104,24 +114,83 @@ public sealed class PageHost : Panel
 
     // ---------------- 面板放大 / 关闭 ----------------
 
-    /// <summary>放大前的值（IsVisible 只在本来就是本地值时恢复成本地值，否则清掉 —— 关闭的面板由主题的 :closed 样式隐藏，不能被钉成本地值）。</summary>
-    private sealed record Saved(bool VisibleSet, bool Visible, int Row, int Col, int RowSpan, int ColSpan, double MinHeight);
+    /// <summary>放大前的网格位置与最小高度（还原时写回）。</summary>
+    private sealed record Saved(int Row, int Col, int RowSpan, int ColSpan, double MinHeight);
     private readonly Dictionary<Avalonia.Controls.Control, Saved> _saved = new();
+    /// <summary>
+    /// 放大时藏起来的兄弟元素：IsVisible 以 Animation 优先级压成 false（盖过本地值、绑定与样式），还原时撤掉这一层 —— 原来的本地值 / 绑定 / 样式原样回来
+    /// （M4：设备页窄工作区的页签面板、宽工作区的两块面板，IsVisible 绑在视图模型上；以前写成本地值会顶掉绑定，还原之后再也不跟着变）。
+    /// </summary>
+    private readonly Dictionary<Avalonia.Controls.Control, IDisposable?> _hidden = new();
+    /// <summary>放大的面板和它到页面根之间的各层的 IsVisible 订阅（<see cref="WatchChain"/>）。</summary>
+    private readonly List<IDisposable> _watch = new();
     private PrPanel? _max;
 
     private void OnMaximized(PrPanel panel, bool on)
     {
+        bool self = GetInPlaceMax(panel);
         if (on)
         {
             if (_max != null && !ReferenceEquals(_max, panel)) _max.IsMaximized = false;
             _max = panel;
-            Lift(panel);
+            if (!self) Lift(panel);
+            WatchChain(panel);
         }
         else if (ReferenceEquals(_max, panel))
         {
-            Restore();
+            Unwatch();
+            if (!self) Restore();
             _max = null;
         }
+    }
+
+    /// <summary>
+    /// 放大的面板自己（或它到页面根之间的某一层）被藏起来了 —— 例如设备页跨过 1100 换了一组下排面板，放大的那块跟着宽度类不显示 ——
+    /// 就还原放大：不然兄弟元素还被放大藏着、放大的又看不见，整页一片空白（M4 复核）。页面视图本身（切页签时整个藏起来）不算。
+    /// 在下一个 Normal 优先级的任务里还原（在渲染之前；不在别人改 IsVisible 的半中间改别的元素）。
+    /// </summary>
+    private void WatchChain(PrPanel panel)
+    {
+        Unwatch();
+        var root = CurrentView;
+        for (Avalonia.Controls.Control? c = panel; c != null && !ReferenceEquals(c, root) && !ReferenceEquals(c, this); c = c.GetVisualParent() as Avalonia.Controls.Control)
+        {
+            var who = c;
+            _watch.Add(who.GetPropertyChangedObservable(IsVisibleProperty).Subscribe(new HiddenObserver(() =>
+            {
+                if (who.IsVisible) return;
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (ReferenceEquals(_max, panel) && panel.IsMaximized && !StillShown(panel, root)) panel.IsMaximized = false;
+                }, Avalonia.Threading.DispatcherPriority.Normal);
+            })));
+        }
+    }
+
+    /// <summary>面板到页面根之间的每一层都显示着（页面视图本身不看）。</summary>
+    private static bool StillShown(Avalonia.Controls.Control panel, Avalonia.Controls.Control? root)
+    {
+        for (Avalonia.Controls.Control? c = panel; c != null && !ReferenceEquals(c, root); c = c.GetVisualParent() as Avalonia.Controls.Control)
+        {
+            if (c is PageHost) break;
+            if (!c.IsVisible) return false;
+        }
+        return true;
+    }
+
+    private void Unwatch()
+    {
+        foreach (var w in _watch) w.Dispose();
+        _watch.Clear();
+    }
+
+    private sealed class HiddenObserver : IObserver<AvaloniaPropertyChangedEventArgs>
+    {
+        private readonly Action _changed;
+        public HiddenObserver(Action changed) => _changed = changed;
+        public void OnNext(AvaloniaPropertyChangedEventArgs value) => _changed();
+        public void OnError(Exception error) { }
+        public void OnCompleted() { }
     }
 
     /// <summary>放大：从面板往上到页面根，每一层把兄弟元素藏起来；网格里的那一层跨满所有行列；面板至少和工作区一样高（滚动区里）。</summary>
@@ -134,8 +203,8 @@ public sealed class PageHost : Panel
             if (parent is Panel pp)
                 foreach (var sib in pp.Children.Where(s => !ReferenceEquals(s, c)))
                 {
-                    Save(sib);
-                    sib.IsVisible = false;
+                    if (_hidden.ContainsKey(sib)) continue;
+                    _hidden[sib] = sib.SetValue(IsVisibleProperty, false, Avalonia.Data.BindingPriority.Animation);
                 }
             if (parent is Grid g)
             {
@@ -152,25 +221,32 @@ public sealed class PageHost : Panel
     private void Save(Avalonia.Controls.Control c)
     {
         if (!_saved.ContainsKey(c))
-            _saved[c] = new Saved(c.IsSet(IsVisibleProperty), c.IsVisible, Grid.GetRow(c), Grid.GetColumn(c), Grid.GetRowSpan(c), Grid.GetColumnSpan(c), c.MinHeight);
+            _saved[c] = new Saved(Grid.GetRow(c), Grid.GetColumn(c), Grid.GetRowSpan(c), Grid.GetColumnSpan(c), c.MinHeight);
     }
 
     private void Restore()
     {
         foreach (var (c, s) in _saved)
         {
-            if (s.VisibleSet) c.IsVisible = s.Visible; else c.ClearValue(IsVisibleProperty);
             Grid.SetRow(c, s.Row); Grid.SetColumn(c, s.Col); Grid.SetRowSpan(c, s.RowSpan); Grid.SetColumnSpan(c, s.ColSpan);
             c.MinHeight = s.MinHeight;
         }
         _saved.Clear();
+        foreach (var (c, h) in _hidden)
+        {
+            if (h != null) h.Dispose();
+            else c.ClearValue(IsVisibleProperty);
+        }
+        _hidden.Clear();
     }
 
     private void OnPanelClosed(object? sender, RoutedEventArgs e)
     {
         if (e.Source is not PrPanel p) return;
         if (p.IsMaximized) p.IsMaximized = false;
-        var title = p.TitleTip ?? (p.Title as string) ?? (p.Title as Crumb)?.Text ?? "面板";
+        // 面板名：标题是控件（设备页的「设备信息 / 报警与事件」页签）时写在 AutomationProperties.Name 上（样稿 ui.panel 的 name）
+        var title = Avalonia.Automation.AutomationProperties.GetName(p) is { Length: > 0 } an ? an
+            : p.TitleTip ?? (p.Title as string) ?? (p.Title as Crumb)?.Text ?? "面板";
         _vm?.Toast("已关闭「" + title.Trim() + "」· 视图 → 重置布局 可恢复", ToastKind.Info);
     }
 

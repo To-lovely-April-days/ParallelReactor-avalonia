@@ -30,6 +30,8 @@ namespace ParallelReactor.Control.Shot;
 ///  · PR_CONTROL_AUDIT_SELFTEST=1：只渲染故意做坏的自检视图（AuditSelfTest），写 audit-selftest-&lt;w&gt;.{png,audit.txt,result.txt}；漏报或误报时退出码 3。
 ///  · PR_CONTROL_FONT_PROBE=1：字体探针（font-probe.txt + font-probe-&lt;w&gt;.png）。
 ///  · PR_CONTROL_ICON_SHEET=1：图标核对表（icon-sheet-&lt;w&gt;.png，与样稿同样排布的 snap 参照对照）。
+///  · PR_CONTROL_VESSEL_SHEET=1：釜体核对表（Shot/VesselSheet：全部状态 × 尺寸 × 角标阈值 × 液位 × 小图标）→ vessel-sheet-&lt;w&gt;.{png,audit.txt}
+///    + vessel-sheet.js（在样稿页面里画同一张表，snap 拍参照）；审计有问题退出码 1。PR_CONTROL_VESSEL_ANIM=1：不冻结，截动画中的一帧。
 ///  · PR_CONTROL_SHELL_CHECKS=1：新外壳的行为核对（Shot/ShellChecks：区域尺寸、菜单、资源管理器开关、页签、新页签弹出框、溢出、原因 toast、
 ///    对话框宿主、面板放大 / 关闭 / 重置）→ shell-checks-&lt;w&gt;.txt + shell-popup-*.png 等；有 FAIL 时退出码 5。
 ///  · PR_CONTROL_THEME_SHEET=1：主题核对表（Shot/ThemeSheet：各主题的悬停 / 按下 / 焦点 / 禁用 / 原因状态、菜单、弹出、列表、页签、对话框、
@@ -64,6 +66,12 @@ public static partial class ShotRunner
         else if (Flag("PR_CONTROL_AUDIT_SELFTEST")) window = PlainWindow("审计自检", AuditSelfTest.Build());
         else if (Flag("PR_CONTROL_ICON_SHEET")) window = PlainWindow("图标核对", IconSheet.Build());
         else if (Flag("PR_CONTROL_THEME_SHEET")) window = PlainWindow("主题核对", ThemeSheet.Build());
+        else if (Flag("PR_CONTROL_VESSEL_SHEET"))
+        {
+            // 冻结（同样稿 freeze=1，可与 snap 参照逐格对照）；PR_CONTROL_VESSEL_ANIM=1 时不冻结：截的是动画中的一帧（桨、气泡、超压脉冲）
+            window = PlainWindow("釜体核对", VesselSheet.Build());
+            if (!Flag("PR_CONTROL_VESSEL_ANIM")) Frozen.Apply(window);
+        }
         else
         {
             // 演示数据（Core 的 DemoFleet，样稿 sim.js 的移植）：截图时冻结在 2026-11-08 10:12:00；交互走查时每秒推进（UiTicker）
@@ -127,6 +135,19 @@ public static partial class ShotRunner
             if (Flag("PR_CONTROL_AUDIT_SELFTEST"))
             {
                 code = SelfTest(window, dir, size, log);
+                return;
+            }
+
+            if (Flag("PR_CONTROL_VESSEL_SHEET"))
+            {
+                // 釜体核对表（冻结：没有动画）+ 审计；同一张表的样稿版脚本 vessel-sheet.js（snap 的 js 参数）
+                var stem = $"vessel-sheet-{size.Width}";
+                Capture(window, Path.Combine(dir, stem + ".png"), log);
+                var issues = ShotAudit.Run(window);
+                File.WriteAllText(Path.Combine(dir, stem + ".audit.txt"), issues.Count == 0 ? "" : string.Join("\n", issues) + "\n");
+                File.WriteAllText(Path.Combine(dir, "vessel-sheet.js"), VesselSheet.Js());
+                log.AppendLine($"audit {stem}: {issues.Count} issue(s) · {ShotAudit.LastStats}");
+                code = issues.Count > 0 ? 1 : 0;
                 return;
             }
 
@@ -226,7 +247,13 @@ public static partial class ShotRunner
             foreach (var d in demo.Devices.ToList()) demo.Act(d, Core.Guard.DeviceAction.Remove, null, quiet: true);
             vm.Fleet.RefreshNow();
         }
-        else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices）");
+        else if (spec.Setup == "adddevice" && vm.Fleet.DemoData is { } demo2)
+        {
+            // 从未连上的新设备（同样稿「添加设备」：5号机 HT-PR8 192.168.1.50，正在连接；冻结时一直停在正在连接）：设备页只有一条说明
+            demo2.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
+            vm.Fleet.RefreshNow();
+        }
+        else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice）");
         vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
         vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true }, route);
         Frozen.Apply(window);
@@ -268,6 +295,7 @@ public static partial class ShotRunner
             var name = v is StyledElement se ? (se.Name is { Length: > 0 } n ? "#" + n : "") + (se.Classes.Count > 0 ? "." + string.Join(".", se.Classes) : "") : "";
             var text = v is TextBlock tb ? " \"" + (tb.Text ?? tb.Inlines?.Text ?? "") + "\""
                 + FormattableString.Invariant($" w={tb.TextLayout.Width:0.##} h={tb.TextLayout.Height:0.##} fw={tb.FontWeight}")
+                + (tb.TextLayout.TextLines.Count > 0 ? FormattableString.Invariant($" bl={tb.TextLayout.TextLines[0].Baseline:0.##} lh={tb.LineHeight:0.##}") : "")
                 + string.Concat(tb.TextLayout.TextLines.SelectMany(l => l.TextRuns).OfType<Avalonia.Media.TextFormatting.ShapedTextRun>()
                     .Select(r => " [" + r.ShapedBuffer.GlyphTypeface.FamilyName + " " + r.ShapedBuffer.GlyphTypeface.Weight + " " + r.ShapedBuffer.GlyphTypeface.FontSimulations + "]")) : "";
             if (v is TextBlock or TemplatedControl or ContentPresenter)

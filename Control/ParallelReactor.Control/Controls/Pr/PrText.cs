@@ -25,11 +25,18 @@ public class PrText : TextBlock
 
     protected override Type StyleKeyOverride => typeof(TextBlock);
 
+    /// <summary>
+    /// 最近一次测量时文字的前进宽度（小数，含行尾空白与内边距；没取整）。布局面板判断「放得下吗」时用它（同 WebKit 的小数排版）——
+    /// 不能事后读 TextLayout：11.1 的 TextBlock 被排成更窄（例如 0 × 0 让出去）时会按排版宽度重建 TextLayout，之后测量约束没变就不再重建。
+    /// </summary>
+    public double NaturalWidth { get; private set; }
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var size = base.MeasureOverride(availableSize);
         var layout = TextLayout;
         var pad = Padding;
+        NaturalWidth = layout.WidthIncludingTrailingWhitespace + pad.Left + pad.Right;
         // 前进宽度（不含墨迹外伸）；向上取整到整像素（同基类的 RoundLayoutSizeUp）。减一点点：前进宽度的和有浮点误差（30.000000000004），
         // 不能因此进位成 31（框不能比文字窄，所以只减一个远小于任何真实宽度差的量）
         double w = Math.Ceiling(layout.WidthIncludingTrailingWhitespace + pad.Left + pad.Right - 1e-6);

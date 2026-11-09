@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
+using ParallelReactor.Control.Core.Alarms;
+using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Guard;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
@@ -38,7 +40,7 @@ public interface IDeviceSource : IAsyncDisposable
     DeviceInfoDto? Info { get; }
     /// <summary>GET /settings（实时，连上后取一次）；演示 null。</summary>
     SettingsDto? Settings { get; }
-    /// <summary>GET /device/comm（M4 起轮询）；M2 恒为 null。</summary>
+    /// <summary>GET /device/comm（实时：连上时取一次，之后在线时每 5 s 一次，LiveDeviceSource.CommPollInterval）；演示 null。</summary>
     CommDto? Comm { get; }
     LeaseView Lease { get; }
     /// <summary>本机令牌的权限（第一个 403 之后学到；不知道 = 不限制）。守卫经 <see cref="Facts"/> 用它。</summary>
@@ -47,10 +49,26 @@ public interface IDeviceSource : IAsyncDisposable
     TelemetrySnapshot? Latest { get; }
     /// <summary>最后收到数据的时刻（本地时间；断线时停住；从未连上为 null）。</summary>
     DateTime? DataAt { get; }
-    /// <summary>当前报警（未清除的，含已确认；info 级已过滤）。</summary>
+    /// <summary>当前报警（未清除的，含已确认；info 级已过滤）= <see cref="AlarmBook"/>.Current 的投影（顺序相同）。</summary>
     IReadOnlyList<AlarmItem> Alarms { get; }
-    /// <summary>事件，最新在前。</summary>
+    /// <summary>事件，最新在前 = <see cref="EventBook"/>.Items 的投影。</summary>
     IReadOnlyList<EventItem> Events { get; }
+    /// <summary>
+    /// 报警簿（M4，Core 的 AlarmBook）：真机 = GET /alarms（连上 / HMI 重启时整个替换）+ WS alarm（增量），确认成功后先在本地标上；
+    /// 演示 = DemoDevice.Alarms（同样稿 dev.alarms 的顺序）。页面的报警文字（Core.Alarms.AlarmTexts / AlarmStrip）都读它的 Current。
+    /// </summary>
+    AlarmBook AlarmBook { get; }
+    /// <summary>事件簿（M4，Core 的 EventBook）：真机 = GET /events（最近 200 条，分页续取）+ WS event；演示 = DemoDevice.Events。</summary>
+    EventBook EventBook { get; }
+    /// <summary>
+    /// 模块通讯（设备页「设备信息 › 模块通讯」，样稿 d.comm）：型号表的模块（名称、数量）+ 是否在线 + 最近一次通讯成功的时刻（本地时间）。
+    /// 真机：在线取最新一帧的 CommSnap（没有帧时取 GET /device/comm），最近成功取 GET /device/comm 的 lastOkAt；演示：DemoDevice.Comm。
+    /// </summary>
+    IReadOnlyList<ModuleComm> Modules { get; }
+    /// <summary>HMI 版本（'1.0.6'；真机 /device 的 hmiVersion 去掉「+提交号」）；还不知道时「—」。</summary>
+    string HmiVersion { get; }
+    /// <summary>接口版本（'v1.2' / '1.0'）；还不知道时「—」。</summary>
+    string ApiVersion { get; }
     SessionInfo? Session { get; }
     /// <summary>HMI 不提供的反应釜数据（液位、每釜转速、冷却、mmol）：演示填写；实时 null（HMI 补接口后再填）。</summary>
     ChannelExtras? Extras(int n);
@@ -149,6 +167,12 @@ public sealed record AlarmItem(string Id, AlarmLevel Level, int? Ch, string Code
 
 /// <summary>一条事件（样稿 event；最新在前）。</summary>
 public sealed record EventItem(string Id, DateTime At, EventLevel Level, int? N, string Text);
+
+/// <summary>
+/// 一类通讯模块的现状（样稿 comm：key、name、count、online、lastOk）：<see cref="Online"/> = 这一类模块在线（设备断线时是断线前的），
+/// <see cref="LastOk"/> = 最近一次通讯成功的时刻（本地时间；不知道为 null）。
+/// </summary>
+public sealed record ModuleComm(string Key, string Name, int Count, bool Online, DateTime? LastOk);
 
 /// <summary>程序下拉的一项（样稿 select 的 option：value = 程序 id，label = 程序名）。</summary>
 public sealed record ProgramChoice(string Id, string Name)

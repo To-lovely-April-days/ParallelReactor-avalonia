@@ -83,6 +83,11 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     [ObservableProperty] private string _leaseText = "";
     /// <summary>树 / 列表的短徽标（'远程控制' / '申请中 45 s' / '宽限 18 s' / '本地只读'）。</summary>
     [ObservableProperty] private string _leaseShort = "";
+    /// <summary>
+    /// 资源管理器设备头第二行的徽标（最窄的一处）：同 <see cref="LeaseShort"/>，只是第 5 种控制权不带持有者 ——「其他客户端」（M3 复核：
+    /// 「其他客户端 PC-工位2」在 300 px 的资源管理器里只剩「其他客户端…」）；是谁写在悬停提示（<see cref="LeaseText"/>）里。
+    /// </summary>
+    [ObservableProperty] private string _leaseTreeShort = "";
 
     [ObservableProperty] private bool _estopActive;
     [ObservableProperty] private string _estopText = "";
@@ -191,6 +196,8 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         };
         LeaseText = lease.Display.Text;
         LeaseShort = lease.Display.BadgeShort;
+        LeaseTreeShort = lease.State == LeaseStatus.Other && lease.Display.BadgeShort != Core.State.DeviceTexts.OrphanShort
+            ? Core.State.DeviceTexts.OtherShort(null) : lease.Display.BadgeShort;
         EstopActive = estop.Active;
         EstopText = estop.Active ? Core.State.DeviceTexts.EstopText(online) : "";
         Stir = s.Stir;
@@ -273,6 +280,15 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         for (int i = 0; i < items.Count; i++)
             if (!have.Contains(items[i].Id)) Events.Insert(Math.Min(i, Events.Count), new EventVm(items[i]));
     }
+
+    // ———————————————————— 报警（页面文字用 Core 的 AlarmEntry 形状） ————————————————————
+
+    /// <summary>
+    /// 当前报警（顺序同 <see cref="IDeviceSource.Alarms"/> = 样稿 dev.alarms），Core 的 <see cref="Core.Alarms.AlarmEntry"/> 形状：
+    /// 页面的报警文字（Core.Alarms.AlarmTexts：总览分区头的报警小块、顶部报警条 AlarmStrip、设备页「报警与事件」）都读它。
+    /// = 数据源报警簿（Core 的 AlarmBook，M4）的 Current：身份真机 = bootId/id、演示 = 'a1'；确认用 Id。
+    /// </summary>
+    public IReadOnlyList<Core.Alarms.AlarmEntry> AlarmList => Source.AlarmBook.Current;
 
     // ———————————————————— 程序进度 / 时间轴 ————————————————————
 

@@ -118,6 +118,23 @@ public class KeepTests
         }
     }
 
+    /// <summary>
+    /// 整段不断开（设备页进气阀列表的每一项「SV1 开」「开 SV1–SV6」「全部关闭」）：每两个字之间 U+2060、空格换成 U+00A0，代理对中间不插；
+    /// Plain 还原原文；null / 空 → ""。界面上由 App 的 UiText.Joiners 换成当前字体能显示的连接符（UiText.NoBreak = Joiners(Keep.NoBreak)）。
+    /// </summary>
+    [Fact]
+    public void NoBreak_JoinsEveryPair_NbspForSpaces()
+    {
+        Assert.Equal(V("S^V^1^_^开"), Keep.NoBreak("SV1 开"));
+        Assert.Equal(V("开^_^S^V^1^–^S^V^6"), Keep.NoBreak("开 SV1–SV6"));
+        Assert.Equal(V("全^部^关^闭"), Keep.NoBreak("全部关闭"));
+        Assert.Equal("A" + Keep.WordJoiner + "\U0001F600", Keep.NoBreak("A\U0001F600"));
+        Assert.Equal("", Keep.NoBreak(null));
+        Assert.Equal("", Keep.NoBreak(""));
+        Assert.Equal("x", Keep.NoBreak("x"));
+        foreach (var s in new[] { "SV1 开", "开 SV1–SV6、SV9–SV10", "1号机触屏", "ReactorLab-PR8-A" }) Assert.Equal(s, Keep.Plain(Keep.NoBreak(s)));
+    }
+
     private static bool IsHan(char c) => c >= (char)0x4E00 && c <= (char)0x9FFF;
 
     private static string Show(string? s) => s is null ? "null" : "\"" + s.Replace(Keep.NoBreakSpace, '_').Replace(Keep.WordJoiner, '^') + "\"";

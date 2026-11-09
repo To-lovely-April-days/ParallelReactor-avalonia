@@ -508,8 +508,10 @@ public partial class LiveDeviceSourceTests
         var b = r.Hmi("192.168.1.24", "PR8-B");
         await r.StartAsync(("192.168.1.20", "1号机"), ("192.168.1.24", "2号机"));
         await r.Until(() => OnlineState(r.D(1)) && OnlineState(r.D(2)), "两台上线");
-        // 连上之后的读取（/settings、/alarms、/events）与 hello 之后的 GET /control 都做完了，再开始数
+        // 连上之后的读取（/settings、/alarms、/events、M4 的 /device/comm）与 hello 之后的 GET /control 都做完了，再开始数
         await FakeClock.WaitUntil(() => a.Count("GET", @"/events\?.*") == 1 && b.Count("GET", @"/events\?.*") == 1
+            && a.Count("GET", "/device/comm") == 1 && b.Count("GET", "/device/comm") == 1
+            && r.S(1).Comm != null && r.S(2).Comm != null
             && a.Count("GET", "/control") >= 2 && b.Count("GET", "/control") >= 2, what: "连上之后的读取");
         await Task.Delay(100);
         await r.On(() => { });

@@ -163,6 +163,8 @@
   <BoxShadows x:Key="ShadowPop">0 8 28 0 #29000000</BoxShadows>
   <BoxShadows x:Key="ShadowDlg">0 10 45 0 #40000000</BoxShadows>
   <!-- END GENERATED COLORS -->
+  <!-- 卡片悬停 / 选中时稍微浮起（样稿 overview.css .overview-card:hover：0 2px 10px rgba(40,40,50,.11) → α 28；颜色同 shadow-card，只在阴影里） -->
+  <BoxShadows x:Key="ShadowCardHover">0 2 10 0 #1c282832</BoxShadows>
 
   <!-- 渐变（只用令牌颜色，§4.2） -->
   <!-- 图标栏：180°，side-1 → side-2 -->

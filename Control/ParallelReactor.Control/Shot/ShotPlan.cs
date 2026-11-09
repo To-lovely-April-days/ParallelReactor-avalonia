@@ -92,6 +92,47 @@ public static class ShotPlan
         new Spec("dlg-lease1lost", "overview", "lease=1:lost&dialog=lease:1", new[] { new PixelSize(1920, 1080) }),
         new Spec("dlg-lease4off", "overview", "devs=4&dialog=lease:4", new[] { new PixelSize(1920, 1080) }),
         new Spec("dlg-estop4off", "overview", "devs=4&dialog=estop:4", new[] { new PixelSize(1920, 1080) }),
+        // 总览（M4，Views/Pages/OverviewPage + Pages/Overview）：参照用 snap 现拍样稿同一个地址（final-<name>-<w>.png，见 doc §9）。
+        // 滚到底（JS 把 .overview-scroll 滚到底；我们是演示参数 scroll=end）：1600 / 1366 下折叠线以下的 16 路紧凑卡（状态字换行、进度条与文字分两行）
+        new Spec("ov-end", "overview", "scroll=end", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
+        // 最坏值（API.md §3.5）：stress=1（8 个汉字的别名，上面的 st-stress1）、stress=2（16 个字母的别名）；三个尺寸都要审计为空，1600 / 1366 再滚到底看紧凑卡
+        new Spec("st-stress2", "overview", "stress=2", Screens),
+        new Spec("ov-stress1-end", "overview", "stress=1&scroll=end", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
+        new Spec("ov-stress2-end", "overview", "stress=2&scroll=end", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
+        // 状态：申请控制权中（分区头「申请中 45 s」）、2号机加一条超压报警（PR4 宽卡的报警卡 + 分区头「● RV1 超压报警」）、只有一台（样稿此时补温度趋势面板 —— M5，
+        // 这里那块是总览底色，见 OverviewPageVm.TrendDeferred）、三种型号各一台且 8 路装满（PR8 用紧凑卡）
+        new Spec("ov-lease2req", "overview", "lease=2:requested", new[] { new PixelSize(1920, 1080) }),
+        new Spec("ov-alarm21", "overview", "alarm=2:1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("ov-devs1", "overview", "devs=1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("ov-devsmix", "overview", "devs=PR8,PR4,PR16", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        // 样稿 API.md §9 要求的组合（每种再配 stress=1 / 2）：急停 + 断线一起（分区头最挤：红「急停中 / 断线前已急停」+ 连接徽标 + 报警小块 + 说明条）、
+        // 4 台全部在线（8 路装满的 HT-PR8 + 16 路，滚到底）
+        new Spec("ov-worst1", "overview", "estop=1,2,3&offline=3&stress=1", Screens),
+        new Spec("ov-worst2", "overview", "estop=1,2,3&offline=3&stress=2", Screens),
+        new Spec("ov-all4", "overview", "devs=4&offline=none&stress=2&scroll=end", Screens),
+        // 设备页（M4，Views/Pages/DevicePage + Pages/Device）：样稿冻结的参照图 final-device2-1920 / final-device3-{1920,1600} / final-stress-device2-1920；
+        // 其它状态的参照用 snap 现拍样稿同一个地址（final-dv-*-<w>.png，见 doc §9）
+        new Spec("device2", "device/2", "", new[] { new PixelSize(1920, 1080) }),
+        new Spec("device3", "device/3", "", new[] { new PixelSize(1920, 1080), new PixelSize(1600, 900) }),
+        // 最坏值（API.md §3.5，stress=1 / 2）：三种型号的设备页在三个尺寸下都要审计为空（HT-PR4 宽卡的「耗气 1234.50」阶梯、长程序名、5 位温度、长别名）
+        new Spec("stress-device2", "device/2", "stress=1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dv-stress1-2", "device/2", "stress=1", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
+        new Spec("dv-stress1-1", "device/1", "stress=1", Screens),
+        new Spec("dv-stress1-3", "device/3", "stress=1", Screens),
+        new Spec("dv-stress2-1", "device/1", "stress=2", Screens),
+        new Spec("dv-stress2-2", "device/2", "stress=2", Screens),
+        new Spec("dv-stress2-3", "device/3", "stress=2", Screens),
+        // 状态：4号机断线（断线说明条 + 「立即重连」、读数 t-3、釜体与进度条去色）、4 台全部在线（8 路装满的 HT-PR8：一排 8 张窄卡 / 折两排 —— 样稿刚修过的进度条 6 px 规则）、
+        // 三种型号各一台（PR8 装满 8 路）、时间轴收起（PR4 宽卡变高：耗气行回来、釜体变宽）、急停（急停说明条 + 共用资源「急停中」）、2号机一条超压报警（「报警与事件」自动打开 + 红点）
+        new Spec("dv-off4", "device/4", "devs=4", Screens),
+        new Spec("dv-all4", "device/4", "devs=4&offline=none", Screens),
+        new Spec("dv-mix1", "device/1", "devs=PR8,PR4,PR16", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dv-tl0-2", "device/2", "tl=0", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dv-estop3", "device/3", "estop=3", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dv-alarm21", "device/2", "alarm=2:1", new[] { new PixelSize(1920, 1080), new PixelSize(1600, 900) }),
+        // 刚添加、从未连上的设备（样稿 addDevice 之后打开它的设备页：反应釜面板只有一条说明，共用资源 / 设备信息写「未知 · 尚未连接」「未连接」）。
+        // 参照：snap 现拍时用 JS 调 PR.sim.addDevice(...) 再 PR.route.go('device', [4])（见 doc §9），文件名 final-dv-never-<w>.png
+        new Spec("dv-never", "device/4", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }, Setup: "adddevice"),
         // 旧样式的页面（D5：程序编辑 / 下发 / 导出、性能测试，M7 重做）：没有参照图；外框照常审计，旧样式的子树（LegacyHost，类 audit-skip）不审计
         new Spec("program", "placeholder/program", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
         new Spec("perf", "placeholder/perf", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),

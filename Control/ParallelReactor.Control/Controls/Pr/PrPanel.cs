@@ -18,6 +18,7 @@ public sealed class PrPanel : ContentControl
     public static readonly StyledProperty<object?> TitleProperty = AvaloniaProperty.Register<PrPanel, object?>(nameof(Title));
     public static readonly StyledProperty<string?> TitleTipProperty = AvaloniaProperty.Register<PrPanel, string?>(nameof(TitleTip));
     public static readonly StyledProperty<string?> SubProperty = AvaloniaProperty.Register<PrPanel, string?>(nameof(Sub));
+    public static readonly StyledProperty<bool> SubDotProperty = AvaloniaProperty.Register<PrPanel, bool>(nameof(SubDot));
     public static readonly StyledProperty<string?> IconProperty = AvaloniaProperty.Register<PrPanel, string?>(nameof(Icon));
     public static readonly StyledProperty<object?> ActionsProperty = AvaloniaProperty.Register<PrPanel, object?>(nameof(Actions));
     public static readonly StyledProperty<bool> ShowGripProperty = AvaloniaProperty.Register<PrPanel, bool>(nameof(ShowGrip), true);
@@ -41,6 +42,8 @@ public sealed class PrPanel : ContentControl
     public object? Title { get => GetValue(TitleProperty); set => SetValue(TitleProperty, value); }
     public string? TitleTip { get => GetValue(TitleTipProperty); set => SetValue(TitleTipProperty, value); }
     public string? Sub { get => GetValue(SubProperty); set => SetValue(SubProperty, value); }
+    /// <summary>副标题前画一个红点（只给未确认的错误报警，样稿设备页「报警与事件」的 unackSub）；没有副标题时不画。</summary>
+    public bool SubDot { get => GetValue(SubDotProperty); set => SetValue(SubDotProperty, value); }
     public string? Icon { get => GetValue(IconProperty); set => SetValue(IconProperty, value); }
     /// <summary>右侧操作（一般是 PrIconButton，多个时放 StackPanel）。</summary>
     public object? Actions { get => GetValue(ActionsProperty); set => SetValue(ActionsProperty, value); }
@@ -87,6 +90,7 @@ public sealed class PrPanel : ContentControl
     {
         base.OnPropertyChanged(change);
         if (change.Property == TitleProperty || change.Property == TitleTipProperty) UpdateTitle();
+        else if (change.Property == SubDotProperty || change.Property == SubProperty) PseudoClasses.Set(":subdot", SubDot && !string.IsNullOrEmpty(Sub));
         else if (change.Property == IsMaximizedProperty)
         {
             PseudoClasses.Set(":max", IsMaximized);

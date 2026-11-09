@@ -34,31 +34,24 @@ public static class UiText
     }
 
     /// <summary>Core.Text.Keep.Apply + 当前字体能显示的连接符。null → ""。</summary>
-    public static string Keep(string? s)
+    public static string Keep(string? s) => Joiners(CoreKeep.Apply(s));
+
+    /// <summary>
+    /// 已经过 Core 处理的文字（Core.Text.Keep.Apply / NoBreak 插的 U+2060）：连接符换成当前字体能显示的那个（都不行时去掉）。
+    /// 视图模型里只能用 Core 的 Keep（测试里没有字体系统），显示时经 <see cref="TextConverters.Joiners"/> 走这里。null → ""。
+    /// </summary>
+    public static string Joiners(string? s)
     {
-        var t = CoreKeep.Apply(s);
+        if (string.IsNullOrEmpty(s)) return "";
         var j = Joiner;
-        return j == "⁠" ? t : t.Replace("⁠", j);
+        return j == "⁠" ? s : s.Replace("⁠", j);
     }
 
     /// <summary>
     /// 整段不断开（样稿 white-space: nowrap 的一小段，如急停红框里的「1号机触屏」：拉丁别名「ReactorLab-PR8-A」也不在连字符处折行）：
     /// 每两个字之间插当前字体能显示的连接符、空格换成 NBSP。放不下时整段换到下一行。null → ""。
     /// </summary>
-    public static string NoBreak(string? s)
-    {
-        if (string.IsNullOrEmpty(s)) return "";
-        var j = Joiner;
-        var t = s.Replace(' ', '\u00a0');
-        if (j.Length == 0) return t;
-        var sb = new System.Text.StringBuilder(t.Length * 2);
-        for (int i = 0; i < t.Length; i++)
-        {
-            if (i > 0 && !char.IsLowSurrogate(t[i])) sb.Append(j);
-            sb.Append(t[i]);
-        }
-        return sb.ToString();
-    }
+    public static string NoBreak(string? s) => Joiners(CoreKeep.NoBreak(s));
 
     /// <summary>
     /// <see cref="Keep"/> + 区间「RV1–RV4」的连接号两边不断开（UAX #14 允许在 – 后面断行，样稿在 WebKit 里是在「 · 」处换行：

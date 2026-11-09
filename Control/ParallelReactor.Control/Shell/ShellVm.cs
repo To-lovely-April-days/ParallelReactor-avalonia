@@ -146,17 +146,22 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     private PageVm PageFor(Route r)
     {
-        if (_pages.TryGetValue(r.Id, out var p)) return p;
+        if (_pages.TryGetValue(r.Id, out var p))
+        {
+            // 藏着时没有刷新的页面（总览 / 设备页，R10）：显示之前先跟上数据
+            if (!p.RefreshWhenHidden && !ReferenceEquals(p, Page)) p.Refresh(Fleet);
+            return p;
+        }
         p = r.Page switch
         {
-            PageKind.Device => new DevicePageVm(r),
+            PageKind.Device => new DevicePageVm(this, r),
             PageKind.Reactor => new ReactorPageVm(r),
             // 程序编辑 / 下发 / 导出与性能测试（D5）：M2 起以旧样式挂在新外壳的页签里，M7 换新组件；其余第二阶段视图是占位页
             PageKind.Placeholder when r.Key == "program" => new LegacyProgramPageVm(this),
             PageKind.Placeholder when r.Key == "perf" => new PerfPageVm(this),
             PageKind.Placeholder => new PlaceholderPageVm(r),
             PageKind.Gallery => new GalleryPageVm(),
-            _ => new OverviewPageVm(Navigate, k => Fleet.Device(k) is { } d ? MenuModel.DeviceItems(this, d) : Array.Empty<MenuEntry>()),
+            _ => new OverviewPageVm(this),
         };
         p.Refresh(Fleet);
         _pages[r.Id] = p;
@@ -324,7 +329,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Tabs.Refresh();
         if (!TabsVm.Exists(Fleet, Route)) { Navigate(Route.Overview); return; }
         Selection.Prune();
-        foreach (var p in Pages) p.Refresh(Fleet);
+        // 看得见的页面每次都刷新；藏在别的页签后面的总览 / 设备页等切回来时再刷新（PageVm.RefreshWhenHidden，R10）
+        foreach (var p in Pages) if (p.RefreshWhenHidden || ReferenceEquals(p, Page)) p.Refresh(Fleet);
         OnPropertyChanged(nameof(ClientText));
         RefreshChrome();
         // 对话框跟着数据刷新（样稿 refresh() 里的 renderDialog：计数、说明、倒计时；对象设备没了时关闭）

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:c="using:ParallelReactor.Control.Controls"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:v="using:ParallelReactor.Control.Controls.Vessel"
              xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
              xmlns:b="using:ParallelReactor.Control.Behaviors"
              xmlns:sh="using:ParallelReactor.Control.Shell"
@@ -435,7 +436,7 @@
     <DataTemplate DataType="sh:UninstalledInspectorVm" x:DataType="sh:UninstalledInspectorVm">
       <StackPanel>
         <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,14">
-          <pr:VesselGlyph Key="Uninstalled" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <v:VesselGlyph Key="Uninstalled" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Spacing="2">
             <DockPanel>
               <pr:Badge DockPanel.Dock="Right" Margin="12,0,0,0" Text="未安装" Tone="Mute" ShowDot="False" VerticalAlignment="Center" />
@@ -466,7 +467,7 @@
       <StackPanel>
         <!-- 对象标题：小釜体 30 · 「1号机 · RV1」18/600（放不下 16 / 15 / 两行，RV 从不省略）· 状态点 + 字；第二行型号 · 釜 -->
         <Grid ColumnDefinitions="Auto,*" Margin="0,0,0,14">
-          <pr:VesselGlyph Key="{Binding Key}" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
+          <v:VesselGlyph Key="{Binding Key}" Size="30" Margin="0,0,12,0" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Spacing="2">
             <DockPanel>
               <pr:StateBadge DockPanel.Dock="Right" Classes="badge" Margin="12,0,0,0" Key="{Binding Key}" Text="{Binding Word}" NeverConnected="{Binding NeverConnected}" />
@@ -579,7 +580,7 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Left" Classes="fl" Text="转速" Width="60" Margin="0,0,8,0" IsVisible="{Binding !Narrow}" />
                 <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding ChStirSet}" />
-                <pr:NumBox Value="{Binding RpmValue}" Minimum="{Binding RpmMin}" Maximum="{Binding RpmMax}" Step="50" Decimals="0" Unit="rpm" Label="转速"
+                <pr:NumBox Name="ReactorRpm" Value="{Binding RpmValue}" Minimum="{Binding RpmMin}" Maximum="{Binding RpmMax}" Step="50" Decimals="0" Unit="rpm" Label="转速"
                            b:Pr.Reason="{Binding RpmReason}" />
               </DockPanel>
             </StackPanel>

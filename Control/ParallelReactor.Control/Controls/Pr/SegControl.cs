@@ -61,16 +61,43 @@ public abstract class ToggleGroup : TemplatedControl
     public static readonly StyledProperty<object?> ValueProperty =
         AvaloniaProperty.Register<ToggleGroup, object?>(nameof(Value), defaultBindingMode: BindingMode.TwoWay);
 
+    /// <summary>
+    /// 选项的来源（视图模型给的一组 <see cref="SegOption"/> 实例，可以绑定）：设了就把 <see cref="Options"/> 换成这一组（同一组对象时不动）。
+    /// 模板里的分段要用它 —— 模板什么时候实例化（自动换页签、窗口跨过宽度类、Esc 还原）都直接带着选项，不靠页面事后去填
+    /// （M4 复核：设备页「报警与事件」的事件筛选在自动切到页签、改窗口尺寸之后是空的）。一组固定的选项：增删选项换一组新的；
+    /// 选项自己的属性（文字、计数、红点）照旧就地更新。null = 不管 <see cref="Options"/>（XAML 里直接写的选项照旧）。
+    /// </summary>
+    public static readonly StyledProperty<IReadOnlyList<SegOption>?> OptionsSourceProperty =
+        AvaloniaProperty.Register<ToggleGroup, IReadOnlyList<SegOption>?>(nameof(OptionsSource));
+
     protected ToggleGroup()
     {
         Options.CollectionChanged += OnOptionsChanged;
     }
 
-    /// <summary>选项（XAML 里直接写 &lt;pr:SegOption …/&gt;）。</summary>
+    /// <summary>选项（XAML 里直接写 &lt;pr:SegOption …/&gt;；或者绑定 <see cref="OptionsSource"/>）。</summary>
     [Content]
     public AvaloniaList<SegOption> Options { get; } = new();
 
     public object? Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
+
+    /// <inheritdoc cref="OptionsSourceProperty"/>
+    public IReadOnlyList<SegOption>? OptionsSource { get => GetValue(OptionsSourceProperty); set => SetValue(OptionsSourceProperty, value); }
+
+    /// <summary>选项换成来源里的这一组（逐项同一个对象时不动：按钮、焦点都保留）。</summary>
+    private void SyncFromSource(IReadOnlyList<SegOption>? src, bool hadSource)
+    {
+        if (src == null)
+        {
+            if (hadSource) Options.Clear();
+            return;
+        }
+        bool same = Options.Count == src.Count;
+        for (int i = 0; same && i < src.Count; i++) same = ReferenceEquals(Options[i], src[i]);
+        if (same) return;
+        Options.Clear();
+        Options.AddRange(src);
+    }
 
     /// <summary>按钮的主题键（PrSegItem / PrPTab）。</summary>
     protected abstract string ItemTheme { get; }
@@ -93,6 +120,8 @@ public abstract class ToggleGroup : TemplatedControl
     {
         base.OnPropertyChanged(change);
         if (change.Property == ValueProperty) Sync();
+        else if (change.Property == OptionsSourceProperty)
+            SyncFromSource(change.GetNewValue<IReadOnlyList<SegOption>?>(), change.GetOldValue<IReadOnlyList<SegOption>?>() != null);
     }
 
     // 不在树上时不订阅选项的变化（选项对象可能比控件活得久）；回到树上时重新订阅并按选项的现状刷新按钮

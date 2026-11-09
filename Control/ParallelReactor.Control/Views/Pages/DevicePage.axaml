@@ -1,19 +1,1126 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:v="using:ParallelReactor.Control.Controls.Vessel"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:th="using:ParallelReactor.Control.Theme"
              xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:dv="using:ParallelReactor.Control.Views.Pages.Device"
              x:Class="ParallelReactor.Control.Views.Pages.DevicePage"
-             x:DataType="pg:DevicePageVm">
-  <!-- 设备页骨架（M2；内容在 M4）：上 = 「1号机 › 反应釜」面板（卡片大一号、带釜体），下 = 共用资源 · 设备信息 · 报警与事件。
-       面板之间 1 px 线（line-2）。面板标题照抄样稿。 -->
-  <Grid RowDefinitions="52*,48*" ColumnDefinitions="*,*,*" Background="{StaticResource Line2Brush}">
-    <pr:PrPanel Grid.ColumnSpan="3" Margin="0,0,0,1">
+             x:DataType="pg:DevicePageVm"
+             Background="{StaticResource BgAppBrush}">
+  <!-- 设备页（样稿 js/pages/device.js + css/device.css；视图模型 Pages/Device）：两行铺满工作区（上「反应釜」，下「共用资源 | 设备信息 | 报警与事件」，
+       工作区窄于 1100 时后两块合成页签面板），面板之间 1 px line-strong，面板内容在面板里滚动、整页不滚动。
+       版面的数字（上排高度、卡片网格、卡片里的取舍、读数字号阶梯、下排面板的取舍）来自 Core 的 DeviceLayout（视图只把根元素的尺寸交给视图模型；
+       卡片内部由 Views/Pages/Device/DvPanels 的 DvCard 按卡片自己的尺寸算）。单击 / 双击 / 右键 / 键盘、面板放大与关闭、页签与筛选在 code-behind。 -->
+  <UserControl.Resources>
+    <!-- 「报警与事件」内容（宽工作区的面板与窄工作区的页签共用一份模板） -->
+    <DataTemplate x:Key="LogTemplate" x:DataType="pg:DeviceLogVm">
+      <ScrollViewer Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled">
+        <dv:DvLogPanel Short="{Binding LogShort}" BodyHeight="{Binding BodyHeight}">
+          <!-- 当前报警（最多 58 %，自己滚动；面板矮时和事件一起滚） -->
+          <ScrollViewer Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Classes="dvalarms">
+              <pr:FlexRow Classes="dvsubh" Spacing="10">
+                <pr:PrText Classes="h" Text="{Binding Head}" />
+                <pr:PrText Classes="s" Text="{Binding HeadSub}" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1" ToolTip.Tip="{Binding HeadSub}" />
+              </pr:FlexRow>
+              <ItemsControl ItemsSource="{Binding Alarms}" IsVisible="{Binding HasAlarms}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="pg:LogAlarmVm">
+                    <Border Classes="dvalarm" Classes.err="{Binding IsErr}" Classes.acked="{Binding Acked}">
+                      <DockPanel>
+                        <c:IconView DockPanel.Dock="Left" Classes="ic" Icon="{Binding Icon}" Size="18" VerticalAlignment="Top" Margin="0,2,10,0" />
+                        <Button DockPanel.Dock="Right" Classes="sm" b:Pr.Icon="check" Content="确认" VerticalAlignment="Top" Margin="10,0,0,0"
+                                Command="{Binding AckCommand}" b:Pr.Reason="{Binding AckReason}" ToolTip.Tip="{Binding AckTip}" IsVisible="{Binding !Acked}" />
+                        <StackPanel Spacing="2">
+                          <TextBlock Classes="t" Text="{Binding Text, Converter={x:Static th:TextConverters.Keep}}" TextWrapping="Wrap" ToolTip.Tip="{Binding TextTip}" />
+                          <pr:PrText Classes="m" Text="{Binding Meta}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding MetaFull}" />
+                        </StackPanel>
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Classes="dvnoalarm" Orientation="Horizontal" Spacing="8" IsVisible="{Binding !HasAlarms}">
+                <c:IconView Icon="check" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <pr:PrText Text="当前没有报警" VerticalAlignment="Center" />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+          <!-- 最近事件标题 + 分段筛选（全部 / 报警/提醒 / 操作） -->
+          <Border Classes="dvevhead">
+            <pr:FlexRow Spacing="12">
+              <pr:PrText Classes="h" Text="最近事件" />
+              <pr:SegControl Name="EvSeg" Classes="dvevseg" Classes.m="{Binding TabbedLayout}" OptionsSource="{Binding SegOptions}" Value="{Binding FilterValue, Mode=TwoWay}" pr:FlexRow.PushRight="True" />
+            </pr:FlexRow>
+          </Border>
+          <!-- 事件列表（铺满剩下的，自己滚动） -->
+          <ScrollViewer Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Classes="dvevlist">
+              <ItemsControl ItemsSource="{Binding Events}" IsVisible="{Binding HasEvents}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="pg:LogEventVm">
+                    <Border Classes="dvev" Classes.err="{Binding IsErr}" Classes.warn="{Binding IsWarn}">
+                      <DockPanel>
+                        <pr:PrText DockPanel.Dock="Left" Classes="time num" Text="{Binding Time}" />
+                        <Panel DockPanel.Dock="Left" Classes="ic">
+                          <c:IconView Icon="{Binding Icon}" Size="16" IsVisible="{Binding HasIcon}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                          <Ellipse Width="6" Height="6" Fill="{StaticResource NDotBrush}" IsVisible="{Binding !HasIcon}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Panel>
+                        <pr:PrText DockPanel.Dock="Left" Classes="rv" Classes.dev="{Binding IsDevice}" Text="{Binding Rv}" />
+                        <TextBlock Classes="t" Text="{Binding Text, Converter={x:Static th:TextConverters.Joiners}}" ToolTip.Tip="{Binding Tip}" />
+                      </DockPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <pr:PrText Classes="dvevempty" Text="{Binding EmptyText}" IsVisible="{Binding !HasEvents}" />
+            </StackPanel>
+          </ScrollViewer>
+        </dv:DvLogPanel>
+      </ScrollViewer>
+    </DataTemplate>
+
+    <!-- 「设备信息」内容（键值表 + 模块通讯表） -->
+    <DataTemplate x:Key="InfoTemplate" x:DataType="pg:DeviceInfoVm">
+      <ScrollViewer Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Classes="dvinfo">
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="型号" />
+              <StackPanel DockPanel.Dock="Right" Classes="note" Orientation="Horizontal" Spacing="5" Background="Transparent"
+                          ToolTip.Tip="{Binding SampleTip}" IsVisible="{Binding Sample}">
+                <c:IconView Icon="info" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <pr:PrText Text="示例型号 · 参数为假设" VerticalAlignment="Center" IsVisible="{Binding !Narrow}" />
+              </StackPanel>
+              <pr:PrText Classes="v" Text="{Binding ModelText}" ToolTip.Tip="{Binding ModelText}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="通道" />
+              <pr:PrText Classes="v" Text="{Binding ChannelsText}" ToolTip.Tip="{Binding ChannelsText}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="釜" />
+              <pr:PrText Classes="v" Text="{Binding VesselText}" ToolTip.Tip="{Binding VesselText}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="量程" />
+              <StackPanel DockPanel.Dock="Right" Classes="touch" Orientation="Horizontal" Spacing="5" Background="Transparent"
+                          ToolTip.Tip="只能在设备触屏上操作，本机只显示状态">
+                <c:IconView Icon="hand" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <pr:PrText Text="触屏操作" VerticalAlignment="Center" />
+              </StackPanel>
+              <pr:PrText Classes="v" Text="{Binding RangeText}" ToolTip.Tip="{Binding RangeText}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="地址" />
+              <pr:PrText Classes="v num" Text="{Binding Address}" ToolTip.Tip="{Binding Address}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="SN" />
+              <pr:PrText Classes="v num" Text="{Binding Sn}" ToolTip.Tip="{Binding Sn}" />
+            </DockPanel>
+          </Border>
+          <Border Classes="kv">
+            <DockPanel>
+              <pr:PrText DockPanel.Dock="Left" Classes="k" Text="版本" />
+              <pr:PrText Classes="v" ToolTip.Tip="{Binding VersionTip}" TextTrimming="CharacterEllipsis">
+                <Run Text="HMI " /><Run Classes="num" Text="{Binding HmiVersion}" /><Run Text=" · 接口 " /><Run Classes="num" Text="{Binding ApiVersion}" />
+              </pr:PrText>
+            </DockPanel>
+          </Border>
+          <pr:FlexRow Classes="dvsubh info" Spacing="10">
+            <pr:PrText Classes="h" Text="模块通讯" />
+            <pr:PrText Classes="s" Text="{Binding CommSub}" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1" ToolTip.Tip="{Binding CommSub}" />
+          </pr:FlexRow>
+          <!-- 模块通讯表：模块 · 数量（右）· 状态 · 最近成功（右）—— 列宽同 HTML 表格的自动列宽（按全部行的内容，多出来的按比例分） -->
+          <ItemsControl ItemsSource="{Binding CommTable}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <dv:DvTable />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.DataTemplates>
+              <DataTemplate DataType="pg:CommHeaderVm" x:DataType="pg:CommHeaderVm">
+                <Border Classes="dvcommh">
+                  <dv:DvTableRow>
+                    <pr:PrText Classes="th first" Text="模块" />
+                    <pr:PrText Classes="th" Text="数量" HorizontalAlignment="Right" />
+                    <pr:PrText Classes="th" Text="状态" />
+                    <pr:PrText Classes="th last" Text="最近成功" HorizontalAlignment="Right" />
+                  </dv:DvTableRow>
+                </Border>
+              </DataTemplate>
+              <DataTemplate DataType="pg:CommRowVm" x:DataType="pg:CommRowVm">
+                <Border Classes="dvcommr">
+                  <dv:DvTableRow>
+                    <pr:PrText Classes="td name" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                    <pr:PrText Classes="td mono num" Text="{Binding Count}" HorizontalAlignment="Right" />
+                    <StackPanel Classes="st" Classes.err="{Binding IsErr}" Classes.off="{Binding IsOff}" Orientation="Horizontal" Spacing="7">
+                      <pr:KeyDot Key="{Binding Dot}" Slot="9" VerticalAlignment="Center" IsVisible="{Binding ShowDot}" />
+                      <pr:PrText Text="{Binding State}" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <StackPanel Classes="last" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                      <pr:PrText Classes="td mono num" Text="{Binding Last}" VerticalAlignment="Center" />
+                      <pr:PrText Classes="ago" Text="{Binding Ago}" VerticalAlignment="Center" IsVisible="{Binding Ago, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                    </StackPanel>
+                  </dv:DvTableRow>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.DataTemplates>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.Styles>
+    <!-- ———— 面板：标题栏右侧间距 4（device.css:13）；徽标外边距 0 6 0 4 ———— -->
+    <Style Selector="pr|PrPanel.dvpanel /template/ StackPanel#PART_Actions">
+      <Setter Property="Spacing" Value="4" />
+    </Style>
+    <Style Selector="pr|LeaseBadge.dvbadge, pr|ConnBadge.dvbadge">
+      <Setter Property="Margin" Value="4,0,6,0" />
+    </Style>
+    <!-- 标题栏计数「运行 4/4」（.device-hstat：14 t-3、数字 15/600 t-1，左右 4） -->
+    <Style Selector="TextBlock.dvstat">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="Margin" Value="4,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.dvunacked">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ———— 说明条（.device-bar）：高 45、左 16 右 12、间距 10、bg-head + 下边 line-soft；急停 r-bg + r-line ———— -->
+    <Style Selector="Border.dvbar">
+      <Setter Property="Height" Value="45" />
+      <Setter Property="Padding" Value="16,0,12,0" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.dvbar.estop">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="Border.dvbar > pr|FlexRow > TextBlock.lead">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="Border.dvbar.estop > pr|FlexRow > TextBlock.lead">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="Border.dvbar > pr|FlexRow > TextBlock.text">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.dvbar.estop > pr|FlexRow > TextBlock.text">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+
+    <!-- ———— 从未连上（.device-never）：外边距 16、内边距 14 16、line-soft 边、圆角 6、白底；主句 15/600 t-1、说明 14 t-3 ———— -->
+    <Style Selector="Border.dvnever">
+      <Setter Property="Margin" Value="16" />
+      <Setter Property="Padding" Value="16,14" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.dvnever TextBlock.main">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="Border.dvnever TextBlock.sub">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+
+    <!-- ———— 卡片网格的容器不裁剪：卡片的阴影、选中时外圈 1 px 画在卡片外面 ———— -->
+    <Style Selector="ItemsControl.dvgrid ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="Border.dvfocus">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel.dvtile:focus-visible > Border.dvfocus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+
+    <!-- ———— 卡片（.device-card）：白底、line-2 细边、圆角 6、shadow-card；悬停 line 边 + 浮起；按下 bg-hover；报警 r-line 边；选中 a-line 边 + 外圈 ———— -->
+    <Style Selector="Border.dvcard">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.dvcard:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCardHover}" />
+    </Style>
+    <!-- 按下（.device-card:active：bg-hover、line-strong 边、没有阴影；报警 / 选中的边照旧 —— 所以写在 .alarm / .sel 前面）：类 pressed 由视图在按下 / 松开时加减 -->
+    <Style Selector="Panel.dvtile.pressed > Border.dvcard">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="Border.dvcard.alarm">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="Border.dvcard.sel">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCardHover}" />
+    </Style>
+    <!-- 标题：RV 16/600 行高 24（窄紧凑卡 20）· 状态（点 + 字，14 px，高 24 / 窄紧凑卡 18，左右不留白）；状态字绝不省略（类 stword） -->
+    <Style Selector="TextBlock.dvrvn">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="24" />
+    </Style>
+    <Style Selector="Border.dvcard.narrow TextBlock.dvrvn">
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <Style Selector="pr|StateBadge.dvst">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Border.dvcard.narrow pr|StateBadge.dvst">
+      <Setter Property="Height" Value="18" />
+    </Style>
+    <!-- 读数：数字 600 t-1（字号 / 行高由读数行按 data-len 阶梯给）；没有读数「—」400 t-dis；单位 14 t-3（压力 13）；设定值 / 目标 14 t-3；断线卡片的读数 t-3 -->
+    <Style Selector="TextBlock.rval">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.rval.na">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Border.dvcard.off TextBlock.rval, Border.dvcard.off TextBlock.runit">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.runit">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="TextBlock.runit.n13">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+    </Style>
+    <Style Selector="TextBlock.rsub">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="TextBlock.rsubline">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- 宽卡次要行：标签 14 t-3、数字 16/600 t-1（阶梯）、单位 13 t-3、说明 14 t-3 -->
+    <Style Selector="TextBlock.kvl">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="TextBlock.kvv">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="23" />
+    </Style>
+    <Style Selector="TextBlock.kvv.na">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Border.dvcard.off TextBlock.kvv">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.kvu">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+    </Style>
+    <Style Selector="TextBlock.kvn">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 程序块：程序名 15 t-2（省略，没有程序 t-4，断线 t-3）· 第 k/n 步 15 t-3 · 剩余 15 t-3（运行中 t-2，报警暂停 t-1 600，没有程序 t-4） -->
+    <Style Selector="TextBlock.pname">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.pname.none, TextBlock.prem.none">
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+    </Style>
+    <Style Selector="Border.dvcard.off TextBlock.pname">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.pkn, TextBlock.prem">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <Style Selector="TextBlock.prem.run">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="TextBlock.prem.held">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- 断线：釜体与进度条去色 + 0.8 不透明（device.css:180） -->
+    <Style Selector="Border.dvcard.off v|ReactorVessel, Border.dvcard.off pr|StepBar">
+      <Setter Property="Opacity" Value="0.8" />
+    </Style>
+
+    <!-- ———— 未安装（.device-un）：140 px 虚线窄列，淡显虚线釜体 40 × 62 + 「RV5–RV8」15/600 t-3 + 「未安装」14 t-3 ———— -->
+    <Style Selector="TextBlock.unrv">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.unword">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- ———— 共用资源（.device-res-body / .device-li）：内边距 2 16 12；行最小高 40、上下 4、下边 line-faint、间距 12；标签 76 宽 14 t-3、图标 18；值 15 t-1 ———— -->
+    <Style Selector="StackPanel.dvres">
+      <Setter Property="Margin" Value="16,2,16,12" />
+    </Style>
+    <Style Selector="Border.li">
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="Padding" Value="0,4" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.li.head">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.li.sub">
+      <Setter Property="MinHeight" Value="36" />
+    </Style>
+    <Style Selector="Border.li.stir">
+      <Setter Property="MinHeight" Value="56" />
+    </Style>
+    <Style Selector="Border.li TextBlock.k">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="Border.li.sub TextBlock.k">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.li.sv TextBlock.k">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.li TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="Border.li TextBlock.v.b">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.li TextBlock.mute, StackPanel.dvres.off Border.li TextBlock.v">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.li TextBlock.u">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+    </Style>
+    <Style Selector="Border.li TextBlock.cap">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.li TextBlock.note">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="Border.li TextBlock.sv">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="20" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,2" />
+    </Style>
+    <Style Selector="StackPanel.dvres.off Border.li TextBlock.sv">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <!-- 「触屏操作」：手形 16 + 14 t-3 -->
+    <Style Selector="StackPanel.touch > TextBlock, StackPanel.note > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 气路两列（.device-gas）：列间 20、左 88（窄面板 26）、下 6、下边 line-faint；每项高 32、间距 10、15 px：名称 t-2，开 600 t-1，关 t-3 -->
+    <Style Selector="Border.gas">
+      <Setter Property="Padding" Value="88,0,0,6" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="StackPanel.dvres.narrow Border.gas">
+      <Setter Property="Padding" Value="26,0,0,6" />
+    </Style>
+    <Style Selector="Border.gas TextBlock.gk">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.gas TextBlock.gv">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="Margin" Value="2,0,0,0" />
+    </Style>
+    <Style Selector="Border.gas TextBlock.gv.open">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <!-- 独立搅拌每釜一行的「设置」：平时不画，行悬停 / 键盘聚焦时出现 -->
+    <Style Selector="Button.dvset">
+      <Setter Property="Opacity" Value="0" />
+    </Style>
+    <Style Selector="Border.li:pointerover Button.dvset, Button.dvset:focus-visible">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <!-- ———— 设备信息（.device-info-body / .device-kv）：内边距 2 16 14；行高 38、下边 line-faint；标签 40 宽 14 t-3、值 15 t-1（省略）———— -->
+    <Style Selector="StackPanel.dvinfo">
+      <Setter Property="Margin" Value="16,2,16,14" />
+    </Style>
+    <Style Selector="StackPanel.dvinfo > Border.kv">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="StackPanel.dvinfo > Border.kv > DockPanel > TextBlock.k">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.dvinfo > Border.kv > DockPanel > TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.dvinfo > Border.kv > DockPanel > StackPanel">
+      <Setter Property="Margin" Value="12,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 小标题（.device-sub-h）：15/600 t-1 + 14 t-3；设备信息里上 16、下 4（报警与事件里上 12） -->
+    <Style Selector="pr|FlexRow.dvsubh">
+      <Setter Property="Margin" Value="0,12,0,4" />
+    </Style>
+    <Style Selector="pr|FlexRow.dvsubh.info">
+      <Setter Property="Margin" Value="0,16,0,4" />
+    </Style>
+    <Style Selector="pr|FlexRow.dvsubh > TextBlock.h">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="pr|FlexRow.dvsubh > TextBlock.s">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 模块通讯表（.pr-table.device-comm）：表头高 36、14/600 t-3、bg-head、下边 line-2；行高 38、15 t-1、下边 line-faint；左右 8（首列左 2、末列右 2） -->
+    <Style Selector="Border.dvcommh">
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.dvcommh TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="8,0" />
+    </Style>
+    <Style Selector="Border.dvcommh TextBlock.th.first">
+      <Setter Property="Margin" Value="2,0,8,0" />
+    </Style>
+    <Style Selector="Border.dvcommh TextBlock.th.last">
+      <Setter Property="Margin" Value="8,0,2,0" />
+    </Style>
+    <Style Selector="Border.dvcommr">
+      <Setter Property="Height" Value="38" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.dvcommr > dv|DvTableRow > TextBlock.td, Border.dvcommr > dv|DvTableRow > StackPanel">
+      <Setter Property="Margin" Value="8,0" />
+    </Style>
+    <Style Selector="Border.dvcommr > dv|DvTableRow > TextBlock.td.name">
+      <Setter Property="Margin" Value="2,0,8,0" />
+    </Style>
+    <Style Selector="Border.dvcommr > dv|DvTableRow > StackPanel.last">
+      <Setter Property="Margin" Value="8,0,2,0" />
+    </Style>
+    <Style Selector="Border.dvcommr TextBlock.td">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.dvcommr TextBlock.td.mono">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.dvcommr StackPanel.st > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="Border.dvcommr StackPanel.st.off > TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.dvcommr StackPanel.st.err > TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.dvcommr TextBlock.ago">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+
+    <!-- ———— 报警与事件 ———— -->
+    <Style Selector="StackPanel.dvalarms">
+      <Setter Property="Margin" Value="16,0,16,14" />
+    </Style>
+    <Style Selector="dv|DvLogPanel[Short=True] StackPanel.dvalarms">
+      <Setter Property="Margin" Value="16,0,16,12" />
+    </Style>
+    <Style Selector="dv|DvLogPanel[Short=True] StackPanel.dvalarms > pr|FlexRow.dvsubh">
+      <Setter Property="Margin" Value="0,8,0,4" />
+    </Style>
+    <!-- 报警卡（.device-alarm）：上 8、内边距 10 10 10 12、line 边、圆角 6、白底；错误 r-line + r-bg；已确认 line-soft + bg-head -->
+    <Style Selector="Border.dvalarm">
+      <Setter Property="Margin" Value="0,8,0,0" />
+      <Setter Property="Padding" Value="12,10,10,10" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.dvalarm.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="Border.dvalarm.acked">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+    </Style>
+    <Style Selector="Border.dvalarm c|IconView.ic">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.dvalarm.err c|IconView.ic">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="Border.dvalarm.acked c|IconView.ic">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.dvalarm > DockPanel > StackPanel > TextBlock.t">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="22" />
+    </Style>
+    <Style Selector="Border.dvalarm.acked > DockPanel > StackPanel > TextBlock.t">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.dvalarm > DockPanel > StackPanel > TextBlock.m">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="StackPanel.dvnoalarm">
+      <Setter Property="Height" Value="40" />
+    </Style>
+    <Style Selector="StackPanel.dvnoalarm > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 最近事件标题（.device-evhead）：最小高 50、内边距 8 16 6、上边 line-soft；分段每段左右 10（窄工作区 9） -->
+    <Style Selector="Border.dvevhead">
+      <Setter Property="MinHeight" Value="50" />
+      <Setter Property="Padding" Value="16,8,16,6" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Border.dvevhead > pr|FlexRow > TextBlock.h">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="pr|SegControl.dvevseg ToggleButton">
+      <Setter Property="Padding" Value="10,0" />
+    </Style>
+    <Style Selector="pr|SegControl.dvevseg.m ToggleButton">
+      <Setter Property="Padding" Value="9,0" />
+    </Style>
+    <!-- 事件行（.device-ev）：最小高 38、间距 10、下边 line-faint；时刻 62 宽 13 t-3；图标槽 18；RV 44 宽 14/600 t-2（整机 400 t-3）；文字 15 t-2（报警 / 提醒 500 t-1） -->
+    <Style Selector="StackPanel.dvevlist">
+      <Setter Property="Margin" Value="16,0,16,10" />
+    </Style>
+    <Style Selector="Border.dvev">
+      <Setter Property="MinHeight" Value="38" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.dvev.err">
+      <Setter Property="Padding" Value="0,8" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > TextBlock.time">
+      <Setter Property="Width" Value="72" />
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > Panel.ic">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > Panel.ic > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > Panel.ic > Ellipse">
+      <Setter Property="Margin" Value="0,0,10,0" />
+    </Style>
+    <Style Selector="Border.dvev.err > DockPanel > Panel.ic > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="Border.dvev.warn > DockPanel > Panel.ic > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > TextBlock.rv">
+      <Setter Property="Width" Value="54" />
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > TextBlock.rv.dev">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.dvev > DockPanel > TextBlock.t">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.dvev.err > DockPanel > TextBlock.t, Border.dvev.warn > DockPanel > TextBlock.t">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <!-- 错误报警事件可以折成两行（采取的安全动作「已关闭 SV11」不被省略号切掉）：顶对齐、行高 22 -->
+    <Style Selector="Border.dvev.err > DockPanel > TextBlock.t">
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="MaxLines" Value="2" />
+      <Setter Property="LineHeight" Value="22" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.dvev.err > DockPanel > TextBlock.time, Border.dvev.err > DockPanel > TextBlock.rv">
+      <Setter Property="LineHeight" Value="22" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.dvev.err > DockPanel > Panel.ic">
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="TextBlock.dvevempty">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,24" />
+    </Style>
+  </UserControl.Styles>
+
+  <dv:DvPagePanel Name="Root" TopRow="{Binding TopRow}" Background="{StaticResource LineStrongBrush}">
+    <!-- ================= 1 反应釜 ================= -->
+    <pr:PrPanel Name="RvPanel" Classes="dvpanel" Tag="rv" TitleTip="{Binding CrumbTip}" Sub="{Binding Sub}">
       <pr:PrPanel.Title>
-        <pr:Crumb Text="{Binding Alias, StringFormat='{}{0} › 反应釜'}" />
+        <pr:Crumb Text="{Binding Crumb}" />
       </pr:PrPanel.Title>
+      <pr:PrPanel.Actions>
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <pr:PrText Classes="dvstat num" IsVisible="{Binding EverOnline}" ToolTip.Tip="{Binding RunTip}">
+            <Run Text="{Binding RunLabel}" /><Run Text=" " /><Run FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Text="{Binding RunCount}" /><Run Text="{Binding RunTotal}" />
+          </pr:PrText>
+          <pr:LeaseBadge Classes="dvbadge" State="{Binding Lease}" Text="{Binding LeaseText}" IsVisible="{Binding Online}" />
+          <pr:ConnBadge Classes="dvbadge" State="{Binding Conn}" Text="{Binding ConnText}" ToolTip.Tip="{Binding ConnText}" IsVisible="{Binding !Online}" />
+        </StackPanel>
+      </pr:PrPanel.Actions>
+      <DockPanel>
+        <!-- 说明条：断线（中性：最后数据时间 + 能做什么 + 立即重连；红色「连接中断」只在标题栏出现一次）/ 首次连接 -->
+        <Border DockPanel.Dock="Top" Classes="dvbar" IsVisible="{Binding HasOffBar}">
+          <pr:FlexRow Spacing="10">
+            <c:IconView Icon="{Binding OffIcon}" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            <pr:PrText Classes="lead" Text="{Binding OffLead}" VerticalAlignment="Center" />
+            <pr:PrText Classes="text" Text="{Binding OffText}" ToolTip.Tip="{Binding OffText}" pr:FlexRow.Shrink="1" VerticalAlignment="Center" />
+            <Button Classes="sm" b:Pr.Icon="refresh" Content="{Binding OffButton}" Command="{Binding ReconnectCommand}" b:Pr.Reason="{Binding OffReason}"
+                    pr:FlexRow.PushRight="True" IsVisible="{Binding OffButton, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </pr:FlexRow>
+        </Border>
+        <!-- 急停（浅红） -->
+        <Border DockPanel.Dock="Top" Classes="dvbar estop" IsVisible="{Binding HasEstopBar}">
+          <pr:FlexRow Spacing="10">
+            <c:IconView Icon="estop" Size="18" Foreground="{StaticResource RBrush}" VerticalAlignment="Center" />
+            <pr:PrText Classes="lead" Text="{Binding EstopLead}" VerticalAlignment="Center" />
+            <pr:PrText Classes="text" Text="{Binding EstopText}" ToolTip.Tip="{Binding EstopText}" pr:FlexRow.Shrink="1" VerticalAlignment="Center" />
+          </pr:FlexRow>
+        </Border>
+        <Panel>
+          <!-- 从未连上（刚添加）：只有一条说明，不画空卡片 -->
+          <Border Classes="dvnever" IsVisible="{Binding IsNever}">
+            <DockPanel>
+              <c:IconView DockPanel.Dock="Left" Icon="link" Size="20" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+              <StackPanel Spacing="2">
+                <pr:PrText Classes="main" Text="{Binding NeverMain}" />
+                <pr:PrText Classes="sub" Text="{Binding NeverSub}" ToolTip.Tip="{Binding NeverSub}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <!-- 卡片区（滚动时 8 px 滚动条，卡片保持最小高度） -->
+          <ScrollViewer Name="CardsScroll" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !IsNever}">
+            <ItemsControl Name="Cards" Classes="dvgrid" ItemsSource="{Binding Tiles}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate x:DataType="pg:DevicePageVm">
+                  <dv:DvCardsPanel Layout="{Binding Layout}" ContentHeight="{Binding CardsHeight}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.DataTemplates>
+                <!-- 反应釜卡片 -->
+                <DataTemplate DataType="pg:DeviceCardVm" x:DataType="pg:DeviceCardVm">
+                  <Panel Classes="dvtile" ClipToBounds="False" Focusable="True" Cursor="Hand">
+                    <Border Margin="-1" CornerRadius="7" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}"
+                            IsVisible="{Binding IsSelected}" IsHitTestVisible="False" />
+                    <Border Classes="dvfocus" Margin="-4" CornerRadius="10" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsHitTestVisible="False" />
+                    <Border Classes="dvcard" Classes.sel="{Binding IsSelected}" Classes.alarm="{Binding R.IsAlarm}" Classes.off="{Binding IsOff}"
+                            Classes.narrow="{Binding Spec.Narrow}" ToolTip.Tip="{Binding Tip}">
+                      <dv:DvCard Spec="{Binding Spec}" TempLen="{Binding TempLen}" PressLen="{Binding PressLen}" StirLen="{Binding StirLen}"
+                                 HeatLen="{Binding HeatLen}" GasLen="{Binding GasLen}" PressFirst="{Binding PressFirst}"
+                                 HasSetpoint="{Binding TSub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                 HasTarget="{Binding PSub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <dv:DvCardHead>
+                          <pr:PrText Classes="dvrvn" Text="{Binding R.Rv}" />
+                          <pr:StateBadge Classes="badge dvst" Key="{Binding R.Key}" Text="{Binding R.Word}" />
+                        </dv:DvCardHead>
+                        <v:ReactorVessel Simple="{Binding SimpleVessel}" Key="{Binding R.Key}" Heating="{Binding R.Heating}" Cooling="{Binding R.Cooling}"
+                                         Stirring="{Binding R.Stirring}" Level="{Binding R.VesselLevel}" />
+                        <dv:DvReads>
+                          <dv:DvReadRow>
+                            <pr:PrText Classes="rval num" Classes.na="{Binding R.TempNa}" Text="{Binding R.TempText}" />
+                            <pr:PrText Classes="runit" Text="℃" IsVisible="{Binding !R.TempNa}" />
+                            <pr:PrText Classes="rsub num" Text="{Binding TSub}" />
+                          </dv:DvReadRow>
+                          <pr:PrText Classes="rsubline num" Text="{Binding TSub}" ToolTip.Tip="{Binding TSub}" />
+                          <dv:DvReadRow>
+                            <pr:PrText Classes="rval num" Classes.na="{Binding R.PressNa}" Text="{Binding R.PressText}" />
+                            <pr:PrText Classes="runit n13" Text="{Binding R.PressUnit}" IsVisible="{Binding !R.PressNa}" />
+                            <pr:PrText Classes="rsub num" Text="{Binding PSub}" />
+                          </dv:DvReadRow>
+                          <pr:PrText Classes="rsubline num" Text="{Binding PSub}" ToolTip.Tip="{Binding PSub}" />
+                          <dv:DvKvRow Background="Transparent" ToolTip.Tip="{Binding StirTip}" IsVisible="{Binding IsWide}">
+                            <pr:PrText Classes="kvl" Text="搅拌" />
+                            <pr:PrText Classes="kvv num" Classes.na="{Binding StirNa}" Text="{Binding StirValue}" />
+                            <pr:PrText Classes="kvu" Text="rpm" IsVisible="{Binding !StirNa}" />
+                            <pr:PrText Classes="kvn" Text="{Binding StirNote}" />
+                          </dv:DvKvRow>
+                          <dv:DvKvRow Background="Transparent" ToolTip.Tip="{Binding HeatTip}" IsVisible="{Binding IsWide}">
+                            <pr:PrText Classes="kvl" Text="加热" />
+                            <pr:PrText Classes="kvv num" Classes.na="{Binding HeatNa}" Text="{Binding HeatValue}" />
+                            <pr:PrText Classes="kvu" Text="%" IsVisible="{Binding !HeatNa}" />
+                            <pr:PrText Classes="kvn num" Text="{Binding HeatNote}" />
+                          </dv:DvKvRow>
+                          <dv:DvKvRow Background="Transparent" ToolTip.Tip="{Binding GasTip}" IsVisible="{Binding IsWide}">
+                            <pr:PrText Classes="kvl" Text="耗气" />
+                            <pr:PrText Classes="kvv num" Classes.na="{Binding GasNa}" Text="{Binding GasValue}" />
+                            <pr:PrText Classes="kvu" Text="mmol" IsVisible="{Binding !GasNa}" />
+                            <pr:PrText Classes="kvn" Text="" />
+                          </dv:DvKvRow>
+                        </dv:DvReads>
+                        <dv:DvProg HasProgram="{Binding HasProgram}">
+                          <pr:PrText Classes="pname" Classes.none="{Binding !HasProgram}" Text="{Binding NameText}" ToolTip.Tip="{Binding ProgName}" />
+                          <pr:PrText Classes="pkn num" Text="{Binding KnText}" />
+                          <pr:StepBar SegmentsSource="{Binding Segments}" IsRunning="{Binding BarRunning}" IsGray="{Binding IsOff}" ToolTip.Tip="{Binding BarTip}" />
+                          <pr:PrText Classes="prem num" Classes.none="{Binding !HasProgram}" Classes.run="{Binding RemRun}" Classes.held="{Binding RemHeld}"
+                                     Text="{Binding RemShown}" ToolTip.Tip="{Binding BarTip}" />
+                          <Border Background="{StaticResource LineFaintBrush}" IsHitTestVisible="False" />
+                        </dv:DvProg>
+                      </dv:DvCard>
+                    </Border>
+                  </Panel>
+                </DataTemplate>
+                <!-- 连续未安装的位置：140 px 虚线窄列 -->
+                <DataTemplate DataType="pg:DeviceUntileVm" x:DataType="pg:DeviceUntileVm">
+                  <Panel Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                    <Rectangle Stroke="{StaticResource Line2Brush}" StrokeThickness="1" StrokeDashArray="3,3" RadiusX="6" RadiusY="6" />
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Stretch" Margin="10,12" Spacing="6">
+                      <v:ReactorVessel Width="40" Height="62" Margin="0,0,0,4" Simple="True" Key="Uninstalled" HorizontalAlignment="Center" />
+                      <pr:PrText Classes="unrv" Text="{Binding Label}" />
+                      <pr:PrText Classes="unword" Text="未安装" />
+                    </StackPanel>
+                  </Panel>
+                </DataTemplate>
+              </ItemsControl.DataTemplates>
+            </ItemsControl>
+          </ScrollViewer>
+        </Panel>
+      </DockPanel>
     </pr:PrPanel>
-    <pr:PrPanel Grid.Row="1" Margin="0,0,1,0" Title="共用资源" Sub="只读 · 设置在检查器" />
-    <pr:PrPanel Grid.Row="1" Grid.Column="1" Margin="0,0,1,0" Title="设备信息" />
-    <pr:PrPanel Grid.Row="1" Grid.Column="2" Title="报警与事件" />
-  </Grid>
+
+    <!-- ================= 下排 ================= -->
+    <dv:DvRowPanel Background="{StaticResource LineStrongBrush}">
+      <!-- 2 共用资源 -->
+      <pr:PrPanel Classes="dvpanel" Tag="res" Title="共用资源" Sub="{Binding Res.Sub}" dv:DvRowPanel.Fr="1">
+        <ScrollViewer Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Classes="dvres" Classes.off="{Binding Res.IsOff}" Classes.narrow="{Binding Res.Narrow}">
+            <!-- 急停 -->
+            <Border Classes="li" Background="Transparent" ToolTip.Tip="单台急停按钮在右侧检查器；急停复位只能在设备触屏上操作">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:IconView Icon="estop" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Classes="k" Text="急停" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center" IsVisible="{Binding Res.EstopOn}">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <pr:KeyDot Key="Alarm" Slot="9" VerticalAlignment="Center" />
+                    <pr:PrText Classes="v b" Text="{Binding Res.EstopWord}" VerticalAlignment="Center" />
+                  </StackPanel>
+                  <pr:PrText Classes="cap num" Text="{Binding Res.EstopCap}" ToolTip.Tip="{Binding Res.EstopCap}" />
+                </StackPanel>
+                <pr:PrText Classes="v" Classes.mute="{Binding Res.EstopMuted}" Text="{Binding Res.EstopValue}" VerticalAlignment="Center" IsVisible="{Binding !Res.EstopOn}" />
+              </DockPanel>
+            </Border>
+            <!-- 搅拌（共用）：● 运行中 300 rpm / 全釜共用 · 磁力搅拌 · 「设置」 -->
+            <Border Classes="li stir" IsVisible="{Binding Res.SharedStir}">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:IconView Icon="fan" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Classes="k" Text="搅拌" VerticalAlignment="Center" />
+                </StackPanel>
+                <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Content="设置" Command="{Binding Res.StirSetCommand}" VerticalAlignment="Center"
+                        Margin="12,0,0,0" ToolTip.Tip="转速设定、启动 / 停止在右侧检查器（同一设置只在一个地方修改）" IsVisible="{Binding Res.StirLink}" />
+                <StackPanel VerticalAlignment="Center">
+                  <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding !Res.StirUnknown}">
+                    <pr:KeyDot Key="{Binding Res.StirDot}" Slot="9" VerticalAlignment="Center" />
+                    <pr:PrText Classes="v" Text="{Binding Res.StirWord}" VerticalAlignment="Center" />
+                    <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding Res.StirOn}">
+                      <pr:PrText Classes="v b num" Text="{Binding Res.StirRpm}" VerticalAlignment="Center" />
+                      <pr:PrText Classes="u" Text="rpm" VerticalAlignment="Center" />
+                    </StackPanel>
+                    <pr:PrText Classes="note num" Text="{Binding Res.StirNote}" VerticalAlignment="Center" Margin="4,0,0,0"
+                               IsVisible="{Binding !Res.StirOn}" />
+                  </StackPanel>
+                  <pr:PrText Classes="v mute" Text="—" IsVisible="{Binding Res.StirUnknown}" />
+                  <pr:PrText Classes="cap" Text="{Binding Res.StirCap}" ToolTip.Tip="{Binding Res.StirCapTip}" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <!-- 搅拌（各釜独立，HT-PR4）：标题行 + 每釜一行 -->
+            <Border Classes="li head" IsVisible="{Binding !Res.SharedStir}">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:IconView Icon="fan" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Classes="k" Text="搅拌" VerticalAlignment="Center" />
+                </StackPanel>
+                <pr:PrText Classes="v mute" Text="{Binding Res.StirHead}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Res.StirHead}" />
+              </DockPanel>
+            </Border>
+            <ItemsControl ItemsSource="{Binding Res.StirRows}" IsVisible="{Binding !Res.SharedStir}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:ResStirRowVm">
+                  <Border Classes="li sub" Background="Transparent">
+                    <DockPanel>
+                      <pr:PrText DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Padding="26,0,0,0" Classes="k" Text="{Binding Label}" VerticalAlignment="Center" />
+                      <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Classes="dvset" Content="设置" Command="{Binding SetCommand}"
+                              VerticalAlignment="Center" Margin="12,0,0,0" ToolTip.Tip="{Binding LinkTip}" IsVisible="{Binding Link}" />
+                      <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+                        <pr:PrText Classes="v mute" Text="—" IsVisible="{Binding Unknown}" />
+                        <pr:KeyDot Key="{Binding Dot}" Slot="9" VerticalAlignment="Center" IsVisible="{Binding !Unknown}" />
+                        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding On}">
+                          <pr:PrText Classes="v b num" Text="{Binding Rpm}" VerticalAlignment="Center" IsVisible="{Binding !Unknown}" />
+                          <pr:PrText Classes="u" Text="rpm" VerticalAlignment="Center" IsVisible="{Binding !Unknown}" />
+                        </StackPanel>
+                        <pr:PrText Classes="v mute" Text="已停" VerticalAlignment="Center">
+                          <pr:PrText.IsVisible>
+                            <MultiBinding Converter="{x:Static BoolConverters.And}">
+                              <Binding Path="!On" />
+                              <Binding Path="!Unknown" />
+                            </MultiBinding>
+                          </pr:PrText.IsVisible>
+                        </pr:PrText>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- 气路（只读，触屏操作）+ 两列 -->
+            <Border Classes="li head" Background="Transparent" ToolTip.Tip="{Binding Res.GasTip}">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <c:IconView Icon="valve" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Classes="k" Text="气路" VerticalAlignment="Center" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Classes="touch" Orientation="Horizontal" Spacing="5" Background="Transparent"
+                            ToolTip.Tip="只能在设备触屏上操作，本机只显示状态" VerticalAlignment="Center">
+                  <c:IconView Icon="hand" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Text="触屏操作" VerticalAlignment="Center" />
+                </StackPanel>
+                <Panel />
+              </DockPanel>
+            </Border>
+            <Border Classes="gas">
+              <ItemsControl ItemsSource="{Binding Res.GasItems}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <dv:DvTwoColumns ColumnGap="20" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="pg:ResGasItemVm">
+                    <pr:FlexRow Height="32" Spacing="10" Background="Transparent" ToolTip.Tip="{Binding Tip}">
+                      <pr:PrText Classes="gk" Text="{Binding Name}" pr:FlexRow.Shrink="1" />
+                      <pr:PrText Classes="gv" Classes.open="{Binding IsOpen}" Text="{Binding Word}" />
+                    </pr:FlexRow>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+            <!-- 进气阀 -->
+            <Border Classes="li sub sv">
+              <DockPanel>
+                <pr:PrText DockPanel.Dock="Left" Width="76" Margin="0,0,12,0" Padding="26,0,0,0" Classes="k" Text="进气阀" VerticalAlignment="Center" />
+                <TextBlock Classes="sv" Text="{Binding Res.SvText, Converter={x:Static th:TextConverters.Joiners}}" ToolTip.Tip="{Binding Res.SvTip}" VerticalAlignment="Center" />
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </pr:PrPanel>
+
+      <!-- 3 设备信息（宽工作区） -->
+      <dv:DvSlot IsVisible="{Binding !Tabbed}" dv:DvRowPanel.Fr="1">
+        <pr:PrPanel Classes="dvpanel" Tag="info" Title="设备信息">
+          <pr:PrPanel.Actions>
+            <Panel>
+              <pr:PrText Classes="dvstat" Text="模块状态未知" ToolTip.Tip="断线时无法得知各模块的状态" IsVisible="{Binding !Info.Online}" />
+              <StackPanel Orientation="Horizontal" Background="Transparent" ToolTip.Tip="{Binding Info.StatTip}" IsVisible="{Binding Info.Online}">
+                <Ellipse Width="8" Height="8" Margin="4,0,-2,0" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding Info.StatDot}" />
+                <pr:PrText Classes="dvstat num">
+                  <Run Text="模块在线 " /><Run FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Text="{Binding Info.StatCount}" /><Run Text="{Binding Info.StatTotal}" />
+                </pr:PrText>
+              </StackPanel>
+            </Panel>
+          </pr:PrPanel.Actions>
+          <ContentControl Content="{Binding InfoContent}" ContentTemplate="{StaticResource InfoTemplate}" />
+        </pr:PrPanel>
+      </dv:DvSlot>
+
+      <!-- 4 报警与事件（宽工作区） -->
+      <dv:DvSlot IsVisible="{Binding !Tabbed}" dv:DvRowPanel.Fr="1.2">
+        <pr:PrPanel Classes="dvpanel" Tag="log" Title="报警与事件" Sub="{Binding Log.UnackedText}" SubDot="{Binding Log.UnackedDot}">
+          <ContentControl Content="{Binding LogContent}" ContentTemplate="{StaticResource LogTemplate}" />
+        </pr:PrPanel>
+      </dv:DvSlot>
+
+      <!-- 窄工作区：「设备信息 / 报警与事件」页签面板（面板名不带页签：放大 / 关闭、焦点在换页签后保留） -->
+      <dv:DvSlot IsVisible="{Binding Tabbed}" dv:DvRowPanel.Fr="1.3">
+        <pr:PrPanel Name="TabsPanel" Classes="dvpanel dvtabs" Tag="tabs" AutomationProperties.Name="设备信息 / 报警与事件">
+          <pr:PrPanel.Title>
+            <pr:PTabs Name="Tabs" OptionsSource="{Binding TabOptions}" Value="{Binding TabValue, Mode=TwoWay}" />
+          </pr:PrPanel.Title>
+          <pr:PrPanel.Actions>
+            <Panel>
+              <Panel IsVisible="{Binding !TabLogOn}">
+                <pr:PrText Classes="dvstat" Text="模块状态未知" ToolTip.Tip="断线时无法得知各模块的状态" IsVisible="{Binding !Info.Online}" />
+                <StackPanel Orientation="Horizontal" Background="Transparent" ToolTip.Tip="{Binding Info.StatTip}" IsVisible="{Binding Info.Online}">
+                  <Ellipse Width="8" Height="8" Margin="4,0,-2,0" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding Info.StatDot}" />
+                  <pr:PrText Classes="dvstat num">
+                    <Run Text="模块在线 " /><Run FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Text="{Binding Info.StatCount}" /><Run Text="{Binding Info.StatTotal}" />
+                  </pr:PrText>
+                </StackPanel>
+              </Panel>
+              <pr:PrText Classes="dvunacked" Text="{Binding Log.UnackedText}" Margin="0,0,4,0" IsVisible="{Binding TabLogOn}" />
+            </Panel>
+          </pr:PrPanel.Actions>
+          <ContentControl Content="{Binding TabsContent}">
+            <ContentControl.DataTemplates>
+              <DataTemplate DataType="pg:DeviceInfoVm" x:DataType="pg:DeviceInfoVm">
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource InfoTemplate}" />
+              </DataTemplate>
+              <DataTemplate DataType="pg:DeviceLogVm" x:DataType="pg:DeviceLogVm">
+                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource LogTemplate}" />
+              </DataTemplate>
+            </ContentControl.DataTemplates>
+          </ContentControl>
+        </pr:PrPanel>
+      </dv:DvSlot>
+    </dv:DvRowPanel>
+  </dv:DvPagePanel>
 </UserControl>

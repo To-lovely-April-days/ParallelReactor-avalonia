@@ -30,6 +30,10 @@
     <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeClock.cs" Link="Fakes/FakeClock.cs" />
     <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeWsTransport.cs" Link="Fakes/FakeWsTransport.cs" />
     <Compile Include="../ParallelReactor.Control.Tests/Samples.cs" Link="Samples.cs" />
+    <!-- M4 设备页（DeviceTests）：视图模型从演示数据得出的版面 / 页签 / 报警与事件文字，与样稿在 WebKit 里实际渲染、探针量出来的结果对照
+         （MockVectors/PageMockVectors.cs 的 dv-* / dx-* / td-* / tt-*；Core 那边用同一份数据直接测计算器） -->
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageVectorData.cs" Link="MockVectors/PageVectorData.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageMockVectors.cs" Link="MockVectors/PageMockVectors.cs" />
     <Content Include="../ParallelReactor.Control.Tests/Samples/**" Link="Samples/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

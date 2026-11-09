@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # snap-refs.sh — 现拍样稿的参照图（PORT-PLAN §5.0「其它状态的配色参照用 snap 工具现拍」、§5.9；doc §9）。
 #
-# 按截图计划（PR_CONTROL_SHOT_PLAN=1 打印的「名字 路由 尺寸,尺寸 参数」）给样稿没有 final 图的截图（对话框 dlg-*、状态集 st-*）各拍一张：
+# 按截图计划（PR_CONTROL_SHOT_PLAN=1 打印的「名字 路由 尺寸,尺寸 参数」）给样稿没有 final 图的截图（对话框 dlg-*、状态集 st-*、总览 ov-*、设备页 dv-*）各拍一张：
 #   snap <样稿 index.html> <输出目录>/final-<名字>-<宽>.png <宽> <高> "/<路由>?bare=1&freeze=1&<参数>" 1300 "0"
+# 参数里有 scroll=end（我们的演示参数：总览滚到底；样稿不认它）时，JS 把样稿的 .overview-scroll 滚到底再拍。
+# dv-never（截图准备 adddevice：刚添加、从未连上的 5号机）：样稿先开总览，JS 调 PR.sim.addDevice(...) 再 PR.route.go('device', [k])。
 # 样稿冻结的 final-*.png（research/pc-v3/shots，M1 固定的那份）不重拍：给了 FROZEN=<目录> 时把那里的 final-*.png 链接进输出目录，
 # 输出目录就能直接当 PR_CONTROL_SHOT_REF 用。必须在 bash 下运行（snap 是 WebKit 截图工具，见 PORT-PLAN 附录 B）。
 #
@@ -10,7 +12,7 @@
 #   SNAP=<snap 可执行文件>      必填（scratchpad/snap/snap；scratch 被清掉时用同目录的 snap.swift 重新编译）
 #   MOCK=<样稿 index.html>      默认 ../../../research/pc-v3/index.html（相对本脚本）
 #   FROZEN=<冻结的参照目录>     可选：把那里的 final-*.png 链接进来（已有同名文件时不覆盖）
-#   名字前缀默认「dlg- st-」；只重拍某几张时给前缀或完整名字（dlg-estop2）。
+#   名字前缀默认「dlg- st- ov- dv-」；只重拍某几张时给前缀或完整名字（dlg-estop2）。
 #   SKIP_BUILD=1 不构建 App（截图计划由 App 打印）。
 set -u
 export DOTNET_CLI_TELEMETRY_OPTOUT=1 AVALONIA_TELEMETRY_OPTOUT=1
@@ -20,7 +22,7 @@ DOTNET="${DOTNET:-$HOME/.dotnet/dotnet}"
 OUT="${1:?用法：snap-refs.sh <输出目录> [名字前缀 …]}"
 shift
 PREFIXES=("$@")
-[ ${#PREFIXES[@]} -eq 0 ] && PREFIXES=("dlg-" "st-")
+[ ${#PREFIXES[@]} -eq 0 ] && PREFIXES=("dlg-" "st-" "ov-" "dv-")
 SNAP="${SNAP:?请设置 SNAP=<snap 可执行文件>}"
 MOCK="${MOCK:-$(cd "$HERE/../../.." && pwd)/research/pc-v3/index.html}"
 [ -x "$SNAP" ] || { echo "snap 不可执行：$SNAP"; exit 2; }
@@ -48,7 +50,16 @@ while read -r name route sizes query; do
     # 冻结的 final 图（链接进来的）不重拍
     [ -L "$dest" ] && continue
     hash="/$route?bare=1&freeze=1${query:+&$query}"
-    if "$SNAP" "$MOCK" "$dest" "$w" "$h" "$hash" 1300 "0" > "$OUT/log-$name-$w.txt" 2>&1; then echo "   $name-$w  $hash"
+    js="0"
+    wait=1300
+    case "&$query&" in *"&scroll=end&"*) js="document.querySelector('.overview-scroll').scrollTop=100000" ;; esac
+    case "$name" in
+      dv-never)
+        hash="/overview?bare=1&freeze=1"
+        js="var d=PR.sim.addDevice({host:'192.168.1.50',port:8080,token:'x',alias:'5号机',autoConnect:true,modelKey:'PR8'}); PR.route.go('device',[d.k]);"
+        wait=1500 ;;
+    esac
+    if "$SNAP" "$MOCK" "$dest" "$w" "$h" "$hash" "$wait" "$js" > "$OUT/log-$name-$w.txt" 2>&1; then echo "   $name-$w  $hash"
     else echo "!! $name-$w 失败（见 log-$name-$w.txt）"; fail=1; fi
   done
 done < <(PR_CONTROL_SHOT_PLAN=1 "$DOTNET" "$DLL" 2>/dev/null)

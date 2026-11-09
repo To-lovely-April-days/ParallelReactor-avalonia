@@ -145,7 +145,7 @@ public sealed partial class LeaseBoxVm : ObservableObject
         else if (!online)
         {
             // 打开的页签就是这台设备（设备页 / 它的反应釜页）、页面上有断线说明条时，「立即重连」在页面上 —— 一个动作只放一个地方
-            // （M2 的页面是骨架、还没有说明条：按钮留在这里，PageVm.ShowsReconnect）
+            // （PageVm.ShowsReconnect：设备页 M4 起有说明条；反应釜页的说明条在 M5，之前按钮留在这里）
             if (!(c.PageObj is { } po && po.K == d.K && c.Shell.Page is { ShowsReconnect: true }))
             {
                 btn = conn.State == ConnStatus.Disconnected ? "连接" : "立即重连";

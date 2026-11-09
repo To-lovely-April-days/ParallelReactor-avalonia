@@ -29,7 +29,7 @@ namespace ParallelReactor.Control.Shot;
 /// 面板原地放大 / 关闭 / 重置布局、窗口标题；字符串内容的字跟着自己的控件（没被外面的「X TextBlock」样式盖掉，说明条里的链接是 a-d / t-dis）、
 /// 对话框与浮层资源管理器的阴影画在框外、旧样式页面的字符串内容照旧。结果写 shell-checks-&lt;w&gt;.txt（PASS / FAIL / INFO），弹出层另存 shell-popup-*.png；有 FAIL 时退出码 5。
 /// </summary>
-public static class ShellChecks
+public static partial class ShellChecks
 {
     public static async Task<(int Fails, List<string> Lines)> RunAsync(Window window, ShellVm vm, string dir, int width)
     {
@@ -317,9 +317,10 @@ public static class ShellChecks
         var view = pages.CurrentView!;
         PrPanel PanelOf(string title) => view.GetVisualDescendants().OfType<PrPanel>().First(p => p.Title as string == title);
         var res = PanelOf("共用资源");
+        // M4：窄工作区时「设备信息」「报警与事件」合成一个页签面板（另外两块不显示）—— 只看放大之前显示着的面板
+        var others = view.GetVisualDescendants().OfType<PrPanel>().Where(p => !ReferenceEquals(p, res) && p.IsEffectivelyVisible).ToList();
         Click(window, res.GetVisualDescendants().OfType<Button>().First(b => b.Name == "PART_Max"));
         await Settle();
-        var others = view.GetVisualDescendants().OfType<PrPanel>().Where(p => !ReferenceEquals(p, res)).ToList();
         Check(res.IsMaximized && Math.Abs(res.Bounds.Width - pages.Bounds.Width) < 1.5 && Math.Abs(res.Bounds.Height - pages.Bounds.Height) < 1.5 && others.All(p => !p.IsEffectivelyVisible),
             $"「共用资源」原地放大铺满工作区（{res.Bounds.Width:0}×{res.Bounds.Height:0} / {pages.Bounds.Width:0}×{pages.Bounds.Height:0}），其它面板隐藏");
         await Capture(window, Path.Combine(dir, $"shell-max-{width}.png"), lines);
@@ -339,7 +340,8 @@ public static class ShellChecks
         await Settle();
         var ov = pages.CurrentView!;
         var moreBtn = ov.GetVisualDescendants().OfType<Button>().First(b => Behaviors.Pr.GetIcon(b) == "more");
-        var expDev = new[] { "#1号机 · HT-PR8 · 现场", "打开设备页", "-", "全部停止（不需要控制权）", "-", "释放控制权", "断开连接…", "-", "重命名…", "编辑设置…", "移除…", "-", "急停 1号机…" };
+        // 总览的 «⋯» = 设备菜单（同右键）+「设备信息」（样稿 overview.js menuItems：extra 在「打开设备页」后面）
+        var expDev = new[] { "#1号机 · HT-PR8 · 现场", "打开设备页", "设备信息", "-", "全部停止（不需要控制权）", "-", "释放控制权", "断开连接…", "-", "重命名…", "编辑设置…", "移除…", "-", "急停 1号机…" };
         for (int round = 1; round <= 2; round++)
         {
             Click(window, moreBtn);
@@ -418,6 +420,8 @@ public static class ShellChecks
         Check(vm.Explorer.Rows.Any(r => r.Key == "r1/1"), "再点 → 展开");
         await Capture(window, Path.Combine(dir, $"shell-explorer-{width}.png"), lines);
         await InspectorAndTimeline(window, vm, dir, width, Check, Info, lines);
+        await OverviewChecks(window, vm, dir, width, Check, Info, lines);
+        await DeviceChecks(window, vm, dir, width, Check, Info, lines);
         return (fails, lines);
     }
 

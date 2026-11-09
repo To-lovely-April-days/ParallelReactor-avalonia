@@ -129,7 +129,7 @@
                                FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                   </pr:FlexRow>
                   <pr:FlexRow Height="28" Margin="38,0,10,0" Spacing="8">
-                    <pr:LeaseBadge Classes="xmeta" Classes.onsel="{Binding IsSelected}" State="{Binding D.Lease}" Text="{Binding D.LeaseShort}"
+                    <pr:LeaseBadge Classes="xmeta" Classes.onsel="{Binding IsSelected}" State="{Binding D.Lease}" Text="{Binding D.LeaseTreeShort}"
                                    ToolTip.Tip="{Binding D.LeaseText}" IsVisible="{Binding !D.IsOffline}" pr:FlexRow.Shrink="1" />
                     <pr:ConnBadge Classes="xmeta" Classes.onsel="{Binding IsSelected}" State="{Binding D.Conn}" Text="{Binding D.ConnShort}"
                                   ToolTip.Tip="{Binding D.ConnText}" IsVisible="{Binding D.IsOffline}" pr:FlexRow.Shrink="1" />
