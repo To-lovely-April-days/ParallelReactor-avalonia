@@ -18,11 +18,12 @@ internal static class Program
         bool headless = false;
 #if DEBUG
         headless = (Environment.GetEnvironmentVariable("PR_CONTROL_HEADLESS") ?? "") is "1" or "true";
-        // 截图计划（tools/shots.sh 用：每个尺寸开拍前删掉这些名字上一次留下的截图）：一行一张「名字 路由 尺寸,尺寸」，不启动界面
+        // 截图计划（tools/shots.sh 用：每个尺寸开拍前删掉这些名字上一次留下的截图；tools/snap-refs.sh 用：现拍样稿参照图）：
+        // 一行一张「名字 路由 尺寸,尺寸 [参数]」，不启动界面
         if ((Environment.GetEnvironmentVariable("PR_CONTROL_SHOT_PLAN") ?? "") is "1" or "true")
         {
             foreach (var s in Shot.ShotPlan.All)
-                Console.WriteLine(s.Name + " " + s.Route + " " + string.Join(",", System.Linq.Enumerable.Select(s.Sizes, z => z.Width + "x" + z.Height)));
+                Console.WriteLine((s.Name + " " + s.Route + " " + string.Join(",", System.Linq.Enumerable.Select(s.Sizes, z => z.Width + "x" + z.Height)) + " " + s.Query).TrimEnd());
             return;
         }
 #endif

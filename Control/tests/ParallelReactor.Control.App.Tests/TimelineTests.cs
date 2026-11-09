@@ -236,9 +236,10 @@ public class TimelineTests
         Assert.Equal("立即重连", d4[6].Label);
         Assert.NotNull(d4[3].Reason);    // 断线：全部停止也发不出去（要连接）
 
-        // 「急停 1号机…」先打开只预选这一台的急停对话框（对话框在 M3：没注册时提示「对话框 estop 未定义」）
+        // 「急停 1号机…」先打开只预选这一台的急停对话框（M3）
         MenuModel.DeviceItems(s, s.Fleet.Device(1)!).Last().Run!();
-        Assert.Equal("对话框 estop 未定义", s.Toasts.Items.Last().Text);
+        var dlg = Assert.IsType<ParallelReactor.Control.Shell.Dialogs.EstopDialogVm>(s.Dialogs.Current);
+        Assert.Equal(("estop", "1", "已预选 1号机 · 可再勾选其它设备"), (dlg.Name, dlg.Arg, dlg.Caption));
     }
 
     [Fact]

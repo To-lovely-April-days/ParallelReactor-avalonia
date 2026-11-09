@@ -24,7 +24,8 @@ namespace ParallelReactor.Control.Services;
 /// <item><see cref="Latest"/>：实时 = 最后一帧（性能测试、导出用）；演示 = null。<see cref="Info"/> / <see cref="Settings"/> / <see cref="Comm"/> 只有实时源有
 ///   （/device 在连上时取、/settings 连上后取一次，/device/comm 在 M4 才轮询 —— M2 恒为 null）。</item>
 /// <item><see cref="Program"/>：演示 = 演示程序；实时 = null（程序台账 ProgramLedger 在 M5），HMI 的程序进度在 <see cref="ChannelReading.Hmi"/>。</item>
-/// <item><see cref="Role"/>：M2 恒为 Unknown（403 学习在 M3）。</item>
+/// <item><see cref="Role"/>：本机令牌在这台设备上的权限（Core 的 TokenRole：第一个 403 FORBIDDEN_ROLE 之后学到并缓存，M3；演示数据恒为不知道）。
+///   DeviceActions 遇到 403 时调 <see cref="LearnForbidden"/>。</item>
 /// </list>
 /// </summary>
 public interface IDeviceSource : IAsyncDisposable
@@ -40,7 +41,8 @@ public interface IDeviceSource : IAsyncDisposable
     /// <summary>GET /device/comm（M4 起轮询）；M2 恒为 null。</summary>
     CommDto? Comm { get; }
     LeaseView Lease { get; }
-    Role Role { get; }
+    /// <summary>本机令牌的权限（第一个 403 之后学到；不知道 = 不限制）。守卫经 <see cref="Facts"/> 用它。</summary>
+    TokenRole Role { get; }
     /// <summary>最后一帧遥测（实时）；演示 null。</summary>
     TelemetrySnapshot? Latest { get; }
     /// <summary>最后收到数据的时刻（本地时间；断线时停住；从未连上为 null）。</summary>
@@ -70,6 +72,12 @@ public interface IDeviceSource : IAsyncDisposable
     /// </summary>
     Task<ActionOutcome> ExecAsync(DeviceAction action, ActionPayload args, CancellationToken ct);
 
+    /// <summary>
+    /// 这个操作被 HMI 以 403 FORBIDDEN_ROLE 拒绝了：记下令牌的权限（<see cref="Role"/>，按设备缓存到换令牌为止），守卫随之禁用并写明原因。
+    /// 演示数据：什么都不做。
+    /// </summary>
+    void LearnForbidden(DeviceAction action);
+
     Task RequestLeaseAsync();
     Task CancelLeaseRequestAsync();
     Task ReleaseLeaseAsync();
@@ -93,8 +101,8 @@ public interface IDeviceSource : IAsyncDisposable
 }
 
 /// <summary>
-/// 一台设备的本机配置（M2：一台实时设备 = control.json 的地址 / 端口 / 令牌；M3 换成 devices.json 的设备列表）。
-/// 令牌只在内存里（是否落盘由 ControlConfig.RememberToken 决定）。
+/// 一台设备的本机配置（M3：devices.json 的一项，见 ControlConfig / DeviceEntry）：身份、别名、地址、端口、令牌、启动时自动连接。
+/// 令牌只在内存里（是否落盘由 DeviceEntry.RememberToken 决定，D7）。
 /// </summary>
 public sealed record DeviceConfig(Guid Id, string Alias, string Host, int Port, string? Token = null, bool AutoConnect = false)
 {
@@ -104,9 +112,12 @@ public sealed record DeviceConfig(Guid Id, string Alias, string Host, int Port, 
 
 /// <summary>
 /// 连接（样稿 conn）：状态、是否连上过、重连倒计时、上线 / 断线时刻；文字见 <see cref="Display"/>。
-/// <see cref="StopReachable"/>：停止类命令现在能尽力送达（真机：有连接对象、连上过 —— 只是 WebSocket 在重连时也算）；演示数据不用（false，能不能停只看在线）。
+/// <see cref="StopReachable"/>：停止类命令现在能送达（真机：有连接对象且有证据表明 REST 通 —— 只是 WebSocket 在重连 / 被拒时也算，主机不通时不算；
+/// 见 LiveDeviceSource.StopReachable）；演示数据不用（false，能不能停只看在线）。
+/// <see cref="Attempts"/>：样稿 conn.attempts（总览的断线说明「12 s 后自动重连（已试 N 次）」，N = Attempts − 1，M4 用）：
+/// 连上过的设备断线时从 1 起、每次重连失败加一；从未连上的设备 = 失败的连接次数；在线时 0。
 /// </summary>
-public sealed record ConnInfo(ConnStatus State, bool EverOnline, int RetryS = 0, DateTime? Since = null, DateTime? LostAt = null, bool StopReachable = false)
+public sealed record ConnInfo(ConnStatus State, bool EverOnline, int RetryS = 0, DateTime? Since = null, DateTime? LostAt = null, bool StopReachable = false, int Attempts = 0)
 {
     public bool Online => State == ConnStatus.Online;
 
@@ -116,11 +127,13 @@ public sealed record ConnInfo(ConnStatus State, bool EverOnline, int RetryS = 0,
     public ConnDisplay Display => DeviceTexts.Conn(State, EverOnline, RetryS);
 }
 
-/// <summary>控制权（样稿 lease + 真机第 5 种）：状态、申请 / 宽限倒计时、持有者；文字见 <see cref="Display"/>。</summary>
-public sealed record LeaseView(LeaseStatus State, int RemainS, int GraceS, string Holder, LeaseDisplay Display);
-
-/// <summary>调用者角色（只读令牌在第一次 403 后学到，M3；A3 补上 whoami 后直接读）。</summary>
-public enum Role { Unknown, Operator, ReadOnly }
+/// <summary>
+/// 控制权（样稿 lease + 真机第 5 种）：状态、申请 / 宽限倒计时、持有者；文字见 <see cref="Display"/>。
+/// <see cref="HeartbeatDegraded"/>：本机远程控制中、但连续 ≥ 2 次心跳没送到（真机，Client 的 ControlLeaseClient.HeartbeatDegraded；HMI 还没判 remoteLost）——
+/// 检查器 / 申请控制权对话框不再写「心跳正常」。演示数据恒为 false。
+/// <see cref="WaitS"/>：申请等触屏确认的上限（秒）—— 申请控制权对话框倒计时环的满格：真机取 HMI 的 requestTimeoutSec（GET /control），演示 = 样稿 LEASE_WAIT_S 60。
+/// </summary>
+public sealed record LeaseView(LeaseStatus State, int RemainS, int GraceS, string Holder, LeaseDisplay Display, bool HeartbeatDegraded = false, int WaitS = 60);
 
 /// <summary>急停：是否急停中、开始时刻、来源（真机没有来源字段，A4）。</summary>
 public sealed record EstopInfo(bool Active, DateTime? At = null, string? By = null)

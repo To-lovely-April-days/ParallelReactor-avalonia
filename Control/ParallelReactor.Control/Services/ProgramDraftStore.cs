@@ -45,7 +45,8 @@ public sealed class ProgramDraftStore
 
     public void Save()
     {
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PR_CONTROL_SHOT"))) return;
+        // 截图 / 演示（PR_CONTROL_SHOT 或 PR_CONTROL_DEMO）不写任何文件：同 devices.json 的规则（M3 复核：以前只看 PR_CONTROL_SHOT，交互演示会写 drafts.json）
+        if (ControlConfig.WritesDisabledByEnvironment) return;
         try
         {
             Directory.CreateDirectory(ControlConfig.Directory);

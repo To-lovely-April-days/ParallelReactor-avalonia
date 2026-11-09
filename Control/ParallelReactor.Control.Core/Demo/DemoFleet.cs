@@ -79,6 +79,12 @@ public sealed partial class DemoFleet
     /// <summary>申请控制权后 5 s 自动当作触屏已确认（样稿演示行为）。关掉 = 一直等到超时。</summary>
     public bool AutoConfirmLease { get; set; } = true;
 
+    /// <summary>
+    /// 「全部停止」连搅拌一起停（默认取 <see cref="ControlOptions.StopAllStopsStirring"/>，全软件只有那一处设置；这里只给测试换值）。
+    /// false = 样稿：搅拌保持当前状态；true = 共用搅拌和各釜搅拌都停，结果文字见 <see cref="StopAllText"/>。
+    /// </summary>
+    public bool StopAllStopsStirring { get; set; } = ControlOptions.StopAllStopsStirring;
+
     /// <summary>数据变了（每秒推进、操作、设备增删、参数）。在调用 Tick / Act / Apply 的线程上同步触发。</summary>
     public event EventHandler<DemoChangedEventArgs>? Changed;
 

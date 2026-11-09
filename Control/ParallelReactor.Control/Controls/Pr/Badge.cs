@@ -66,12 +66,16 @@ public class Badge : TemplatedControl
     }
 }
 
-/// <summary>控制权状态（样稿 PR.sim.leaseInfo 的 state；第 5 种「被其他客户端持有」在 M3 加）。</summary>
-public enum LeaseState { Local, Requested, Remote, Lost }
+/// <summary>
+/// 控制权状态（样稿 PR.sim.leaseInfo 的 state）+ 真机的第 5 种 <see cref="Other"/>：被其他客户端持有（PORT-PLAN §3.5 / R8；演示数据不会出现）。
+/// 前 4 种的顺序与 Core 的 LeaseStatus 相同。
+/// </summary>
+public enum LeaseState { Local, Requested, Remote, Lost, Other }
 
 /// <summary>
 /// 控制权徽标（样稿 ui.leaseBadge / .pr-lease--*，brief §5.5）：远程控制中 = a-soft + 钥匙；本地 · 只读 = 灰 + 锁；
 /// 申请中 = 白底紫框 + 时钟（倒计时写在文字里）；心跳中断 / 宽限 = 红 + ⚠。Text 为空时用默认文字。
+/// 第 5 种「其他客户端 X」（M3，样稿没有）：灰底 + 人形图标 + t-2 字 —— 中性（不是本机的控制权，不用强调色；也不是故障，不用红）。
 /// </summary>
 public sealed class LeaseBadge : Badge
 {
@@ -81,11 +85,11 @@ public sealed class LeaseBadge : Badge
 
     public LeaseBadge() => UpdateState();
 
-    protected override string? DefaultIcon => State switch { LeaseState.Remote => "key", LeaseState.Requested => "clock", LeaseState.Lost => "alert", _ => "lock" };
+    protected override string? DefaultIcon => State switch { LeaseState.Remote => "key", LeaseState.Requested => "clock", LeaseState.Lost => "alert", LeaseState.Other => "user", _ => "lock" };
     protected override string? DefaultText => TextOf(State);
 
     /// <summary>没有倒计时时的文字。</summary>
-    public static string TextOf(LeaseState s) => s switch { LeaseState.Remote => "远程控制中", LeaseState.Requested => "申请中", LeaseState.Lost => "控制权宽限", _ => "本地 · 只读" };
+    public static string TextOf(LeaseState s) => s switch { LeaseState.Remote => "远程控制中", LeaseState.Requested => "申请中", LeaseState.Lost => "控制权宽限", LeaseState.Other => "其他客户端", _ => "本地 · 只读" };
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -100,6 +104,7 @@ public sealed class LeaseBadge : Badge
         PseudoClasses.Set(":local", s == LeaseState.Local);
         PseudoClasses.Set(":requested", s == LeaseState.Requested);
         PseudoClasses.Set(":lost", s == LeaseState.Lost);
+        PseudoClasses.Set(":other", s == LeaseState.Other);
         Update();
     }
 }

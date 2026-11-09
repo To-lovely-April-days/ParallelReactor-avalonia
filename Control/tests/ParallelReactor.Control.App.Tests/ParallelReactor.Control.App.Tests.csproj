@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- App（Avalonia 桌面程序）的回归测试（R13）：视图模型（Fleet/、Shell/：投影、页签、检查器、时间轴）、操作守卫的接线（Fleet/DeviceActions、对话框）、
+       实时数据源 Services/LiveDeviceSource（假连接 + 脚本化的 REST）。只用视图模型与数据源：不创建窗口、不启动 Avalonia。
+       Contracts / Client / PerfTest / Core 的测试与色板 / 字号检查在 ../ParallelReactor.Control.Tests（不引用 App，PORT-PLAN §1.1 / §4.7）。
+       命名空间沿用 ParallelReactor.Control.Tests（与那边共用的测试工具也在这个命名空间里）：不用工程名 ParallelReactor.Control.App.Tests ——
+       App 里有类型 ParallelReactor.Control.App，同名的命名空间会与它冲突（CS0435）。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Control.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control.Core/ParallelReactor.Control.Core.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control/ParallelReactor.Control.csproj" />
+  </ItemGroup>
+
+  <!-- 与 ParallelReactor.Control.Tests 共用的测试工具（源文件只有那边一份）：脚本化的 HTTP 假服务端、假时钟、脚本化的 WS 传输、
+       从真 HMI（PR_SIM）抓取的响应样本 Samples/*.json(l) 与读取它们的 Samples 类（样本随测试输出复制）。改这些文件时两个测试工程都要跑。 -->
+  <ItemGroup>
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/ScriptedHttpHandler.cs" Link="Fakes/ScriptedHttpHandler.cs" />
+    <!-- M3 重连监督：两台假 HMI 经真 ReactorConnection（LiveDeviceSourceTests.Live.cs）—— 手动推进的时钟、脚本化的 WS 传输 -->
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeClock.cs" Link="Fakes/FakeClock.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeWsTransport.cs" Link="Fakes/FakeWsTransport.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/Samples.cs" Link="Samples.cs" />
+    <Content Include="../ParallelReactor.Control.Tests/Samples/**" Link="Samples/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>

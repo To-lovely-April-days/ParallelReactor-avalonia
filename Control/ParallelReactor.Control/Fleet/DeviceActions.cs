@@ -84,6 +84,9 @@ public sealed class DeviceActions
         }
         catch (Exception ex)
         {
+            // 403 FORBIDDEN_ROLE：令牌没有这个权限 —— 记下（按设备缓存，PORT-PLAN §3.2 第 10 条 / R9），之后守卫直接禁用并写明原因。
+            // 「该操作需要 admin 角色」不学：说明不了 operator 的权限（M3 复核）
+            if (ex is ApiException { Code: OpCodes.ForbiddenRole } fe && !LiveDeviceSource.AdminOnly(fe.Message)) _d.Source.LearnForbidden(action);
             var msg = _d.Alias + " · " + Describe(ex);
             if (!quiet) _d.Fleet.RaiseToast(msg, ToastKind.Err);
             _d.Fleet.RequestRefresh();

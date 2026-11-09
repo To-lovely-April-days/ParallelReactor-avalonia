@@ -80,9 +80,23 @@ public static class DeviceTexts
         LeaseStatus.Remote => new LeaseDisplay(state, "远程控制中", "远程控制", "远程控制", Tone.Ok, client),
         LeaseStatus.Requested => new LeaseDisplay(state, "申请中 · " + remainS + " s", "申请中", "申请中 " + remainS + " s", Tone.Warn, TouchScreen),
         LeaseStatus.Lost => new LeaseDisplay(state, "控制权心跳中断 · 宽限 " + graceS + " s", "控制权宽限 " + graceS + " s", "宽限 " + graceS + " s", Tone.Err, client),
-        LeaseStatus.Other => new LeaseDisplay(state, "远程控制中（其他客户端 " + (otherHolder ?? "") + "）", "其他客户端", "其他客户端", Tone.Mute, otherHolder ?? ""),
+        // 第 5 种（真机）：短写法带上是谁（「其他客户端 PC-2」，树 / 列表 / 对话框的徽标），完整文字放提示
+        LeaseStatus.Other => new LeaseDisplay(state, "远程控制中（其他客户端 " + (otherHolder ?? "") + "）", OtherShort(otherHolder), OtherShort(otherHolder), Tone.Mute, otherHolder ?? ""),
         _ => new LeaseDisplay(LeaseStatus.Local, "本地 · 只读", "本地只读", "本地只读", Tone.Mute, TouchScreen),
     };
+
+    /// <summary>第 5 种控制权的短文字：「其他客户端 PC-2」（不知道名字时「其他客户端」）。</summary>
+    public static string OtherShort(string? holder) => string.IsNullOrEmpty(holder) ? "其他客户端" : "其他客户端 " + holder;
+
+    /// <summary>本机旧租约的短文字（Core.Guard.GuardFacts.Orphan；样稿没有这一种）。</summary>
+    public const string OrphanShort = "本机旧租约";
+
+    /// <summary>
+    /// 本机旧租约（真机，R8 的边角）：HMI 报告控制权在本机客户端名手里、本机这条连接却没有持有（上次运行崩溃 / 强退留下的）。
+    /// 状态按第 5 种算（徽标同「其他客户端」：灰底 + 人形图标），文字「远程控制中（本机旧租约）」/ 短「本机旧租约」，持有者 = 本机客户端名。
+    /// </summary>
+    public static LeaseDisplay Orphan(string client) =>
+        new(LeaseStatus.Other, "远程控制中（" + OrphanShort + "）", OrphanShort, OrphanShort, Tone.Mute, client);
 
     /// <summary>连接文字：'已连接' / '正在重连…' / '正在连接…'（从未连上）/ '已断开' / '连接中断 · 重连中 12 s' / '连接失败 · 12 s 后重试'（从未连上）。</summary>
     public static ConnDisplay Conn(ConnStatus state, bool everOnline, int retryS) => state switch

@@ -316,7 +316,7 @@ public class InspectorTests
     [Fact]
     public void NoDevices_EmptyState()
     {
-        var s = new ShellVm(FleetVm.CreateLive(new Services.ControlConfig(), persistConfig: false));
+        var s = new ShellVm(FleetVm.CreateLive(Services.ControlConfig.InMemory()));
         Assert.True(s.Inspector.IsEmpty);
         Assert.Null(s.Inspector.Body);
         Assert.False(s.Inspector.HasSelection);

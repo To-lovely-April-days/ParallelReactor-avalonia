@@ -282,7 +282,10 @@ public class LeaseStateMachineTests
     [Fact]
     public async Task ControlState_Sync_AfterReconnect()
     {
-        await using var r = new Rig().AutoGrant();
+        // 关掉自动重申请（只改测试，PORT-PLAN §5 M3）：这里验的是 GET /control → 本地状态的映射。开着它时，最后一步 local → Revoke 之后
+        // ReacquireAsync 经 Task.Yield 在线程池上立刻同步进入 Requesting，与下面「== None」的断言竞争（偶发 Requesting）。
+        // 「回到本地后自动重申请」由 FixRegressionTests.F5 覆盖（等到 L2 再断言），ClientAdditionsTests 里还有一条等稳定后的版本。
+        await using var r = new Rig(autoReacquire: false).AutoGrant();
         Assert.True(await r.Lease.AcquireAsync(CancellationToken.None));
         r.Lease.OnControlState(new ControlStateDto("remote", "PC-测试工位1", "PC-测试工位1", "remoteLost", null, null, null, true, 10, 60, 60, "keep"));
         Assert.Equal(LeaseState.Lost, r.Lease.State);

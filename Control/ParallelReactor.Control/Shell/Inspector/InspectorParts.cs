@@ -138,7 +138,9 @@ public sealed partial class LeaseBoxVm : ObservableObject
         if (!online && cd.First)
         {
             connecting = true;
-            note = "正在连接 " + d.Host + ":" + d.Port + "\n尚未收到数据 · 连上后才能操作";
+            // 真机从未连上、但 REST 已经通了（例如 WS 503 TOO_MANY_CLIENTS，DeviceVm.CanStop）：停止类照样能发 —— 不能写「连上后才能操作」
+            // （M3 复核；后半句取自样稿本地只读时的说明「停止类操作随时可用」）
+            note = "正在连接 " + d.Host + ":" + d.Port + "\n尚未收到数据 · " + (d.CanStop ? "停止类操作随时可用" : "连上后才能操作");
         }
         else if (!online)
         {
@@ -159,7 +161,9 @@ public sealed partial class LeaseBoxVm : ObservableObject
         else if (lease.State == LeaseStatus.Remote)
         {
             btn = "释放"; btnA = DeviceAction.LeaseRelease;
-            note = c.Shell.Fleet.ClientName + " · 心跳正常";
+            // 真机连续 ≥ 2 次心跳没送到（HMI 还没判 remoteLost）：不写「心跳正常」—— 写旧界面的「心跳异常」（样稿没有这一种）
+            // 持有者按 HMI 认的名字（Lease.Holder：真机这条连接用的客户端名）写
+            note = (lease.Holder.Length > 0 ? lease.Holder : c.Shell.Fleet.ClientName) + (lease.HeartbeatDegraded ? " · 心跳异常" : " · 心跳正常");
         }
         else if (lease.State == LeaseStatus.Requested)
         {

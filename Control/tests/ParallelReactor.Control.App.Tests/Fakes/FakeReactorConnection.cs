@@ -27,7 +27,30 @@ public sealed class FakeReactorConnection : IReactorConnection
     {
         Options = options;
         Http = http ?? new ScriptedHttpHandler();
-        _real = new ReactorConnection(options, Http);
+        _real = new ReactorConnection(options, new DelayHandler(this, Http));
+    }
+
+    /// <summary>
+    /// 请求在到达脚本之前先等一会儿（真正的异步等待，可被取消）：（方法, 路径正则）→ 延时。测试并行释放控制权、超时预算用。
+    /// </summary>
+    public List<(string Method, string Path, TimeSpan Delay)> Delays { get; } = new();
+
+    /// <summary>把 <see cref="Delays"/> 里匹配的请求延后（异步，可取消），再交给脚本化的假服务端。</summary>
+    private sealed class DelayHandler : System.Net.Http.DelegatingHandler
+    {
+        private readonly FakeReactorConnection _owner;
+
+        public DelayHandler(FakeReactorConnection owner, ScriptedHttpHandler inner) : base(inner) => _owner = owner;
+
+        protected override async Task<System.Net.Http.HttpResponseMessage> SendAsync(System.Net.Http.HttpRequestMessage request, CancellationToken ct)
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path.StartsWith("/api/v1", StringComparison.Ordinal)) path = path[7..];
+            foreach (var (m, p, d) in _owner.Delays)
+                if (string.Equals(m, request.Method.Method, StringComparison.OrdinalIgnoreCase) && System.Text.RegularExpressions.Regex.IsMatch(path, "^" + p + "$"))
+                    await Task.Delay(d, ct);
+            return await base.SendAsync(request, ct);
+        }
     }
 
     public ScriptedHttpHandler Http { get; }
@@ -46,6 +69,18 @@ public sealed class FakeReactorConnection : IReactorConnection
     public TelemetrySnapshot? StartSnapshot { get; set; }
     /// <summary>StartAsync 抛这个异常（模拟连不上）。</summary>
     public Exception? StartError { get; set; }
+
+    /// <summary>StartAsync 先等这个任务（模拟慢连接：测试并行连接）。</summary>
+    public Task? StartGate { get; set; }
+
+    /// <summary>StartAsync 被调用的次数。</summary>
+    public int StartCalls { get; private set; }
+
+    /// <summary>
+    /// StartAsync 成功后像真连接一样报 WS 已连接（ConnectionStateChanged(Connected)：真 ReactorConnection 在 WS 收到 hello 后报）。
+    /// M3：数据源以 WS hello 作为「已连接」；false = 模拟 REST 通了、WS 还没连上（状态停在「正在连接…」）。
+    /// </summary>
+    public bool AutoConnected { get; set; } = true;
 
     public bool Started { get; private set; }
     public bool Disposed { get; private set; }
@@ -76,6 +111,11 @@ public sealed class FakeReactorConnection : IReactorConnection
     private Action<ConnectionState>? _conn;
     private Action<Exception>? _error;
     private Action? _restarted;
+    // M3 增补的事件（IReactorConnection 的默认实现不计数；这里声明出来，证明数据源同样摘掉了它们）
+    private Action<CancelledRequestOutcome>? _cancelSettled;
+    private Action? _serverView;
+    private Action<ForbiddenNotice>? _forbidden;
+    private Action<DateTime?>? _reconnect;
 
     public event Action<TelemetrySnapshot>? TelemetryReceived { add { _telemetry += value; Add(nameof(TelemetryReceived)); } remove { _telemetry -= value; Remove(nameof(TelemetryReceived)); } }
     public event Action<EventMsg>? EventReceived { add { _event += value; Add(nameof(EventReceived)); } remove { _event -= value; Remove(nameof(EventReceived)); } }
@@ -86,14 +126,31 @@ public sealed class FakeReactorConnection : IReactorConnection
     public event Action<ConnectionState>? ConnectionStateChanged { add { _conn += value; Add(nameof(ConnectionStateChanged)); } remove { _conn -= value; Remove(nameof(ConnectionStateChanged)); } }
     public event Action<Exception>? Error { add { _error += value; Add(nameof(Error)); } remove { _error -= value; Remove(nameof(Error)); } }
     public event Action? ServerRestarted { add { _restarted += value; Add(nameof(ServerRestarted)); } remove { _restarted -= value; Remove(nameof(ServerRestarted)); } }
+    public event Action<CancelledRequestOutcome>? LeaseCancelledRequestSettled { add { _cancelSettled += value; Add(nameof(LeaseCancelledRequestSettled)); } remove { _cancelSettled -= value; Remove(nameof(LeaseCancelledRequestSettled)); } }
+    public event Action? LeaseServerViewChanged { add { _serverView += value; Add(nameof(LeaseServerViewChanged)); } remove { _serverView -= value; Remove(nameof(LeaseServerViewChanged)); } }
+    public event Action<ForbiddenNotice>? ForbiddenRole { add { _forbidden += value; Add(nameof(ForbiddenRole)); } remove { _forbidden -= value; Remove(nameof(ForbiddenRole)); } }
+    public event Action<DateTime?>? ReconnectScheduled { add { _reconnect += value; Add(nameof(ReconnectScheduled)); } remove { _reconnect -= value; Remove(nameof(ReconnectScheduled)); } }
 
     public Task StartAsync(CancellationToken ct)
     {
+        StartCalls++;
+        if (StartGate != null) return StartAfterGateAsync();
         if (StartError != null) return Task.FromException(StartError);
         Started = true;
         Device = StartDevice;
         if (StartSnapshot != null) RaiseTelemetry(StartSnapshot);
+        if (AutoConnected) RaiseConnection(ConnectionState.Connected);
         return Task.CompletedTask;
+    }
+
+    private async Task StartAfterGateAsync()
+    {
+        await StartGate!;
+        if (StartError != null) throw StartError;
+        Started = true;
+        Device = StartDevice;
+        if (StartSnapshot != null) RaiseTelemetry(StartSnapshot);
+        if (AutoConnected) RaiseConnection(ConnectionState.Connected);
     }
 
     public Task StopAsync() => Task.CompletedTask;
@@ -126,6 +183,10 @@ public sealed class FakeReactorConnection : IReactorConnection
     public void RaiseControl(ControlMsg m) => _control?.Invoke(m);
     public void RaiseError(Exception ex) => _error?.Invoke(ex);
     public void RaiseRestarted() => _restarted?.Invoke();
+    public void RaiseServerView() => _serverView?.Invoke();
+    public void RaiseForbidden(ForbiddenNotice n) => _forbidden?.Invoke(n);
+    public void RaiseReconnectScheduled(DateTime? at) => _reconnect?.Invoke(at);
+    public void RaiseCancelSettled(CancelledRequestOutcome o) => _cancelSettled?.Invoke(o);
 }
 
 /// <summary>手动的「排到 UI 线程」：数据源把刷新排进来，测试决定什么时候执行（证明多次事件只刷新一次）。</summary>

@@ -11,15 +11,6 @@ using Xunit;
 
 namespace ParallelReactor.Control.Tests;
 
-/// <summary>Samples/ 下是对真 HMI（PR_SIM、walk.sh 走通）抓取的响应原文。</summary>
-public static class Samples
-{
-    public static string Dir => Path.Combine(AppContext.BaseDirectory, "Samples");
-    public static string Read(string name) => File.ReadAllText(Path.Combine(Dir, name));
-    public static string[] Lines(string name) => File.ReadAllLines(Path.Combine(Dir, name)).Where(l => l.Trim().Length > 0).ToArray();
-    public static bool Has(string name) => File.Exists(Path.Combine(Dir, name));
-}
-
 /// <summary>
 /// Contracts 线上类型 ↔ 实测 JSON：HMI 侧用同一个 ApiJsonContext 序列化，PC 侧反序列化，字段名（camelCase）与形状必须与抓到的样本一致。
 /// </summary>

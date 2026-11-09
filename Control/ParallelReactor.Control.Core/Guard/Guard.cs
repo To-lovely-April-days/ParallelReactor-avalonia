@@ -30,6 +30,11 @@ public sealed record AlarmFacts(string Id, bool Acked);
 public sealed record PeerDevice(string Alias, string Host);
 
 /// <summary>
+/// 本机旧租约（<see cref="GuardFacts.Orphan"/>）：没有 / HMI 在 remote（拒绝新申请）/ HMI 已进入 remoteLost（同一令牌 + 客户端名可以重新申请，旧租约作废）。
+/// </summary>
+public enum OrphanLease { None, Remote, Lost }
+
+/// <summary>
 /// 守卫的输入（一台设备此刻的事实）：App 从演示数据（DemoDevice.Facts()）或真机（连接、租约、遥测、型号表、程序台账）填写。
 /// 只读、无副作用；同一份事实可以问多个操作。
 /// </summary>
@@ -55,13 +60,44 @@ public sealed record GuardFacts
     public int LeaseGraceS { get; init; }
     /// <summary>第 5 种状态（被其他客户端持有）时的持有者名称。</summary>
     public string? LeaseHolder { get; init; }
+    /// <summary>
+    /// 另一个客户端的控制权申请正在等触屏处理（真机 GET /control 的 pending，申请人不是本机）：这时 HMI 会拒绝本机的申请
+    /// （409 CONTROL_REQUEST_PENDING「已有待处理的远程申请（X）」），「申请控制权」先禁用并写明。值 = 那个客户端的名字；没有为 null。
+    /// </summary>
+    public string? OtherRequest { get; init; }
+
+    /// <summary>
+    /// 触屏刚拒绝了本机的申请：HMI 对同一令牌冷却 30 s（Client 的 ControlLeaseClient.DenyUntil；429 同样），这期间 Client 不再发申请。
+    /// HMI 在申请<b>超时</b>时也冷却 30 s（ControlLease 的 RequestExpired → CooldownLocked）：App 在本机的申请超时后自己记一份（M3 复核）。
+    /// 值 = 还要等的秒数（0 = 不在冷却）。「申请控制权」先禁用并写明（<see cref="ActionGuard.DenyText"/>；原因不确定时 <see cref="ActionGuard.CooldownText"/>）。
+    /// 演示数据恒为 0（样稿没有拒绝）。
+    /// </summary>
+    public int LeaseDenyS { get; init; }
+
+    /// <summary>
+    /// 冷却的原因不是（确知的）触屏拒绝：本机的申请超时了、或 HMI 回了 429（「触屏刚拒绝了该令牌的申请（或申请超时）」）——
+    /// 「申请控制权」的原因写中性的 <see cref="ActionGuard.CooldownText"/>，不写「触屏已拒绝申请」。
+    /// </summary>
+    public bool LeaseDenyNeutral { get; init; }
+
+    /// <summary>
+    /// 本机旧租约（R8 的边角，真机）：HMI 报告控制权在<b>本机客户端名</b>手里，而本机这条连接没有持有 —— 上次运行崩溃 / 强退后留下、心跳还没超时
+    /// （或另一台 PC 用了同一个客户端名）。这时 <see cref="Lease"/> = Other、<see cref="LeaseHolder"/> = 本机客户端名；HMI 在 remote 时拒绝新申请
+    /// （409 NOT_CONTROL_HOLDER），心跳超时进入 remoteLost 之后同一令牌 + 客户端名的申请会作废旧租约、按新申请处理 —— 所以只有 <see cref="OrphanLease.Remote"/> 时禁用「申请控制权」。
+    /// </summary>
+    public OrphanLease Orphan { get; init; }
+
+    /// <summary>本机令牌在这台设备上的权限（第一个 403 之后学到，见 <see cref="TokenRole"/>）；默认不知道 = 不限制。</summary>
+    public TokenRole Role { get; init; } = TokenRole.Unknown;
 
     public bool EstopActive { get; init; }
 
     /// <summary>
-    /// 连接没在「已连接」、但停止类命令仍可能送达（真机：只是 WebSocket 断了在自己重连，REST 客户端还在、设备连上过）。
-    /// 这时停止类（急停、全部停止、停止、停止加热、中止程序、确认报警…）照样可用 —— 尽力发送，送不到就提示失败；控制类和申请控制权照样禁用。
-    /// 旧界面也是这样：只要有连接对象就能急停（停止类「永远可用」，PORT-PLAN §3.5）。演示数据（样稿）不用它（默认 false）。
+    /// 连接没在「已连接」、但停止类命令仍能送达（真机：WebSocket 断了 / 握手被拒、在自己重连，而 REST <b>确实还通</b> —— 要有正面的证据：
+    /// REST 起步刚完成、WS 握手被 HTTP 拒绝（503 / 401…：主机答话了）、探测 GET /health 有响应、命令送达；见 App 的 LiveDeviceSource.StopReachable）。
+    /// 这时真正的停止类（急停、全部停止、停止、停用、停止加热、中止程序、停止搅拌 —— TokenRole 的 Stop / Estop 类）照样可用：尽力发送，送不到就提示失败；
+    /// 会话、打标记、确认报警（样稿也算 safe）和控制类、申请控制权照样禁用（M3 复核）。主机真的不通（拒绝连接 / 找不到主机 / 超时）时为 false：只剩 none 类（样稿）。
+    /// 演示数据（样稿）不用它（默认 false）。
     /// </summary>
     public bool StopReachable { get; init; }
 
@@ -102,11 +138,15 @@ public sealed record GuardFacts
 /// 可以直接写在按钮下 / 悬停提示 / toast 里。规则：
 /// <list type="number">
 /// <item>离线（断线、正在连接、已断开）只剩 none 类操作：「4号机连接中断 · 重连中 12 s」「已断开 · 先连接」「正在重连 · 稍候」「正在连接 · 稍候」。
-///   例外：真机只是 WebSocket 在重连、REST 还在（<see cref="GuardFacts.StopReachable"/>）时，停止类照样可用（尽力发送）。</item>
+///   例外：真机只是 WebSocket 在重连、REST 确实还通（<see cref="GuardFacts.StopReachable"/>）时，真正的停止类（TokenRole 的 Stop / Estop 类）照样可用（尽力发送）；
+///   会话 / 标记 / 确认报警不在例外里。</item>
 /// <item><b>停止类（safe）只要连接</b>：不看控制权，也不因为本机「以为」没在运行而禁用；只保留纯逻辑检查（未安装、型号没有该部件、已在急停、先开始会话、报警已确认）。</item>
 /// <item>控制类另外要不在急停、本机远程控制中：「1号机急停中 · 需在触屏复位」「2号机为本地只读 · 先申请控制权」「2号机等待触屏确认 · 剩 45 s」
 ///   「1号机控制权心跳中断 · 宽限 18 s」；被其他客户端持有时「1号机远程控制中（其他客户端 X）」（PORT-PLAN §3.5 的徽标文字）。</item>
-/// <item>然后是各操作自己的检查：「RV5 未安装」「RV15 已停用 · 先启用」「RV1 程序运行中 · 先中止」「超出量程 · HT-PR8 ≤ 200 ℃」…</item>
+/// <item>令牌权限（真机，第一个 403 之后学到，<see cref="TokenRole"/>）：只读令牌时控制类、申请控制权、确认报警、会话禁用；
+///   只读又没有急停权限位时停止类也禁用；没有急停权限位时急停禁用。没学到的一律不禁用。</item>
+/// <item>然后是各操作自己的检查：「RV5 未安装」「RV15 已停用 · 先启用」「RV1 程序运行中 · 先中止」「超出量程 · HT-PR8 ≤ 200 ℃」…；
+///   申请控制权另外看第 5 种状态（「1号机远程控制中（其他客户端 X）」）和别人的待批申请（「1号机已有待处理的远程申请（X）」）。</item>
 /// </list>
 /// 带守卫的命令在执行时也要再调一次（界面状态可能已过期）。
 /// </summary>
@@ -124,33 +164,48 @@ public static class ActionGuard
     /// <summary>
     /// 只看连接 / 急停 / 控制权的原因（样稿 PR.sim.guard(dev, kind)）：每个区域只写一次（例如检查器控制权卡片），不必写在每个按钮下。
     /// </summary>
-    public static string GuardText(GuardFacts? f, GuardKind kind)
+    public static string GuardText(GuardFacts? f, GuardKind kind) => GuardText(f, kind, stopException: true);
+
+    /// <summary>
+    /// <paramref name="stopException"/>：这个操作可以用 <see cref="GuardFacts.StopReachable"/> 的例外（真正的停止类）。区域级的问法（上面的重载）按停止类算。
+    /// </summary>
+    private static string GuardText(GuardFacts? f, GuardKind kind, bool stopException)
     {
         if (f is null || !f.Exists) return "设备不存在";
         if (kind == GuardKind.None) return "";
         string a = f.Alias;
-        if (f.Conn != ConnStatus.Online && !(kind == GuardKind.Safe && f.StopReachable))
+        if (f.Conn != ConnStatus.Online && !(kind == GuardKind.Safe && stopException && f.StopReachable))
         {
             if (f.Conn == ConnStatus.Disconnected) return a + "已断开 · 先连接";
             if (f.Conn == ConnStatus.Connecting) return a + (f.EverOnline ? "正在重连 · 稍候" : "正在连接 · 稍候");
             return a + (f.EverOnline ? "连接中断 · 重连中 " + f.RetryS + " s" : "连接失败 · " + f.RetryS + " s 后重试");
         }
-        if (kind is GuardKind.Safe or GuardKind.Conn) return "";
+        if (kind == GuardKind.Safe) return "";
+        // 只读令牌（第一个 403 之后学到）：控制类和申请控制权都会被 HMI 拒绝
+        if (f.Role.ReadOnly) return TokenRole.ReadOnlyText(a);
+        if (kind == GuardKind.Conn) return "";
         if (f.EstopActive) return a + "急停中 · 需在触屏复位";
         return f.Lease switch
         {
             LeaseStatus.Local => a + "为本地只读 · 先申请控制权",
             LeaseStatus.Requested => a + "等待触屏确认 · 剩 " + f.LeaseRemainS + " s",
             LeaseStatus.Lost => a + "控制权心跳中断 · 宽限 " + f.LeaseGraceS + " s",
-            LeaseStatus.Other => a + "远程控制中（其他客户端 " + (f.LeaseHolder ?? "") + "）",
+            LeaseStatus.Other => OtherText(f),
             _ => "",
         };
     }
 
-    /// <summary>操作是否可用：'' = 可用，否则为原因（样稿 PR.sim.why）。</summary>
+    /// <summary>第 5 种状态的原因：「1号机远程控制中（其他客户端 X）」；本机旧租约时「1号机远程控制中（本机旧租约）」。</summary>
+    private static string OtherText(GuardFacts f) =>
+        f.Orphan != OrphanLease.None ? OrphanText(f.Alias) : f.Alias + "远程控制中（其他客户端 " + (f.LeaseHolder ?? "") + "）";
+
+    /// <summary>
+    /// 操作是否可用：'' = 可用，否则为原因（样稿 PR.sim.why）。断线时 <see cref="GuardFacts.StopReachable"/> 的例外只给真正的停止类
+    /// （<see cref="TokenRole.PermissionOf"/> 为 Stop / Estop：停止、停用、停止加热、中止程序、停止搅拌、全部停止、急停）。
+    /// </summary>
     public static string Why(GuardFacts? f, DeviceAction action, ActionPayload? payload = null)
     {
-        string g = GuardText(f, KindOf(action));
+        string g = GuardText(f, KindOf(action), TokenRole.PermissionOf(action) is TokenPermission.Stop or TokenPermission.Estop);
         if (g.Length > 0) return g;
         return Check(f!, action, payload ?? ActionPayload.Empty);
     }
@@ -192,6 +247,43 @@ public static class ActionGuard
         return "";
     }
 
+    /// <summary>第一个没被占用的「k号机」（样稿 freeAlias：添加设备时的默认别名）。</summary>
+    public static string FreeAlias(IEnumerable<string> used)
+    {
+        var set = new HashSet<string>(used, StringComparer.Ordinal);
+        for (int i = 1; ; i++)
+        {
+            string a = i + "号机";
+            if (!set.Contains(a)) return a;
+        }
+    }
+
+    /// <summary>
+    /// 另一个客户端的申请正在等触屏处理（真机）：「1号机已有待处理的远程申请（PC-2）」。样稿没有这一种（演示数据里只有本机申请）；
+    /// 写法用 HMI 拒绝时自己的消息（ControlLease.MsgRequestPending「已有待处理的远程申请」+「（客户端名）」），前面加别名。
+    /// </summary>
+    public static string OtherRequestText(string alias, string client) => alias + "已有待处理的远程申请（" + client + "）";
+
+    /// <summary>
+    /// 触屏刚拒绝了本机的申请、HMI 的冷却还没过（真机，<see cref="GuardFacts.LeaseDenyS"/>）：「1号机触屏已拒绝申请 · 28 s 后可再申请」。
+    /// 样稿没有这一种（演示数据的申请只会被确认或超时）；写法沿用样稿的「… · N s 后重试」倒计时句式，前面加别名。
+    /// </summary>
+    public static string DenyText(string alias, int seconds) => alias + "触屏已拒绝申请 · " + seconds + " s 后可再申请";
+
+    /// <summary>
+    /// 冷却的原因不确定（<see cref="GuardFacts.LeaseDenyNeutral"/>：本机的申请超时了 —— HMI 超时同样冷却 30 s —— 或 HMI 回了 429）：
+    /// 「1号机申请刚被拒绝或超时 · 28 s 后可再申请」。样稿没有这一种；写法照 HMI 429 的消息「触屏刚拒绝了该令牌的申请（或申请超时）」，句式同 <see cref="DenyText"/>。
+    /// </summary>
+    public static string CooldownText(string alias, int seconds) => alias + "申请刚被拒绝或超时 · " + seconds + " s 后可再申请";
+
+    /// <summary>
+    /// 本机旧租约（<see cref="GuardFacts.Orphan"/>）：「1号机远程控制中（本机旧租约）」。样稿没有这一种；写法同第 5 种状态「远程控制中（其他客户端 X）」。
+    /// </summary>
+    public static string OrphanText(string alias) => alias + "远程控制中（本机旧租约）";
+
+    /// <summary>本机旧租约、HMI 还在 remote 时「申请控制权」的原因：「1号机远程控制中（本机旧租约） · 心跳超时后可重新申请」（HMI 此时回 409；超时进入 remoteLost 后可以）。</summary>
+    public static string OrphanRequestText(string alias) => OrphanText(alias) + " · 心跳超时后可重新申请";
+
     /// <summary>别名的字符宽度（样稿 aliasUnits）：每个码位 U+2E80 起（含全部辅助平面字符）算 2，其余算 1。</summary>
     public static int AliasUnits(string? s)
     {
@@ -222,6 +314,14 @@ public static class ActionGuard
 
     private static string Check(GuardFacts f, DeviceAction action, ActionPayload p)
     {
+        // 令牌权限（真机学到的；演示数据恒为不知道）：停止类只在「只读且没有急停权限位」时禁用；确认报警 / 会话要 operator
+        switch (TokenRole.PermissionOf(action))
+        {
+            case TokenPermission.Stop when !f.Role.CanStop:
+                return TokenRole.NoStopText(f.Alias);
+            case TokenPermission.Record when f.Role.ReadOnly && action is not (DeviceAction.LeaseRequest or DeviceAction.LeaseRelease):
+                return TokenRole.ReadOnlyText(f.Alias);
+        }
         switch (action)
         {
             case DeviceAction.Enable:
@@ -302,7 +402,7 @@ public static class ActionGuard
                         return "";
                 return "没有可运行的反应釜";
             case DeviceAction.Estop:
-                return f.EstopActive ? f.Alias + "已在急停 · 需在触屏复位" : "";
+                return f.EstopActive ? f.Alias + "已在急停 · 需在触屏复位" : f.Role.NoEstop ? TokenRole.NoEstopText(f.Alias) : "";
             case DeviceAction.SessionStart:
                 return f.SessionActive ? "会话 " + f.SessionId + " 记录中" : "";
             case DeviceAction.SessionMark:
@@ -316,7 +416,14 @@ public static class ActionGuard
                 return a is null ? "报警不存在" : a.Acked ? "已确认" : "";
             }
             case DeviceAction.LeaseRequest:
-                return f.Lease == LeaseStatus.Remote ? "已是远程控制" : f.Lease == LeaseStatus.Requested ? "正在等待触屏确认" : "";
+                // 第 5 种状态 / 别人的待批申请（真机）：HMI 会拒绝（409 NOT_CONTROL_HOLDER / CONTROL_REQUEST_PENDING），先禁用并写明是谁。
+                // 本机旧租约：HMI 在 remote 时同样拒绝；进入 remoteLost 之后同一令牌 + 客户端名的申请会作废旧租约 —— 可以申请
+                return f.Lease == LeaseStatus.Remote ? "已是远程控制"
+                    : f.Lease == LeaseStatus.Requested ? "正在等待触屏确认"
+                    : f.Lease == LeaseStatus.Other && f.Orphan == OrphanLease.Remote ? OrphanRequestText(f.Alias)
+                    : f.Lease == LeaseStatus.Other && f.Orphan == OrphanLease.None ? f.Alias + "远程控制中（其他客户端 " + (f.LeaseHolder ?? "") + "）"
+                    : f.OtherRequest != null ? OtherRequestText(f.Alias, f.OtherRequest)
+                    : f.LeaseDenyS > 0 ? (f.LeaseDenyNeutral ? CooldownText(f.Alias, f.LeaseDenyS) : DenyText(f.Alias, f.LeaseDenyS)) : "";
             case DeviceAction.LeaseCancel:
                 return f.Lease == LeaseStatus.Requested ? "" : "没有进行中的申请";
             case DeviceAction.LeaseRelease:

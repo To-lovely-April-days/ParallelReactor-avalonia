@@ -1,0 +1,44 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.ClientNameView"
+             x:DataType="dlg:ClientNameDialogVm">
+  <!-- 本机客户端名（M3 复核新加；样稿没有这个对话框 —— 外观照别名一栏 AliasFieldView：标签 14/500 t-3 · 输入框（出错时 r 边 + 外侧 1 px r-line）·
+       说明或错误（⚠ 15 + r-ink 600，间距 6）），下面一条中性说明（什么时候生效）。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBox.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBox.err:pointerover, TextBox.err:focus-within">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.hint.err">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <StackPanel Spacing="6" Margin="0,0,0,18">
+      <TextBlock Classes="flabel" Text="客户端名" />
+      <Panel>
+        <Border Margin="-1" BorderThickness="1" BorderBrush="{StaticResource RLineBrush}" CornerRadius="7" IsHitTestVisible="False"
+                IsVisible="{Binding HasError}" />
+        <TextBox Text="{Binding Value}" Classes.err="{Binding HasError}" MaxLength="80" AutomationProperties.Name="客户端名" />
+      </Panel>
+      <DockPanel>
+        <c:IconView DockPanel.Dock="Left" Icon="alert" Size="15" Foreground="{StaticResource RInkBrush}" Margin="0,0,6,0" VerticalAlignment="Center"
+                    IsVisible="{Binding HasError}" />
+        <TextBlock Classes="hint" Classes.err="{Binding HasError}" Text="{Binding Hint}" TextWrapping="Wrap" />
+      </DockPanel>
+    </StackPanel>
+    <pr:Note>
+      <pr:SegText Segments="{Binding NoteSegs}" TextWrapping="Wrap" LineHeight="21" />
+    </pr:Note>
+  </StackPanel>
+</UserControl>

@@ -19,7 +19,7 @@ public interface IReactorConnection : IAsyncDisposable
     TelemetryWsClient Ws { get; }
     TelemetryStore Telemetry { get; }
     ControlledWrites Control { get; }
-    /// <summary>按到达顺序的全部服务端消息（telemetry / EventMsg / AlarmMsg / ControlMsg / OpEventMsg / GapMsg…），有界 2000、满则丢最旧，供引擎顺序消费。</summary>
+    /// <summary>按到达顺序的全部服务端消息（telemetry / EventMsg / AlarmMsg / ControlMsg / OpEventMsg / GapMsg…），有界 <see cref="ClientOptions.MessageQueueCapacity"/>（默认 2000）、满则丢最旧，供引擎顺序消费；容量 0 时不入队。</summary>
     ChannelReader<object> Messages { get; }
     DeviceInfoDto? Device { get; }
     ControlStateDto? ControlState { get; }
@@ -38,6 +38,19 @@ public interface IReactorConnection : IAsyncDisposable
     /// <summary>GET /device + GET /control + GET /snapshot，然后启动 WS。</summary>
     Task StartAsync(CancellationToken ct);
     Task StopAsync();
+
+    // —— M3 增补（默认实现：旧的实现者 / 测试假对象不用改；ReactorConnection 都给了真实现，事件同样经 UiContext 投递）——
+
+    /// <summary>本地取消的控制权申请有了结局（<see cref="ControlLeaseClient.CancelledRequestSettled"/>；R7）。</summary>
+    event Action<CancelledRequestOutcome>? LeaseCancelledRequestSettled { add { } remove { } }
+    /// <summary>HMI 报告的控制权现状变了（持有者 / 待处理申请；<see cref="ControlLeaseClient.ServerViewChanged"/>；R8）。</summary>
+    event Action? LeaseServerViewChanged { add { } remove { } }
+    /// <summary>某个 REST 请求被 403 FORBIDDEN_ROLE 拒绝（<see cref="ReactorApiClient.Forbidden"/>；R9）。</summary>
+    event Action<ForbiddenNotice>? ForbiddenRole { add { } remove { } }
+    /// <summary>WS 退避重连的下一次尝试时刻变了（<see cref="TelemetryWsClient.NextRetryChanged"/>；null = 不在等待）。</summary>
+    event Action<DateTime?>? ReconnectScheduled { add { } remove { } }
+    /// <summary>立即重连：WS 正在退避等待时立刻发起下一次连接（<see cref="TelemetryWsClient.ReconnectNow"/>）。false = 没有在等待。</summary>
+    bool ReconnectNow() => Ws?.ReconnectNow() ?? false;
 }
 
 /// <summary>
@@ -46,11 +59,15 @@ public interface IReactorConnection : IAsyncDisposable
 /// </summary>
 public sealed class ReactorConnection : IReactorConnection
 {
-    private readonly Channel<object> _messages = Channel.CreateBounded<object>(new BoundedChannelOptions(2000) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = false, SingleWriter = false });
+    private readonly Channel<object> _messages;
+    /// <summary>M3：<see cref="ClientOptions.MessageQueueCapacity"/> = 0 → 不入队（<see cref="Messages"/> 一直为空，停止时完成）。</summary>
+    private readonly bool _queueMessages;
 
     public ReactorConnection(ClientOptions options, System.Net.Http.HttpMessageHandler? handler = null, IClock? clock = null, Func<IWsTransport>? wsFactory = null)
     {
         Options = options ?? throw new ArgumentNullException(nameof(options));
+        _queueMessages = options.MessageQueueCapacity > 0;
+        _messages = Channel.CreateBounded<object>(new BoundedChannelOptions(Math.Max(1, options.MessageQueueCapacity)) { FullMode = BoundedChannelFullMode.DropOldest, SingleReader = false, SingleWriter = false });
         var clk = clock ?? SystemClock.Instance;
         Rest = new ReactorApiClient(options, handler, clk);
         Lease = new ControlLeaseClient(Rest, options, clk);
@@ -69,6 +86,8 @@ public sealed class ReactorConnection : IReactorConnection
         Ws.GapDetected += g => Enqueue(g);
         Ws.StateChanged += s => Post(() => ConnectionStateChanged?.Invoke(s));
         Ws.Error += e => Post(() => Error?.Invoke(e));
+        // M3：租约的宽限 / 申请倒计时按服务端时钟修正（先于下面的 GET /control 对齐挂上）
+        Ws.HelloReceived += _ => Lease.ServerClockOffset = Ws.ServerClockOffset;
         Ws.HelloReceived += h => { var __t = RefreshControlAsync(); };
         // HMI 重启：遥测 seq 从 1 重计，环形缓冲必须清空，否则新帧全被当重复帧丢弃（直到超过旧 seq）
         Ws.ServerRestarted += (_, _) => { Telemetry.Clear(); Post(() => ServerRestarted?.Invoke()); };
@@ -78,6 +97,11 @@ public sealed class ReactorConnection : IReactorConnection
             if (e.Code is OpCodes.ModeLocal or OpCodes.NotControlHolder or OpCodes.ControlLeaseExpired)
                 Lease.OnWriteFailed(new ApiException(e.Code, 409, e.Message ?? e.Code));
         };
+        // M3 增补：新事件同样经 UiContext 投递
+        Lease.CancelledRequestSettled += o => Post(() => LeaseCancelledRequestSettled?.Invoke(o));
+        Lease.ServerViewChanged += () => Post(() => LeaseServerViewChanged?.Invoke());
+        Rest.Forbidden += n => Post(() => ForbiddenRole?.Invoke(n));
+        Ws.NextRetryChanged += at => Post(() => ReconnectScheduled?.Invoke(at));
     }
 
     public ClientOptions Options { get; }
@@ -99,11 +123,20 @@ public sealed class ReactorConnection : IReactorConnection
     public event Action<ConnectionState>? ConnectionStateChanged;
     public event Action<Exception>? Error;
     public event Action? ServerRestarted;
+    // M3 增补
+    public event Action<CancelledRequestOutcome>? LeaseCancelledRequestSettled;
+    public event Action? LeaseServerViewChanged;
+    public event Action<ForbiddenNotice>? ForbiddenRole;
+    public event Action<DateTime?>? ReconnectScheduled;
+
+    /// <summary>M3：立即重连（<see cref="TelemetryWsClient.ReconnectNow"/>）。false = WS 没有在退避等待。</summary>
+    public bool ReconnectNow() => Ws.ReconnectNow();
 
     public async Task StartAsync(CancellationToken ct)
     {
         Device = await Rest.DeviceAsync(ct).ConfigureAwait(false);
         ControlState = await Rest.ControlAsync(ct).ConfigureAwait(false);
+        Lease.ObserveControlState(ControlState);   // M3：持有者 / 待处理申请（R8），不动租约状态
         var snap = await Rest.SnapshotAsync(ct).ConfigureAwait(false);
         Telemetry.Add(snap);
         Post(() => TelemetryReceived?.Invoke(snap));
@@ -129,7 +162,10 @@ public sealed class ReactorConnection : IReactorConnection
         catch (Exception ex) { Post(() => Error?.Invoke(ex)); }
     }
 
-    private void Enqueue(object m) => _messages.Writer.TryWrite(m);
+    private void Enqueue(object m)
+    {
+        if (_queueMessages) _messages.Writer.TryWrite(m);
+    }
 
     private void Post(Action a)
     {

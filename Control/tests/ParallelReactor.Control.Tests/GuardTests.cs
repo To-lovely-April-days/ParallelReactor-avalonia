@@ -118,8 +118,9 @@ public class GuardTests
     }
 
     /// <summary>
-    /// 真机：只是 WebSocket 断了在重连（REST 客户端还在、连上过，StopReachable）—— 停止类（急停、全部停止、停止、确认报警…）照样可用（尽力发送），
-    /// 控制类和申请控制权照样是「正在重连 · 稍候」。旧界面也是只要有连接对象就能急停。
+    /// 真机：只是 WebSocket 断了在重连、REST 确实还通（StopReachable，要有证据）—— 真正的停止类（TokenRole 的 Stop / Estop 类：急停、全部停止、停止、停用、
+    /// 停止加热、中止程序、停止搅拌）照样可用（尽力发送）；会话 / 打标记 / 确认报警（样稿也算 safe，但不是停止）、控制类和申请控制权照样是「正在重连 · 稍候」
+    /// （M3 复核：以前会话与确认报警也在例外里）。
     /// </summary>
     [Fact]
     public void WsReconnecting_StopReachable_KeepsStopClassOnly()
@@ -128,13 +129,20 @@ public class GuardTests
         foreach (var s in DeviceActions.All)
         {
             string why = ActionGuard.Why(f, s.Action, new ActionPayload(N: 1, Sp: 100, Rpm: 600, Id: "a1", Alias: "新名字"));
-            if (s.Kind == GuardKind.Safe) Assert.DoesNotContain("正在重连", why);
+            bool stopClass = TokenRole.PermissionOf(s.Action) is TokenPermission.Stop or TokenPermission.Estop;
+            if (s.Kind == GuardKind.Safe && stopClass) Assert.DoesNotContain("正在重连", why);
             else if (s.Kind != GuardKind.None) Assert.Equal("1号机正在重连 · 稍候", why);
         }
         Assert.Equal("", ActionGuard.Why(f, DeviceAction.Estop));
         Assert.Equal("", ActionGuard.Why(f, DeviceAction.StopAll));
         Assert.Equal("", ActionGuard.Why(f, DeviceAction.Stop, ActionPayload.Ch(1)));
-        Assert.Equal("", ActionGuard.Why(f, DeviceAction.AlarmAck, new ActionPayload(Id: "a1")));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.HeatStop, ActionPayload.Ch(1)));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.ProgAbort, ActionPayload.Ch(1)));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.StirOff));
+        // 会话、打标记、确认报警：不是停止，WS 恢复再做
+        Assert.Equal("1号机正在重连 · 稍候", ActionGuard.Why(f, DeviceAction.AlarmAck, new ActionPayload(Id: "a1")));
+        Assert.Equal("1号机正在重连 · 稍候", ActionGuard.Why(f, DeviceAction.SessionStart));
+        Assert.Equal("1号机正在重连 · 稍候", ActionGuard.Why(f, DeviceAction.SessionMark));
         Assert.Equal("RV6 未安装", ActionGuard.Why(f, DeviceAction.Stop, ActionPayload.Ch(6)));   // 纯逻辑检查照旧
         Assert.Equal("", ActionGuard.GuardText(f, GuardKind.Safe));
         Assert.Equal("1号机正在重连 · 稍候", ActionGuard.GuardText(f, GuardKind.Control));
@@ -379,5 +387,52 @@ public class GuardTests
         Assert.Equal("超出量程 · " + m.Name + " ≤ " + Core.Format.JsNumber.ToString(m.Limits.TempMaxC) + " ℃",
             ActionGuard.Why(f, DeviceAction.SetSp, new ActionPayload(N: m.Installed[0], Sp: m.Limits.TempMaxC + 1)));
         Assert.Equal("", ActionGuard.Why(f with { Lease = LeaseStatus.Local }, DeviceAction.Stop, ActionPayload.Ch(m.Installed[0])));
+    }
+    [Fact]
+    public void LeaseRequest_BlockedDuringDenyCooldown_OnlyThat()
+    {
+        // 真机：触屏拒绝后 HMI 对该令牌冷却 30 s（Client 的 DenyUntil）—— 「申请控制权」写明还要等几秒；别的操作不受影响
+        var f = F(LeaseStatus.Local) with { LeaseDenyS = 28 };
+        Assert.Equal("1号机触屏已拒绝申请 · 28 s 后可再申请", ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal(ActionGuard.DenyText("1号机", 28), ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal("", ActionGuard.Why(f with { LeaseDenyS = 0 }, DeviceAction.LeaseRequest));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.StopAll));
+        Assert.Equal("1号机为本地只读 · 先申请控制权", ActionGuard.Why(f, DeviceAction.HeatStart, new ActionPayload(N: 2, Sp: 80)));
+        // 别人持有 / 别人的申请在等时先说那个（冷却是本机自己的事）
+        Assert.Equal("1号机已有待处理的远程申请（PC-2）", ActionGuard.Why(f with { OtherRequest = "PC-2" }, DeviceAction.LeaseRequest));
+        // 离线时照旧先说连接
+        Assert.Equal("1号机连接中断 · 重连中 12 s", ActionGuard.Why(f with { Conn = ConnStatus.Offline }, DeviceAction.LeaseRequest));
+    }
+
+    [Fact]
+    public void LeaseRequest_NeutralCooldown_AfterTimeoutOr429()
+    {
+        // M3 复核：HMI 在申请超时后同样冷却 30 s，HMI 回 429 时原因也不确定 —— 写中性的「申请刚被拒绝或超时」，不写「触屏已拒绝申请」
+        var f = F(LeaseStatus.Local) with { LeaseDenyS = 21, LeaseDenyNeutral = true };
+        Assert.Equal("1号机申请刚被拒绝或超时 · 21 s 后可再申请", ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal(ActionGuard.CooldownText("1号机", 21), ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal("", ActionGuard.Why(f with { LeaseDenyS = 0 }, DeviceAction.LeaseRequest));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.Estop));
+    }
+
+    [Fact]
+    public void OrphanLease_UnderOwnName_BlocksRequestUntilRemoteLost()
+    {
+        // M3 复核（R8 的边角）：HMI 说控制权在本机客户端名手里、本机这条连接却没持有（上次崩溃留下的）。HMI 在 remote 时会 409 —— 「申请控制权」先禁用并写明；
+        // 心跳超时进入 remoteLost 后同一令牌 + 客户端名的申请会作废旧租约 —— 可以申请。控制类照样不行，停止类照样可以。
+        var f = F(LeaseStatus.Other, holder: "PC-测试工位1") with { Orphan = OrphanLease.Remote };
+        Assert.Equal("1号机远程控制中（本机旧租约） · 心跳超时后可重新申请", ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal(ActionGuard.OrphanRequestText("1号机"), ActionGuard.Why(f, DeviceAction.LeaseRequest));
+        Assert.Equal("1号机远程控制中（本机旧租约）", ActionGuard.Why(f, DeviceAction.HeatStart, new ActionPayload(N: 2, Sp: 80)));
+        Assert.Equal("1号机远程控制中（本机旧租约）", ActionGuard.GuardText(f, GuardKind.Control));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.StopAll));
+        var lost = f with { Orphan = OrphanLease.Lost };
+        Assert.Equal("", ActionGuard.Why(lost, DeviceAction.LeaseRequest));
+        Assert.Equal("1号机远程控制中（本机旧租约）", ActionGuard.Why(lost, DeviceAction.HeatStart, new ActionPayload(N: 2, Sp: 80)));
+        // 不是旧租约时照旧是第 5 种「其他客户端」
+        Assert.Equal("1号机远程控制中（其他客户端 PC-测试工位1）", ActionGuard.Why(f with { Orphan = OrphanLease.None }, DeviceAction.LeaseRequest));
+        // 显示文字（Core.State.DeviceTexts.Orphan）
+        var d = DeviceTexts.Orphan("PC-测试工位1");
+        Assert.Equal((LeaseStatus.Other, "远程控制中（本机旧租约）", "本机旧租约", "本机旧租约", "PC-测试工位1"), (d.State, d.Text, d.Short, d.BadgeShort, d.Holder));
     }
 }

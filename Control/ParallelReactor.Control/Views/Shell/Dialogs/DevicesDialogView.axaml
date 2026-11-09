@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.DevicesDialogView"
+             x:DataType="dlg:DevicesDialogVm">
+  <!-- 设备管理（样稿 dialogs.js 'devices'，ui.table：表头 40 px bg-head、14/600 t-3、下边 line-2；行 44 px、下边 line-faint、15 px t-2；单元格左右 12）：
+       别名 · 型号 · SN · 地址 · 状态 · 控制权 · 自动连接（居中）· 操作（靠右）。列宽按内容（表头与各行共用 pr:TableColumns），多出来的宽度按内容宽的比例分给各列（同 HTML 表格的自动布局）。
+       下面间隔 16，再一条中性说明。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.mono">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <!-- 表头 -->
+    <Border Height="40" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1">
+      <pr:TableRow Columns="{Binding Columns}">
+        <pr:PrText Classes="th" Text="别名" />
+        <pr:PrText pr:TableRow.Column="1" Classes="th" Text="型号" />
+        <pr:PrText pr:TableRow.Column="2" Classes="th" Text="SN" />
+        <pr:PrText pr:TableRow.Column="3" Classes="th" Text="地址" />
+        <pr:PrText pr:TableRow.Column="4" Classes="th" Text="状态" />
+        <pr:PrText pr:TableRow.Column="5" Classes="th" Text="控制权" />
+        <pr:PrText pr:TableRow.Column="6" Classes="th" Text="自动连接" HorizontalAlignment="Center" />
+        <pr:PrText pr:TableRow.Column="7" Classes="th" Text="操作" HorizontalAlignment="Right" />
+      </pr:TableRow>
+    </Border>
+    <!-- 行 -->
+    <ItemsControl ItemsSource="{Binding Rows}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="dlg:DeviceRowVm">
+          <Border Height="44" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+            <pr:TableRow Columns="{Binding Columns}">
+              <pr:PrText Text="{Binding Alias}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                         ToolTip.Tip="{Binding AliasTip}" HorizontalAlignment="Left" />
+              <TextBlock pr:TableRow.Column="1" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}" HorizontalAlignment="Left">
+                <Run Text="{Binding ModelName}" /><Run Text="{Binding ModelVariant}" />
+              </TextBlock>
+              <pr:PrText pr:TableRow.Column="2" Classes="mono" Text="{Binding Sn}" HorizontalAlignment="Left" />
+              <pr:PrText pr:TableRow.Column="3" Classes="mono" Text="{Binding Address}" HorizontalAlignment="Left" />
+              <pr:ConnBadge pr:TableRow.Column="4" State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}" />
+              <Panel pr:TableRow.Column="5" HorizontalAlignment="Left">
+                <pr:LeaseBadge State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}"
+                               IsVisible="{Binding Online}" />
+                <pr:PrText Text="—" Foreground="{StaticResource TDisBrush}" IsVisible="{Binding !Online}" VerticalAlignment="Center" />
+              </Panel>
+              <pr:PrCheckBox pr:TableRow.Column="6" IsChecked="{Binding AutoConnect}" b:Pr.Reason="{Binding AutoReason}" HorizontalAlignment="Center"
+                             AutomationProperties.Name="{Binding AutoName}" />
+              <StackPanel pr:TableRow.Column="7" Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right">
+                <Button Classes="sm" b:Pr.Icon="{Binding ConnIcon}" Content="{Binding ConnLabel}" Command="{Binding ConnectCommand}"
+                        b:Pr.Reason="{Binding ConnReason}" />
+                <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="edit" ToolTip.Tip="编辑（地址、令牌、别名、自动连接）" Command="{Binding EditCommand}" />
+                <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="trash" ToolTip.Tip="移除" Command="{Binding RemoveCommand}" />
+              </StackPanel>
+            </pr:TableRow>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <Border Height="44" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding IsEmpty}">
+      <pr:PrText Text="还没有设备" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+    </Border>
+    <pr:Note Content="{Binding Note}" Margin="0,16,0,0" />
+  </StackPanel>
+</UserControl>

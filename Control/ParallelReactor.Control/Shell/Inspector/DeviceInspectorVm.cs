@@ -148,7 +148,8 @@ public sealed partial class DeviceInspectorVm : ObservableObject
         ConnTip = d.ConnText;
         OffWord = d.IsFirst ? "未连接" : d.ConnStatus == ConnStatus.Disconnected ? "已断开" : "离线";
         HostPort = d.Host + ":" + d.Port.ToString(CultureInfo.InvariantCulture);
-        SnText = "SN " + d.Sn;
+        // 真机从未连上、devices.json 里也没记下序列号时没有 SN：写「—」（PORT-PLAN §3.2：空值一律「—」；设备管理表同样）
+        SnText = "SN " + (string.IsNullOrEmpty(d.Sn) ? Core.Format.Fmt.Dash : d.Sn);
 
         EstopOn = d.EstopActive;
         EstopText = d.EstopText;

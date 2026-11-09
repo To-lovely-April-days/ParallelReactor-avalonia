@@ -62,8 +62,8 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     [ObservableProperty] private bool _everOnline;
     [ObservableProperty] private bool _isOffline = true;
     /// <summary>
-    /// 急停 / 全部停止 / 停止类现在能发：在线，或者真机只是 WebSocket 在重连、REST 还在（ConnInfo.StopReachable；这时界面写「正在重连…」，
-    /// 停止类照样尽力发送）。全局停止格、急停 / 全部停止对话框按它挑设备。
+    /// 急停 / 全部停止 / 停止类现在能发：在线，或者真机只是 WebSocket 没连上、而 REST 确实还通（ConnInfo.StopReachable：要有证据，见 LiveDeviceSource.StopReachable；
+    /// 这时界面写「正在重连…」/「连接中断 · 重连中 N s」，停止类照样尽力发送）。主机真的不通时为 false。全局停止格、急停 / 全部停止对话框按它挑设备。
     /// </summary>
     [ObservableProperty] private bool _canStop;
     /// <summary>新添加、还从未连上（样稿 connInfo.first）。</summary>
@@ -186,7 +186,8 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
             LeaseStatus.Remote => LeaseState.Remote,
             LeaseStatus.Requested => LeaseState.Requested,
             LeaseStatus.Lost => LeaseState.Lost,
-            _ => LeaseState.Local,   // 第 5 种「被其他客户端持有」在 M3 有自己的徽标；之前按本地只读的样子，文字照实写
+            LeaseStatus.Other => LeaseState.Other,   // 第 5 种（真机）：被其他客户端持有，自己的徽标「其他客户端 X」
+            _ => LeaseState.Local,
         };
         LeaseText = lease.Display.Text;
         LeaseShort = lease.Display.BadgeShort;
@@ -228,8 +229,11 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         var session = s.Session;
         SessionId = session is { Active: true } ? session.Id : null;
         RunText = online ? "运行 " + run + "/" + inst : null;
-        HeadTip = cfg.Alias + " · " + Model.Label + "（" + Model.InstalledText + " 已安装）\n" + cfg.Host + ":" + cfg.Port + " · SN " + s.Sn + "\n" + cd.Text
-            + (SessionId != null ? " · 会话 " + SessionId + " 记录中" : "");
+        // 真机没连上时多一行失败原因（LiveDeviceSource.LastError：「网络错误：…」「WebSocket 连接数已达上限 · …（HTTP 503 TOO_MANY_CLIENTS）」）——
+        // 样稿只有连接状态文字；原因只放悬停提示（连接失败时另有一次提示），不占版面
+        var why = !online && s is LiveDeviceSource { LastError: { Length: > 0 } le } ? "\n" + le : "";
+        HeadTip = cfg.Alias + " · " + Model.Label + "（" + Model.InstalledText + " 已安装）\n" + cfg.Host + ":" + cfg.Port + " · SN " + (s.Sn.Length > 0 ? s.Sn : Core.Format.Fmt.Dash) + "\n" + cd.Text
+            + (SessionId != null ? " · 会话 " + SessionId + " 记录中" : "") + why;
         Health = !online ? (conn.State == ConnStatus.Disconnected ? DeviceHealth.Mute : DeviceHealth.Off)
             : estop.Active || err > 0 ? DeviceHealth.Err : alarms.Count > 0 ? DeviceHealth.Warn : DeviceHealth.Ok;
         foreach (var a in Alarms) a.RefreshReason();

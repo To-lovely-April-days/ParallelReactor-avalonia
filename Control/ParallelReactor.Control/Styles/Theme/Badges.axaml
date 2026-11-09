@@ -23,13 +23,14 @@
         <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
                 BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
                 Padding="{TemplateBinding Padding}">
-          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <!-- pr:BadgeRow = 横排 StackPanel，徽标被外面挤窄时字按剩下的宽度省略（第 5 种控制权「其他客户端 PC-工位2」这类长字）；样式照旧按 StackPanel 匹配 -->
+          <pr:BadgeRow Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
             <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="False" />
             <c:IconView Name="PART_Icon" Icon="{TemplateBinding ShownIcon}" Size="15" Foreground="{TemplateBinding Foreground}"
                         VerticalAlignment="Center" IsVisible="False" />
             <!-- 字用 pr:PrText（按 WebKit 量宽：不加 11.1 的墨迹外伸，中文徽标不再每个宽 2 px；样式照旧按 TextBlock 匹配） -->
-            <pr:PrText Name="PART_Text" Text="{TemplateBinding ShownText}" VerticalAlignment="Center" />
-          </StackPanel>
+            <pr:PrText Name="PART_Text" Text="{TemplateBinding ShownText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </pr:BadgeRow>
         </Border>
       </ControlTemplate>
     </Setter>
@@ -73,7 +74,7 @@
     </Style>
   </ControlTheme>
 
-  <!-- 控制权：远程 a-soft + 钥匙 a-d；本地只读 灰 + 锁 t-3；申请中 白底 a-line 边 + 时钟 a-d；宽限 红 -->
+  <!-- 控制权：远程 a-soft + 钥匙 a-d；本地只读 灰 + 锁 t-3；申请中 白底 a-line 边 + 时钟 a-d；宽限 红；其他客户端（真机第 5 种）灰 + 人形 -->
   <ControlTheme x:Key="{x:Type pr:LeaseBadge}" TargetType="pr:LeaseBadge" BasedOn="{StaticResource {x:Type pr:Badge}}">
     <Style Selector="^:remote">
       <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
@@ -101,6 +102,14 @@
     </Style>
     <Style Selector="^:lost /template/ c|IconView#PART_Icon">
       <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <!-- 第 5 种（真机）：被其他客户端持有 —— 灰底 + 人形 t-3 + t-2 字（中性：不是本机的控制权，也不是故障） -->
+    <Style Selector="^:other">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^:other /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
     </Style>
   </ControlTheme>
 

@@ -49,12 +49,15 @@ public sealed class DemoDeviceSource : IDeviceSource
     public Guid Id { get; }
     public bool IsDemo => true;
     public DeviceConfig Config => new(Id, Device.Alias, Device.Host, Device.Port, Device.Token, Device.AutoConnect);
-    public ConnInfo Conn => new(Device.Conn.State, Device.Conn.EverOnline, Device.Conn.RetryS, Device.Conn.Since, Device.Conn.LostAt);
+    public ConnInfo Conn => new(Device.Conn.State, Device.Conn.EverOnline, Device.Conn.RetryS, Device.Conn.Since, Device.Conn.LostAt, Attempts: Device.Conn.Attempts);
     public DeviceInfoDto? Info => null;
     public SettingsDto? Settings => null;
     public CommDto? Comm => null;
-    public LeaseView Lease => new(Device.Lease.State, Device.Lease.RemainS, Device.Lease.GraceS, Device.Lease.Holder, Device.LeaseInfo);
-    public Role Role => Role.Unknown;
+    public LeaseView Lease => new(Device.Lease.State, Device.Lease.RemainS, Device.Lease.GraceS, Device.Lease.Holder, Device.LeaseInfo, WaitS: DemoFleet.LeaseWaitS);
+    /// <summary>演示数据没有令牌权限之分（样稿没有只读令牌）。</summary>
+    public TokenRole Role => TokenRole.Unknown;
+
+    public void LearnForbidden(DeviceAction action) { }
     public TelemetrySnapshot? Latest => null;
     public DateTime? DataAt => Device.DataAt;
     public ModelProfile Model => Device.Model;
@@ -132,9 +135,10 @@ public sealed class DemoDeviceSource : IDeviceSource
     /// </summary>
     public ActionOutcome Exec(DeviceAction action, ActionPayload? args = null)
     {
-        var alias = Device.Alias;
         var r = _fleet.Act(Device, action, args, quiet: true);
         if (!r.Ok) return ActionOutcome.Failed(r.Message);
+        // 别名取执行之后的（样稿 act 的 toast 用 D.alias：改名之后是新名字「反应台B · 已重命名（原名 2号机）」）
+        var alias = Device.Alias;
         bool warnLevel = !r.Info && action is DeviceAction.Estop or DeviceAction.StopAll or DeviceAction.Stop or DeviceAction.ProgAbort or DeviceAction.Disable;
         var tone = r.Info ? ToastKind.Info : action == DeviceAction.Estop ? ToastKind.Err : warnLevel ? ToastKind.Warn : ToastKind.Ok;
         var text = (action == DeviceAction.Remove || r.Message.StartsWith(alias, StringComparison.Ordinal) ? "" : alias + " · ") + r.Message;

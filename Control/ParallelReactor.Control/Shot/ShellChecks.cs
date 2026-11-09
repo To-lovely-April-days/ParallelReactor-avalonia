@@ -250,9 +250,12 @@ public static class ShellChecks
         vm.Toasts.Clear();
 
         // ---------------- 对话框宿主 ----------------
-        vm.OpenDialog("stopall");
+        vm.OpenDialog("nope");
         await Settle();
-        Check(!vm.Dialogs.IsOpen && vm.Toasts.Items.LastOrDefault()?.Text == "对话框 stopall 未定义", "未注册的对话框：toast「对话框 stopall 未定义」（对话框在 M3）");
+        Check(!vm.Dialogs.IsOpen && vm.Toasts.Items.LastOrDefault()?.Text == "对话框 nope 未定义", "未注册的对话框：toast「对话框 nope 未定义」（同样稿）");
+        // M3：样稿的对话框都注册了（演示与真机同一套，Shell/Dialogs）
+        foreach (var name in new[] { "add", "devices", "lease", "estop", "stopall", "edit", "rename", "remove", "disconnect" })
+            Check(vm.Dialogs.IsRegistered(name), $"对话框「{name}」已注册");
         vm.Toasts.Clear();
         vm.Dialogs.Register("probe", _ => new DialogVm { Name = "probe", Title = "设备管理", Sub = "宿主核对（对话框在 M3）", Icon = "list", Width = 560 });
         await Settle();
@@ -284,6 +287,28 @@ public static class ShellChecks
         Esc(window);
         await Settle();
         Check(!vm.Dialogs.IsOpen && !host.IsVisible, "Esc 关闭对话框");
+
+        // M3 复核：遮罩只挡指针 —— 键盘焦点要进对话框、Tab 只在对话框里循环（碰不到下面的页面），关闭后焦点回到打开之前的地方
+        var pageBtn = window.GetVisualDescendants().OfType<Button>().First(b => b.IsEffectivelyVisible && b.IsEffectivelyEnabled && b.Focusable && !host.IsVisualAncestorOf(b));
+        pageBtn.Focus();
+        await Settle();
+        vm.OpenDialog("rename", "2");
+        await Settle();
+        Check(host.FocusInside, "对话框打开：键盘焦点移进对话框（看不见的锚点，没有焦点外观）");
+        var tabbed = new HashSet<object>();
+        bool allInside = true;
+        for (int i = 0; i < 12; i++)
+        {
+            Tab(window);
+            await Settle();
+            allInside &= host.FocusInside;
+            if (window.FocusManager?.GetFocusedElement() is { } fe) tabbed.Add(fe);
+        }
+        Check(allInside && tabbed.Count >= 3 && tabbed.OfType<TextBox>().Any(),
+            $"Tab 只在对话框里循环（{tabbed.Count} 个控件：{string.Join("、", tabbed.Select(x => x.GetType().Name).Distinct())}），到不了下面的页面");
+        Esc(window);
+        await Settle();
+        Check(!vm.Dialogs.IsOpen && ReferenceEquals(window.FocusManager?.GetFocusedElement(), pageBtn), "关闭对话框后焦点回到打开之前的按钮");
 
         // ---------------- 面板放大 / 关闭 / 重置布局 ----------------
         vm.Navigate(Route.Device(1));
@@ -430,7 +455,18 @@ public static class ShellChecks
         await Capture(window, Path.Combine(dir, $"shell-insp-local-{width}.png"), lines);
         Click(window, insp.GetVisualDescendants().OfType<Button>().First(b => b.Content as string == "申请控制权"));
         await Settle();
-        Check(lease.IsRequested && lease.CtaLabel == "取消申请" && !lease.CtaPrimary, $"点「申请控制权」→ 申请中（{lease.LeaseText}），整行「取消申请」");
+        // M3：检查器「申请控制权」先打开申请控制权对话框（样稿 data-dialog="lease"），「发送申请」才发出申请；对话框留着，换成倒计时
+        Check(vm.Dialogs.Current is ParallelReactor.Control.Shell.Dialogs.LeaseDialogVm { IsLocal: true }, "点「申请控制权」→ 打开「申请控制权 · 1号机」对话框（发送前的说明）");
+        if (vm.Dialogs.Current is ParallelReactor.Control.Shell.Dialogs.LeaseDialogVm ld)
+        {
+            ld.SendButton.Command.Execute(null);
+            await Settle();
+            Check(ld.IsRequested && ld.Remain > 0 && vm.Dialogs.IsOpen, $"「发送申请」→ 对话框换成倒计时（剩 {ld.RemainText} s）");
+            await Capture(window, Path.Combine(dir, $"shell-lease-dialog-{width}.png"), lines);
+            ld.WaitButton.Command.Execute(null);   // 后台等待
+            await Settle();
+        }
+        Check(!vm.Dialogs.IsOpen && lease.IsRequested && lease.CtaLabel == "取消申请" && !lease.CtaPrimary, $"「后台等待」→ 关闭对话框；控制权卡申请中（{lease.LeaseText}），整行「取消申请」");
         Click(window, insp.GetVisualDescendants().OfType<Button>().First(b => b.Content as string == "取消申请"));
         await Settle();
         Check(lease.LeaseState == LeaseState.Local, "「取消申请」→ 回到本地只读");
@@ -660,6 +696,13 @@ public static class ShellChecks
         w.MouseMove(p);
         w.MouseDown(p, MouseButton.Left);
         w.MouseUp(p, MouseButton.Left);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    private static void Tab(Window w)
+    {
+        w.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        w.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
         Dispatcher.UIThread.RunJobs();
     }
 

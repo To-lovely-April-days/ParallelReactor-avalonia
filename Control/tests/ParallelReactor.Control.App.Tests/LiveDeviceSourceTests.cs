@@ -17,11 +17,13 @@ namespace ParallelReactor.Control.Tests;
 /// （旧 MainViewModel 从不摘）、遥测帧合并成一次刷新、报警归一化（过滤 info、确认状态、通道号从标题解析、清除即移除）、
 /// 连接状态与控制权的显示。多台、重连监督、取消申请后迟到批准的自动释放在 M3（LiveDeviceSourceTests 会扩展）。
 /// </summary>
-public class LiveDeviceSourceTests
+public partial class LiveDeviceSourceTests
 {
     private static readonly string[] Events =
     {
         "TelemetryReceived", "ConnectionStateChanged", "LeaseTransitioned", "ControlChanged", "AlarmChanged", "EventReceived", "Error", "ServerRestarted",
+        // M3：重连倒计时、HMI 报告的控制权现状、403、已取消申请的结局
+        "ReconnectScheduled", "LeaseServerViewChanged", "ForbiddenRole", "LeaseCancelledRequestSettled",
     };
 
     private static (LiveDeviceSource Src, ManualPost Post, Func<FakeReactorConnection> Fake) Make(Action<FakeReactorConnection>? setup = null)
@@ -151,11 +153,12 @@ public class LiveDeviceSourceTests
     public async Task ConnectionStates_MapToShellWords()
     {
         var (src, post, fake) = Make();
-        Assert.Equal(ConnStatus.Connecting, src.Conn.State);                 // 还没连
+        Assert.Equal(ConnStatus.Disconnected, src.Conn.State);               // 还没开始连（M3：登记了、没勾自动连接）
         Assert.False(src.Conn.EverOnline);
-        Assert.Equal("正在连接…", src.Conn.Display.Text);
+        Assert.Equal("已断开", src.Conn.Display.Text);
         Assert.Equal("未连接", src.Read(1).Word);
-        await src.ConnectAsync(CancellationToken.None);
+        var connecting = src.ConnectAsync(CancellationToken.None);          // 假连接同步完成；连接中的样子见 RegistryTests 的慢连接
+        await connecting;
         await Task.Delay(50);
         post.Run();                                                          // 第一帧（GET /snapshot）应用到 Latest
         Assert.Equal(("已连接", ConnStatus.Online), (src.Conn.Display.Text, src.Conn.State));

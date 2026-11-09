@@ -29,10 +29,16 @@ public partial class DialogVm : ObservableObject
 
     /// <summary>对话框关闭之后（任何方式：×、遮罩、Esc、另开一个对话框）。</summary>
     public virtual void OnClosed() { }
+
+    /// <summary>
+    /// 数据变了 / 每秒（外壳在 FleetVm.Changed 时调用，样稿 refresh() 里的 renderDialog）：计数、说明、倒计时跟着变；对象设备没了时关闭自己
+    /// （样稿 onDevices）。表单类对话框（样稿 live: false）不改用户正在填的内容。
+    /// </summary>
+    public virtual void Refresh() { }
 }
 
 /// <summary>
-/// 对话框宿主（PORT-PLAN §2.1「对话框宿主 + 9 个对话框」：宿主 M2，对话框 M3；样稿 shell.js openDialog / closeDialog）：
+/// 对话框宿主（PORT-PLAN §2.1「对话框宿主 + 9 个对话框」：宿主 M2，对话框 M3（Shell/Dialogs）；样稿 shell.js openDialog / closeDialog）：
 /// 遮罩（OverlayBrush，ZIndex 200）+ 居中的 DialogFrame；全局停止格在遮罩之上（ZIndex 201），对话框开着也能直接点急停。
 /// 同一时间只有一个对话框：打开新的之前正常关闭旧的（OnClosed 照常执行）。点遮罩、×、Esc 关闭。
 /// 对话框按名字注册（<see cref="Register"/>）；没注册的名字给一条提示（同样稿「对话框 … 未定义」）。
@@ -76,4 +82,13 @@ public sealed partial class DialogHostVm : ObservableObject
         Current = null;
         c.OnClosed();
     }
+
+    /// <summary>关闭指定的对话框（它还开着时）：对话框自己的操作用它，不会误关掉已经换上来的另一个。</summary>
+    public void Close(DialogVm vm)
+    {
+        if (ReferenceEquals(Current, vm)) Close();
+    }
+
+    /// <summary>当前对话框跟着数据刷新一次（见 <see cref="DialogVm.Refresh"/>）。</summary>
+    public void RefreshCurrent() => Current?.Refresh();
 }

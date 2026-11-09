@@ -101,6 +101,17 @@ public sealed partial class DemoFleet
         return "";
     }
 
+    /// <summary>
+    /// 「启动时自动连接」开关（样稿设备管理表的复选框：d.autoConnect = !d.autoConnect，提示由界面给），不记事件；触发 <see cref="Changed"/>（State）。
+    /// </summary>
+    public void SetAutoConnect(DemoDevice d, bool on)
+    {
+        if (d is null) throw new ArgumentNullException(nameof(d));
+        if (d.AutoConnect == on) return;
+        d.AutoConnect = on;
+        Changed?.Invoke(this, new DemoChangedEventArgs(DemoChangeKind.State, d));
+    }
+
     /// <summary>别名检查（样稿 aliasError）：'' = 可用。<paramref name="except"/> = 正在改名的那台（不跟自己比）。</summary>
     public string AliasError(string? alias, DemoDevice? except) =>
         ActionGuard.AliasError(alias, _devices.Where(x => x != except).Select(x => new PeerDevice(x.Alias, x.Host)));
@@ -215,7 +226,14 @@ public sealed partial class DemoFleet
                 int k = 0;
                 foreach (var c in d.ChannelList)
                     if (c.Installed && (c.IsRunning || c.Heating)) { StopChannel(c); k++; }
-                return k > 0 ? ("已停止 " + k + " 个反应釜", false) : ("没有运行中的反应釜 · 已发送全部停止", true);
+                // 样稿：搅拌保持当前状态。StopAllStopsStirring（ControlOptions）打开时搅拌也停，停法同急停：共用搅拌 + 各釜搅拌
+                bool stir = StopAllStopsStirring;
+                if (stir)
+                {
+                    if (d.Stir != null) d.Stir.On = false;
+                    foreach (var c in d.ChannelList) if (c.Installed) c.StirOn = false;
+                }
+                return k > 0 ? (StopAllText.Stopped(k, stir), false) : (StopAllText.NothingRunning(stir), true);
             }
             case DeviceAction.Estop:
                 DoEstop(d);

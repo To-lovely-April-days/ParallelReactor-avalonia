@@ -235,7 +235,9 @@ internal static class DemoDump
     public static List<string> Replay(JsonElement scenario, out DemoFleet fleet)
     {
         var l = new List<string>();
-        var f = new DemoFleet(DemoParams.FromPairs(Pairs(scenario.GetProperty("params"))));
+        // 向量是样稿 JS 算出来的，样稿的「全部停止」不停搅拌：这里固定 false，不跟 ControlOptions.StopAllStopsStirring 走
+        // （用户把默认改成连搅拌一起停时，向量照样对得上样稿，改默认仍然只改那一行）
+        var f = new DemoFleet(DemoParams.FromPairs(Pairs(scenario.GetProperty("params")))) { StopAllStopsStirring = false };
         f.Toast += (_, e) => l.Add("toast " + KindCode(e.Kind) + " " + e.Text);
         foreach (var step in scenario.GetProperty("script").EnumerateArray())
         {

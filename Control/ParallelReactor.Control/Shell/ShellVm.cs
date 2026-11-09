@@ -60,7 +60,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Selection.Changed += OnSelectionChanged;
         Tabs.Tabs.CollectionChanged += OnTabsChanged;
 
-        if (!Fleet.IsDemo) DialogSet.RegisterLive(this);
+        // 样稿的对话框（M3）：演示与真机同一套（Shell/Dialogs）
+        DialogSet.Register(this);
 
         Tabs.ResetToDefaults();
         _route = Route.Overview;
@@ -236,6 +237,15 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     public void OpenDialog(string name, string? arg = null) => Dialogs.Open(name, arg);
 
+    /// <summary>
+    /// 断开一台设备（样稿 shell.requestDisconnect）：本机持有或正在申请它的控制权时先打开断开确认（断开会释放控制权 / 取消申请），否则直接断开。
+    /// </summary>
+    public void RequestDisconnect(IFleetDevice d)
+    {
+        if (d.Lease is Controls.Pr.LeaseState.Remote or Controls.Pr.LeaseState.Lost or Controls.Pr.LeaseState.Requested) OpenDialog("disconnect", d.K.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        else DeviceAct(d.K, "disconnect");
+    }
+
     public void ToggleExplorer() => Layout.ToggleExplorer();
 
     public void ToggleTimeline() => Layout.ToggleTimeline();
@@ -266,6 +276,29 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     public void Exit() => ExitRequested?.Invoke(this, EventArgs.Empty);
 
+    /// <summary>
+    /// 退出前要先问的设备（真机，R7，M3 复核）：本机的控制权申请（或已取消、还在等结果的申请）还在它的触屏上 —— 直接退出的话触屏之后若批准，
+    /// 这份控制权没人心跳，宽限期满 HMI 按 onRemoteLost 处理。
+    /// </summary>
+    public IReadOnlyList<DeviceVm> PendingLeaseRequests =>
+        Fleet.Devices.Where(d => d.Source is LiveDeviceSource { LeaseRequestPending: true }).ToList();
+
+    /// <summary>
+    /// 关窗 / 退出之前（App）：有申请还在触屏上时打开退出确认（<see cref="ExitDialogVm"/>）并返回 false —— 之后用户选「仍然退出」或等到了结果时触发
+    /// <see cref="ExitConfirmed"/>；没有时返回 true（照常退出）。
+    /// </summary>
+    public bool TryExit()
+    {
+        if (PendingLeaseRequests.Count == 0) return true;
+        if (Dialogs.Current is not ExitDialogVm) OpenDialog("exit");
+        return false;
+    }
+
+    /// <summary>退出确认里选了「仍然退出」，或者等到了每条申请的结果：App 接着走正常的关闭流程。</summary>
+    public event EventHandler? ExitConfirmed;
+
+    internal void ConfirmExit() => ExitConfirmed?.Invoke(this, EventArgs.Empty);
+
     /// <summary>设备动作（菜单「释放控制权」「立即重连」…）：交给 FleetVm → DeviceActions（守卫、执行、提示都在那里）。</summary>
     public void DeviceAct(int k, string action)
     {
@@ -294,6 +327,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         foreach (var p in Pages) p.Refresh(Fleet);
         OnPropertyChanged(nameof(ClientText));
         RefreshChrome();
+        // 对话框跟着数据刷新（样稿 refresh() 里的 renderDialog：计数、说明、倒计时；对象设备没了时关闭）
+        Dialogs.RefreshCurrent();
     }
 
     private void OnLayoutChanged(object? sender, EventArgs e) => RefreshChrome();

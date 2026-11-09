@@ -43,7 +43,8 @@ public static partial class Pr
         bool any = false;
         foreach (var ch in s)
         {
-            if (char.IsWhiteSpace(ch)) continue;
+            // 空白与连接符（UiText.NoBreak / Keep 插的 U+2060 / U+FEFF）不算字
+            if (char.IsWhiteSpace(ch) || ch == (char)0x2060 || ch == (char)0xFEFF) continue;
             bool cjk = ch is >= '　' and <= 'ヿ' or >= '㐀' and <= '鿿' or >= '豈' and <= '﫿' or >= '！' and <= '～';
             if (!cjk) return false;
             any = true;

@@ -51,6 +51,24 @@ public sealed class ReactorApiClient : IDisposable
     public long Requests => Interlocked.Read(ref _requests);
     public long Failures => Interlocked.Read(ref _failures);
 
+    // —— M3 增补（R9）：任何请求被 403 FORBIDDEN_ROLE 拒绝都报出来（包括 Client 内部吞掉的心跳 / 申请轮询），界面据此学习「只读令牌」——
+    private ForbiddenNotice? _lastForbidden;
+    /// <summary>最近一次 403 FORBIDDEN_ROLE（没有为 null）。</summary>
+    public ForbiddenNotice? LastForbidden => Volatile.Read(ref _lastForbidden);
+    /// <summary>某个请求被 403 FORBIDDEN_ROLE 拒绝（在发请求的线程上触发，异常照常抛给调用方）。</summary>
+    public event Action<ForbiddenNotice>? Forbidden;
+
+    private ApiException Observe(ApiException ex, string method, string path)
+    {
+        if (ex.IsForbiddenRole)
+        {
+            var n = new ForbiddenNotice(method, path, ex.Code, ex.Message, _clock.UtcNow);
+            Volatile.Write(ref _lastForbidden, n);
+            try { Forbidden?.Invoke(n); } catch { }
+        }
+        return ex;
+    }
+
     // ======================================================================
     // 读
     // ======================================================================
@@ -89,7 +107,7 @@ public sealed class ReactorApiClient : IDisposable
         if (!string.IsNullOrEmpty(requestKey)) req.Headers.TryAddWithoutValidation(ApiHeaders.RequestKey, requestKey);
         using var resp = await SendRawAsync(req, ct).ConfigureAwait(false);
         var body = await ReadAsync(resp, ct).ConfigureAwait(false);
-        if (!resp.IsSuccessStatusCode) throw ApiException.Parse((int)resp.StatusCode, body, "查询申请失败");
+        if (!resp.IsSuccessStatusCode) throw Observe(ApiException.Parse((int)resp.StatusCode, body, "查询申请失败"), "GET", "control/requests/" + requestId);
         return ApiJson.Deserialize<ControlRequestStatusDto>(body) ?? throw new ApiException("BAD_RESPONSE", 200, "响应不是 ControlRequestStatus");
     }
 
@@ -225,7 +243,7 @@ public sealed class ReactorApiClient : IDisposable
                 await _clock.Delay(RetryAfter(resp), ct).ConfigureAwait(false);
                 continue;
             }
-            if (!resp.IsSuccessStatusCode) throw ApiException.Parse((int)resp.StatusCode, body, $"GET {path} 失败");
+            if (!resp.IsSuccessStatusCode) throw Observe(ApiException.Parse((int)resp.StatusCode, body, $"GET {path} 失败"), "GET", path);
             if (typeof(T) == typeof(JsonElement)) return (T)(object)JsonDocument.Parse(body).RootElement.Clone();
             return ApiJson.Deserialize<T>(body) ?? throw new ApiException("BAD_RESPONSE", (int)resp.StatusCode, $"GET {path}：响应为空");
         }
@@ -239,7 +257,7 @@ public sealed class ReactorApiClient : IDisposable
         if (!resp.IsSuccessStatusCode)
         {
             var body = await ReadAsync(resp, ct).ConfigureAwait(false);
-            throw ApiException.Parse((int)resp.StatusCode, body, $"GET {path} 失败");
+            throw Observe(ApiException.Parse((int)resp.StatusCode, body, $"GET {path} 失败"), "GET", path);
         }
         await resp.Content.CopyToAsync(dest, ct).ConfigureAwait(false);
     }
@@ -308,7 +326,7 @@ public sealed class ReactorApiClient : IDisposable
             if (!resp.IsSuccessStatusCode)
             {
                 Interlocked.Increment(ref _failures);
-                throw ApiException.Parse((int)resp.StatusCode, body, $"{method} {path} 失败");
+                throw Observe(ApiException.Parse((int)resp.StatusCode, body, $"{method} {path} 失败"), method.Method, path);
             }
             bool replayed = resp.Headers.TryGetValues(ApiHeaders.IdempotentReplay, out var v) && v.Any(x => string.Equals(x, "true", StringComparison.OrdinalIgnoreCase));
             var dto = ApiJson.Deserialize<CommandResponseDto>(body) ?? throw new ApiException("BAD_RESPONSE", (int)resp.StatusCode, $"{method} {path}：响应不是命令结果");

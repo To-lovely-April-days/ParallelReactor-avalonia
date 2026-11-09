@@ -17,6 +17,10 @@
 #   PR_CONTROL_SHOT_REF=<目录>        参照图目录（final-<name>-<w>.png）；默认用样稿的 research/pc-v3/shots。
 #   PR_CONTROL_CONFIG / PR_CONTROL_DATA 可覆盖（默认 <输出目录>/cfg、<输出目录>/data）。
 #   PR_SHOTS_ALT_FONT=<字体栈>        第二遍审计的字体栈（macOS 默认 Theme/UiFonts.MacSystemStack；none = 不跑第二遍）。
+#   PR_SHOTS_FAKE2=0                  不跑场景 fake2（默认：外壳的三个尺寸各跑一次 —— 四台进程内的假 HMI 经真 ReactorConnection 连接，
+#                                     fake2-overview / fake2-device1 / fake2-reactor11 / fake2-device3 / fake2-device4 / fake2-devices /
+#                                     fake2-client / fake2-exit（真机才有的两个对话框：本机客户端名、退出确认）；
+#                                     只给了 PR_CONTROL_SHOT_NAMES 时，名字里有 fake2 才跑）。
 #   DOTNET=…                          dotnet 路径（默认 ~/.dotnet/dotnet，不在 PATH 上）。
 #   SKIP_BUILD=1                      不重新构建。
 set -u
@@ -68,7 +72,25 @@ clean_size() {   # clean_size <尺寸>
     for d in "$OUT" "$OUT/alt-font"; do rm -f "$d/$n-$w.png" "$d/cmp-$n-$w.png" "$d/$n-$w.tree.txt"; done
   done
   rm -f "$OUT/selftest/audit-selftest-$w".*
+  # fake2 只在外壳的三个尺寸拍：组件陈列页的尺寸（同宽度 1920x5100 …）不能删它们
+  if fake2_wanted "$1"; then
+    for n in $FAKE2_NAMES; do
+      for d in "$OUT" "$OUT/alt-font"; do rm -f "$d/$n-$w.png" "$d/$n-$w.tree.txt"; done
+    done
+  fi
 }
+
+# 场景 fake2（Shot/ShotRunner.Fake2.cs）：外壳的三个尺寸；不是演示模式（PR_CONTROL_DEMO=0），数据来自进程内的假 HMI
+FAKE2_NAMES="fake2-overview fake2-device1 fake2-reactor11 fake2-device3 fake2-device4 fake2-devices fake2-client fake2-exit"
+fake2_wanted() {   # fake2_wanted <尺寸>
+  [ "${PR_SHOTS_FAKE2:-1}" = "0" ] && return 1
+  case "$1" in 1920x1080|1600x900|1366x768) ;; *) return 1 ;; esac
+  [ -z "$NAMES" ] && return 0
+  echo "$NAMES" | tr ',' '\n' | tr -d ' ' | grep -q '^fake2'
+}
+# 演示截图的名字（给了 PR_CONTROL_SHOT_NAMES 时去掉 fake2 的；只剩 fake2 时不跑演示截图）
+DEMO_NAMES="$(echo "$NAMES" | tr ',' '\n' | tr -d ' ' | grep -v '^fake2' | grep -v '^$' | paste -sd, -)"
+demo_wanted() { [ -z "$NAMES" ] || [ -n "$DEMO_NAMES" ]; }
 
 fail=0
 run() {   # run <子目录> <尺寸> [额外环境变量 …]
@@ -90,6 +112,21 @@ shots() {   # shots <目录> <尺寸> [额外环境变量 …]
   grep -E "^(saved|audit|compare)" "$dir/shot-$size.log" 2>/dev/null | sed 's/^/   /'
 }
 
+# 场景 fake2 的一个尺寸：日志另存 shot-fake2-<尺寸>.log（不覆盖演示截图的日志）
+fake2() {   # fake2 <目录> <尺寸> [额外环境变量 …]
+  local dir="$1" size="$2"; shift 2
+  mkdir -p "$dir"
+  env PR_CONTROL_HEADLESS=1 PR_CONTROL_DEMO=0 PR_CONTROL_SCENARIO=fake2 PR_CONTROL_SHOT="$dir" PR_CONTROL_SHOT_SIZE="$size" \
+      PR_CONTROL_CONFIG="$CFG" PR_CONTROL_DATA="$DATA" "$@" \
+      "$DOTNET" "$DLL" > "$dir/stdout-fake2-$size.txt" 2>&1
+  local rc=$?
+  [ -f "$dir/shot.log" ] && mv "$dir/shot.log" "$dir/shot-fake2-$size.log"
+  [ -f "$dir/error.txt" ] && mv "$dir/error.txt" "$dir/error-fake2-$size.txt"
+  if [ $rc -eq 2 ]; then echo "   exit 2:"; head -n 20 "$dir/error-fake2-$size.txt" 2>/dev/null; fail=1
+  elif [ $rc -ne 0 ] && [ $rc -ne 1 ]; then echo "   exit $rc"; fail=1; fi
+  grep -E "^(saved|audit)" "$dir/shot-fake2-$size.log" 2>/dev/null | sed 's/^/   /'
+}
+
 for size in "${SIZES[@]}"; do
   w="${size%x*}"
   clean_size "$size"
@@ -102,11 +139,21 @@ for size in "${SIZES[@]}"; do
   tail -n 1 "$OUT/selftest/audit-selftest-$w.result.txt" 2>/dev/null
   if [ $rc -ne 0 ]; then echo "   self-test exit $rc"; fail=1; fi
 
-  echo "== $size: shots"
-  shots "$OUT" "$size"
-  if [ -n "$ALT_FONT" ]; then
-    echo "== $size: audit again with font \"$ALT_FONT\""
-    shots "$OUT/alt-font" "$size" PR_CONTROL_UI_FONT="$ALT_FONT" PR_CONTROL_SHOT_REF=
+  if demo_wanted; then
+    echo "== $size: shots"
+    shots "$OUT" "$size" ${NAMES:+PR_CONTROL_SHOT_NAMES="$DEMO_NAMES"} ${NAMES:+PR_CONTROL_SHOTS=}
+    if [ -n "$ALT_FONT" ]; then
+      echo "== $size: audit again with font \"$ALT_FONT\""
+      shots "$OUT/alt-font" "$size" PR_CONTROL_UI_FONT="$ALT_FONT" PR_CONTROL_SHOT_REF= ${NAMES:+PR_CONTROL_SHOT_NAMES="$DEMO_NAMES"} ${NAMES:+PR_CONTROL_SHOTS=}
+    fi
+  fi
+  if fake2_wanted "$size"; then
+    echo "== $size: scenario fake2 (in-process fake HMIs, real ReactorConnection)"
+    fake2 "$OUT" "$size"
+    if [ -n "$ALT_FONT" ]; then
+      echo "== $size: fake2 audited again with font \"$ALT_FONT\""
+      fake2 "$OUT/alt-font" "$size" PR_CONTROL_UI_FONT="$ALT_FONT"
+    fi
   fi
 done
 

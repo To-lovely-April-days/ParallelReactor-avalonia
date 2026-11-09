@@ -33,9 +33,10 @@
                 <Button Name="PART_Close" DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="x"
                         ToolTip.Tip="关闭" AutomationProperties.Name="关闭" VerticalAlignment="Center" />
                 <StackPanel Spacing="3" VerticalAlignment="Center">
-                  <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsHead}" FontWeight="SemiBold"
+                  <!-- 行高同样稿（正文行高 1.45：18 px → 26、14 px → 20；标题区因此是 73 高，不是最小高 66） -->
+                  <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsHead}" FontWeight="SemiBold" LineHeight="{StaticResource LhHead}"
                              Foreground="{StaticResource T1Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Title}" />
-                  <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                  <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" LineHeight="{StaticResource Lh2}"
                              TextWrapping="Wrap"
                              IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 </StackPanel>
@@ -64,6 +65,66 @@
     </Style>
     <Style Selector="^:danger /template/ c|IconView#PART_Icon">
       <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 对话框里的设备勾选行（样稿 dialogs.css .dlg-pick，急停 / 全部停止）：最小高 58、内边距 8 14、line-2 边、圆角 6、白底；
+       悬停 / 勾上（类 on）a-line 边 + a-tint 底，按下 a-soft；不能选（类 dis，同时带 b:Pr.Reason）bg-head 底 + line-faint 边、光标「禁止」。
+       行里的复选框画在内容里（Views/Shell/Dialogs/PickDialogView：Border.pbox，类 on / dis 由这里的伪类换色）。 -->
+  <ControlTheme x:Key="PrPickRow" TargetType="Button">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="MinHeight" Value="58" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-3" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="9"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover, ^.on">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 不能选（最后写） -->
+    <Style Selector="^.dis, ^:reason, ^.dis:pointerover, ^.dis:pressed">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="Cursor" Value="No" />
     </Style>
   </ControlTheme>
 </ResourceDictionary>

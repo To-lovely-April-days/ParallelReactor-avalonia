@@ -33,7 +33,7 @@ public sealed record MenuEntry
 /// 菜单（PORT-PLAN §2.1「菜单栏 34 px」；样稿 shell.js MENUS / menuItems / devMenuItems，文字与顺序逐字照抄）：
 /// 文件 设备 视图 程序 工具 窗口 帮助。每次打开时按当前状态重新生成（勾选、标题项「当前：1号机」、禁用原因）。
 /// 设备菜单只有一份（菜单栏「设备」、右键、总览分区 «⋯» 共用 <see cref="DeviceItems"/>）。
-/// 对话框（添加设备、设备管理、控制权、急停、全部停止、编辑、重命名、移除、断开连接）在 M3 做；之前打开的是对话框宿主的「未定义」提示。
+/// 对话框（添加设备、设备管理、控制权、急停、全部停止、编辑、重命名、移除、断开连接）见 Shell/Dialogs（M3）。
 /// </summary>
 public static class MenuModel
 {
@@ -69,8 +69,8 @@ public static class MenuModel
                     new() { Label = "添加设备…", Icon = "plus", Run = () => shell.OpenDialog("add") },
                     new() { Label = "设备管理…", Icon = "list", Run = () => shell.OpenDialog("devices") },
                 };
-                // M2 临时：实时模式下用「连接设备」对话框连上一台真机（M3 由「添加设备」与「设备管理」取代）
-                if (!shell.Fleet.IsDemo) list.Add(new MenuEntry { Label = "连接…", Icon = "link", Run = () => shell.OpenDialog("connect") });
+                // 真机：本机客户端名（样稿在第二阶段的设置页里改；之前从这里改，M3 复核新加。演示数据没有这一项，菜单同样稿）
+                if (!shell.Fleet.IsDemo) list.Add(new() { Label = Dialogs.ClientNameDialogVm.MenuLabel, Icon = "monitor", Run = () => shell.OpenDialog("client") });
                 list.Add(MenuEntry.Separator);
                 if (d != null)
                 {
@@ -139,11 +139,11 @@ public static class MenuModel
     {
         LeaseState.Remote or LeaseState.Lost => new MenuEntry { Label = "释放控制权", Icon = "unlock", Run = () => shell.DeviceAct(d.K, "leaseRelease") },
         LeaseState.Requested => new MenuEntry { Label = "取消申请控制权", Icon = "x", Run = () => shell.DeviceAct(d.K, "leaseCancel") },
-        // 申请控制权的对话框（倒计时环）在 M3；没注册之前直接申请（结果 / 触屏确认的提示照常）
+        // 本地只读（真机还有「其他客户端持有」）：打开申请控制权对话框（倒计时环），守卫的原因写在菜单项上
         _ => new MenuEntry
         {
             Label = "申请控制权…", Icon = "key", Reason = Nz(d.Why("leaseRequest")),
-            Run = () => { if (shell.Dialogs.IsRegistered("lease")) shell.OpenDialog("lease", d.K.ToString()); else shell.DeviceAct(d.K, "leaseRequest"); },
+            Run = () => shell.OpenDialog("lease", d.K.ToString(System.Globalization.CultureInfo.InvariantCulture)),
         },
     };
 
@@ -154,12 +154,8 @@ public static class MenuModel
         ? new MenuEntry
         {
             Label = "断开连接…", Icon = "unplug",
-            Run = () =>
-            {
-                // 确认对话框在 M3；没注册之前直接断开（断开前先释放控制权 / 取消申请，见 LiveDeviceSource / DemoFleet 的 disconnect）
-                if (d.Lease is LeaseState.Remote or LeaseState.Lost or LeaseState.Requested && shell.Dialogs.IsRegistered("disconnect")) shell.OpenDialog("disconnect", d.K.ToString());
-                else shell.DeviceAct(d.K, "disconnect");
-            },
+            // 本机持有或正在申请控制权时先确认（样稿 requestDisconnect）
+            Run = () => shell.RequestDisconnect(d),
         }
         : new MenuEntry
         {

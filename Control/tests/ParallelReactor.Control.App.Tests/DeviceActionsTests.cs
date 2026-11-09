@@ -152,22 +152,11 @@ public class DeviceActionsTests
 
     private static async Task<(FleetVm Fleet, DeviceVm Device, FakeReactorConnection Fake, List<(string, ToastKind)> Toasts)> Live(Action<ScriptedHttpHandler>? script = null, ControlStateDto? control = null)
     {
-        FakeReactorConnection? fake = null;
-        var f = FleetVm.CreateLive(new ControlConfig(), null, null, o =>
-        {
-            fake = new FakeReactorConnection(o)
-            {
-                StartDevice = ApiJson.Deserialize<DeviceInfoDto>(Samples.Read("live-device.json")),
-                StartSnapshot = ApiJson.Deserialize<TelemetrySnapshot>(Samples.Read("live-snapshot.json")),
-                ControlState = control,
-            };
-            script?.Invoke(fake.Http);
-            return fake;
-        }, persistConfig: false);
+        // M3：设备经 DeviceRegistry 添加（内存配置，不写文件），添加后马上连接（假连接同步完成）
+        var (f, d, fake) = await LiveFleet.OneAsync(script, control);
         var toasts = new List<(string, ToastKind)>();
         f.Toast += (t, k) => { lock (toasts) toasts.Add((t, k)); };
-        var d = await f.ConnectAsync("127.0.0.1", 8080, "tok", "PC-测试", false);
-        return (f, d, fake!, toasts);
+        return (f, d, fake, toasts);
     }
 
     [Fact]
@@ -282,9 +271,11 @@ public class DeviceActionsTests
         Assert.Equal("1号机正在重连 · 稍候", insp.RunAll.Reason);
         Assert.EndsWith("重连前只能查看；停止类操作随时可用", insp.Lease.Note);       // 不写「不能操作」
         shell.OpenDialog("estop");
-        var dlg = Assert.IsType<StopDialogVm>(shell.Dialogs.Current);
-        Assert.Equal("1号机", Assert.Single(dlg.Targets).Alias);
-        Assert.Null(dlg.GoReason);
+        var dlg = Assert.IsType<EstopDialogVm>(shell.Dialogs.Current);
+        var pick = Assert.Single(dlg.Rows);
+        Assert.Equal("1号机", pick.Alias);
+        Assert.True(pick.IsOn);                                                    // 只是 WebSocket 在重连：照样预选
+        Assert.Null(dlg.GoButton.Reason);
         shell.Dialogs.Close();
         var o = await d.Actions.RunAsync(DeviceAction.StopAll);
         Assert.True(o.Ok, o.Message);
@@ -401,11 +392,13 @@ public class DeviceActionsTests
         insp.RunAll.Command.Execute(null);
         var dlg = Assert.IsType<RunAllDialogVm>(shell.Dialogs.Current);
         Assert.Equal(("全部运行", "运行1号机上已下发程序的反应釜"), (dlg.Title, dlg.Sub));
-        var row = Assert.Single(dlg.Targets);
-        Assert.Equal(("1号机 · RV1", "程序「加氢测试-01」", "已下发 · 待运行"), (row.Alias, row.Sub, row.RunText));
-        Assert.Equal("已选 1 个反应釜", dlg.CountText);
+        var row = Assert.Single(dlg.Rows);
+        Assert.Equal(("1号机 · RV1", "程序「加氢测试-01」", "已下发 · 待运行"), (row.Name, row.Sub, row.Status));
+        Assert.Equal("已选 1 个反应釜", dlg.FooterLeft);
         Assert.Empty(fake.Http.Of("POST", ".*/program/run"));                         // 清单打开时什么都没发
-        await ((IAsyncRelayCommand)dlg.GoCommand).ExecuteAsync(null);
+        var go = ((FootBar)dlg.Footer!).Buttons[1];
+        Assert.Equal(("全部运行", FootKind.Primary), (go.Label, go.Kind));
+        await ((IAsyncRelayCommand)go.Command).ExecuteAsync(null);
         Assert.False(shell.Dialogs.IsOpen);
         Assert.Equal(1, fake.Http.Count("POST", "/channels/1/program/run"));
         Assert.Equal(0, fake.Http.Count("POST", "/run"));

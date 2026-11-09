@@ -1,0 +1,141 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.LeaseDialogView"
+             x:DataType="dlg:LeaseDialogVm">
+  <!-- 申请控制权（样稿 dialogs.js 'lease'，css/dialogs.css .dlg-devcard / .dlg-explain / .dlg-wait / .dlg-steps / .dlg-done）：
+       设备卡片 + 按状态的一块（本地只读：说明与三条要点；申请中：倒计时环 + 三步 + 说明；远程：完成卡；宽限 / 断线：红色说明）。 -->
+  <UserControl.Styles>
+    <!-- 三步的序号圆（样稿 .dlg-step-no：26 圆、1.5 px line 边、t-3 13/600、白底；已完成 line-2 边 + bg-sunken + t-2 ✓；当前 a 边 + a-soft + a-ink） -->
+    <Style Selector="Border.stepno">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Border.stepno TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.stepno.done">
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    </Style>
+    <Style Selector="Border.stepno.cur">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="Border.stepno.cur TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.steptitle">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.steptitle.next">
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <!-- 设备卡片（.dlg-devcard：间距 12、下边距 16、内边距 12 14、line-2 边、bg-head；图标 24 t-3；别名 16/600；「型号 · 地址 · SN」14 t-3） -->
+    <Border Margin="0,0,0,16" Padding="14,12" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+            Background="{StaticResource BgHeadBrush}">
+      <DockPanel>
+        <c:IconView DockPanel.Dock="Left" Icon="machine" Size="24" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+        <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+          <pr:LeaseBadge State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}" IsVisible="{Binding Badge.ShowLease}" />
+          <pr:ConnBadge State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}" IsVisible="{Binding !Badge.ShowLease}" />
+        </Panel>
+        <StackPanel Spacing="2" VerticalAlignment="Center">
+          <pr:PrText Text="{Binding Alias}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+          <pr:PrText Text="{Binding Ident}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis"
+                     ToolTip.Tip="{Binding Ident}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 本地只读：发送前的说明（.dlg-explain：15 px、行高 1.6、t-2；要点 14 px、间距 8，✓ 16 t-3） -->
+    <StackPanel IsVisible="{Binding IsLocal}" Margin="2,2,2,0">
+      <pr:SegText Segments="{Binding Explain}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="24"
+                  Margin="0,0,0,12" />
+      <StackPanel Spacing="8">
+        <DockPanel>
+          <c:IconView DockPanel.Dock="Left" Icon="check" Size="16" StrokeWidth="2" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,10,0" />
+          <TextBlock Text="{Binding Point1}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="22" />
+        </DockPanel>
+        <DockPanel>
+          <c:IconView DockPanel.Dock="Left" Icon="check" Size="16" StrokeWidth="2" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,10,0" />
+          <TextBlock Text="{Binding Point2}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="22" />
+        </DockPanel>
+        <DockPanel>
+          <c:IconView DockPanel.Dock="Left" Icon="check" Size="16" StrokeWidth="2" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,10,0" />
+          <TextBlock Text="{Binding Point3}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="22" />
+        </DockPanel>
+      </StackPanel>
+    </StackPanel>
+
+    <!-- 申请中：倒计时环（128、环宽 8）+ 三步（.dlg-wait：上 4 下 16、内边距 18 22、间距 28、line-soft 边、bg-head）+ 中性说明 -->
+    <StackPanel IsVisible="{Binding IsRequested}">
+      <Border Margin="0,4,0,16" Padding="22,18" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+              Background="{StaticResource BgHeadBrush}">
+        <DockPanel>
+          <pr:Ring DockPanel.Dock="Left" Diameter="128" Thickness="8" Value="{Binding Remain}" Maximum="{Binding RemainMax}" Text="{Binding RemainText}"
+                   Unit="s" Label="剩余" Margin="0,0,28,0" VerticalAlignment="Center" />
+          <ItemsControl ItemsSource="{Binding Steps}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Spacing="14" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="dlg:LeaseStepVm">
+                <DockPanel>
+                  <Border DockPanel.Dock="Left" Classes="stepno" Classes.done="{Binding IsDone}" Classes.cur="{Binding IsCur}" Margin="0,0,12,0">
+                    <Panel>
+                      <TextBlock Text="{Binding No}" IsVisible="{Binding !IsDone}" />
+                      <c:IconView Icon="check" Size="15" StrokeWidth="2.2" Foreground="{StaticResource T2Brush}" IsVisible="{Binding IsDone}"
+                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Panel>
+                  </Border>
+                  <StackPanel Spacing="2">
+                    <!-- 行高同样稿（正文 1.45：15 px → 22、14 px → 20） -->
+                    <TextBlock Classes="steptitle" Classes.next="{Binding IsNext}" Text="{Binding Title}" LineHeight="22" />
+                    <TextBlock Text="{Binding Text}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap"
+                               LineHeight="{StaticResource Lh2}" />
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+      <pr:Note Content="{Binding WaitNote}" />
+    </StackPanel>
+
+    <!-- 远程控制中（.dlg-done：内边距 16、间距 14、a-soft 边、a-tint 底；36 圆 a-soft 里 20 的钥匙 a-d；标题 16/600、说明 14 t-3） -->
+    <Border IsVisible="{Binding IsRemote}" Padding="16" BorderBrush="{StaticResource ASoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+            Background="{StaticResource ATintBrush}">
+      <DockPanel>
+        <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="18" Background="{StaticResource ASoftBrush}" Margin="0,0,14,0" VerticalAlignment="Center">
+          <c:IconView Icon="key" Size="20" Foreground="{StaticResource ADBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <StackPanel Spacing="2" VerticalAlignment="Center">
+          <pr:PrText Text="{Binding DoneTitle}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+          <pr:PrText Text="{Binding DoneText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 宽限 / 断线：红色说明 -->
+    <pr:Note Tone="Err" Content="{Binding ErrNote}" IsVisible="{Binding IsLost}" />
+    <pr:Note Tone="Err" Content="{Binding ErrNote}" IsVisible="{Binding IsOffline}" />
+  </StackPanel>
+</UserControl>

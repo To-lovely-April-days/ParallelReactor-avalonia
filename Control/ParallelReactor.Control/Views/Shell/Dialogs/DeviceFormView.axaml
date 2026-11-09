@@ -1,0 +1,68 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             xmlns:vd="using:ParallelReactor.Control.Views.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.DeviceFormView"
+             x:DataType="dlg:DeviceFormVm">
+  <!-- 添加设备 / 编辑设备的表单（样稿 dialogs.js formBody，css/dialogs.css .dlg-form：两列，行距 16、列距 20，下边距 18）：
+         地址 · 端口
+         访问令牌（整行：输入 + 显示 / 隐藏；下面「记住令牌」—— D7，样稿没有；样稿那句「在设备触屏…查看」去掉了：HMI 只存令牌哈希）
+         别名（整行，AliasFieldView）
+         型号（演示：「型号（原型演示）」下拉；编辑 / 真机：只读文字）· 启动时（自动连接，控件高 36）
+       字段 = 标签 14/500 t-3 + 控件（间距 8）+ 说明 14 t-3，三者间距 6。 -->
+  <StackPanel>
+  <Grid ColumnDefinitions="*,20,*" RowDefinitions="Auto,16,Auto,16,Auto,16,Auto" Margin="0,0,0,18">
+    <StackPanel Spacing="6">
+      <TextBlock Classes="flabel" Text="地址" />
+      <TextBox Text="{Binding Host}" Watermark="IP 或主机名" AutomationProperties.Name="地址" />
+    </StackPanel>
+    <StackPanel Grid.Column="2" Spacing="6">
+      <TextBlock Classes="flabel" Text="端口" />
+      <TextBox Text="{Binding Port}" AutomationProperties.Name="端口" />
+    </StackPanel>
+
+    <StackPanel Grid.Row="2" Grid.ColumnSpan="3" Spacing="6">
+      <TextBlock Classes="flabel" Text="访问令牌" />
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Margin="8,0,0,0" Theme="{StaticResource PrIconButton}" b:Pr.Icon="{Binding EyeIcon}"
+                ToolTip.Tip="{Binding EyeTip}" AutomationProperties.Name="{Binding EyeTip}" Command="{Binding EyeCommand}" />
+        <TextBox Text="{Binding Token}" PasswordChar="{Binding TokenChar}" AutomationProperties.Name="访问令牌" />
+      </DockPanel>
+      <!-- D7：只有勾了才把令牌存在本机（Windows 加密；macOS / Linux 仅本用户可读的文件，不加密） -->
+      <CheckBox Content="{Binding RememberHint}" IsChecked="{Binding RememberToken}" HorizontalAlignment="Left" />
+    </StackPanel>
+
+    <vd:AliasFieldView Grid.Row="4" Grid.ColumnSpan="3" DataContext="{Binding Alias}" />
+
+    <StackPanel Grid.Row="6" Spacing="6">
+      <TextBlock Classes="flabel" Text="{Binding ModelLabel}" />
+      <ComboBox ItemsSource="{Binding Models}" SelectedItem="{Binding Model}" HorizontalAlignment="Stretch" IsVisible="{Binding ModelSelectable}"
+                AutomationProperties.Name="{Binding ModelLabel}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="dlg:ModelChoice">
+            <pr:PrText Text="{Binding Label}" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+      <TextBlock Text="{Binding ModelText}" Height="{StaticResource CtlH}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T1Brush}"
+                 LineHeight="36" IsVisible="{Binding !ModelSelectable}" />
+      <TextBlock Classes="fhint" Text="{Binding ModelHint}" TextWrapping="Wrap" />
+    </StackPanel>
+    <StackPanel Grid.Row="6" Grid.Column="2" Spacing="6">
+      <TextBlock Classes="flabel" Text="启动时" />
+      <Panel Height="{StaticResource CtlH}">
+        <pr:PrCheckBox Content="自动连接" IsChecked="{Binding AutoConnect}" b:Pr.Reason="{Binding AutoReason}" VerticalAlignment="Center"
+                       HorizontalAlignment="Left" />
+      </Panel>
+    </StackPanel>
+  </Grid>
+  <!-- 表单下面的说明：添加设备 = 中性（本机客户端名 · 示例型号）；编辑 = 地址改了时的 warn -->
+  <pr:Note IsVisible="{Binding HasNote}">
+    <pr:SegText Segments="{Binding Note}" TextWrapping="Wrap" LineHeight="21" />
+  </pr:Note>
+  <pr:Note Tone="Warn" Content="{Binding WarnNote}" IsVisible="{Binding HasWarnNote}" />
+  </StackPanel>
+</UserControl>

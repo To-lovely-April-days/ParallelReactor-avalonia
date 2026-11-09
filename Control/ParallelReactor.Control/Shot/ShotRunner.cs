@@ -22,7 +22,7 @@ namespace ParallelReactor.Control.Shot;
 /// <summary>
 /// 截图模式（仅 Debug + PR_CONTROL_HEADLESS=1 + PR_CONTROL_SHOT=目录）：对一台<b>活的 HMI</b> 跑脚本（新外壳 + FleetVm 的实时设备 + DeviceActions）。
 /// 场景 PR_CONTROL_SCENARIO：
-///  main        「连接设备」对话框填 PR_CONTROL_URL / PR_CONTROL_TOKEN（main-connect-dialog.png）→ 连接 → 申请控制权（等触屏 / autoGrant）→
+///  main        「添加设备」对话框填 PR_CONTROL_URL / PR_CONTROL_TOKEN、测试连接（main-add-dialog.png）→ 添加并连接 → 申请控制权（等触屏 / autoGrant）→
 ///              启用 RV1–RV4 → RV1 加热 60 ℃、RV2 80 ℃ → 搅拌 300 rpm → RV3 / RV4 下发 3 步程序并运行 → 等 ≥ 16 帧 →
 ///              main-rv1.png（反应釜页 1/1）/ main-rv3.png / main-device1.png / main-overview.png / main-program.png（程序页，旧样式）→
 ///              收尾（中止程序、停止加热与搅拌、释放控制权）
@@ -50,17 +50,22 @@ public static partial class ShotRunner
             var token = Environment.GetEnvironmentVariable("PR_CONTROL_TOKEN") ?? "";
             log.AppendLine($"scenario={scenario} url={url}");
 
-            // 先截一张「连接设备」对话框（填好地址和令牌）
+            // 先截一张「添加设备」对话框（填好地址和令牌，测试连接），再「添加并连接」（M3：多台；截图模式不写 devices.json）
             await SettleAsync();
-            shell.OpenDialog("connect");
-            var dlg = shell.Dialogs.Current as ConnectDialogVm ?? throw new Exception("「连接设备」对话框没有注册");
+            shell.OpenDialog("add");
+            var dlg = shell.Dialogs.Current as AddDeviceDialogVm ?? throw new Exception("「添加设备」对话框没有注册");
             var u = new Uri(url);
-            dlg.Host = u.Host; dlg.Port = u.Port.ToString(); dlg.Token = token;
+            dlg.Host = u.Host; dlg.Port = u.Port.ToString(System.Globalization.CultureInfo.InvariantCulture); dlg.Token = token;
+            dlg.Test.Button.Command.Execute(null);
+            for (int i = 0; i < 100 && (dlg.Test.IsBusy || !dlg.Test.HasText); i++) await Task.Delay(100);
+            log.AppendLine("test: " + dlg.Test.Text);
             await SettleAsync();
-            Capture(window, Path.Combine(dir, "main-connect-dialog.png"), log);
+            Capture(window, Path.Combine(dir, "main-add-dialog.png"), log);
 
-            await dlg.ConnectAsync();
-            var d = shell.Fleet.LiveDevice ?? throw new Exception(dlg.Status);
+            dlg.AddButton.Command.Execute(null);
+            var d = shell.Fleet.LiveDevice ?? throw new Exception("添加设备失败：" + dlg.SubmitReason);
+            for (int i = 0; i < 200 && d.Conn != Controls.Pr.ConnState.Online; i++) await Task.Delay(100);
+            if (d.Conn != Controls.Pr.ConnState.Online) throw new Exception("连接失败：" + ((LiveDeviceSource)d.Source).LastError);
             log.AppendLine($"connected: {d.Alias} {d.ModelLabel} SN {d.Sn} · {d.ConnText}");
 
             if (scenario is "perf" or "perf-report") { await PerfScenarioAsync(window, shell, d, dir, log, scenario == "perf-report"); return; }

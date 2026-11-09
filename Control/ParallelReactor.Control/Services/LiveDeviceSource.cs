@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
 using ParallelReactor.Client;
+using ParallelReactor.Control.Core;
 using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Guard;
 using ParallelReactor.Control.Core.Models;
@@ -19,28 +20,37 @@ using FleetActions = ParallelReactor.Control.Fleet.DeviceActions;
 namespace ParallelReactor.Control.Services;
 
 /// <summary>
-/// 一台真机（PORT-PLAN §5 M2「LiveDeviceSource」：本里程碑只管一台；重连监督、多台、只读令牌学习在 M3）。包装一个 <see cref="IReactorConnection"/>：
+/// 一台真机（PORT-PLAN §5 M2「LiveDeviceSource」；M3：每台设备一个，由 Services/DeviceRegistry 创建和持有，N 台同时连接）。包装一个 <see cref="IReactorConnection"/>：
 /// <list type="bullet">
-/// <item>连接：<see cref="ConnectAsync"/> 新建连接（工厂可替换，测试用假连接）、挂上全部事件、GET /device + /control + /snapshot 再开 WS；
-///   失败时摘掉事件、释放连接再抛出（同旧 ConnectionService：首次连接失败不重试，M3 加监督循环）。</item>
-/// <item>事件：遥测帧、连接状态、控制权迁移、WS control、报警、事件、错误、HMI 重启。事件由 Client 经 UiContext 投递到 UI 线程；
-///   这里只记下「脏了什么」和最新一帧，<b>合并</b>成一次刷新（<see cref="Changed"/>，经构造时给的 post 排到 UI 线程，一批只排一次）——
+/// <item><b>重连监督</b>（M3，见 LiveDeviceSource.Connection.cs）：<see cref="StartAsync"/> 开始「要连着」：新建连接（工厂可替换，测试用假 HMI）、挂上全部事件、
+///   GET /device + /control + /snapshot 再开 WS。首次连接失败 → 倒计时重试（<see cref="RetryMin"/> 2 s 起翻倍、最长 <see cref="RetryMax"/> 10 s；
+///   样稿「连接失败 · 5 s 后重试」，连上过的「连接中断 · 重连中 5 s」）；连上之后 WS 断线由 Client 自己退避重连（0.5 → 10 s），这里按它的 NextRetryAt 显示倒计时；
+///   「立即重连」（<see cref="ReconnectNowAsync"/>）打断任一种等待。<b>已连接 = WS 收到 hello</b>（实时数据在流）：REST 通了而 WS 连不上（例如 503 TOO_MANY_CLIENTS，R19）
+///   不算已连接，失败原因可读（<see cref="LastError"/> + 提示，每种原因提示一次）。HMI 重启（bootId 变化）→ 重取 /device、/settings、当前报警与事件，清掉本机下发记录。</item>
+/// <item>事件：遥测帧、连接状态、重连倒计时、控制权迁移、WS control、HMI 报告的控制权现状、报警、事件、错误、403、已取消申请的结局、HMI 重启。事件由 Client 经 UiContext
+///   投递到 UI 线程；这里只记下「脏了什么」和最新一帧，<b>合并</b>成一次刷新（<see cref="Changed"/>，经构造时给的 post 排到 UI 线程，一批只排一次）——
 ///   多帧之间只应用最后一帧，就地更新，不重建任何集合。</item>
-/// <item>释放：<see cref="DisposeAsync"/> / <see cref="DisconnectAsync"/> <b>摘掉挂上的每一个事件处理器</b>（旧 MainViewModel 从不摘），持有控制权时先释放（≤ 3 s），再释放连接。</item>
+/// <item>释放：<see cref="DisposeAsync"/> / <see cref="DisconnectAsync"/> 停止监督、<b>摘掉挂上的每一个事件处理器</b>（旧 MainViewModel 从不摘），
+///   持有控制权时先释放（≤ 3 s）、正在申请时先取消（R7：已取消的申请还在等触屏时 REST 留给 Client 的后台守卫，批准了就立即释放），再释放连接。</item>
 /// <item>操作：<see cref="ExecAsync"/> 按样稿的操作调 Client（控制类走 ControlledWrites 带租约，停止类直接 REST）；「启动」「全部运行」绝不调 HMI 的 POST /run（D6）：
 ///   本机这次下发过程序的反应釜 → program/run，否则 → /channels/{id}/start（启用 + 加热到 SP）。</item>
-/// <item>控制权申请在后台等触屏确认；本地「取消申请」时不断开轮询（HMI 没有取消端点，R7）：之后若触屏批准，立即释放。</item>
+/// <item>控制权：申请在后台等触屏确认（倒计时按 HMI 给的到期时刻与时钟偏差，<see cref="Lease"/>）；本地「取消申请」走 Client 的 CancelRequestAsync（R7：界面立即回到本地只读，
+///   后台守卫继续查这条申请，触屏之后批准就立即释放）；丢失 → 宽限倒计时（Client 的 LostAt + 宽限）→ 恢复；被其他客户端持有（第 5 种，R8）；触屏拒绝后的冷却（守卫写明）。
+///   Client 不自动重新申请（AutoReacquireLease = false，样稿：宽限期满「控制权已交回触屏」，要不要再申请由用户决定）。</item>
+/// <item>令牌权限（M3）：操作被 403 FORBIDDEN_ROLE 拒绝时 <see cref="LearnForbidden"/> 记下（Core 的 TokenRole，缓存到换令牌为止），守卫随之禁用；
+///   Client 内部吞掉的 403（心跳、申请轮询）经连接的 ForbiddenRole 事件同样学到。</item>
 /// </list>
-/// 线程：除 <see cref="ConnectAsync"/> 内部的网络调用外全部在 UI 线程上（事件经 UiContext）；没有 UiContext（测试）时在调用线程上。
+/// 线程：全部在 UI 线程上（Client 的事件经 UiContext；监督循环从 UI 线程开始、续体回到 UI 线程）；没有 UiContext（测试）时在调用线程 / 线程池上。
 /// </summary>
-public sealed class LiveDeviceSource : IDeviceSource
+public sealed partial class LiveDeviceSource : IDeviceSource
 {
     private readonly Action<Action> _post;
     private readonly Func<ClientOptions, IReactorConnection> _factory;
     private readonly SynchronizationContext? _uiContext;
     private readonly ModelProfiles _models;
     private readonly Func<DateTime> _now;
-    private readonly string _clientName;
+    private readonly IClock _clock;
+    private string _clientName;
     private readonly LiveHistoryView _history;
     private readonly Dictionary<string, AlarmItem> _alarmMap = new(StringComparer.Ordinal);
     private readonly List<EventItem> _events = new();
@@ -49,19 +59,25 @@ public sealed class LiveDeviceSource : IDeviceSource
     private IReadOnlyList<AlarmItem> _alarms = Array.Empty<AlarmItem>();
     private TelemetrySnapshot? _pending;
     private SourceChange _dirty;
-    private bool _flushPending, _disposed, _attached, _cancelledRequest;
-    private ConnStatus _conn = ConnStatus.Connecting;
+    private bool _flushPending, _disposed;
+    /// <summary>还没开始连接（登记了、没勾自动连接 / 没有令牌）是「已断开」（样稿：用户断开的设备写「已断开」、按钮「连接」）；开始连接时变成「正在连接…」。</summary>
+    private ConnStatus _conn = ConnStatus.Disconnected;
     private bool _everOnline;
-    private DateTime? _since, _lostAt, _requestAt, _graceAt;
+    private DateTime? _since, _lostAt;
     private ModelProfile? _model;
+    private TokenRole _role = TokenRole.Unknown;
+    /// <summary>退出前已经试过释放控制权 / 取消申请（ReleaseLeaseQuietAsync）：释放时不再试第二次（关闭预算 5 s）。</summary>
+    private bool _releaseTried;
 
     /// <param name="config">地址、端口、令牌、别名。</param>
     /// <param name="clientName">本机客户端名（申请控制权时报给触屏）。</param>
-    /// <param name="post">把一次刷新排到 UI 线程（App：Dispatcher.UIThread.Post；测试：直接执行）。</param>
-    /// <param name="factory">新建连接（默认 new ReactorConnection(options)；测试给假连接）。</param>
-    /// <param name="uiContext">Client 投递事件用的 UI 同步上下文（App：AvaloniaSynchronizationContext；测试 null = 调用线程）。</param>
+    /// <param name="post">把一次刷新排到 UI 线程（App：Dispatcher.UIThread.Post；测试：直接执行或测试自己的 UI 线程）。</param>
+    /// <param name="factory">新建连接（默认 new ReactorConnection(options)；测试 / 截图场景 fake2 给假 HMI 上的真 ReactorConnection 或假连接）。</param>
+    /// <param name="uiContext">Client 投递事件用的 UI 同步上下文（App：AvaloniaSynchronizationContext；测试 null = 调用线程，或测试自己的 UI 线程）。</param>
+    /// <param name="now">本地时刻（上线 / 断线时刻、会话号）；默认按 <paramref name="clock"/>。</param>
+    /// <param name="clock">倒计时与重试等待用的时钟（与 Client 的 IClock 同一个时间轴：重连 / 申请 / 宽限的到期时刻都按它算）；默认系统时钟，测试给假时钟。</param>
     public LiveDeviceSource(DeviceConfig config, string clientName, Action<Action> post, Func<ClientOptions, IReactorConnection>? factory = null,
-        SynchronizationContext? uiContext = null, ModelProfiles? models = null, Func<DateTime>? now = null)
+        SynchronizationContext? uiContext = null, ModelProfiles? models = null, Func<DateTime>? now = null, IClock? clock = null)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
         _clientName = clientName;
@@ -69,7 +85,8 @@ public sealed class LiveDeviceSource : IDeviceSource
         _factory = factory ?? (o => new ReactorConnection(o));
         _uiContext = uiContext;
         _models = models ?? ModelProfiles.Embedded;
-        _now = now ?? (() => DateTime.Now);
+        _clock = clock ?? SystemClock.Instance;
+        _now = now ?? (() => _clock.UtcNow.ToLocalTime());
         _history = new LiveHistoryView(this);
     }
 
@@ -77,263 +94,89 @@ public sealed class LiveDeviceSource : IDeviceSource
     public bool IsDemo => false;
     public DeviceConfig Config { get; private set; }
 
-    /// <summary>当前连接（未连接 / 已断开为 null）：性能测试、程序页、导出直接用它。</summary>
+    /// <summary>上次连上时的序列号（devices.json 的 lastSerial）：还没连上时设备管理表照样有 SN。</summary>
+    public string? LastSerial { get; init; }
+
+    /// <summary>上次连上时的型号键（devices.json 的 lastModel）：还没连上时按它显示型号与反应釜位置（没有时用型号表的默认 HT-PR8）。</summary>
+    public string? InitialModelKey { get; init; }
+
+    /// <summary>
+    /// 最近一次连接失败的原因（可读的一句：REST 失败 = Fleet/DeviceActions.Describe 的文字；WS 握手被拒 = Client 的 WsConnectException 文字，
+    /// 例如「WebSocket 连接数已达上限 · 请关闭该设备上的其他客户端（HTTP 503 TOO_MANY_CLIENTS）」）；连上（WS hello）后清空。
+    /// </summary>
+    public string? LastError { get; private set; }
+
+    /// <summary>
+    /// 「全部停止」连搅拌一起停（POST /stop-all 的 stopStir）。默认取 Core 的 <see cref="ControlOptions.StopAllStopsStirring"/>（全软件只有那一处设置）；
+    /// FleetVm 新建数据源时把自己的值传进来（测试用它换值）。结果文字见 <see cref="StopAllText"/>。
+    /// </summary>
+    public bool StopAllStopsStirring { get; init; } = ControlOptions.StopAllStopsStirring;
+
+    /// <summary>
+    /// 本机客户端名（申请控制权时报给触屏）。改了之后<b>下一次新建连接</b>才用新名字（Client 的 ClientOptions 每条连接一份、不能改）：
+    /// 已经建好的连接照旧用它自己的名字（HMI 认的持有者也是那个名字，R8 的比较按连接走），断开再连 / 改地址后换成新的。
+    /// </summary>
+    public string ClientName
+    {
+        get => _clientName;
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value) || value == _clientName) return;
+            _clientName = value;
+            MarkDirty(SourceChange.Lease);
+        }
+    }
+
+    /// <summary>当前连接用的客户端名（HMI 认的那个；没有连接时 = <see cref="ClientName"/>）：控制权文字「本机 PC-… 持有控制权」按它写。</summary>
+    private string LeaseClientName => Connection?.Options.ClientName is { Length: > 0 } n ? n : _clientName;
+
+    /// <summary>当前连接（未连接 / 已断开 / 首次连接的重试等待中为 null）：性能测试、程序页、导出直接用它。</summary>
     public IReactorConnection? Connection { get; private set; }
 
-    /// <summary>要给用户的提示（控制权迁移、HMI 重启、报警、申请结果；文字同旧 MainViewModel）。在 UI 线程上触发。</summary>
+    /// <summary>要给用户的提示（控制权迁移、HMI 重启、报警、申请结果、连接失败的原因）。在 UI 线程上触发。</summary>
     public event Action<string, ToastKind>? Notice;
 
     public event Action<SourceChange>? Changed;
 
-    public ConnInfo Conn => new(_conn, _everOnline, 0, _since, _lostAt, StopReachable);
+    /// <summary>
+    /// 连接（样稿 conn）：状态、连上过、倒计时（断线时：首次连接的重试 / WS 的退避，按 <see cref="IClock"/>）、上线 / 断线时刻、停止类能不能尽力送达、
+    /// 样稿的 attempts（见 <see cref="ConnInfo.Attempts"/>）。
+    /// </summary>
+    public ConnInfo Conn => new(_conn, _everOnline, _conn == ConnStatus.Offline ? RetrySeconds() : 0, _since, _lostAt, StopReachable, Attempts());
 
     /// <summary>
-    /// 停止类命令现在还能尽力送达：有连接对象（没被用户断开、没释放）且连上过 —— 包括只是 WebSocket 断了、Client 在自己退避重连的时候
-    /// （1008 慢消费者、心跳超时都会这样；REST 多半还通）。这时急停 / 全部停止 / 停止类照样发送（失败照常提示），控制类照样禁用（GuardFacts.StopReachable）。
-    /// 旧界面也是只要有连接对象就能急停。
+    /// 停止类命令现在能送达（GuardFacts.StopReachable）：有连接对象（没被用户断开、没释放）<b>且有正面的证据表明 REST 通</b>（<see cref="_restOk"/>，
+    /// M3 复核）—— REST 起步完成、WS 收到 hello、WS 握手被 HTTP 拒绝（503 TOO_MANY_CLIENTS / 401…：主机答话了）、WS 断线后的探测 GET /health 有响应、命令送达。
+    /// 最近一次证据是网络层失败（WS 连不上：拒绝连接 / 找不到主机 / 超时；探测失败；命令网络错误 / 超时）时为 false：主机真的不通，只剩 none 类（样稿）。
+    /// 所以只是 WebSocket 断了（1008 慢消费者、心跳超时）而 REST 还通时，急停 / 全部停止 / 停止类照样发送（失败照常提示），控制类照样禁用；
+    /// 从未连上、但 REST 起步成功而 WS 被拒（例如 503）时同样能发停止类。
     /// </summary>
-    public bool StopReachable => Connection != null && _everOnline && _conn != ConnStatus.Disconnected && !_disposed;
+    public bool StopReachable => Connection != null && _restOk && _conn != ConnStatus.Disconnected && !_disposed;
     public DeviceInfoDto? Info { get; private set; }
     public SettingsDto? Settings { get; private set; }
     public CommDto? Comm => null;
-    public Role Role => Role.Unknown;
+    /// <summary>本机令牌的权限（第一个 403 之后学到，缓存到换令牌为止，见 <see cref="UpdateConfigAsync"/>）。</summary>
+    public TokenRole Role => _role;
+
+    /// <summary>操作被 403 FORBIDDEN_ROLE 拒绝：记下令牌权限（只会收紧），守卫立即按它禁用（刷新一次）。</summary>
+    public void LearnForbidden(DeviceAction action)
+    {
+        var next = _role.Learn(action);
+        if (next == _role) return;
+        _role = next;
+        MarkDirty(SourceChange.Lease);
+    }
     public TelemetrySnapshot? Latest { get; private set; }
     public DateTime? DataAt => Latest is { } f ? f.Ts.ToLocalTime() : null;
     public IReadOnlyList<AlarmItem> Alarms => _alarms;
     public IReadOnlyList<EventItem> Events => _events;
     public IChannelHistory History => _history;
 
-    public ModelProfile Model => _model ??= _models.Get(_models.FallbackKey) ?? _models.All[0];
-    public string Sn => Info?.Serial ?? "";
+    public ModelProfile Model => _model ??= _models.Get(InitialModelKey) ?? _models.Get(_models.FallbackKey) ?? _models.All[0];
+    public string Sn => Info?.Serial ?? LastSerial ?? "";
     public EstopInfo Estop => Latest?.Estop is { } e ? new EstopInfo(e.Active, e.Since?.ToLocalTime()) : EstopInfo.None;
     public StirInfo? Stir => Model.StirMode == StirMode.Independent ? null : Latest?.Stir is { } s ? new StirInfo(s.On, s.RpmSp) : new StirInfo(false, 0);
     public SessionInfo? Session => Latest?.Session is { Active: true } s ? new SessionInfo(true, s.Id ?? s.TestId, null, 0) : null;
-
-    // ———————————————————— 控制权 ————————————————————
-
-    public LeaseView Lease
-    {
-        get
-        {
-            var c = Connection;
-            var st = LeaseStatus.Local;
-            string? other = null;
-            int remain = 0, grace = 0;
-            if (c != null && _conn != ConnStatus.Disconnected)
-            {
-                switch (c.Lease.State)
-                {
-                    case ClientLease.Holding: st = LeaseStatus.Remote; break;
-                    case ClientLease.Lost:
-                        st = LeaseStatus.Lost;
-                        grace = Math.Max(0, c.Lease.LeaseGraceSec - Seconds(_graceAt));
-                        break;
-                    case ClientLease.Requesting when !_cancelledRequest:
-                        st = LeaseStatus.Requested;
-                        int timeout = c.ControlState?.RequestTimeoutSec > 0 ? c.ControlState.RequestTimeoutSec : 60;
-                        remain = Math.Max(0, timeout - Seconds(_requestAt));
-                        break;
-                    default:
-                        var cs = c.ControlState;
-                        if (cs != null && cs.Mode is ControlModes.Remote or ControlModes.RemoteLost && !string.IsNullOrEmpty(cs.Holder)
-                            && !string.Equals(cs.Holder, c.Options.ClientName, StringComparison.Ordinal))
-                        {
-                            st = LeaseStatus.Other;
-                            other = cs.Holder;
-                        }
-                        break;
-                }
-            }
-            var d = DeviceTexts.Lease(st, remain, grace, _clientName, other);
-            return new LeaseView(st, remain, grace, d.Holder, d);
-        }
-    }
-
-    private int Seconds(DateTime? since) => since is { } t ? (int)Math.Floor((_now() - t).TotalSeconds) : 0;
-
-    // ———————————————————— 连接 ————————————————————
-
-    /// <summary>
-    /// 连接（新建连接、挂事件、StartAsync）。失败时摘掉事件、释放连接、回到「已断开」再抛出。已有连接时先断开。
-    /// </summary>
-    public async Task ConnectAsync(CancellationToken ct)
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(LiveDeviceSource));
-        if (Connection != null) await CloseAsync(releaseLease: true).ConfigureAwait(true);
-        var opt = new ClientOptions(Config.BaseUrl, Config.Token ?? "", _clientName)
-        {
-            UiContext = _uiContext,
-            ClientVersion = "pc-" + (typeof(LiveDeviceSource).Assembly.GetName().Version?.ToString(3) ?? "1.0"),
-        };
-        var c = _factory(opt);
-        Connection = c;
-        Attach(c);
-        SetConn(ConnStatus.Connecting);
-        try
-        {
-            await c.StartAsync(ct).ConfigureAwait(true);
-        }
-        catch
-        {
-            Detach(c);
-            Connection = null;
-            try { await c.DisposeAsync().ConfigureAwait(true); } catch { }
-            SetConn(ConnStatus.Disconnected);
-            throw;
-        }
-        Info = c.Device;
-        _model = Info != null ? _models.Resolve(Info, Settings) : null;
-        _everOnline = true;
-        SetConn(ConnStatus.Online);
-        MarkDirty(SourceChange.All);
-        _ = LoadExtrasAsync(c);
-    }
-
-    /// <summary>连上之后的一次性读取（尽力而为）：/settings（型号的量程）、/alarms（当前报警）、最近的事件。</summary>
-    private async Task LoadExtrasAsync(IReactorConnection c)
-    {
-        try
-        {
-            var s = await c.Rest.SettingsAsync(CancellationToken.None).ConfigureAwait(true);
-            if (!ReferenceEquals(c, Connection)) return;
-            Settings = s;
-            if (Info != null) _model = _models.Resolve(Info, s);
-            MarkDirty(SourceChange.Info);
-        }
-        catch { }
-        try
-        {
-            var a = await c.Rest.AlarmsAsync(null, CancellationToken.None).ConfigureAwait(true);
-            if (!ReferenceEquals(c, Connection)) return;
-            foreach (var dto in a.Items) UpsertAlarm(dto);
-            MarkDirty(SourceChange.Alarms);
-        }
-        catch { }
-        try
-        {
-            long head = Info?.EventSeqHead ?? 0;
-            var page = await c.Rest.EventsAsync(Math.Max(0, head - 200), 200, CancellationToken.None).ConfigureAwait(true);
-            if (!ReferenceEquals(c, Connection)) return;
-            foreach (var r in page.Items) AddEvent(r.Seq.ToString(System.Globalization.CultureInfo.InvariantCulture), r.Ts, r.Level, r.Kind, r.Channel, r.Title, r.Message);
-            MarkDirty(SourceChange.Events);
-        }
-        catch { }
-    }
-
-    private void Attach(IReactorConnection c)
-    {
-        if (_attached) return;
-        c.TelemetryReceived += OnTelemetry;
-        c.ConnectionStateChanged += OnConnState;
-        c.LeaseTransitioned += OnLease;
-        c.ControlChanged += OnControl;
-        c.AlarmChanged += OnAlarm;
-        c.EventReceived += OnEvent;
-        c.Error += OnError;
-        c.ServerRestarted += OnRestarted;
-        _attached = true;
-    }
-
-    /// <summary>摘掉 <see cref="Attach"/> 挂上的每一个处理器（一一对应）。</summary>
-    private void Detach(IReactorConnection c)
-    {
-        if (!_attached) return;
-        c.TelemetryReceived -= OnTelemetry;
-        c.ConnectionStateChanged -= OnConnState;
-        c.LeaseTransitioned -= OnLease;
-        c.ControlChanged -= OnControl;
-        c.AlarmChanged -= OnAlarm;
-        c.EventReceived -= OnEvent;
-        c.Error -= OnError;
-        c.ServerRestarted -= OnRestarted;
-        _attached = false;
-    }
-
-    private void OnTelemetry(TelemetrySnapshot f)
-    {
-        _pending = f;
-        MarkDirty(SourceChange.Frame);
-    }
-
-    private void OnConnState(ConnectionState s)
-    {
-        // WS 断开后 Client 自己退避重连（0.5 → 10 s）；重连倒计时在 M3（TelemetryWsClient.NextRetryAt）
-        var st = s switch
-        {
-            ConnectionState.Connected or ConnectionState.Resyncing => ConnStatus.Online,
-            ConnectionState.Connecting or ConnectionState.Reconnecting => ConnStatus.Connecting,
-            _ => ConnStatus.Disconnected,
-        };
-        if (Connection != null && s is ConnectionState.Connecting && _conn == ConnStatus.Online) return;   // 首次 Start 之后 WS 才在连：REST 已经连上
-        SetConn(st);
-    }
-
-    private void SetConn(ConnStatus st)
-    {
-        if (st == _conn) return;
-        if (st == ConnStatus.Online) { _since = _now(); _lostAt = null; }
-        else if (_conn == ConnStatus.Online) _lostAt = _now();
-        _conn = st;
-        MarkDirty(SourceChange.Conn);
-    }
-
-    private void OnLease(LeaseTransition t)
-    {
-        if (t.To == ClientLease.Requesting) _requestAt ??= _now();
-        else _requestAt = null;
-        if (t.To == ClientLease.Lost) _graceAt = _now(); else if (t.To != ClientLease.Lost) _graceAt = null;
-        MarkDirty(SourceChange.Lease);
-        // 本地已取消的申请被触屏批准：立即释放（R7：不留没人心跳的孤儿租约）
-        if (_cancelledRequest && t.To == ClientLease.Holding)
-        {
-            _cancelledRequest = false;
-            _ = ReleaseQuietAsync();
-            return;
-        }
-        if (t.To != ClientLease.Requesting) _cancelledRequest = false;
-        // 提示（同旧 MainViewModel.OnLease）
-        string? msg = null;
-        if (t.To == ClientLease.Lost) msg = "控制权连接丢失 · 宽限期内自动恢复";
-        else if (t.From == ClientLease.Lost && t.To == ClientLease.Holding) msg = "控制权已恢复";
-        else if (t.To == ClientLease.None && t.Reason.Contains("takenBack")) msg = "触屏已收回控制权";
-        else if (t.To == ClientLease.None && t.Reason.Contains("invalidated")) msg = "急停：控制权已失效";
-        else if (t.To == ClientLease.None && t.From is ClientLease.Holding or ClientLease.Lost && t.Reason.StartsWith("state:", StringComparison.Ordinal))
-            msg = "重连后设备已回到本地模式 · 控制权失效" + (t.Reason == "state:local" ? "，正在重新申请" : "");
-        else if (t.To == ClientLease.None && t.From is ClientLease.Holding or ClientLease.Lost && t.Reason.StartsWith("heartbeat:", StringComparison.Ordinal))
-            msg = "心跳被拒 · 控制权失效（" + t.Reason[10..] + "）";
-        else if (t.To == ClientLease.None && t.From is ClientLease.Holding or ClientLease.Lost && t.Reason.StartsWith("write:", StringComparison.Ordinal))
-            msg = "写命令被拒 · 控制权失效（" + t.Reason[6..] + "）";
-        else if (t.To == ClientLease.None && t.Reason == "expired") msg = "控制权宽限期满 · 正在重新申请";
-        if (msg != null) Notice?.Invoke(Config.Alias + " · " + msg, t.To is ClientLease.Lost or ClientLease.None ? ToastKind.Warn : ToastKind.Info);
-    }
-
-    private void OnControl(ControlMsg m) => MarkDirty(SourceChange.Lease);
-
-    private void OnAlarm(AlarmMsg a)
-    {
-        UpsertAlarm(a.Alarm);
-        MarkDirty(SourceChange.Alarms);
-        if (a.Alarm.Level is "err" or "error" || a.Alarm.State == "active" && a.Alarm.Level == "warn")
-            Notice?.Invoke("报警 " + a.Alarm.Rv + "：" + a.Alarm.Title, a.Alarm.Level is "err" or "error" ? ToastKind.Err : ToastKind.Warn);
-    }
-
-    private void OnEvent(EventMsg e)
-    {
-        AddEvent(e.Seq.ToString(System.Globalization.CultureInfo.InvariantCulture), e.Ts, e.Level, e.Kind, e.Channel, e.Title, e.Message);
-        MarkDirty(SourceChange.Events);
-    }
-
-    private void OnError(Exception ex) => MarkDirty(SourceChange.Lease);   // 心跳异常时控制权徽标要跟着变
-
-    private void OnRestarted()
-    {
-        _alarmMap.Clear();
-        _alarms = Array.Empty<AlarmItem>();
-        // HMI 重启后它手里的程序不一定还是本机下发的那份：「启动」回到启用 + 加热（D6），「全部运行」没有对象，要先重新下发
-        _downloaded.Clear();
-        Notice?.Invoke(Config.Alias + " · 设备 HMI 已重启 · 曲线缓冲已清空", ToastKind.Warn);
-        MarkDirty(SourceChange.All);
-    }
 
     // ———————————————————— 合并刷新 ————————————————————
 
@@ -357,13 +200,6 @@ public sealed class LiveDeviceSource : IDeviceSource
         if (d != SourceChange.None) Changed?.Invoke(d);
     }
 
-    /// <summary>每秒（UiTicker）：申请 / 宽限倒计时的文字要变。</summary>
-    public void Tick()
-    {
-        var c = Connection;
-        if (c != null && c.Lease.State is ClientLease.Requesting or ClientLease.Lost) MarkDirty(SourceChange.Lease);
-    }
-
     // ———————————————————— 报警 / 事件归一化（M4 换成 Core 的 AlarmBook / EventBook） ————————————————————
 
     private static readonly Regex RvRe = new(@"^RV(\d+)", RegexOptions.CultureInvariant);
@@ -381,6 +217,14 @@ public sealed class LiveDeviceSource : IDeviceSource
         _alarms = _alarmMap.Values.OrderByDescending(x => x.At).ToArray();
     }
 
+    /// <summary>当前报警整个换成 GET /alarms 的结果（每次（重新）连上、HMI 重启后：断线期间的变化与旧启动的报警都不留下）。</summary>
+    private void ReplaceAlarms(IEnumerable<AlarmDto> items)
+    {
+        _alarmMap.Clear();
+        _alarms = Array.Empty<AlarmItem>();
+        foreach (var dto in items) UpsertAlarm(dto);
+    }
+
     /// <summary>报警代码按关键字推断（HMI 的 AlarmDto 没有 code，A6）。</summary>
     public static string AlarmCode(string? title)
     {
@@ -391,6 +235,10 @@ public sealed class LiveDeviceSource : IDeviceSource
         if (t.Contains("升温")) return "HEAT-SLOW";
         return "ALARM";
     }
+
+    /// <summary>事件的身份 = 「序号纪元:序号」（HMI 重启后序号从头计，纪元随之变：新旧事件不会撞号、也不会被当成重复丢掉）。</summary>
+    private static string EventId(int epoch, long seq) =>
+        epoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + seq.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private void AddEvent(string id, DateTime ts, string level, string kind, int? channel, string title, string message)
     {
@@ -452,18 +300,24 @@ public sealed class LiveDeviceSource : IDeviceSource
             // Downloaded：「全部运行」只运行本机这次下发的程序（D6）；触屏放上去的程序（HMI 快照里有、本机没下发）不算
             chans.Add(new ChannelFacts(n, r.Installed, r.Own, r.Heating, false, prog, snap?.TempSpC, Downloaded: mine));
         }
+        var conn = Conn;
         return new GuardFacts
         {
             Exists = !_disposed,
             Alias = Config.Alias,
-            Conn = _conn,
-            EverOnline = _everOnline,
-            RetryS = 0,
-            StopReachable = StopReachable,
+            Conn = conn.State,
+            EverOnline = conn.EverOnline,
+            RetryS = conn.RetryS,
+            StopReachable = conn.StopReachable,
             Lease = lease.State,
             LeaseRemainS = lease.RemainS,
             LeaseGraceS = lease.GraceS,
             LeaseHolder = lease.State == LeaseStatus.Other ? lease.Holder : null,
+            OtherRequest = OtherRequest(),
+            LeaseDenyS = Connection is { } c && _conn == ConnStatus.Online ? DenySeconds(c) : 0,
+            LeaseDenyNeutral = Connection is { } c2 && DenyIsNeutral(c2),
+            Orphan = Connection is { } c3 && _conn == ConnStatus.Online ? OrphanOf(c3) : OrphanLease.None,
+            Role = _role,
             EstopActive = Estop.Active,
             Model = Model,
             StirOn = frame?.Stir.On ?? false,
@@ -488,7 +342,29 @@ public sealed class LiveDeviceSource : IDeviceSource
 
     private IReactorConnection Conn0 => Connection ?? throw new InvalidOperationException("未连接设备");
 
+    /// <summary>
+    /// 执行一个操作（见 <see cref="IDeviceSource.ExecAsync"/>）。发给 HMI 的命令的结局也是「REST 通不通」的证据（<see cref="StopReachable"/>）：
+    /// HMI 回了 HTTP（成功或 4xx / 5xx）→ 通；网络层失败 / 超时 → 不通（例如断线时尽力发出的急停没送到：这台立即只剩 none 类）。
+    /// </summary>
     public async Task<ActionOutcome> ExecAsync(DeviceAction action, ActionPayload a, CancellationToken ct)
+    {
+        var c = Connection;
+        bool rest = c != null && action is not (DeviceAction.Reconnect or DeviceAction.LeaseCancel or DeviceAction.LeaseRequest or DeviceAction.Disconnect
+            or DeviceAction.Rename or DeviceAction.Remove);
+        try
+        {
+            var o = await ExecCoreAsync(action, a, ct).ConfigureAwait(true);
+            if (rest) NoteRestOutcome(c!, null, ct);
+            return o;
+        }
+        catch (Exception ex) when (rest)
+        {
+            NoteRestOutcome(c!, ex, ct);
+            throw;
+        }
+    }
+
+    private async Task<ActionOutcome> ExecCoreAsync(DeviceAction action, ActionPayload a, CancellationToken ct)
     {
         string rv = "RV" + a.N;
         int n = a.N ?? 0;
@@ -498,13 +374,17 @@ public sealed class LiveDeviceSource : IDeviceSource
         // 不需要连接的操作（重连、取消申请）：已断开时也能做
         if (action == DeviceAction.Reconnect)
         {
+            // 没有令牌（devices.json 里没记住、本次也还没输入）：连不了 —— 先「编辑设置」填令牌（措辞同添加设备表单的校验「请输入访问令牌」）
+            if (string.IsNullOrWhiteSpace(Config.Token)) return ActionOutcome.Failed(alias + " · 请输入访问令牌");
             _ = ReconnectNowAsync();
             return Ok("正在重连…");
         }
         if (action == DeviceAction.LeaseCancel)
         {
             await CancelLeaseRequestAsync().ConfigureAwait(true);
-            return Ok("已取消控制权申请");
+            // R7（PORT-PLAN §6）：HMI 没有取消端点，这条申请还在触屏上 —— 界面写明「若触屏已批准将自动释放」（样稿只有「已取消控制权申请」，后半句取自 R7）
+            bool guarding = Connection?.Lease.CancelledRequestPending == true;
+            return Ok("已取消控制权申请" + (guarding ? " · 若触屏已批准将自动释放" : ""));
         }
         var c = Conn0;
         bool running(int k) => Read(k).IsRunning;
@@ -607,9 +487,11 @@ public sealed class LiveDeviceSource : IDeviceSource
             case DeviceAction.StopAll:
             {
                 int k = Enumerable.Range(1, Model.ChannelCount).Count(running);
-                // 样稿「全部停止」：中止程序、停止加热、关闭进气；搅拌保持当前状态（要彻底切断用急停）
-                var r = await c.Rest.StopAllAsync(false, ct).ConfigureAwait(true);
-                return k > 0 ? Ok("已停止 " + k + " 个反应釜", r.Warnings, ToastKind.Warn) : Ok("没有运行中的反应釜 · 已发送全部停止", r.Warnings, ToastKind.Info, true);
+                // 样稿「全部停止」：中止程序、停止加热、关闭进气；搅拌保持当前状态（要彻底切断用急停）。
+                // 停不停搅拌只看 StopAllStopsStirring（默认 = ControlOptions.StopAllStopsStirring）→ POST /stop-all {stopStir}
+                bool stir = StopAllStopsStirring;
+                var r = await c.Rest.StopAllAsync(stir, ct).ConfigureAwait(true);
+                return k > 0 ? Ok(StopAllText.Stopped(k, stir), r.Warnings, ToastKind.Warn) : Ok(StopAllText.NothingRunning(stir), r.Warnings, ToastKind.Info, true);
             }
             case DeviceAction.Estop:
             {
@@ -668,114 +550,11 @@ public sealed class LiveDeviceSource : IDeviceSource
         return ActionOutcome.Done(Config.Alias + " · 程序「" + doc.Name + "」已下发到 RV" + n, ToastKind.Ok, r.Warnings);
     }
 
-    /// <summary>申请控制权：后台等触屏确认（倒计时见 <see cref="Lease"/>），结果用 <see cref="Notice"/> 提示（文字同旧界面）。</summary>
-    public Task RequestLeaseAsync()
-    {
-        var c = Conn0;
-        _cancelledRequest = false;
-        _requestAt = _now();
-        MarkDirty(SourceChange.Lease);
-        _ = AcquireAsync(c);
-        return Task.CompletedTask;
-    }
-
-    private async Task AcquireAsync(IReactorConnection c)
-    {
-        try
-        {
-            bool ok = await c.Lease.AcquireAsync(CancellationToken.None).ConfigureAwait(true);
-            if (!ReferenceEquals(c, Connection)) return;
-            if (_cancelledRequest)
-            {
-                _cancelledRequest = false;
-                if (ok) await ReleaseQuietAsync().ConfigureAwait(true);
-                return;
-            }
-            Notice?.Invoke(Config.Alias + " · " + (ok ? "已取得远程控制权" : "申请被拒绝或超时"), ok ? ToastKind.Ok : ToastKind.Warn);
-        }
-        catch (Exception ex)
-        {
-            if (ReferenceEquals(c, Connection)) Notice?.Invoke(Config.Alias + " · " + FleetActions.Describe(ex), ToastKind.Err);
-        }
-        finally { MarkDirty(SourceChange.Lease); }
-    }
-
-    /// <summary>
-    /// 取消申请（HMI 没有取消端点，A5）：界面立即回到「本地只读」，后台照样等结果；若触屏之后批准，立即释放（R7）。
-    /// </summary>
-    public Task CancelLeaseRequestAsync()
-    {
-        if (Connection?.Lease.State == ClientLease.Requesting) _cancelledRequest = true;
-        MarkDirty(SourceChange.Lease);
-        return Task.CompletedTask;
-    }
-
-    public async Task ReleaseLeaseAsync()
-    {
-        var c = Conn0;
-        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-        await c.Lease.ReleaseAsync(cts.Token).ConfigureAwait(true);
-        MarkDirty(SourceChange.Lease);
-    }
-
-    private async Task ReleaseQuietAsync()
-    {
-        try { if (Connection is { } c) { using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3)); await c.Lease.ReleaseAsync(cts.Token).ConfigureAwait(true); } }
-        catch { }
-        MarkDirty(SourceChange.Lease);
-    }
-
-    /// <summary>立即重连：已断开时按原配置重新连接（WS 断线后的自动重连由 Client 自己做；倒计时与「立即重连」在 M3）。</summary>
-    public async Task ReconnectNowAsync()
-    {
-        if (Connection != null || _disposed) return;
-        try { await ConnectAsync(CancellationToken.None).ConfigureAwait(true); }
-        catch (Exception ex) { Notice?.Invoke(Config.Alias + " · 连接失败：" + FleetActions.Describe(ex), ToastKind.Err); }
-    }
-
-    /// <summary>用户断开：持有控制权时先释放（≤ 3 s），摘掉事件，释放连接；设备留在列表里（「已断开」，可以再连）。</summary>
-    public async Task DisconnectAsync()
-    {
-        await CloseAsync(releaseLease: true).ConfigureAwait(true);
-        SetConn(ConnStatus.Disconnected);
-        MarkDirty(SourceChange.All);
-    }
-
-    /// <summary>改别名（M2 只有这一项能在本机改）。</summary>
+    /// <summary>改别名（本机的事，不发给 HMI）。</summary>
     public void Rename(string alias)
     {
         Config = Config with { Alias = alias };
         MarkDirty(SourceChange.Info);
-    }
-
-    private async Task CloseAsync(bool releaseLease)
-    {
-        var c = Connection;
-        if (c == null) return;
-        Detach(c);
-        Connection = null;
-        _cancelledRequest = false;
-        _downloaded.Clear();
-        try
-        {
-            if (releaseLease && c.Lease.State is ClientLease.Holding or ClientLease.Lost)
-            {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                try { await c.Lease.ReleaseAsync(cts.Token).ConfigureAwait(false); } catch { }
-            }
-            await c.DisposeAsync().ConfigureAwait(false);
-        }
-        catch { }
-    }
-
-    /// <summary>释放：摘掉全部事件、释放控制权（≤ 3 s）、释放连接。可在任意线程调用。</summary>
-    public async ValueTask DisposeAsync()
-    {
-        if (_disposed) return;
-        _disposed = true;
-        await CloseAsync(releaseLease: true).ConfigureAwait(false);
-        Changed = null;
-        Notice = null;
     }
 
     /// <summary>曲线（实时）：TelemetryStore 里的帧（最多 7200 帧），压力 psi → MPa。M5 换成 10 s 一格的 ChannelHistory，增量追加。</summary>

@@ -33,14 +33,20 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
 #if DEBUG
+            // 场景 fake2（PR_CONTROL_SCENARIO=fake2，仅 Debug）：四台进程内的假 HMI 经真 ReactorConnection 连接（不读写 devices.json、不运行模拟 HMI），
+            // 截图或交互走查多台实时设备与重连监督（Shot/ShotRunner.Fake2.cs）
+            if (Shot.ShotRunner.IsFake2) { Shot.ShotRunner.StartFake2(desktop); base.OnFrameworkInitializationCompleted(); return; }
             // 演示模式（PR_CONTROL_DEMO=1，仅 Debug）：不连接任何设备，新外壳 + Core 的演示数据（Shot/ShotRunner.Demo.cs）
             if (Shot.ShotRunner.IsDemo) { Shot.ShotRunner.StartDemo(desktop); base.OnFrameworkInitializationCompleted(); return; }
 #endif
-            // 实时：新外壳 + FleetVm（开始时没有设备；「设备 › 连接…」用临时的「连接设备」对话框连上一台，M3 起多台）。
+            // 实时：新外壳 + FleetVm（多台，M3）：设备列表来自 devices.json（v1 的 control.json 自动迁移成「1号机」），
+            // 启动后并行连接勾了「启动时自动连接」且记住了令牌的设备（D7）；其余在「设备 › 设备管理…」里连接，「添加设备…」加新的。
             // Client 的事件经 AvaloniaSynchronizationContext 投递到 UI 线程；数据源把它们合并后就地刷新（R10）。
             var config = ControlConfig.Load();
             var fleet = FleetVm.CreateLive(config, PostToUi, new AvaloniaSynchronizationContext(DispatcherPriority.Normal));
             var shell = new ShellVm(fleet);
+            foreach (var note in config.LoadNotes) shell.Toast(note, ToastKind.Info);   // 迁移了、配置坏了、记住的令牌读不出来…
+            Dispatcher.UIThread.Post(() => _ = fleet.StartAsync(), DispatcherPriority.Background);
             var ticker = new UiTicker();
             ticker.Tick += fleet.OnTick;
             ticker.Start();
@@ -68,11 +74,25 @@ public partial class App : Application
 
             // 退出：关窗 → ShutdownRequested（可取消）→ 先异步收尾（中止性能测试、释放控制权、断开，≤ 5 s），再真正 Shutdown。
             // 不能在 Exit 里 GetResult() 等收尾：续体要回 UI 线程，而 UI 线程正被阻塞 → 死锁（需强杀）。
-            bool shuttingDown = false;
+            // M3 复核（R7）：本机的控制权申请还在某台设备的触屏上时，先在窗口里问（退出确认：「等结果再退出」/「仍然退出」）——
+            // 关窗（Closing 时取消关闭，窗口留着）与系统的退出（⌘Q：ShutdownRequested 先到，窗口还开着）都先问；选了之后 ExitConfirmed → 关窗 → 照常收尾。
+            bool shuttingDown = false, exitConfirmed = false;
+            window.Closing += (_, e) =>
+            {
+                if (shuttingDown || exitConfirmed) return;
+                if (!shell.TryExit()) e.Cancel = true;
+            };
+            shell.ExitConfirmed += (_, _) =>
+            {
+                exitConfirmed = true;
+                window.Close();
+            };
             desktop.ShutdownRequested += async (_, e) =>
             {
                 if (shuttingDown) return;
-                e.Cancel = true; shuttingDown = true;
+                e.Cancel = true;
+                if (!exitConfirmed && !shell.TryExit()) return;
+                shuttingDown = true;
                 ticker.Dispose();
                 try { await shell.ShutdownAsync(TimeSpan.FromSeconds(5)); } catch { }
                 desktop.Shutdown();

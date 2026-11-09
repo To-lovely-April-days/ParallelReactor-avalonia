@@ -73,6 +73,25 @@ public static class ShotPlan
         // Controls/TextRelayout；居中文字不能按旧宽度偏出框）。参照同 overview
         new Spec("overview-grow", "overview", "", new[] { new PixelSize(1920, 1080) }, Ref: "final-overview-1920.png", From: new PixelSize(1366, 768)),
         new Spec("overview-shrink", "overview", "", new[] { new PixelSize(1366, 768) }, Ref: "final-overview-1366.png", From: new PixelSize(1920, 1080)),
+        // 对话框（M3，Shell/Dialogs；样稿 js/dialogs.js）：添加设备、申请控制权（2号机 本地只读）、急停（已连接的默认全选）—— 参照 = 样稿的 final 图；
+        // 其余对话框在 1920 与 1366 下各拍一张，参照用 snap 现拍样稿同一个地址（final-dlg-*-<w>.png，见 doc §9）
+        new Spec("dlg-add", "overview", "dialog=add", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-lease2", "device/2", "dialog=lease:2", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-estop", "overview", "dialog=estop", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-devices", "overview", "dialog=devices", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-stopall", "overview", "dialog=stopall", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-rename2", "overview", "dialog=rename:2", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-remove1", "overview", "dialog=remove:1", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-disconnect1", "overview", "dialog=disconnect:1", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-edit2", "overview", "dialog=edit:2", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("dlg-estop2", "overview", "dialog=estop:2", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        // 对话框的其它状态（1920，参照同样用 snap 现拍）：申请中（倒计时环 + 三步）、远程控制中、心跳中断宽限、断线的设备（4号机）、
+        // 急停只预选一台而它断线了（说明「4号机 连接中断 · 无法预选 · 可勾选其它设备」，那一行灰、写「连接中断 · 无法发送」）
+        new Spec("dlg-lease2req", "device/2", "lease=2:requested&dialog=lease:2", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-lease1", "overview", "dialog=lease:1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-lease1lost", "overview", "lease=1:lost&dialog=lease:1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-lease4off", "overview", "devs=4&dialog=lease:4", new[] { new PixelSize(1920, 1080) }),
+        new Spec("dlg-estop4off", "overview", "devs=4&dialog=estop:4", new[] { new PixelSize(1920, 1080) }),
         // 旧样式的页面（D5：程序编辑 / 下发 / 导出、性能测试，M7 重做）：没有参照图；外框照常审计，旧样式的子树（LegacyHost，类 audit-skip）不审计
         new Spec("program", "placeholder/program", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
         new Spec("perf", "placeholder/perf", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),

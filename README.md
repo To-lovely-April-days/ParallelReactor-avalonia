@@ -97,7 +97,8 @@ tests/         HMI 单元测试（xunit）
 | `Control/ParallelReactor.Client` | PC 端接口客户端（REST + WS、租约 / 心跳状态机、重连 / 重同步、幂等重放），纯 BCL |
 | `Control/ParallelReactor.PerfTest` | RV1–RV4 摸底性能测试：方案 JSON、`PerfRunner` 引擎、指标、`report.html` / CSV / JSON |
 | `Control/ParallelReactor.Control` | PC 控制软件（Avalonia 11.1，`research/pc-control.html` 样稿 1:1）：系统视图 + 性能测试视图，Debug 带无头截图模式 |
-| `Control/tests/ParallelReactor.Control.Tests` | PC 端单元测试（Contracts 往返、Client、PerfTest） |
+| `Control/tests/ParallelReactor.Control.Tests` | PC 端单元测试（Contracts 往返、Client、PerfTest、Core、色板 / 字号检查；不引用 App） |
+| `Control/tests/ParallelReactor.Control.App.Tests` | PC 控制软件的视图模型、对话框与实时数据源测试（引用 App） |
 | `Control/tools/ClientSmoke` | 对真 HMI 的接口走通工具 |
 | `tests/ParallelReactor.Tests` | HMI 单元测试 |
 
@@ -105,7 +106,8 @@ tests/         HMI 单元测试（xunit）
 
 ```bash
 dotnet run --project Control/ParallelReactor.Control        # 桌面窗口（1440×900）
-dotnet test Control/tests/ParallelReactor.Control.Tests     # PC 端测试
+dotnet test Control/tests/ParallelReactor.Control.Tests     # PC 端测试（不引用 App）
+dotnet test Control/tests/ParallelReactor.Control.App.Tests # PC 控制软件的视图模型与数据源
 ```
 
 - 连接触屏 HMI 的接口（`api.json` 里 `enabled=true` + 令牌），申请控制权后可下发程序 / 加热 / 搅拌等命令；停止类与急停不需要控制权。
