@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.BadgesSection">
+  <!-- 徽标与状态（MOCK #/gallery「徽标与状态」）：通用徽标 + 控制权；连接 + 设备标识；状态点 + 状态字（顺序同样稿，每个后面再空 10） -->
+  <StackPanel>
+    <g:GalleryRow>
+      <pr:Badge Text="已连接" Tone="Ok" />
+      <pr:Badge Text="提醒 1" Tone="Warn" />
+      <pr:Badge Text="报警 1" Tone="Err" />
+      <pr:Badge Text="记录中" Tone="Info" />
+      <pr:Badge Text="未安装" Tone="Mute" ShowDot="False" />
+      <pr:LeaseBadge State="Remote" Text="远程控制中" />
+      <pr:LeaseBadge State="Local" Text="本地 · 只读" />
+      <pr:LeaseBadge State="Requested" Text="申请中 · 45 s" />
+      <pr:LeaseBadge State="Lost" Text="控制权宽限 18 s" />
+    </g:GalleryRow>
+    <g:GalleryRow Margin="0,14,0,0">
+      <pr:ConnBadge State="Online" />
+      <pr:ConnBadge State="Connecting" />
+      <pr:ConnBadge State="Offline" />
+      <pr:ConnBadge State="Disconnected" />
+      <pr:DevTag Alias="1号机" Model="{x:Static g:GalleryDemo.Model1}" />
+    </g:GalleryRow>
+    <ItemsControl Margin="0,14,0,0" ItemsSource="{x:Static g:BadgesSection.Samples}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <g:GalleryRow />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="g:StateSample">
+          <pr:StateBadge Key="{Binding Key}" Margin="0,0,10,0" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </StackPanel>
+</UserControl>

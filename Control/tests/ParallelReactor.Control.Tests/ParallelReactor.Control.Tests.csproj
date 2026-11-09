@@ -15,6 +15,7 @@
     <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
     <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
     <ProjectReference Include="../../ParallelReactor.PerfTest/ParallelReactor.PerfTest.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control.Core/ParallelReactor.Control.Core.csproj" />
   </ItemGroup>
 
   <!-- 从真 HMI（PR_SIM）抓取的响应样本：Samples/*.json(l)，随测试输出复制 -->

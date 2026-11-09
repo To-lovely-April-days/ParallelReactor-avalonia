@@ -7,7 +7,7 @@
         Title="ParallelReactor 控制软件"
         Width="1440" Height="900" MinWidth="1080" MinHeight="600"
         Background="{DynamicResource AppBg}"
-        FontFamily="{DynamicResource UiFont}" FontSize="9" Foreground="{DynamicResource Ink}"
+        FontFamily="{DynamicResource LegacyUiFont}" FontSize="9" Foreground="{DynamicResource Ink}"
         UseLayoutRounding="True">
   <v:MainView />
 </Window>

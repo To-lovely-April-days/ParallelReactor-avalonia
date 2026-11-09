@@ -1,0 +1,69 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 对话框外壳（样稿 shell.css .pr-modal*）：白底、8 px 圆角、line-2 边、ShadowDlg；中性，只有急停对话框的确认按钮是红色。
+       遮罩（.pr-layer）用 OverlayBrush，由 M3 的对话框宿主画；全局急停格压在遮罩之上（ZIndex 201 / 200）。 -->
+  <ControlTheme x:Key="{x:Type pr:DialogFrame}" TargetType="pr:DialogFrame">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusDlg}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                BoxShadow="{StaticResource ShadowDlg}">
+          <DockPanel>
+            <!-- 标题区：最小高 66；38 px 图标块 + 标题 18/600 + 说明 14 t-3 + 关闭 -->
+            <Border DockPanel.Dock="Top" MinHeight="66" Padding="20,12,12,12"
+                    BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+              <DockPanel>
+                <Border Name="PART_IconBox" DockPanel.Dock="Left" Width="38" Height="38" Margin="0,0,14,0"
+                        CornerRadius="{StaticResource Radius}" Background="{StaticResource BgSunkenBrush}" VerticalAlignment="Center">
+                  <c:IconView Name="PART_Icon" Icon="{TemplateBinding Icon}" Size="20" Foreground="{StaticResource T2Brush}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <Button Name="PART_Close" DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="x"
+                        ToolTip.Tip="关闭" AutomationProperties.Name="关闭" VerticalAlignment="Center" />
+                <StackPanel Spacing="3" VerticalAlignment="Center">
+                  <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsHead}" FontWeight="SemiBold"
+                             Foreground="{StaticResource T1Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Title}" />
+                  <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                             TextWrapping="Wrap"
+                             IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <!-- 底栏：bg-head + 上边 line-faint，左侧说明，右侧按钮（间距 10 由使用处的 StackPanel 给） -->
+            <Border DockPanel.Dock="Bottom" Padding="20,14" Background="{StaticResource BgHeadBrush}"
+                    BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,7,7"
+                    IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <DockPanel>
+                <ContentPresenter DockPanel.Dock="Left" Content="{TemplateBinding FooterLeft}" FontSize="{StaticResource Fs2}"
+                                  Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <ContentPresenter Content="{TemplateBinding Footer}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+              </DockPanel>
+            </Border>
+            <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}" />
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:danger /template/ Border#PART_IconBox">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="^:danger /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

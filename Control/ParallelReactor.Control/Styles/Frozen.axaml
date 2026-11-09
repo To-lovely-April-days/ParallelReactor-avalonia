@@ -1,0 +1,12 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- .frozen（演示冻结 / 截图，Theme/Frozen.cs）：根元素及其下所有控件的 Transitions 失效（样式优先级高于 ControlTheme）。
+       自带动画的控件读继承属性 Frozen.IsFrozen 自己停。
+       M1 只由新窗口（组件陈列）引入，旧界面不受影响；M2 起全局。 -->
+  <Style Selector=":is(Control).frozen">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+  <Style Selector=".frozen :is(Control)">
+    <Setter Property="Transitions" Value="{x:Null}" />
+  </Style>
+</Styles>

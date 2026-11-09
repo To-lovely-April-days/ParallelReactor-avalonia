@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.PanelSection">
+  <!-- 面板 · 属性卡片（MOCK #/gallery「面板 · 属性卡片」）：高 270、line-2 边框的面板，标题是面包屑「1号机 › RV1 › 属性查看器」，
+       右侧「恢复全部属性」+ 关闭（不放大）；内容区内边距 4 16 0，两列属性卡片（列距 14）。读数同样稿冻结时的 1号机 RV1。 -->
+  <Border Height="270" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1">
+    <pr:PrPanel Icon="tree" Sub="面板标题栏 42 px · 16 px 标题 · 14 px 副标题" CanMaximize="False" Padding="16,4,16,0">
+      <pr:PrPanel.Title>
+        <pr:Crumb Text="1号机 › RV1 › 属性查看器" />
+      </pr:PrPanel.Title>
+      <pr:PrPanel.Actions>
+        <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="refresh" ToolTip.Tip="恢复全部属性" AutomationProperties.Name="恢复全部属性" />
+      </pr:PrPanel.Actions>
+      <g:GalleryGrid Columns="2" ColumnGap="14" RowGap="0">
+        <pr:PropCard PathText="/1号机/RV1/模拟输入" Icon="gauge" Title="反应器温度" Sub="温度 PV"
+                     Value="{x:Static g:GalleryDemo.TempPv}" Unit="℃" Edge="True" ShowClose="False" />
+        <pr:PropCard PathText="/1号机/RV1/模拟输入" Icon="gauge" Title="压力传感器" Sub="压力"
+                     Value="{x:Static g:GalleryDemo.PressPv}" Unit="MPa" Unit2="{x:Static g:GalleryDemo.PressPsi}" Edge="True" ShowClose="False" />
+        <pr:PropCard PathText="/1号机/RV1/设备/加热器" Icon="flame" Title="加热器" Sub="温度设定值 SP"
+                     Value="{x:Static g:GalleryDemo.TempSp}" Unit="℃" ShowClose="False" />
+        <pr:PropCard PathText="/1号机/RV1/设备/阀门" Icon="valve" Title="进气阀 SV1" Sub="气体 A · 开"
+                     Unit2="触屏操作" ShowClose="False" />
+      </g:GalleryGrid>
+    </pr:PrPanel>
+  </Border>
+</UserControl>

@@ -1,0 +1,12 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 文字样式类（PORT-PLAN §4.3）。只用新类名，旧视图不受影响。
+       num：等宽数字（+tnum），用于所有实时读数、时间、IP、SN。macOS 的 SF 默认是比例数字（字体探针：1 比 0 窄 2.4 px），
+       不加 num 的读数每秒变化时会左右跳；Segoe UI / Inter 也支持 tnum。:is() 让子类（SelectableTextBlock、TextBox …）也生效。 -->
+  <Style Selector=":is(TextBlock).num">
+    <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+  <Style Selector=":is(TemplatedControl).num">
+    <Setter Property="FontFeatures" Value="+tnum" />
+  </Style>
+</Styles>

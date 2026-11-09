@@ -1,0 +1,89 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 细滚动条（PORT-PLAN §4.6；样稿 reactor.css 的 ::-webkit-scrollbar：8 px，拇指 line 色、圆角 4，悬停 line-strong）。
+       完整模板，不叠在 Fluent 模板上；M1 只有显式 Theme="{StaticResource PrScrollViewer}" 的地方使用，旧界面不受影响。
+       ScrollBar 放在 ScrollViewer 模板里时自己绑定 Maximum / Value / ViewportSize / Visibility（Avalonia 11 的 ScrollBar 行为）。 -->
+
+  <ControlTheme x:Key="PrScrollThumb" TargetType="Thumb">
+    <Setter Property="Background" Value="{StaticResource LineBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource LineStrongBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource LineStrongBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 轨道上点一下翻页的透明按钮 -->
+  <ControlTheme x:Key="PrScrollPage" TargetType="RepeatButton">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrScrollBar" TargetType="ScrollBar">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="Arrow" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}">
+          <Track Name="PART_Track"
+                 Minimum="{TemplateBinding Minimum}"
+                 Maximum="{TemplateBinding Maximum}"
+                 Value="{TemplateBinding Value, Mode=TwoWay}"
+                 ViewportSize="{TemplateBinding ViewportSize}"
+                 Orientation="{TemplateBinding Orientation}">
+            <Track.DecreaseButton>
+              <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource PrScrollPage}" />
+            </Track.DecreaseButton>
+            <Track.IncreaseButton>
+              <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource PrScrollPage}" />
+            </Track.IncreaseButton>
+            <Thumb Name="PART_Thumb" Theme="{StaticResource PrScrollThumb}" />
+          </Track>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:vertical">
+      <Setter Property="Width" Value="8" />
+    </Style>
+    <Style Selector="^:vertical /template/ Track#PART_Track">
+      <Setter Property="IsDirectionReversed" Value="True" />
+    </Style>
+    <Style Selector="^:vertical /template/ Thumb#PART_Thumb">
+      <Setter Property="MinHeight" Value="24" />
+    </Style>
+    <Style Selector="^:horizontal">
+      <Setter Property="Height" Value="8" />
+    </Style>
+    <Style Selector="^:horizontal /template/ Thumb#PART_Thumb">
+      <Setter Property="MinWidth" Value="24" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 滚动区：内容在左上格，滚动条各占 8 px（同网页的经典滚动条，不浮在内容上） -->
+  <ControlTheme x:Key="PrScrollViewer" TargetType="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+          <ScrollContentPresenter Name="PART_ContentPresenter"
+                                  Background="{TemplateBinding Background}"
+                                  Padding="{TemplateBinding Padding}" />
+          <ScrollBar Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal" Theme="{StaticResource PrScrollBar}" />
+          <ScrollBar Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Theme="{StaticResource PrScrollBar}" />
+          <Panel Name="PART_ScrollBarsSeparator" Grid.Row="1" Grid.Column="1" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

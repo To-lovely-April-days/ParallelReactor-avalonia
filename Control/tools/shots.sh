@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# shots.sh — 演示模式截图 + 审计 + 左右对照（PORT-PLAN §5 M1「截图工具」、§5.9）。
+#
+# 先构建一次 Debug（截图代码 Shot/* 只在 Debug 里；连同引用的 Core / Client / Contracts 一起构建，干净的检出也能跑，
+# 改了 Core 也不会拿旧 DLL 截图），再按尺寸各起一个无头进程：
+#   PR_CONTROL_HEADLESS=1 PR_CONTROL_DEMO=1 PR_CONTROL_SHOT=<输出目录> PR_CONTROL_SHOT_SIZE=WxH
+# 配置和数据目录都指到输出目录下（不往用户目录写）。每个尺寸先跑一次审计自检（确认审计本身是活的），
+# 再按 Shot/ShotPlan.cs 截图；macOS 上再用系统字体栈（更窄的西文）把每张截图审计一遍（alt-font/，只审计不对照）——
+# 两种宽度下都不许有问题。最后打印所有非空的 *.audit.txt，有任何一个非空或任何进程失败就以非 0 退出。
+# 开跑前删掉输出目录里上一次留下的 *.audit.txt、error*.txt、shot*.log（旧结果不能让这次失败或误导）。
+#
+# 用法：Control/tools/shots.sh [输出目录] [尺寸 ...]
+#   输出目录默认 $PR_SHOTS_OUT，否则 ./shots-out；尺寸默认 $PR_SHOTS_SIZES，否则 M1 的 gallery 三个宽度（1920x5100 1600x3900 1366x3900）。
+#   PR_CONTROL_SHOT_NAMES=gallery,…  只跑这些截图（任意尺寸）。
+#   PR_CONTROL_SHOT_REF=<目录>        参照图目录（final-<name>-<w>.png）；默认用样稿的 research/pc-v3/shots。
+#   PR_CONTROL_CONFIG / PR_CONTROL_DATA 可覆盖（默认 <输出目录>/cfg、<输出目录>/data）。
+#   PR_SHOTS_ALT_FONT=<字体栈>        第二遍审计的字体栈（macOS 默认 Theme/UiFonts.MacSystemStack；none = 不跑第二遍）。
+#   DOTNET=…                          dotnet 路径（默认 ~/.dotnet/dotnet，不在 PATH 上）。
+#   SKIP_BUILD=1                      不重新构建。
+set -u
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APPDIR="$(cd "$HERE/../ParallelReactor.Control" && pwd)"
+DOTNET="${DOTNET:-$HOME/.dotnet/dotnet}"
+OUT="${1:-${PR_SHOTS_OUT:-$PWD/shots-out}}"
+shift $(( $# > 0 ? 1 : 0 ))
+SIZES=("$@")
+if [ ${#SIZES[@]} -eq 0 ]; then read -r -a SIZES <<< "${PR_SHOTS_SIZES:-1920x5100 1600x3900 1366x3900}"; fi
+REF="${PR_CONTROL_SHOT_REF:-$(cd "$HERE/../../.." && pwd)/research/pc-v3/shots}"
+ALT_FONT="${PR_SHOTS_ALT_FONT:-}"
+if [ -z "$ALT_FONT" ] && [ "$(uname -s)" = "Darwin" ]; then ALT_FONT=".AppleSystemUIFont, PingFang SC, fonts:Inter#Inter"; fi
+[ "$ALT_FONT" = "none" ] && ALT_FONT=""
+
+mkdir -p "$OUT" || exit 2
+OUT="$(cd "$OUT" && pwd)"
+CFG="${PR_CONTROL_CONFIG:-$OUT/cfg}"
+DATA="${PR_CONTROL_DATA:-$OUT/data}"
+mkdir -p "$CFG" "$DATA"
+
+# 上一次的结果（只删本脚本自己产生的这几类文件）
+for d in "$OUT" "$OUT/selftest" "$OUT/alt-font"; do
+  [ -d "$d" ] || continue
+  rm -f "$d"/*.audit.txt "$d"/*.result.txt "$d"/error.txt "$d"/error-*.txt "$d"/shot.log "$d"/shot-*.log "$d"/stdout*.txt
+done
+
+if [ "${SKIP_BUILD:-0}" != "1" ]; then
+  echo "== build Debug"
+  "$DOTNET" build "$APPDIR/ParallelReactor.Control.csproj" -c Debug -nologo -v q > "$OUT/build.log" 2>&1
+  rc=$?
+  grep -E "warning|error" "$OUT/build.log" | grep -v "^\s*[0-9]* \(Warning\|Error\)(s)" | sort -u
+  if [ $rc -ne 0 ]; then echo "build failed (see $OUT/build.log)"; exit 2; fi
+fi
+DLL="$APPDIR/bin/Debug/net8.0/ParallelReactor.Control.dll"
+[ -f "$DLL" ] || { echo "missing $DLL"; exit 2; }
+
+fail=0
+run() {   # run <子目录> <尺寸> [额外环境变量 …]
+  local dir="$1" size="$2"; shift 2
+  mkdir -p "$dir"
+  env PR_CONTROL_HEADLESS=1 PR_CONTROL_DEMO=1 PR_CONTROL_SHOT="$dir" PR_CONTROL_SHOT_SIZE="$size" \
+      PR_CONTROL_SHOT_REF="$REF" PR_CONTROL_CONFIG="$CFG" PR_CONTROL_DATA="$DATA" "$@" \
+      "$DOTNET" "$DLL" > "$dir/stdout-${size%x*}.txt" 2>&1
+}
+# 一个尺寸的截图（主字体或第二遍字体）：退出码、日志按宽度改名保存
+shots() {   # shots <目录> <尺寸> [额外环境变量 …]
+  local dir="$1" size="$2" w="${2%x*}"; shift 2
+  run "$dir" "$size" "$@"
+  local rc=$?
+  [ -f "$dir/shot.log" ] && mv "$dir/shot.log" "$dir/shot-$w.log"
+  [ -f "$dir/error.txt" ] && mv "$dir/error.txt" "$dir/error-$w.txt"
+  if [ $rc -eq 2 ]; then echo "   exit 2:"; head -n 20 "$dir/error-$w.txt" 2>/dev/null; fail=1
+  elif [ $rc -ne 0 ] && [ $rc -ne 1 ]; then echo "   exit $rc"; fail=1; fi
+  grep -E "^(saved|audit|compare)" "$dir/shot-$w.log" 2>/dev/null | sed 's/^/   /'
+}
+
+for size in "${SIZES[@]}"; do
+  w="${size%x*}"
+  echo "== $size: audit self-test"
+  run "$OUT/selftest" "$size" PR_CONTROL_AUDIT_SELFTEST=1
+  rc=$?
+  tail -n 1 "$OUT/selftest/audit-selftest-$w.result.txt" 2>/dev/null
+  if [ $rc -ne 0 ]; then echo "   self-test exit $rc"; fail=1; fi
+
+  echo "== $size: shots"
+  shots "$OUT" "$size"
+  if [ -n "$ALT_FONT" ]; then
+    echo "== $size: audit again with font \"$ALT_FONT\""
+    shots "$OUT/alt-font" "$size" PR_CONTROL_UI_FONT="$ALT_FONT" PR_CONTROL_SHOT_REF=
+  fi
+done
+
+echo "== non-empty audits"
+found=0
+for f in "$OUT"/*.audit.txt "$OUT"/alt-font/*.audit.txt; do
+  [ -e "$f" ] || continue
+  if [ -s "$f" ]; then found=1; echo "--- ${f#$OUT/}"; cat "$f"; fi
+done
+[ $found -eq 0 ] && echo "(none)"
+[ $found -ne 0 ] && fail=1
+
+# 不许往用户目录写（PORT-PLAN §5.0 完成标准 4）
+n=$(ls "$HOME/Library/Application Support" 2>/dev/null | grep -ci parallelreactor)
+if [ "${n:-0}" != "0" ]; then echo "!! ~/Library/Application Support 里出现了 ParallelReactor 目录"; fail=1; fi
+
+exit $fail

@@ -1,138 +1,274 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- research/pc-control.html 的 CSS 令牌，1:1 搬运（颜色 / 字体 / 字号）。不要在此“改进”。 -->
-  <SolidColorBrush x:Key="Line">#c9c9cd</SolidColorBrush>
-  <SolidColorBrush x:Key="SoftLine">#dedee1</SolidColorBrush>
-  <SolidColorBrush x:Key="Panel">#f7f7f8</SolidColorBrush>
-  <SolidColorBrush x:Key="Ink">#3f3f45</SolidColorBrush>
-  <SolidColorBrush x:Key="Muted">#85858c</SolidColorBrush>
-  <SolidColorBrush x:Key="Purple">#765cc5</SolidColorBrush>
-  <SolidColorBrush x:Key="Green">#efffe4</SolidColorBrush>
-  <SolidColorBrush x:Key="GreenLine">#dcf8c7</SolidColorBrush>
-  <SolidColorBrush x:Key="Blue">#6269df</SolidColorBrush>
-  <SolidColorBrush x:Key="AppBg">#ececee</SolidColorBrush>
-  <SolidColorBrush x:Key="White">#ffffff</SolidColorBrush>
-  <SolidColorBrush x:Key="MenuLine">#2e2e31</SolidColorBrush>
-  <SolidColorBrush x:Key="MenuHover">#ededf2</SolidColorBrush>
-  <SolidColorBrush x:Key="TabBg">#f8f8f9</SolidColorBrush>
-  <SolidColorBrush x:Key="TabBorder">#aaaab0</SolidColorBrush>
-  <SolidColorBrush x:Key="TabCell">#f5f5f6</SolidColorBrush>
-  <SolidColorBrush x:Key="TabHover">#ececf1</SolidColorBrush>
-  <SolidColorBrush x:Key="TabActiveText">#333338</SolidColorBrush>
-  <SolidColorBrush x:Key="TabText">#67676d</SolidColorBrush>
-  <SolidColorBrush x:Key="TabInset">#8a78cd</SolidColorBrush>
-  <SolidColorBrush x:Key="CellLine">#e2e2e5</SolidColorBrush>
-  <SolidColorBrush x:Key="HeadingBg">#fafafb</SolidColorBrush>
-  <SolidColorBrush x:Key="HeadingLine">#d0d0d4</SolidColorBrush>
-  <SolidColorBrush x:Key="HeadingMuted">#8c8c91</SolidColorBrush>
-  <SolidColorBrush x:Key="IconBtn">#66666d</SolidColorBrush>
-  <SolidColorBrush x:Key="IconBtnHover">#27272b</SolidColorBrush>
-  <SolidColorBrush x:Key="IconBtnHoverBg">#e7e7eb</SolidColorBrush>
-  <SolidColorBrush x:Key="IconBtnActive">#6550b1</SolidColorBrush>
-  <SolidColorBrush x:Key="IconBtnActiveBg">#e5e0f5</SolidColorBrush>
-  <SolidColorBrush x:Key="Canvas">#f4f4f5</SolidColorBrush>
-  <SolidColorBrush x:Key="CardLine">#ededf0</SolidColorBrush>
-  <SolidColorBrush x:Key="CardBg">#f0ffffff</SolidColorBrush>
-  <SolidColorBrush x:Key="CardSection">#59d2d2d2</SolidColorBrush>
-  <SolidColorBrush x:Key="GreenCardLine">#e5f5d9</SolidColorBrush>
-  <SolidColorBrush x:Key="Label">#99999e</SolidColorBrush>
-  <SolidColorBrush x:Key="Label2">#88888e</SolidColorBrush>
-  <SolidColorBrush x:Key="Unit">#5e5e64</SolidColorBrush>
-  <SolidColorBrush x:Key="Duration">#fbfbfb</SolidColorBrush>
-  <SolidColorBrush x:Key="DurationTick">#b9b9be</SolidColorBrush>
-  <SolidColorBrush x:Key="FlowLine">#aaaab0</SolidColorBrush>
-  <SolidColorBrush x:Key="Divider">#d4d4d7</SolidColorBrush>
-  <SolidColorBrush x:Key="Scroll">#eeeeef</SolidColorBrush>
-  <SolidColorBrush x:Key="ScrollThumb">#b9b9bd</SolidColorBrush>
-  <SolidColorBrush x:Key="Inspector">#f4f4f5</SolidColorBrush>
-  <SolidColorBrush x:Key="BtnLine">#d7d7da</SolidColorBrush>
-  <SolidColorBrush x:Key="BtnText">#7b7b80</SolidColorBrush>
-  <SolidColorBrush x:Key="BtnHover">#e4e1ef</SolidColorBrush>
-  <SolidColorBrush x:Key="BtnHoverText">#554677</SolidColorBrush>
-  <SolidColorBrush x:Key="ListBg">#f8f8f9</SolidColorBrush>
-  <SolidColorBrush x:Key="ListLine">#c8c8cc</SolidColorBrush>
-  <SolidColorBrush x:Key="RowLine">#e5e5e7</SolidColorBrush>
-  <SolidColorBrush x:Key="Status">#77777d</SolidColorBrush>
-  <SolidColorBrush x:Key="Voltage">#a7a7ac</SolidColorBrush>
-  <SolidColorBrush x:Key="Timeline">#fafafa</SolidColorBrush>
-  <SolidColorBrush x:Key="TimelineTop">#c5c5c9</SolidColorBrush>
-  <SolidColorBrush x:Key="TimelineLine">#d5d5d8</SolidColorBrush>
-  <SolidColorBrush x:Key="TrackLine">#eeeeef</SolidColorBrush>
-  <SolidColorBrush x:Key="TrackGrid">#e6e6e8</SolidColorBrush>
-  <SolidColorBrush x:Key="ActionLine">#e3e3e6</SolidColorBrush>
-  <SolidColorBrush x:Key="RunBarLine">#d2d2d5</SolidColorBrush>
-  <SolidColorBrush x:Key="RunLeft">#e1f3d2</SolidColorBrush>
-  <SolidColorBrush x:Key="Done">#eaffd8</SolidColorBrush>
-  <SolidColorBrush x:Key="DotIdle">#f1c3c8</SolidColorBrush>
-  <SolidColorBrush x:Key="DotIdleLine">#e7b6bb</SolidColorBrush>
-  <SolidColorBrush x:Key="DotRun">#b7e99c</SolidColorBrush>
-  <SolidColorBrush x:Key="DotRunLine">#a0d782</SolidColorBrush>
-  <SolidColorBrush x:Key="DotCur">#e5e0f5</SolidColorBrush>
-  <SolidColorBrush x:Key="DotCurLine">#8a78cd</SolidColorBrush>
-  <SolidColorBrush x:Key="Disabled">#b5b5ba</SolidColorBrush>
-  <SolidColorBrush x:Key="DisabledBg">#f1f1f3</SolidColorBrush>
-  <SolidColorBrush x:Key="ChipActiveText">#554677</SolidColorBrush>
-  <SolidColorBrush x:Key="ChipActiveBg">#e5e0f5</SolidColorBrush>
-  <SolidColorBrush x:Key="ChipActiveLine">#a999da</SolidColorBrush>
-  <SolidColorBrush x:Key="ToastBg">#eb2a2a30</SolidColorBrush>
-  <SolidColorBrush x:Key="Pass">#5a8f3a</SolidColorBrush>
-  <SolidColorBrush x:Key="Fail">#b85360</SolidColorBrush>
-  <SolidColorBrush x:Key="Focus">#8b78d6</SolidColorBrush>
-  <SolidColorBrush x:Key="SidebarText">#eeeaff</SolidColorBrush>
-  <SolidColorBrush x:Key="SidebarLine">#6753a8</SolidColorBrush>
-  <SolidColorBrush x:Key="SidebarHover">#21ffffff</SolidColorBrush>
-  <SolidColorBrush x:Key="Breadcrumb">#55555c</SolidColorBrush>
-  <SolidColorBrush x:Key="Gauge">#303036</SolidColorBrush>
-  <SolidColorBrush x:Key="GreenEdge">#d9f9bf</SolidColorBrush>
-  <SolidColorBrush x:Key="PropertyLine">#d5d5d8</SolidColorBrush>
-  <SolidColorBrush x:Key="Backdrop">#401e1e26</SolidColorBrush>
-  <SolidColorBrush x:Key="ExpandedLine">#888888</SolidColorBrush>
-  <SolidColorBrush x:Key="TabCornerLine">#ededf0</SolidColorBrush>
-  <SolidColorBrush x:Key="AddTab">#666666</SolidColorBrush>
-  <SolidColorBrush x:Key="TabMore">#777777</SolidColorBrush>
-  <SolidColorBrush x:Key="ChartBg">#fafafa</SolidColorBrush>
+  <!-- pc-v3 设计令牌（PORT-PLAN §4.1–4.4；样稿 research/pc-v3：css/base.css :root、RESTYLE-BRIEF §2 / §3）。
+       色板是封闭集合：屏幕上的颜色只能来自这里（自绘控件用 Theme/Palette.cs，两边由 tools/gen-tokens.py 从同一份 CSS 生成）。
+       命名：CSS 变量名（去掉开头两个短横）的 kebab 名转 PascalCase + Color / Brush（bg-app → BgAppColor / BgAppBrush，a-d → ADBrush，t-1 → T1Brush）。
+       注意：XML 注释里不能出现两个连续的短横，所以这里的令牌名都不带前缀。
+       一般用 StaticResource（没有暗色主题）；只有 UiFont 由 App.Initialize 按操作系统覆盖（Theme/UiFonts.cs）。
+       旧视图仍用 LegacyTokens.axaml（键名不冲突）。 -->
 
-  <LinearGradientBrush x:Key="SidebarGradient" StartPoint="0%,0%" EndPoint="0%,100%">
-    <GradientStop Offset="0" Color="#8269d0" />
-    <GradientStop Offset="1" Color="#6e57ba" />
+  <!-- BEGIN GENERATED COLORS（Control/tools/gen-tokens.py ← MOCK/css/base.css :root；不要手改，改样稿后重新生成） -->
+  <!-- 底色 -->
+  <Color x:Key="BgAppColor">#ececee</Color>
+  <SolidColorBrush x:Key="BgAppBrush" Color="{StaticResource BgAppColor}" />
+  <Color x:Key="BgPanelColor">#f7f7f8</Color>
+  <SolidColorBrush x:Key="BgPanelBrush" Color="{StaticResource BgPanelColor}" />
+  <Color x:Key="BgHeadColor">#fafafb</Color>
+  <SolidColorBrush x:Key="BgHeadBrush" Color="{StaticResource BgHeadColor}" />
+  <Color x:Key="BgCardColor">#ffffff</Color>
+  <SolidColorBrush x:Key="BgCardBrush" Color="{StaticResource BgCardColor}" />
+  <Color x:Key="BgSideColor">#f4f4f5</Color>
+  <SolidColorBrush x:Key="BgSideBrush" Color="{StaticResource BgSideColor}" />
+  <Color x:Key="BgSunkenColor">#f1f1f3</Color>
+  <SolidColorBrush x:Key="BgSunkenBrush" Color="{StaticResource BgSunkenColor}" />
+  <Color x:Key="BgHoverColor">#ececf1</Color>
+  <SolidColorBrush x:Key="BgHoverBrush" Color="{StaticResource BgHoverColor}" />
+  <Color x:Key="BgPressColor">#e7e7eb</Color>
+  <SolidColorBrush x:Key="BgPressBrush" Color="{StaticResource BgPressColor}" />
+  <!-- 线 -->
+  <Color x:Key="LineStrongColor">#aaaab0</Color>
+  <SolidColorBrush x:Key="LineStrongBrush" Color="{StaticResource LineStrongColor}" />
+  <Color x:Key="LineColor">#c9c9cd</Color>
+  <SolidColorBrush x:Key="LineBrush" Color="{StaticResource LineColor}" />
+  <Color x:Key="Line2Color">#d5d5d8</Color>
+  <SolidColorBrush x:Key="Line2Brush" Color="{StaticResource Line2Color}" />
+  <Color x:Key="LineSoftColor">#dedee1</Color>
+  <SolidColorBrush x:Key="LineSoftBrush" Color="{StaticResource LineSoftColor}" />
+  <Color x:Key="LineFaintColor">#ededf0</Color>
+  <SolidColorBrush x:Key="LineFaintBrush" Color="{StaticResource LineFaintColor}" />
+  <Color x:Key="LineMenuColor">#2e2e31</Color>
+  <SolidColorBrush x:Key="LineMenuBrush" Color="{StaticResource LineMenuColor}" />
+  <!-- 文字 -->
+  <Color x:Key="T1Color">#2f2f35</Color>
+  <SolidColorBrush x:Key="T1Brush" Color="{StaticResource T1Color}" />
+  <Color x:Key="T2Color">#3f3f45</Color>
+  <SolidColorBrush x:Key="T2Brush" Color="{StaticResource T2Color}" />
+  <Color x:Key="T3Color">#5f5f66</Color>
+  <SolidColorBrush x:Key="T3Brush" Color="{StaticResource T3Color}" />
+  <Color x:Key="T4Color">#75757c</Color>
+  <SolidColorBrush x:Key="T4Brush" Color="{StaticResource T4Color}" />
+  <Color x:Key="TDisColor">#a5a5ab</Color>
+  <SolidColorBrush x:Key="TDisBrush" Color="{StaticResource TDisColor}" />
+  <Color x:Key="TInvColor">#ffffff</Color>
+  <SolidColorBrush x:Key="TInvBrush" Color="{StaticResource TInvColor}" />
+  <!-- 强调色 -->
+  <Color x:Key="AColor">#765cc5</Color>
+  <SolidColorBrush x:Key="ABrush" Color="{StaticResource AColor}" />
+  <Color x:Key="ADColor">#6550b1</Color>
+  <SolidColorBrush x:Key="ADBrush" Color="{StaticResource ADColor}" />
+  <Color x:Key="AInkColor">#554677</Color>
+  <SolidColorBrush x:Key="AInkBrush" Color="{StaticResource AInkColor}" />
+  <Color x:Key="ASoftColor">#e5e0f5</Color>
+  <SolidColorBrush x:Key="ASoftBrush" Color="{StaticResource ASoftColor}" />
+  <Color x:Key="ATintColor">#f1eefa</Color>
+  <SolidColorBrush x:Key="ATintBrush" Color="{StaticResource ATintColor}" />
+  <Color x:Key="ALineColor">#a999da</Color>
+  <SolidColorBrush x:Key="ALineBrush" Color="{StaticResource ALineColor}" />
+  <Color x:Key="ATabColor">#8a78cd</Color>
+  <SolidColorBrush x:Key="ATabBrush" Color="{StaticResource ATabColor}" />
+  <Color x:Key="Side1Color">#8269d0</Color>
+  <SolidColorBrush x:Key="Side1Brush" Color="{StaticResource Side1Color}" />
+  <Color x:Key="Side2Color">#6e57ba</Color>
+  <SolidColorBrush x:Key="Side2Brush" Color="{StaticResource Side2Color}" />
+  <Color x:Key="SideLineColor">#6753a8</Color>
+  <SolidColorBrush x:Key="SideLineBrush" Color="{StaticResource SideLineColor}" />
+  <Color x:Key="SideInkColor">#eeeaff</Color>
+  <SolidColorBrush x:Key="SideInkBrush" Color="{StaticResource SideInkColor}" />
+  <!-- 运行（浅绿） -->
+  <Color x:Key="G1Color">#f7fff1</Color>
+  <SolidColorBrush x:Key="G1Brush" Color="{StaticResource G1Color}" />
+  <Color x:Key="G2Color">#efffe4</Color>
+  <SolidColorBrush x:Key="G2Brush" Color="{StaticResource G2Color}" />
+  <Color x:Key="G3Color">#e5ffd0</Color>
+  <SolidColorBrush x:Key="G3Brush" Color="{StaticResource G3Color}" />
+  <Color x:Key="G4Color">#d9fbb9</Color>
+  <SolidColorBrush x:Key="G4Brush" Color="{StaticResource G4Color}" />
+  <Color x:Key="GLineColor">#dcf8c7</Color>
+  <SolidColorBrush x:Key="GLineBrush" Color="{StaticResource GLineColor}" />
+  <Color x:Key="GEdgeColor">#d9f9bf</Color>
+  <SolidColorBrush x:Key="GEdgeBrush" Color="{StaticResource GEdgeColor}" />
+  <Color x:Key="GDotColor">#b7e99c</Color>
+  <SolidColorBrush x:Key="GDotBrush" Color="{StaticResource GDotColor}" />
+  <Color x:Key="GDotLineColor">#a0d782</Color>
+  <SolidColorBrush x:Key="GDotLineBrush" Color="{StaticResource GDotLineColor}" />
+  <Color x:Key="GInkColor">#4a7a31</Color>
+  <SolidColorBrush x:Key="GInkBrush" Color="{StaticResource GInkColor}" />
+  <!-- 报警（暗红） -->
+  <Color x:Key="RColor">#c4505d</Color>
+  <SolidColorBrush x:Key="RBrush" Color="{StaticResource RColor}" />
+  <Color x:Key="RInkColor">#b0404d</Color>
+  <SolidColorBrush x:Key="RInkBrush" Color="{StaticResource RInkColor}" />
+  <Color x:Key="RBgColor">#fbeff1</Color>
+  <SolidColorBrush x:Key="RBgBrush" Color="{StaticResource RBgColor}" />
+  <Color x:Key="RLineColor">#ebc0c6</Color>
+  <SolidColorBrush x:Key="RLineBrush" Color="{StaticResource RLineColor}" />
+  <Color x:Key="RBtnColor">#c43f4c</Color>
+  <SolidColorBrush x:Key="RBtnBrush" Color="{StaticResource RBtnColor}" />
+  <Color x:Key="RBtnDColor">#ad3441</Color>
+  <SolidColorBrush x:Key="RBtnDBrush" Color="{StaticResource RBtnDColor}" />
+  <!-- 中性状态 -->
+  <Color x:Key="NDotColor">#c4c4ca</Color>
+  <SolidColorBrush x:Key="NDotBrush" Color="{StaticResource NDotColor}" />
+  <Color x:Key="NDotLineColor">#b0b0b6</Color>
+  <SolidColorBrush x:Key="NDotLineBrush" Color="{StaticResource NDotLineColor}" />
+  <!-- 曲线 -->
+  <Color x:Key="ChBgColor">#fafafa</Color>
+  <SolidColorBrush x:Key="ChBgBrush" Color="{StaticResource ChBgColor}" />
+  <Color x:Key="ChGridColor">#e3e3e6</Color>
+  <SolidColorBrush x:Key="ChGridBrush" Color="{StaticResource ChGridColor}" />
+  <Color x:Key="ChAxisColor">#aaaeb1</Color>
+  <SolidColorBrush x:Key="ChAxisBrush" Color="{StaticResource ChAxisColor}" />
+  <Color x:Key="ChTColor">#6f797b</Color>
+  <SolidColorBrush x:Key="ChTBrush" Color="{StaticResource ChTColor}" />
+  <Color x:Key="ChTSpColor">#aab1b3</Color>
+  <SolidColorBrush x:Key="ChTSpBrush" Color="{StaticResource ChTSpColor}" />
+  <Color x:Key="ChPColor">#7aa088</Color>
+  <SolidColorBrush x:Key="ChPBrush" Color="{StaticResource ChPColor}" />
+  <Color x:Key="ChPSpColor">#aac5b2</Color>
+  <SolidColorBrush x:Key="ChPSpBrush" Color="{StaticResource ChPSpColor}" />
+  <Color x:Key="ChS1Color">#4f5559</Color>
+  <SolidColorBrush x:Key="ChS1Brush" Color="{StaticResource ChS1Color}" />
+  <Color x:Key="ChS2Color">#7d8789</Color>
+  <SolidColorBrush x:Key="ChS2Brush" Color="{StaticResource ChS2Color}" />
+  <Color x:Key="ChS3Color">#a9b0b2</Color>
+  <SolidColorBrush x:Key="ChS3Brush" Color="{StaticResource ChS3Color}" />
+  <Color x:Key="ChMarkColor">#8a78cd</Color>
+  <SolidColorBrush x:Key="ChMarkBrush" Color="{StaticResource ChMarkColor}" />
+  <Color x:Key="ChLimitColor">#c4505d</Color>
+  <SolidColorBrush x:Key="ChLimitBrush" Color="{StaticResource ChLimitColor}" />
+  <!-- 釜体 -->
+  <Color x:Key="VLineColor">#8d8d94</Color>
+  <SolidColorBrush x:Key="VLineBrush" Color="{StaticResource VLineColor}" />
+  <Color x:Key="VDetailColor">#a5a5ab</Color>
+  <SolidColorBrush x:Key="VDetailBrush" Color="{StaticResource VDetailColor}" />
+  <Color x:Key="VLiqColor">#ededf0</Color>
+  <SolidColorBrush x:Key="VLiqBrush" Color="{StaticResource VLiqColor}" />
+  <Color x:Key="VLiqRunColor">#e6f7da</Color>
+  <SolidColorBrush x:Key="VLiqRunBrush" Color="{StaticResource VLiqRunColor}" />
+  <Color x:Key="VLiqRunLineColor">#b9dca3</Color>
+  <SolidColorBrush x:Key="VLiqRunLineBrush" Color="{StaticResource VLiqRunLineColor}" />
+  <Color x:Key="VLiqAlarmColor">#f8e4e7</Color>
+  <SolidColorBrush x:Key="VLiqAlarmBrush" Color="{StaticResource VLiqAlarmColor}" />
+  <Color x:Key="VLineAlarmColor">#c98b94</Color>
+  <SolidColorBrush x:Key="VLineAlarmBrush" Color="{StaticResource VLineAlarmColor}" />
+  <!-- 杂项（§2 Misc：rgba → #aarrggbb） -->
+  <Color x:Key="ToastColor">#eb2a2a30</Color>
+  <SolidColorBrush x:Key="ToastBrush" Color="{StaticResource ToastColor}" />
+  <Color x:Key="OverlayColor">#401e1e26</Color>
+  <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}" />
+  <!-- 焦点环 = focus = var(a-d)：2 px，画在控件外侧（行类元素画在内侧） -->
+  <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource ADColor}" />
+  <!-- 阴影（CSS「x y blur rgba」→ Avalonia BoxShadow「x y blur spread #aarrggbb」） -->
+  <BoxShadows x:Key="ShadowCard">0 1 2 0 #0f282832</BoxShadows>
+  <BoxShadows x:Key="ShadowPop">0 8 28 0 #29000000</BoxShadows>
+  <BoxShadows x:Key="ShadowDlg">0 10 45 0 #40000000</BoxShadows>
+  <!-- END GENERATED COLORS -->
+
+  <!-- 渐变（只用令牌颜色，§4.2） -->
+  <!-- 图标栏：180°，side-1 → side-2 -->
+  <LinearGradientBrush x:Key="SideGradientBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="{StaticResource Side1Color}" />
+    <GradientStop Offset="1" Color="{StaticResource Side2Color}" />
   </LinearGradientBrush>
-  <LinearGradientBrush x:Key="BtnGradient" StartPoint="0%,0%" EndPoint="0%,100%">
-    <GradientStop Offset="0" Color="#f5f5f6" />
-    <GradientStop Offset="1" Color="#e7e7e9" />
+  <!-- 当前步骤卡片：105°，g-1 → g-2（CSS 105° 的近似） -->
+  <LinearGradientBrush x:Key="StepActiveGradientBrush" StartPoint="0%,37%" EndPoint="100%,63%">
+    <GradientStop Offset="0" Color="{StaticResource G1Color}" />
+    <GradientStop Offset="1" Color="{StaticResource G2Color}" />
   </LinearGradientBrush>
-  <LinearGradientBrush x:Key="GreenCardGradient" StartPoint="0%,0%" EndPoint="100%,100%">
-    <GradientStop Offset="0" Color="#f7fff1" />
-    <GradientStop Offset="1" Color="#efffdf" />
+  <!-- 进度：已完成 g-2 → g-3；运行中 g-2 → g-4（填充末端另画 1 px g-dot-line） -->
+  <LinearGradientBrush x:Key="ProgressDoneGradientBrush" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="{StaticResource G2Color}" />
+    <GradientStop Offset="1" Color="{StaticResource G3Color}" />
   </LinearGradientBrush>
-  <LinearGradientBrush x:Key="RunGradient" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Offset="0" Color="#f2ffe9" />
-    <GradientStop Offset="1" Color="#e5ffd0" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="RunningGradient" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Offset="0" Color="#efffe4" />
-    <GradientStop Offset="1" Color="#d9fbb9" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="PropertyCardGradient" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Offset="0" Color="#73ffffff" />
-    <GradientStop Offset="1" Color="#00ffffff" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="CanvasGradient" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Offset="0" Color="#66ffffff" />
-    <GradientStop Offset="0.2" Color="#00ffffff" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="WaitingGasGradient" StartPoint="0%,0%" EndPoint="100%,0%">
-    <GradientStop Offset="0" Color="#f1eefb" />
-    <GradientStop Offset="1" Color="#e5e0f5" />
+  <LinearGradientBrush x:Key="ProgressRunGradientBrush" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="{StaticResource G2Color}" />
+    <GradientStop Offset="1" Color="{StaticResource G4Color}" />
   </LinearGradientBrush>
 
-  <!-- 字体：Segoe UI（Windows）→ Arial；中文回退 PingFang SC / 微软雅黑 / Noto -->
-  <FontFamily x:Key="UiFont">Segoe UI, Arial, PingFang SC, Microsoft YaHei, Noto Sans CJK SC, Inter</FontFamily>
-  <FontFamily x:Key="ChartFont">Arial, Helvetica, PingFang SC</FontFamily>
-  <x:Double x:Key="Fs6">6</x:Double>
-  <x:Double x:Key="Fs7">7</x:Double>
-  <x:Double x:Key="Fs8">8</x:Double>
-  <x:Double x:Key="Fs9">9</x:Double>
-  <x:Double x:Key="Fs10">10</x:Double>
-  <x:Double x:Key="Fs11">11</x:Double>
-  <x:Double x:Key="Fs20">20</x:Double>
+  <!-- 字体（§4.3）：这里是产品目标 Windows 的栈；App.Initialize 在创建窗口前按系统写入 Application.Resources["UiFont"] -->
+  <FontFamily x:Key="UiFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei, fonts:Inter#Inter</FontFamily>
+  <!-- 只含中文字体（Theme/UiFonts.CjkStack）：字重混排的中文 Run 显式用它，绕过 Avalonia 11.1 回退沿用上一段字重的缺陷 -->
+  <FontFamily x:Key="UiFontCjk">Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+
+  <!-- 字号（§3 / §4.4）：任何文字 ≥ 13，中文 ≥ 14；13 只给数字 / 单位 / 刻度 / IP / SN / 时间 -->
+  <x:Double x:Key="FsNum">13</x:Double>
+  <x:Double x:Key="Fs2">14</x:Double>
+  <x:Double x:Key="FsBody">15</x:Double>
+  <x:Double x:Key="FsTitle">16</x:Double>
+  <x:Double x:Key="FsHead">18</x:Double>
+  <x:Double x:Key="FsReadS">20</x:Double>
+  <x:Double x:Key="FsRead24">24</x:Double>
+  <x:Double x:Key="FsRead">26</x:Double>
+  <x:Double x:Key="FsRead28">28</x:Double>
+  <x:Double x:Key="FsRead30">30</x:Double>
+  <!-- 正文行高 15 × 1.45 -->
+  <x:Double x:Key="LhBody">22</x:Double>
+
+  <!-- 外框（§3.1 / §4.4） -->
+  <x:Double x:Key="MenuH">34</x:Double>
+  <x:Double x:Key="TabsH">44</x:Double>
+  <x:Double x:Key="SideW">64</x:Double>
+  <x:Double x:Key="ExplorerW">300</x:Double>
+  <x:Double x:Key="ExplorerFloatW">320</x:Double>
+  <x:Double x:Key="InspW">330</x:Double>
+  <!-- 窗口宽 < 1920 时检查器 300 -->
+  <x:Double x:Key="InspWNarrow">300</x:Double>
+  <x:Double x:Key="TimelineH">220</x:Double>
+  <!-- 窗口高 < 1000 时 200；收起 40 -->
+  <x:Double x:Key="TimelineHShort">200</x:Double>
+  <x:Double x:Key="TimelineHCollapsed">40</x:Double>
+  <x:Double x:Key="TlActsW">128</x:Double>
+  <x:Double x:Key="StatusH">30</x:Double>
+
+  <!-- 控件（§3.1 / §4.4）。图标按钮、复选框、状态点的键名加 Size：旧令牌里已有画刷键 IconBtn -->
+  <x:Double x:Key="HeadH">42</x:Double>
+  <x:Double x:Key="RowH">36</x:Double>
+  <x:Double x:Key="CtlH">36</x:Double>
+  <x:Double x:Key="CtlHS">34</x:Double>
+  <x:Double x:Key="BtnLg">40</x:Double>
+  <x:Double x:Key="IconBtnSize">32</x:Double>
+  <x:Double x:Key="IconBtnSSize">28</x:Double>
+  <x:Double x:Key="BadgeH">26</x:Double>
+  <x:Double x:Key="ChipH">32</x:Double>
+  <x:Double x:Key="SegH">34</x:Double>
+  <x:Double x:Key="CheckBoxSize">18</x:Double>
+  <!-- 状态点 9 px，占 13 px 槽位（点和完成 ✓ 对齐） -->
+  <x:Double x:Key="DotSize">9</x:Double>
+  <x:Double x:Key="DotSlot">13</x:Double>
+  <!-- 图标：24 网格线描，默认 18 px，描边恒为 1.6 px（Controls/IconView） -->
+  <x:Double x:Key="IconSize">18</x:Double>
+  <x:Double x:Key="IconStroke">1.6</x:Double>
+
+  <!-- 间距：8 px 网格 · 面板内边距 16 · 卡片内边距 14–16 · 卡片间距 ≥ 10 -->
+  <x:Double x:Key="Gap">8</x:Double>
+  <x:Double x:Key="PanelPad">16</x:Double>
+  <x:Double x:Key="CardPad">14</x:Double>
+  <x:Double x:Key="CardGap">10</x:Double>
+  <Thickness x:Key="PanelPadding">16</Thickness>
+  <Thickness x:Key="CardPadding">14</Thickness>
+
+  <!-- 步骤画布（§4.4） -->
+  <x:Double x:Key="StepW">248</x:Double>
+  <x:Double x:Key="StepWMin">214</x:Double>
+  <x:Double x:Key="StepWMax">280</x:Double>
+  <!-- 每行只放一张时最多 300 -->
+  <x:Double x:Key="StepWSingle">300</x:Double>
+  <x:Double x:Key="ArrowW">56</x:Double>
+  <x:Double x:Key="CondOffset">22</x:Double>
+  <x:Double x:Key="CondH">44</x:Double>
+  <x:Double x:Key="StepTitleH">44</x:Double>
+  <!-- 画布缩放档位 1 / 1.15 / 1.3（不小于 100 %） -->
+  <x:Double x:Key="StepZoom1">1</x:Double>
+  <x:Double x:Key="StepZoom2">1.15</x:Double>
+  <x:Double x:Key="StepZoom3">1.3</x:Double>
+
+  <!-- 圆角 -->
+  <CornerRadius x:Key="Radius">6</CornerRadius>
+  <CornerRadius x:Key="RadiusS">4</CornerRadius>
+  <CornerRadius x:Key="RadiusDlg">8</CornerRadius>
+  <CornerRadius x:Key="RadiusStep">2</CornerRadius>
+
+  <!-- 过渡：120 ms（Background / BorderBrush / Foreground 用 BrushTransition，Opacity 用 DoubleTransition）；
+       根元素带 .frozen（演示冻结、截图）时不要过渡和动画（Theme/Frozen.cs） -->
+  <x:TimeSpan x:Key="Ease">0:0:0.12</x:TimeSpan>
 </ResourceDictionary>

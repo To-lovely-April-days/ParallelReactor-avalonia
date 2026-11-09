@@ -1,0 +1,95 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.MiscSection">
+  <!-- 提示 · 表格 · 键值 · 倒计时 · 空状态（MOCK #/gallery 最后一个分区）：3 列 ——
+       ① 四种提示条（中性带粗体 / 提醒 / 报警 / 强调），间距 10；② 设备表（第 1 行选中）+ 键值表；③ 倒计时环 128 + 空状态，间距 24 -->
+  <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="16">
+    <StackPanel Spacing="10">
+      <pr:Note>
+        <!-- 粗体段：pr:Note 自动套用 b:Pr.CjkRuns（11.1 回退缺陷的绕过，粗体段和它后面的一段改用 UiFontCjk） -->
+        <TextBlock TextWrapping="Wrap" LineHeight="21">
+          <Run Text="急停" /><Run Text="不需要控制权" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="，连接正常就会发送。" />
+        </TextBlock>
+      </pr:Note>
+      <pr:Note Tone="Warn" Content="RV3 升温较慢 · 已用 18 min" />
+      <pr:Note Tone="Err" Content="RV11 超压报警 · SV11 已关闭" />
+      <pr:Note Tone="Info" Content="检查器：3号机 · RV11（不是当前页签）" />
+    </StackPanel>
+
+    <StackPanel x:Name="TableHost" Grid.IsSharedSizeScope="True">
+      <!-- 表格：表头 40（bg-head、下边 line-2、14 px 600 t-3）+ 行 44（下边 line-faint；可点行悬停 bg-hover，选中 a-soft），单元格左右 12；
+           列宽同样稿 1920 时的自动表格布局（77 / 剩余 / 134）；放不下型号全文时状态列只占内容宽度、把空间先让给型号列（同自动表格布局），
+           还放不下才省略型号（带提示），别名和状态不缩（代码见 MiscSection.axaml.cs） -->
+      <ContentControl Theme="{StaticResource PrTableHead}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" MinWidth="77" SharedSizeGroup="c0" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" MinWidth="134" SharedSizeGroup="c2" />
+            </Grid.ColumnDefinitions>
+          <TextBlock Margin="12,0" Text="别名" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="1" Margin="12,0" Text="型号" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Margin="12,0" Text="状态" VerticalAlignment="Center" />
+        </Grid>
+      </ContentControl>
+      <ListBox Theme="{StaticResource PrListBox}" SelectedIndex="0">
+        <ListBoxItem Theme="{StaticResource PrTableRow}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" MinWidth="77" SharedSizeGroup="c0" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" MinWidth="134" SharedSizeGroup="c2" />
+            </Grid.ColumnDefinitions>
+            <pr:DevTag Margin="12,0" Alias="1号机" />
+            <TextBlock Grid.Column="1" Margin="12,0" Text="{x:Static g:GalleryDemo.Model1}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{x:Static g:GalleryDemo.Model1}" />
+            <pr:ConnBadge Grid.Column="2" Margin="12,0" State="Online" />
+          </Grid>
+        </ListBoxItem>
+        <ListBoxItem Theme="{StaticResource PrTableRow}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" MinWidth="77" SharedSizeGroup="c0" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" MinWidth="134" SharedSizeGroup="c2" />
+            </Grid.ColumnDefinitions>
+            <pr:DevTag Margin="12,0" Alias="2号机" />
+            <TextBlock Grid.Column="1" Margin="12,0" Text="{x:Static g:GalleryDemo.Model2}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{x:Static g:GalleryDemo.Model2}" />
+            <pr:ConnBadge Grid.Column="2" Margin="12,0" State="Online" />
+          </Grid>
+        </ListBoxItem>
+        <ListBoxItem Theme="{StaticResource PrTableRow}">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" MinWidth="77" SharedSizeGroup="c0" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" MinWidth="134" SharedSizeGroup="c2" />
+            </Grid.ColumnDefinitions>
+            <pr:DevTag Margin="12,0" Alias="3号机" />
+            <TextBlock Grid.Column="1" Margin="12,0" Text="{x:Static g:GalleryDemo.Model3}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{x:Static g:GalleryDemo.Model3}" />
+            <pr:ConnBadge Grid.Column="2" Margin="12,0" State="Online" />
+          </Grid>
+        </ListBoxItem>
+      </ListBox>
+      <pr:Kv Margin="0,10,0,0">
+        <TextBlock Text="型号" />
+        <TextBlock Text="{x:Static g:GalleryDemo.Model1}" />
+        <TextBlock Text="SN" />
+        <TextBlock Classes="num" Text="PR8-2026-0001" />
+        <TextBlock Text="接口" />
+        <TextBlock Text="v1.2" />
+      </pr:Kv>
+    </StackPanel>
+
+    <!-- 环固定 128，空状态拿剩余宽度（窄时说明换行，同样稿 flex 收缩） -->
+    <Grid ColumnDefinitions="Auto,*" VerticalAlignment="Top">
+      <pr:Ring Value="32" Maximum="60" Diameter="128" Thickness="8" Text="32" Unit="s" Label="剩余" VerticalAlignment="Center" />
+      <pr:Empty Grid.Column="1" Margin="24,0,0,0" Icon="devices" Title="还没有设备" Text="点「添加」连接第一台设备"
+                HorizontalAlignment="Left" VerticalAlignment="Center" />
+    </Grid>
+  </g:GalleryGrid>
+</UserControl>

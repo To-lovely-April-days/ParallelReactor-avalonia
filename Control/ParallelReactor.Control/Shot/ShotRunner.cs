@@ -24,8 +24,9 @@ namespace ParallelReactor.Control.Shot;
 ///  perf-report 同上但勾 T0Q + S1Q（≈1 min，含加热 60 ℃ 保温 30 s），全自动应答 → 生成报告视图 → perf-report.png；shot.log 记 report.html 路径
 ///  输出目录：PR_CONTROL_DATA/perf/&lt;runId&gt;/（截图时请把 PR_CONTROL_DATA 指到 scratch）。
 /// 全部完成 Shutdown(0)；异常写 &lt;dir&gt;/error.txt 并 Shutdown(2)。
+/// 演示模式（PR_CONTROL_DEMO=1，不连接任何设备，按 ShotPlan 截图 + 审计 + 对照）见 ShotRunner.Demo.cs。
 /// </summary>
-public static class ShotRunner
+public static partial class ShotRunner
 {
     public static void Start(Window window, MainViewModel vm, IClassicDesktopStyleApplicationLifetime desktop, string dir)
         => Dispatcher.UIThread.Post(() => _ = RunAsync(window, vm, desktop, dir), DispatcherPriority.Background);

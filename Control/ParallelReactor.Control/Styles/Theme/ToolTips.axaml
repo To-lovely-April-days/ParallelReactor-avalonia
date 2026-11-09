@@ -1,0 +1,35 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <!-- 悬停提示 PrTip（样稿 shell.css .pr-tip）：toast 深色底 + 白字 14 px、行高 1.5、内边距 7 11、圆角 6、最宽 400、ShadowPop。
+       显示延时是挂在宿主控件上的附加属性（ToolTip.ShowDelay 400 / BetweenShowDelay 300）：Pr 主题的可交互控件都设了；
+       原因提示（Behaviors/Reason.cs）直接给出套了本主题的 ToolTip，前面一个 14 px 锁图标。
+       M1 的组件陈列页把本主题设成页内 ToolTip 的默认主题；M2 起全局默认。 -->
+  <ControlTheme x:Key="PrTip" TargetType="ToolTip">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource ToastBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Padding" Value="11,7" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="MaxWidth" Value="400" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_LayoutRoot"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}"
+                BoxShadow="{StaticResource ShadowPop}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            TextWrapping="Wrap"
+                            LineHeight="21" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

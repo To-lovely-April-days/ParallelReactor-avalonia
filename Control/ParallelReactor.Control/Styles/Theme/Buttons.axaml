@@ -1,0 +1,382 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 按钮（PORT-PLAN §4.6；样稿 base.css .pr-btn* / .pr-linkbtn / .pr-icon-btn）。全部带 x:Key，显式使用（M2 起改为默认主题）。
+       次要（默认）= 白底 line 边框，悬停 a-tint / a-line；主要 = 紫色实心，每个区域只放一个；停止类 = 次要按钮 + 深灰实心方块；
+       单台急停 = 白底红字红框（只在检查器）；红色实心只给全局急停和急停对话框里的确认。
+       图标用附加属性 b:Pr.Icon；尺寸类 sm（34）/ lg（40）/ wide；禁用（IsEnabled=false）与 b:Pr.Reason（伪类 :reason）同样的外观，
+       禁用样式写在每个主题的最后（同一主题里后写的样式优先，派生主题的悬停不会盖过禁用）。
+       焦点：:focus-visible 时在控件外 2 px 处画 2 px a-d 环（PART_Focus），不用 FocusAdorner。 -->
+
+  <ControlTheme x:Key="PrButton" TargetType="Button">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="Height" Value="{StaticResource CtlH}" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="7"
+                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+              <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}"
+                          VerticalAlignment="Center"
+                          IsVisible="{TemplateBinding (b:Pr.Icon), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <ContentPresenter Name="PART_ContentPresenter"
+                                Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Foreground="{TemplateBinding Foreground}"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"
+                                IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <!-- 模板元素的默认值写成样式（不写在模板里）：模板里的局部值优先级高于不带条件的样式，派生主题就改不动了 -->
+    <Style Selector="^ /template/ Border#PART_Body">
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+    </Style>
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_Body">
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 尺寸：紧凑 34（图标 16、间距 6）· 大 40 · 撑满 -->
+    <Style Selector="^.sm">
+      <Setter Property="Height" Value="{StaticResource CtlHS}" />
+      <Setter Property="Padding" Value="12,0" />
+    </Style>
+    <Style Selector="^.sm /template/ StackPanel#PART_Row">
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="^.sm /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="16" />
+    </Style>
+    <Style Selector="^.lg">
+      <Setter Property="Height" Value="{StaticResource BtnLg}" />
+      <Setter Property="Padding" Value="18,0" />
+    </Style>
+    <Style Selector="^.wide">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+    </Style>
+    <!-- 禁用 / 原因（最后写） -->
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="^:disabled /template/ Border#PART_Body, ^:reason /template/ Border#PART_Body">
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 主要：紫色实心（每个区域只有一个）；类 stop = 主要操作本身就是停止（白色实心方块，仍然不用红色） -->
+  <ControlTheme x:Key="PrPrimary" TargetType="Button" BasedOn="{StaticResource PrButton}">
+    <Setter Property="Background" Value="{StaticResource ABrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource ADBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ADBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource AInkBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^.stop /template/ c|IconView#PART_Icon">
+      <Setter Property="Fill" Value="True" />
+      <Setter Property="StrokeWidth" Value="1" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 停止类：次要按钮 + 深灰（t-2）实心方块图标（全部停止 / 停止 / 停用 / 停止加热 / 中止 / 停止搅拌） -->
+  <ControlTheme x:Key="PrStop" TargetType="Button" BasedOn="{StaticResource PrButton}">
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="Fill" Value="True" />
+      <Setter Property="StrokeWidth" Value="1" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 单台急停（只在检查器）：白底、r-ink 字 600、r-line 边、r 图标；悬停 / 按下 r-bg + r 边 -->
+  <ControlTheme x:Key="PrEstopOutline" TargetType="Button" BasedOn="{StaticResource PrButton}">
+    <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^:pointerover, ^:pressed">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 唯一的红色实心：全局「急停」（类 estop：最小宽 112）与急停对话框的确认 -->
+  <ControlTheme x:Key="PrDanger" TargetType="Button" BasedOn="{StaticResource PrButton}">
+    <Setter Property="Background" Value="{StaticResource RBtnBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource RBtnBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^:pointerover, ^:pressed">
+      <Setter Property="Background" Value="{StaticResource RBtnDBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RBtnDBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="^.estop">
+      <Setter Property="MinWidth" Value="112" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 幽灵按钮：透明、无边框无阴影；悬停 bg-press + t-1；按下仍是 bg-press（样稿 CSS 里幽灵按钮的 :hover 写在 .pr-btn:active 之后，按下时悬停色胜出） -->
+  <ControlTheme x:Key="PrGhost" TargetType="Button" BasedOn="{StaticResource PrButton}">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Style Selector="^ /template/ Border#PART_Body">
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:pointerover /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 文字链接按钮：a-d 14 px 500，点击区 ≥ 32 px 高；悬停 a-tint、按下 a-soft；图标 15 -->
+  <ControlTheme x:Key="PrLink" TargetType="Button">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+              <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Size="15" VerticalAlignment="Center"
+                          IsVisible="{TemplateBinding (b:Pr.Icon), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}"
+                                Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" RecognizesAccessKey="True" />
+            </StackPanel>
+          </Border>
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 图标按钮 32 × 32：灰色图标 t-3，悬停 bg-press + t-1，按下 line-soft；激活（类 on 或 ToggleButton 选中）a-soft + a-d；
+       类 stop = 停止色调（深灰实心方块 15 px，不用红色）；提示与无障碍名由使用处给（ToolTip.Tip / AutomationProperties.Name） -->
+  <ControlTheme x:Key="PrIconButton" TargetType="Button">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Width" Value="{StaticResource IconBtnSize}" />
+    <Setter Property="Height" Value="{StaticResource IconBtnSize}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+            <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Foreground="{TemplateBinding Foreground}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="18" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource LineSoftBrush}" />
+    </Style>
+    <Style Selector="^.on, ^:checked">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^.stop">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^.stop /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="15" />
+      <Setter Property="Fill" Value="True" />
+      <Setter Property="StrokeWidth" Value="1" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 紧凑图标按钮 28 × 28（图标 16） -->
+  <ControlTheme x:Key="PrIconButtonS" TargetType="Button" BasedOn="{StaticResource PrIconButton}">
+    <Setter Property="Width" Value="{StaticResource IconBtnSSize}" />
+    <Setter Property="Height" Value="{StaticResource IconBtnSSize}" />
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="16" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

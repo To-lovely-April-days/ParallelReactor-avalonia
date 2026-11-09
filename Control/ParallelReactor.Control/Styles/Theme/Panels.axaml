@@ -1,0 +1,135 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 面板与属性卡片（样稿 base.css .pr-panel* / .pr-prop* / .pr-subhead）。 -->
+
+  <!-- 面板：标题栏 42（左 10 右 6、间距 8）+ 内容；标题栏 bg-head + 下边 line-2，内容区 bg-panel -->
+  <ControlTheme x:Key="{x:Type pr:PrPanel}" TargetType="pr:PrPanel">
+    <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel Background="{TemplateBinding Background}">
+          <Border Name="PART_Head" DockPanel.Dock="Top" Height="{StaticResource HeadH}" Background="{StaticResource BgHeadBrush}"
+                  BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1" Padding="10,0,6,0">
+            <pr:FlexRow Spacing="8">
+              <Border Name="PART_Grip" Width="20" Height="32" Background="Transparent" Cursor="SizeAll"
+                      ToolTip.Tip="拖动停靠（第二阶段）" IsVisible="{TemplateBinding ShowGrip}">
+                <c:IconView Icon="move" Size="16" Foreground="{StaticResource TDisBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <c:IconView Name="PART_Icon" Icon="{TemplateBinding Icon}" Size="18" Foreground="{StaticResource T3Brush}"
+                          IsVisible="{TemplateBinding Icon, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Border Name="PART_TitleHost" Background="Transparent" ToolTip.Tip="{TemplateBinding ShownTitleTip}" pr:FlexRow.Shrink="1">
+                <ContentPresenter Name="PART_Title" Content="{TemplateBinding TitleContent}"
+                                  FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                  VerticalAlignment="Center" />
+              </Border>
+              <TextBlock Name="PART_Sub" Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                         TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Sub}" pr:FlexRow.Shrink="100"
+                         IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <StackPanel Name="PART_Actions" Orientation="Horizontal" Spacing="2" pr:FlexRow.PushRight="True">
+                <ContentPresenter Content="{TemplateBinding Actions}" VerticalAlignment="Center"
+                                  IsVisible="{TemplateBinding Actions, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button Name="PART_Max" Theme="{StaticResource PrIconButton}" b:Pr.Icon="{TemplateBinding MaxIcon}"
+                        ToolTip.Tip="{TemplateBinding MaxTip}" AutomationProperties.Name="{TemplateBinding MaxTip}" IsVisible="{TemplateBinding CanMaximize}" />
+                <Button Name="PART_Close" Theme="{StaticResource PrIconButton}" b:Pr.Icon="x"
+                        ToolTip.Tip="关闭面板" AutomationProperties.Name="关闭面板" IsVisible="{TemplateBinding CanClose}" />
+              </StackPanel>
+            </pr:FlexRow>
+          </Border>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:closed">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 属性卡片底色：白 60 % → 0 的横向渐变（样稿 linear-gradient(90deg, rgba(255,255,255,.6), rgba(255,255,255,0))） -->
+  <LinearGradientBrush x:Key="PropCardBgBrush" StartPoint="0%,0%" EndPoint="100%,0%" Opacity="0.6">
+    <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
+    <GradientStop Offset="1" Color="Transparent" />
+  </LinearGradientBrush>
+
+  <!-- 属性卡片：路径行 24 + 主体 58（图标 30 | 名称 … 读数 28/600 / 说明 600 … 单位），下边 line-2，实时值右侧 4 px g-edge -->
+  <ControlTheme x:Key="{x:Type pr:PropCard}" TargetType="pr:PropCard">
+    <Setter Property="Background" Value="{StaticResource PropCardBgBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}">
+          <Border Name="PART_EdgeBox" BorderBrush="{StaticResource GEdgeBrush}" BorderThickness="0">
+            <DockPanel>
+              <pr:FlexRow DockPanel.Dock="Top" Height="24" Spacing="6" Margin="2,0">
+                <c:IconView Icon="tree" Size="15" Foreground="{StaticResource T3Brush}" />
+                <TextBlock Text="{TemplateBinding PathText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding PathText}" pr:FlexRow.Shrink="1" />
+                <Button Name="PART_Close" Theme="{StaticResource PrIconButtonS}" Width="24" Height="24" b:Pr.Icon="x"
+                        ToolTip.Tip="隐藏属性" AutomationProperties.Name="隐藏属性" pr:FlexRow.PushRight="True"
+                        IsVisible="{TemplateBinding ShowClose}" />
+              </pr:FlexRow>
+              <!-- 主体 58 = 两行 32 + 22 + 下内边距 4（box-sizing: border-box） -->
+              <Grid Height="54" Margin="6,0,16,4" ColumnDefinitions="Auto,*,Auto" RowDefinitions="32,22">
+                <c:IconView Grid.RowSpan="2" Icon="{TemplateBinding Icon}" Size="30" Foreground="{StaticResource T1Brush}"
+                            VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Margin="14,0,0,0" Text="{TemplateBinding Title}" FontSize="{StaticResource FsBody}"
+                           LineHeight="22" Foreground="{StaticResource T2Brush}" VerticalAlignment="Bottom"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Title}" />
+                <TextBlock Name="PART_Value" Grid.Column="2" Margin="14,0,0,0" Classes="num" Text="{TemplateBinding ShownValue}"
+                           FontSize="{StaticResource FsRead28}" FontWeight="SemiBold" LineHeight="32" Foreground="{StaticResource T1Brush}"
+                           VerticalAlignment="Bottom" HorizontalAlignment="Right" />
+                <pr:FlexRow Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Margin="14,0,0,0" Spacing="8" VerticalAlignment="Top">
+                  <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" LineHeight="22"
+                             Foreground="{StaticResource T1Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Sub}"
+                             pr:FlexRow.Shrink="1" />
+                  <TextBlock Name="PART_Unit" Text="{TemplateBinding UnitText}" FontSize="{StaticResource Fs2}" LineHeight="22"
+                             Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding UnitText}"
+                             pr:FlexRow.Shrink="1" pr:FlexRow.PushRight="True" />
+                </pr:FlexRow>
+              </Grid>
+            </DockPanel>
+          </Border>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:edge /template/ Border#PART_EdgeBox">
+      <Setter Property="BorderThickness" Value="0,0,4,0" />
+    </Style>
+    <Style Selector="^:na /template/ TextBlock#PART_Value">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="^:stale /template/ TextBlock#PART_Value">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 分区小标题：16 px 600 t-1、最小高 24；右侧内容靠右（400） -->
+  <ControlTheme x:Key="{x:Type pr:Subhead}" TargetType="pr:Subhead">
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <pr:FlexRow Spacing="8" MinHeight="{TemplateBinding MinHeight}">
+          <TextBlock Text="{TemplateBinding Title}" FontWeight="SemiBold" Foreground="{TemplateBinding Foreground}"
+                     TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Title}" pr:FlexRow.Shrink="1" />
+          <ContentPresenter Content="{TemplateBinding Right}" FontWeight="Normal" pr:FlexRow.PushRight="True" pr:FlexRow.Shrink="1"
+                            IsVisible="{TemplateBinding Right, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </pr:FlexRow>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

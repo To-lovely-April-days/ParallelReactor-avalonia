@@ -1,0 +1,181 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr">
+  <!-- 徽标与状态（样稿 base.css .pr-badge* · pr-lease 与 pr-conn 的各状态 · .pr-dot / .pr-stword / .pr-devtag）。
+       全部中性：报警 = 红点，提醒 = 描边 ⚠，运行 = 浅绿点；状态靠字区分，不靠色相。 -->
+
+  <!-- 徽标：高 26、左右 9、圆角 4、bg-sunken 底、14 px 500 t-3；8 px 点 / 15 px 图标，间距 6 -->
+  <ControlTheme x:Key="{x:Type pr:Badge}" TargetType="pr:Badge">
+    <Setter Property="Height" Value="{StaticResource BadgeH}" />
+    <Setter Property="Padding" Value="9,0" />
+    <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="FontWeight" Value="Medium" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="False" />
+            <c:IconView Name="PART_Icon" Icon="{TemplateBinding ShownIcon}" Size="15" Foreground="{TemplateBinding Foreground}"
+                        VerticalAlignment="Center" IsVisible="False" />
+            <TextBlock Name="PART_Text" Text="{TemplateBinding ShownText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:dot /template/ Ellipse#PART_Dot">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:icon /template/ c|IconView#PART_Icon">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:ok">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^:ok /template/ Ellipse#PART_Dot">
+      <Setter Property="Fill" Value="{StaticResource GDotBrush}" />
+    </Style>
+    <Style Selector="^:warn">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:err">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="^:err /template/ Ellipse#PART_Dot">
+      <Setter Property="Fill" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^:err /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^:info">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^:info /template/ Ellipse#PART_Dot">
+      <Setter Property="Fill" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="^:info /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 控制权：远程 a-soft + 钥匙 a-d；本地只读 灰 + 锁 t-3；申请中 白底 a-line 边 + 时钟 a-d；宽限 红 -->
+  <ControlTheme x:Key="{x:Type pr:LeaseBadge}" TargetType="pr:LeaseBadge" BasedOn="{StaticResource {x:Type pr:Badge}}">
+    <Style Selector="^:remote">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^:remote /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+    <Style Selector="^:local">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="^:requested">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^:requested /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+    <Style Selector="^:lost">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="^:lost /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 连接：已连接 / 已断开 灰；正在连接 白底 line 边 t-2；连接中断 红 -->
+  <ControlTheme x:Key="{x:Type pr:ConnBadge}" TargetType="pr:ConnBadge" BasedOn="{StaticResource {x:Type pr:Badge}}">
+    <Style Selector="^:online, ^:disconnected">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="^:connecting">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^:connecting /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="^:offline">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="^:offline /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 状态：点 + 字（陈列页 .gallery-st：间距 7、15 px、行高 1.45 取整 21）；类 badge = 徽标版（高 26、14 px、8 px 点、间距 6、左右 2、行高 1） -->
+  <ControlTheme x:Key="{x:Type pr:StateBadge}" TargetType="pr:StateBadge">
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Name="PART_Row" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center" Margin="{TemplateBinding Padding}">
+          <pr:KeyDot Name="PART_Dot" Key="{TemplateBinding Key}" VerticalAlignment="Center" />
+          <TextBlock Name="PART_Word" Classes="stword" Text="{TemplateBinding ShownText}"
+                     Foreground="{TemplateBinding WordBrush}" FontWeight="{TemplateBinding WordWeight}" VerticalAlignment="Center"
+                     LineHeight="21" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.badge">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Height" Value="{StaticResource BadgeH}" />
+      <Setter Property="Padding" Value="2,0" />
+    </Style>
+    <Style Selector="^.badge /template/ StackPanel#PART_Row">
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="^.badge /template/ TextBlock#PART_Word">
+      <Setter Property="LineHeight" Value="NaN" />
+    </Style>
+    <Style Selector="^.badge /template/ pr|KeyDot#PART_Dot">
+      <Setter Property="Diameter" Value="8" />
+      <Setter Property="Slot" Value="8" />
+    </Style>
+    <Style Selector="^.badge:done /template/ pr|KeyDot#PART_Dot">
+      <Setter Property="Slot" Value="14" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 设备标识：别名 600 t-1（太长省略）+ 型号 14 px t-3，基线对齐、间距 8 -->
+  <ControlTheme x:Key="{x:Type pr:DevTag}" TargetType="pr:DevTag">
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <c:BaselineStack Spacing="8" Background="Transparent" ToolTip.Tip="{TemplateBinding Tip}">
+          <TextBlock Name="PART_Alias" Text="{TemplateBinding Alias}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                     TextTrimming="CharacterEllipsis" />
+          <TextBlock Name="PART_Model" Text="{TemplateBinding Model}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                     IsVisible="{TemplateBinding Model, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </c:BaselineStack>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

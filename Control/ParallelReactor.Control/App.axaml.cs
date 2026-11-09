@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using ParallelReactor.Control.Services;
+using ParallelReactor.Control.Theme;
 using ParallelReactor.Control.ViewModels;
 using ParallelReactor.Control.Views;
 
@@ -12,12 +13,22 @@ namespace ParallelReactor.Control;
 
 public partial class App : Application
 {
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+        // UiFont 按操作系统选择（PORT-PLAN §4.3），必须在创建任何窗口之前写入；旧窗口用 LegacyUiFont，不受影响
+        Resources["UiFont"] = UiFonts.Create();
+        Resources["UiFontCjk"] = UiFonts.CreateCjk();
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+#if DEBUG
+            // 演示模式（PR_CONTROL_DEMO=1，仅 Debug）：不连接任何设备，只开组件陈列 / 跑截图计划（Shot/ShotRunner.Demo.cs）
+            if (Shot.ShotRunner.IsDemo) { Shot.ShotRunner.StartDemo(desktop); base.OnFrameworkInitializationCompleted(); return; }
+#endif
             var config = ControlConfig.Load();
             var vm = new MainViewModel(new ConnectionService(), config);
             var window = new MainWindow { DataContext = vm };

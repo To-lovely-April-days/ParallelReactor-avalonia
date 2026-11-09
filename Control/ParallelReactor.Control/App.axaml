@@ -6,8 +6,22 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
+        <!-- 旧令牌（旧视图用，键名不变，M7 删除）+ 新令牌（pc-v3，PORT-PLAN §4）：两边键名不重叠 -->
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/LegacyTokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Tokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Icons.axaml" />
+        <!-- pc-v3 控件主题（PORT-PLAN §4.6）：全部带 x:Key（或以 Pr 自己的控件类型为键），旧界面不会用到；按依赖顺序合并 -->
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ScrollBars.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ToolTips.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Buttons.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Inputs.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Tabs.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Menus.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Lists.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Badges.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Panels.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Components.axaml" />
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/Dialogs.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
@@ -20,5 +34,7 @@
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Timeline.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Dialogs.axaml" />
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Perf.axaml" />
+    <!-- 新样式（pc-v3）：只匹配新类名（num、frozen …），旧视图不受影响 -->
+    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Typography.axaml" />
   </Application.Styles>
 </Application>
