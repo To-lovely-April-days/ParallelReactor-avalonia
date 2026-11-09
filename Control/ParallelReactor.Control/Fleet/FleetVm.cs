@@ -92,7 +92,7 @@ public sealed partial class FleetVm : ObservableObject, IFleetView, IAsyncDispos
 
     /// <summary>
     /// 「全部停止」连搅拌一起停（HMI POST /stop-all 的 stopStir）。默认取 Core 的 <see cref="ControlOptions.StopAllStopsStirring"/>（全软件只有那一处设置，
-    /// 等用户确认）；界面上没有入口，只有测试换值。演示数据和之后新连的实时设备都用这个值；全部停止对话框的副标题、说明和提示也按它写（Core 的 StopAllText）。
+    /// 用户已确认：连搅拌一起停）；界面上没有入口，只有测试换值。演示数据和之后新连的实时设备都用这个值；全部停止对话框的副标题、说明和提示也按它写（Core 的 StopAllText）。
     /// </summary>
     public bool StopAllStopsStirring
     {

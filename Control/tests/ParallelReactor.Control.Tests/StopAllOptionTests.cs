@@ -9,38 +9,47 @@ using Xunit;
 namespace ParallelReactor.Control.Tests;
 
 /// <summary>
-/// 「全部停止」停不停搅拌（Core 的 ControlOptions.StopAllStopsStirring，等用户确认）：两种取值下的文字与演示数据的效果。
-/// 测试不假定默认值是哪一个（改默认只改 ControlOptions 那一行，测试不用跟着改），只核对三件事：默认值取自那一行；两种取值各自的效果；
-/// 不停搅拌时文字逐字同样稿。实时设备与对话框的接线在 ParallelReactor.Control.App.Tests 的 StopAllStirringTests。
+/// 「全部停止」停不停搅拌（Core 的 ControlOptions.StopAllStopsStirring，用户已确认默认连搅拌一起停）：两种取值下的文字与演示数据的效果。
+/// 除了 Default_IsStopStirring_AsTheUserConfirmed 钉住用户的决定，其余测试不假定默认值是哪一个（改默认只改 ControlOptions 那一行，再改这一个测试），只核对三件事：默认值取自那一行；两种取值各自的效果；
+/// 连搅拌一起停时文字逐字同样稿（样稿 2026-11-09 已同步），不停搅拌时是样稿第一版的文字。实时设备与对话框的接线在 ParallelReactor.Control.App.Tests 的 StopAllStirringTests。
 /// </summary>
 public class StopAllOptionTests
 {
-    // 样稿原文：js/dialogs.js 的 stopall 对话框（副标题、说明，粗体去掉）
-    private const string MockSub = "停止所选设备上全部反应釜：中止程序、停止加热、关闭进气";
-    private const string MockNote = "全部停止不需要控制权，连接正常就会发送（本机看到的状态可能滞后，所以不会因为「看起来没在运行」而跳过）。搅拌保持当前状态；需要彻底切断请用急停。";
+    // 样稿原文：js/dialogs.js 的 stopall 对话框（副标题、说明，粗体去掉）—— 连搅拌一起停（用户 2026-11-09 确认，样稿已同步）
+    private const string MockSub = "停止所选设备上全部反应釜：中止程序、停止加热、关闭进气、停止搅拌";
+    private const string MockNote = "全部停止不需要控制权，连接正常就会发送（本机看到的状态可能滞后，所以不会因为「看起来没在运行」而跳过）。搅拌也会一并停止；需要立即切断并锁定请用急停。";
+    // 样稿第一版（搅拌保持当前状态）：开关为 false 时的文字
+    private const string FirstSub = "停止所选设备上全部反应釜：中止程序、停止加热、关闭进气";
+    private const string FirstNote = "全部停止不需要控制权，连接正常就会发送（本机看到的状态可能滞后，所以不会因为「看起来没在运行」而跳过）。搅拌保持当前状态；需要彻底切断请用急停。";
 
     [Fact]
-    public void Texts_KeepStirring_AreTheMockWording()
+    public void Texts_StopStirring_AreTheMockWording()
     {
-        Assert.Equal(MockSub, StopAllText.Sub(false));
-        Assert.Equal(MockNote, StopAllText.Note(false));
+        Assert.Equal(MockSub, StopAllText.Sub(true));
+        Assert.Equal(MockNote, StopAllText.Note(true));
+        Assert.Equal("搅拌也会一并停止；需要立即切断并锁定请用急停。", StopAllText.StirNote(true));
+        Assert.DoesNotContain("搅拌保持当前状态", StopAllText.Note(true));
+        Assert.Equal(" · 搅拌一并停止", StopAllText.StirSuffix(true));
+        Assert.Equal("全部停止已发送到 2 台：1号机、2号机 · 搅拌一并停止", StopAllText.Sent(new[] { "1号机", "2号机" }, true));   // dialogs.js stopall 的 toast
+        Assert.Equal("已停止 3 个反应釜 · 搅拌一并停止", StopAllText.Stopped(3, true));                                          // sim.js RUN.stopAll
+        Assert.Equal("没有运行中的反应釜 · 已发送全部停止 · 搅拌一并停止", StopAllText.NothingRunning(true));
+    }
+
+    [Fact]
+    public void Texts_KeepStirring_AreTheFirstMockWording()
+    {
+        Assert.Equal(FirstSub, StopAllText.Sub(false));
+        Assert.Equal(FirstNote, StopAllText.Note(false));
         Assert.Equal("搅拌保持当前状态；需要彻底切断请用急停。", StopAllText.StirNote(false));
         Assert.Equal("", StopAllText.StirSuffix(false));
-        Assert.Equal("全部停止已发送到 2 台：1号机、2号机", StopAllText.Sent(new[] { "1号机", "2号机" }, false));   // dialogs.js stopall 的 toast
-        Assert.Equal("已停止 3 个反应釜", StopAllText.Stopped(3, false));                                          // sim.js RUN.stopAll
+        Assert.Equal("全部停止已发送到 1 台：3号机", StopAllText.Sent(new[] { "3号机" }, false));
+        Assert.Equal("已停止 3 个反应釜", StopAllText.Stopped(3, false));
         Assert.Equal("没有运行中的反应釜 · 已发送全部停止", StopAllText.NothingRunning(false));
     }
 
     [Fact]
-    public void Texts_StopStirring_SayItAndNeverSayStirringKeepsRunning()
-    {
-        Assert.Equal(MockSub + "、停止搅拌", StopAllText.Sub(true));
-        Assert.Equal(MockNote.Replace("搅拌保持当前状态；需要彻底切断请用急停。", "搅拌也会一并停止。"), StopAllText.Note(true));
-        Assert.DoesNotContain("搅拌保持当前状态", StopAllText.Note(true));
-        Assert.Equal("全部停止已发送到 1 台：3号机 · 搅拌一并停止", StopAllText.Sent(new[] { "3号机" }, true));
-        Assert.Equal("已停止 3 个反应釜 · 搅拌一并停止", StopAllText.Stopped(3, true));
-        Assert.Equal("没有运行中的反应釜 · 已发送全部停止 · 搅拌一并停止", StopAllText.NothingRunning(true));
-    }
+    public void Default_IsStopStirring_AsTheUserConfirmed()
+        => Assert.True(ControlOptions.StopAllStopsStirring);   // 用户 2026-11-09：「把开关改成搅拌一起停止」
 
     [Fact]
     public void DemoFleet_DefaultsToTheOption()
