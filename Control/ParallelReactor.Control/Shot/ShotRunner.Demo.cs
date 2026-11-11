@@ -86,7 +86,7 @@ public static partial class ShotRunner
             if (!shot) ticker.Start();
             window = new MainWindow { DataContext = shellVm };
             window.Closed += (_, _) => { ticker.Dispose(); shellVm.Dispose(); };
-            if (!shot) shellVm.ApplyDemoParams(p0, Shell.Route.Parse(startRoute));
+            if (!shot) shellVm.ApplyStartParams(p0, Shell.Route.Parse(startRoute));
         }
 
         window.Width = size.Width; window.Height = size.Height;
@@ -234,7 +234,7 @@ public static partial class ShotRunner
     /// 按路由显示截图内容（新外壳）：样稿的地址参数（devs、lease、offline、alarm、estop、stress、explorer、tl、sel、dialog …）一律加 freeze=1，
     /// 交给 ShellVm.ApplyDemoParams（数据 → FleetVm，外框 → ShellLayout，再导航、选中、打开对话框）。整个窗口冻结。
     /// </summary>
-    private static void Show(Window window, ShotPlan.Spec spec, PixelSize size)
+    internal static void Show(Window window, ShotPlan.Spec spec, PixelSize size)
     {
         if (window.DataContext is not ShellVm vm) throw new InvalidOperationException("截图窗口不是新外壳（ShellVm）");
         var route = Shell.Route.Parse(spec.Route) ?? throw new NotSupportedException($"演示路由「{spec.Route}」不认识（overview、device/k、reactor/k/n、placeholder/名字、gallery）");
@@ -253,9 +253,37 @@ public static partial class ShotRunner
             demo2.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
             vm.Fleet.RefreshNow();
         }
-        else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice）");
+        else if (spec.Setup != null && spec.Setup is not ("rvprops" or "rvprogx" or "rvzoom1" or "rvzoom2" or "rvmaxprog"))
+            throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice、rvprops、rvprogx、rvzoom1、rvzoom2、rvmaxprog）");
         vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
         vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true }, route);
+        // 反应釜页：「釜体 / 属性查看器」从头来（rvprops = 点了「属性查看器」页签，同 snap 参照的 js 参数）；曲线回到近 30 min
+        if (vm.Page is Pages.ReactorPageVm rp)
+        {
+            rp.Vessel.ResetView(spec.Setup == "rvprops" ? Pages.ReactorVesselVm.PropsTabValue : Pages.ReactorVesselVm.VesselTabValue);
+            rp.Curves.ResetView();
+            rp.ResetView();
+            // 「程序」面板的交互（同 snap 参照的 js 参数）：放大画布一档 / 两档、关掉面板（提示「已关闭「程序 · …」」）、放大面板。
+            // 先排一遍：刚建的页面视图（UserControl 的模板在测量时才套上）这时还不在可视树里、画布也还不知道宽度（放大档要它）——
+            // 不排的话这几张截图的结果取决于前一张是不是同一个反应釜（截图计划的顺序）
+            if (spec.Setup is "rvprogx" or "rvzoom1" or "rvzoom2" or "rvmaxprog") window.UpdateLayout();
+            if (spec.Setup is "rvzoom1" or "rvzoom2")
+            {
+                rp.Program.ZoomInCommand.Execute(null);
+                if (spec.Setup == "rvzoom2") rp.Program.ZoomInCommand.Execute(null);
+            }
+            if (spec.Setup is "rvprogx" or "rvmaxprog"
+                && window.GetVisualDescendants().OfType<Views.Pages.Reactor.ReactorProgramPanel>().FirstOrDefault(p => ReferenceEquals(p.DataContext, rp.Program)) is { } prog)
+            {
+                var frame = prog.PanelControl;
+                if (spec.Setup == "rvmaxprog") frame.IsMaximized = true;
+                else
+                {
+                    frame.IsClosed = true;
+                    frame.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Controls.Pr.PrPanel.ClosedEvent));
+                }
+            }
+        }
         Frozen.Apply(window);
     }
 
@@ -278,6 +306,29 @@ public static partial class ShotRunner
         if (num != null) log.AppendLine($"  first .num TextBlock \"{num.Text}\" FontFeatures = {string.Join(" ", num.FontFeatures?.Select(f => f.ToString()) ?? Array.Empty<string>())}");
         var frozen = window.GetSelfAndVisualDescendants().OfType<StyledElement>().FirstOrDefault(e => e.Classes.Contains("frozen"));
         log.AppendLine($"  frozen root = {(frozen == null ? "(none)" : frozen.GetType().Name)} · IsFrozen = {(frozen == null ? false : Frozen.GetIsFrozen(frozen))}");
+        foreach (var line in ChartFacts(window)) log.AppendLine("  " + line);
+    }
+
+    /// <summary>
+    /// 画着的曲线（M5，Controls/Chart/TimeSeriesChart）：在窗口里的矩形、容器尺寸、刻度（左 / 右 / 时间）、参考线与标记文字 —— 与样稿同一个地址在 WebKit 里
+    /// 量到的（snap 探针 .reactor-chart / .overview-chart / .gallery-chart 的尺寸与 SVG）逐项对照用。
+    /// </summary>
+    internal static IEnumerable<string> ChartFacts(Window window)
+    {
+        foreach (var c in window.GetVisualDescendants().OfType<Controls.Chart.TimeSeriesChart>().Where(c => c.IsEffectivelyVisible && c.Bounds.Width > 0))
+        {
+            var g = c.Geometry;
+            var m = c.TransformToVisual(window);
+            var r = m == null ? default : new Rect(c.Bounds.Size).TransformToAABB(m.Value);
+            if (g == null || !g.Drawn) { yield return FormattableString.Invariant($"chart [{r.X:0.##},{r.Y:0.##} {r.Width:0.##}×{r.Height:0.##}] (empty)"); continue; }
+            yield return FormattableString.Invariant($"chart [{r.X:0.##},{r.Y:0.##} {r.Width:0.##}×{r.Height:0.##}] size {g.Width}×{g.Height} pad {g.PadL}/{g.PadR}/{g.PadT}/{g.PadB}")
+                + " L[" + string.Join(" ", g.LeftTicks.Select(t => t.Text)) + "] R[" + string.Join(" ", g.RightTicks.Select(t => t.Text)) + "] T[" + string.Join(" ", g.TimeTicks.Select(t => t.Text)) + "]"
+                + (g.RefLines.Count > 0 ? " ref[" + string.Join(" ", g.RefLines.Select(x => x.Label + FormattableString.Invariant($"@{x.LabelX:0.#},{x.LabelBase:0.#}"))) + "]" : "")
+                + (g.Markers.Count > 0 ? " mk[" + string.Join(" ", g.Markers.Select(x => x.Label + FormattableString.Invariant($"@{x.LabelX:0.#}"))) + "]" : "")
+                + (g.EmptyText is { } e ? " empty「" + e + "」" : "");
+            if (Flag("PR_CONTROL_CHART_FACES"))
+                foreach (var (text, faces) in c.DrawnFaces()) yield return "  face 「" + text + "」 " + faces;
+        }
     }
 
     /// <summary>

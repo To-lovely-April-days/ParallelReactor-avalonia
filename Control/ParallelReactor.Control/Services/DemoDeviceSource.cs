@@ -5,9 +5,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
 using ParallelReactor.Control.Core.Alarms;
+using ParallelReactor.Control.Core.Chart;
 using ParallelReactor.Control.Core.Demo;
 using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Guard;
+using ParallelReactor.Control.Core.History;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
 using ParallelReactor.Control.Core.State;
@@ -39,7 +41,7 @@ public sealed class DemoDeviceSource : IDeviceSource
         _fleet = fleet ?? throw new ArgumentNullException(nameof(fleet));
         Device = device ?? throw new ArgumentNullException(nameof(device));
         Id = IdFor(device.K);
-        _history = new DemoHistoryView(device);
+        _history = new DemoHistoryView(fleet, device);
         _alarmBook = new AlarmBook();
         _eventBook = new EventBook();
         _fleet.Changed += OnFleetChanged;
@@ -194,7 +196,9 @@ public sealed class DemoDeviceSource : IDeviceSource
     {
         var ch = Device.Channel(n);
         if (ch is null || !ch.Installed) return null;
-        return new ChannelExtras(Device.Reading(ch, DemoReading.VolumeMl), Device.Reading(ch, DemoReading.Rpm), ch.StirOn, ch.Cooling, Device.Reading(ch, DemoReading.Mmol));
+        // 设定转速同样稿 numInput 的 ch.rpm：不看连接、不看搅拌开没开（有效转速 Rpm 关着是 0）
+        return new ChannelExtras(Device.Reading(ch, DemoReading.VolumeMl), Device.Reading(ch, DemoReading.Rpm), ch.StirOn, ch.Cooling, Device.Reading(ch, DemoReading.Mmol),
+            RpmSp: ch.Rpm);
     }
 
     public ProgramRecord? Program(int n) => Device.Channel(n)?.Program;
@@ -203,6 +207,9 @@ public sealed class DemoDeviceSource : IDeviceSource
 
     /// <summary>演示程序库（同一型号的全部程序，样稿 d.programs）：每个反应釜都一样。</summary>
     public IReadOnlyList<ProgramChoice> ProgramChoices(int n) => _choices ??= Device.Programs.Select(p => new ProgramChoice(p.Id, p.Name)).ToArray();
+
+    /// <summary>演示程序库（样稿 PR.sim.programs(d)）：每个反应釜都一样。</summary>
+    public IReadOnlyList<ProgramDef> Library(int n) => Device.Programs;
 
     public ChannelReading Read(int n) => ChannelProjection.FromDemo(Device, n);
 
@@ -215,7 +222,11 @@ public sealed class DemoDeviceSource : IDeviceSource
     private void OnFleetChanged(object? sender, DemoChangedEventArgs e)
     {
         if (_disposed) return;
-        if (e.Device is null || ReferenceEquals(e.Device, Device)) Changed?.Invoke(SourceChange.All);
+        if (e.Device is null || ReferenceEquals(e.Device, Device))
+        {
+            _history.Invalidate();
+            Changed?.Invoke(SourceChange.All);
+        }
     }
 
     // ———————————————————— 操作 ————————————————————
@@ -253,11 +264,30 @@ public sealed class DemoDeviceSource : IDeviceSource
         return ValueTask.CompletedTask;
     }
 
-    /// <summary>曲线：DemoDevice.Series（60 min 预生成 + 每 10 s 追加）。</summary>
+    /// <summary>
+    /// 曲线：DemoDevice 的历史（60 min 预生成 + 每 10 s 追加，样稿 series）同步进 Core 的 <see cref="DeviceHistory"/>（10 s 一格的环形缓冲，逐点相同）——
+    /// 演示数据变了（每秒的推进、操作）之后第一次取的时候才同步一次（只追加新的采样；演示数据重建过就整个重来）。
+    /// 会话标记照样稿 reactorChartOpts：这台设备当前会话（结束了的也算）的标记。
+    /// </summary>
     private sealed class DemoHistoryView : IChannelHistory
     {
+        private readonly DemoFleet _fleet;
         private readonly DemoDevice _d;
-        public DemoHistoryView(DemoDevice d) => _d = d;
+        private readonly DeviceHistory _h = new();
+        private bool _dirty = true;
+        private DateTime _syncedAt;
+        private DemoSession? _marksOf;
+        private int _marksCount = -1;
+        private SessionMark[] _marks = Array.Empty<SessionMark>();
+
+        public DemoHistoryView(DemoFleet fleet, DemoDevice d)
+        {
+            _fleet = fleet;
+            _d = d;
+        }
+
+        /// <summary>演示数据变了（DemoFleet.Changed 涉及这台）：下一次取曲线时再同步。</summary>
+        public void Invalidate() => _dirty = true;
 
         public IReadOnlyList<(DateTime T, double? V)> Series(int n, HistoryKey key, double minutes = 60) => _d.Series(n, key switch
         {
@@ -269,5 +299,35 @@ public sealed class DemoDeviceSource : IDeviceSource
             HistoryKey.SpC => DemoReading.SpC,
             _ => DemoReading.PTargetMPa,
         }, minutes);
+
+        public ChannelHistory? Channel(int n)
+        {
+            if (_dirty || _syncedAt != _fleet.Now)
+            {
+                _h.SyncDemo(_d);
+                _dirty = false;
+                _syncedAt = _fleet.Now;
+            }
+            return _h.Has(n) ? _h.Channel(n) : null;
+        }
+
+        public DateTime Now => _fleet.Now;
+
+        public IReadOnlyList<SessionMark> Marks
+        {
+            get
+            {
+                var s = _d.Session;
+                int count = s?.Markers.Count ?? 0;
+                if (!ReferenceEquals(s, _marksOf) || count != _marksCount)
+                {
+                    _marksOf = s;
+                    _marksCount = count;
+                    _marks = new SessionMark[count];
+                    for (int i = 0; i < count; i++) _marks[i] = new SessionMark(s!.Markers[i].At, s.Markers[i].Text, s.Markers[i].N);
+                }
+                return _marks;
+            }
+        }
     }
 }

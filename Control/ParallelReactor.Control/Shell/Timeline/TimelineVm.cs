@@ -95,11 +95,15 @@ public sealed partial class TimelineVm : ObservableObject
     /// <summary>重置布局时跨度回到 2 h。</summary>
     internal void ResetSpan() => SpanMin = 120;
 
-    /// <summary>展开状态回到默认（≤ 8 路展开、16 路收起），跟随状态清掉（同样稿新开页面）。</summary>
-    internal void ResetOpen()
+    /// <summary>
+    /// 展开状态回到默认（≤ 8 路展开、16 路收起）并刷新组：视图 › 重置布局（样稿 resetLayout 的 tlOpen = {}，跟随状态留着）。
+    /// <paramref name="fresh"/>：新开的页面（截图，ShellVm.ResetView）—— 跟随状态也清掉（样稿 tlFollowK = null），下一次跟随算换了设备。
+    /// </summary>
+    internal void ResetOpen(bool fresh = false)
     {
         _open.Clear();
-        _followK = null;
+        if (fresh) _followK = null;
+        Refresh();
     }
 
     /// <summary>这台设备的组展开着（默认 ≤ 8 路展开，样稿 tlGroupOpen）。</summary>
@@ -304,6 +308,7 @@ public sealed partial class TlGroupVm : ObservableObject
                 while (e + 1 < rs.Count && !rs[e + 1].Installed) e++;
                 int from = r.N, to = rs[e].N;
                 var un = Rows.OfType<TlUnRowVm>().FirstOrDefault(x => x.From == from && x.To == to) ?? new TlUnRowVm(Tl, from, to);
+                un.Offline = D.IsOffline;
                 want.Add(un);
                 j = e;
             }
@@ -322,7 +327,7 @@ public sealed partial class TlGroupVm : ObservableObject
 }
 
 /// <summary>合并的未安装行（样稿「RV5–RV8 未安装」，14 px t-3，不可点）。</summary>
-public sealed class TlUnRowVm
+public sealed partial class TlUnRowVm : ObservableObject
 {
     public TlUnRowVm(TimelineVm tl, int from, int to)
     {
@@ -336,6 +341,12 @@ public sealed class TlUnRowVm
     public int From { get; }
     public int To { get; }
     public string Text { get; }
+
+    /// <summary>
+    /// 设备断线：这一行也同反应釜行 bg-panel、悬停不变（样稿 .pr-tl-group.is-off .pr-tl-row 也套在 .is-un 上；
+    /// 复核：以前只有反应釜行带 off，这一行仍是 bg-head、悬停变 bg-hover）。行按 RV 范围留着，组刷新时就地改。
+    /// </summary>
+    [ObservableProperty] private bool _offline;
 }
 
 /// <summary>
@@ -415,7 +426,9 @@ public sealed partial class TlRowVm : ObservableObject
             bool cur = s.State == SegmentState.Cur;
             string tag = !cur ? "" : prog.Status == ProgramStatus.Held ? "暂停" : pr is { WaitGas: true } ? pr.WaitWord : pr is { Offline: true } ? "离线" : "当前";
             bool run = cur && prog.Status == ProgramStatus.Running && !(pr is { Offline: true } or { WaitGas: true });
-            var tip = "第 " + (s.I + 1) + " 步 " + s.Name + " · " + Fmt.Hm(s.T0) + "–" + Fmt.Hm(s.T1) + (s.WaitGas ? " · 等待进气（需在触屏开阀）" : "");
+            // 等待进气：演示 = 样稿（去触屏开阀）；真机 = 排队等共用气路「等待气路（RV3 占用中）」（§3.5 / R6）
+            var tip = "第 " + (s.I + 1) + " 步 " + s.Name + " · " + Fmt.Hm(s.T0) + "–" + Fmt.Hm(s.T1)
+                + (!s.WaitGas ? "" : d.Source.IsDemo ? " · 等待进气（需在触屏开阀）" : " · " + StateMap.WaitGasText(d.GasHolder));
             list.Add(new TlSeg(s.I, s.Name, s.Name + (tag.Length > 0 ? " · " + tag : ""), s.State, s.WaitGas, run, cur && prog.Status == ProgramStatus.Held, s.T0, s.T1, tip));
         }
         if (!list.SequenceEqual(Segments)) Segments = list;

@@ -8,6 +8,7 @@
              xmlns:pg="using:ParallelReactor.Control.Pages"
              xmlns:vs="using:ParallelReactor.Control.Views.Shell"
              xmlns:ov="using:ParallelReactor.Control.Views.Pages.Overview"
+             xmlns:ch="using:ParallelReactor.Control.Controls.Chart"
              x:Class="ParallelReactor.Control.Views.Pages.OverviewPage"
              x:DataType="pg:OverviewPageVm"
              Background="{StaticResource BgAppBrush}">
@@ -346,6 +347,20 @@
       <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
       <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
     </Style>
+
+    <!-- ———— 温度趋势的图例（overview.css:238-243）：别名 14/600 t-2、RV 14 t-2、「显示 n/m」14 t-3 ———— -->
+    <Style Selector="StackPanel.ovlegend TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.ovlegend TextBlock.ovlgg">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="StackPanel.ovlegend TextBlock.ovlgmore">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
   </UserControl.Styles>
 
   <DockPanel>
@@ -374,7 +389,9 @@
       </pr:PrPanel>
 
       <ScrollViewer Name="Scroll" Theme="{StaticResource PrScrollViewerOverlay}" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding !IsEmpty}">
-        <ItemsControl Name="SectionList" ItemsSource="{Binding Sections}">
+        <!-- 分区在上；温度趋势（显示着时）铺满下面剩余的高度：内容的最小高度 = 滚动区高度（样稿 .overview-trend flex: 1 1 auto） -->
+        <DockPanel Name="ScrollBody" MinHeight="{Binding TrendFill}">
+        <ItemsControl Name="SectionList" DockPanel.Dock="Top" ItemsSource="{Binding Sections}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="pg:OverviewSectionVm">
               <!-- 分区：下边 1 px line-strong（最后一个没有）；放大时铺满滚动区（高 = 滚动区高度），别的分区不显示 -->
@@ -532,6 +549,40 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <!-- 温度趋势（样稿 overview.js trendHTML + css/overview.css .overview-trend / .overview-legend / .overview-chart）：
+             标题「温度趋势」+ 副标题「近 60 min · 选中设备的运行中反应釜」+ 图标；不能关；图例 = 设备别名（14/600 t-2）+ 每条线（24 × 8 小样 + RV1，14 t-2，间距 5）
+             （组内间距 10、组间 20、右 10）+「显示 n/m」（14 t-3）；内容 = ch-bg 底，曲线离边 上 8、右 16、下 6、左 10 -->
+        <pr:PrPanel Name="TrendPanel" Classes="ovtrend" DataContext="{Binding Trend}" x:DataType="pg:OverviewTrendVm"
+                    Title="{Binding Title}" Sub="{Binding Sub}" Icon="curves" CanClose="False" IsVisible="{Binding IsShown}">
+          <pr:PrPanel.Actions>
+            <StackPanel Classes="ovlegend" Orientation="Horizontal" Spacing="20" Margin="0,0,10,0" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal" Spacing="10" IsVisible="{Binding HasGroup}">
+                <pr:PrText Classes="ovlgg" Text="{Binding Alias}" />
+                <StackPanel Orientation="Horizontal" Spacing="5" DataContext="{Binding Items[0]}" x:DataType="pg:OverviewTrendItemVm" IsVisible="{Binding IsShown}">
+                  <ch:LegendSwatch Width="24" Height="8" VerticalAlignment="Center" Token="{Binding Color}" StrokeWidth="2" Dash="{Binding SampleDash}" />
+                  <pr:PrText Classes="ovlg" Text="{Binding Label}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" DataContext="{Binding Items[1]}" x:DataType="pg:OverviewTrendItemVm" IsVisible="{Binding IsShown}">
+                  <ch:LegendSwatch Width="24" Height="8" VerticalAlignment="Center" Token="{Binding Color}" StrokeWidth="2" Dash="{Binding SampleDash}" />
+                  <pr:PrText Classes="ovlg" Text="{Binding Label}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" DataContext="{Binding Items[2]}" x:DataType="pg:OverviewTrendItemVm" IsVisible="{Binding IsShown}">
+                  <ch:LegendSwatch Width="24" Height="8" VerticalAlignment="Center" Token="{Binding Color}" StrokeWidth="2" Dash="{Binding SampleDash}" />
+                  <pr:PrText Classes="ovlg" Text="{Binding Label}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" DataContext="{Binding Items[3]}" x:DataType="pg:OverviewTrendItemVm" IsVisible="{Binding IsShown}">
+                  <ch:LegendSwatch Width="24" Height="8" VerticalAlignment="Center" Token="{Binding Color}" StrokeWidth="2" Dash="{Binding SampleDash}" />
+                  <pr:PrText Classes="ovlg" Text="{Binding Label}" />
+                </StackPanel>
+              </StackPanel>
+              <pr:PrText Classes="ovlgmore" Text="{Binding MoreText}" ToolTip.Tip="{Binding MoreTip}" IsVisible="{Binding HasMore}" />
+            </StackPanel>
+          </pr:PrPanel.Actions>
+          <Border Background="{StaticResource ChBgBrush}" ClipToBounds="True">
+            <ch:TimeSeriesChart Name="TrendChart" Margin="10,8,16,6" Options="{Binding Options}" />
+          </Border>
+        </pr:PrPanel>
+        </DockPanel>
       </ScrollViewer>
     </Panel>
   </DockPanel>

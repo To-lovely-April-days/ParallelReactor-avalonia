@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:v="using:ParallelReactor.Control.Controls.Vessel"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.ReactorVesselPanel"
+             x:DataType="pg:ReactorVesselVm">
+  <!-- 「釜体 / 属性查看器」页签面板（样稿 js/pages/reactor.js tabsPanel + css/reactor.css .reactor-vessel / .reactor-stage* / .reactor-props*）：
+       面板本身（PrPanel：放大 / 关闭、标题栏上的页签与键盘焦点）不随页签换，只换内容；宽版式（工作区 ≥ 1800）用两个实例：Mode = Vessel / Props。
+       釜体：bg-side 底 + 中间一团白（radial-gradient(ellipse 44% 56% at 50% 52%)）上的 VesselStage；属性查看器：bg-panel 底，两列属性卡片，面板内纵向滚动。 -->
+  <UserControl.Resources>
+    <RadialGradientBrush x:Key="StageGlowBrush" Center="50%,52%" GradientOrigin="50%,52%" RadiusX="44%" RadiusY="56%">
+      <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
+      <GradientStop Offset="1" Color="Transparent" />
+    </RadialGradientBrush>
+  </UserControl.Resources>
+
+  <pr:PrPanel Name="Frame" AutomationProperties.Name="釜体 / 属性查看器">
+    <pr:PrPanel.Title>
+      <pr:PTabs Name="Tabs" OptionsSource="{Binding TabOptions}" Value="{Binding Tab, Mode=TwoWay}" AutomationProperties.Name="釜体 / 属性查看器" />
+    </pr:PrPanel.Title>
+    <pr:PrPanel.Actions>
+      <StackPanel Orientation="Horizontal" Spacing="2">
+        <!-- 釜体页签：状态（点 + 字；这个反应釜有错误报警时不写）。面板窄于 420 时和抓手一起让出去（样稿 @container rvves max-width 419） -->
+        <Panel Name="BadgeHost">
+          <pr:StateBadge Classes="badge" Margin="0,0,6,0" Key="{Binding BadgeKey}" Text="{Binding BadgeText}" NeverConnected="{Binding NeverConnected}"
+                         ToolTip.Tip="{Binding BadgeTip}" />
+        </Panel>
+        <!-- 属性查看器页签：「另有 N 项 ▾ / 收起 ▴」（.pr-linkbtn：14/500 a-d，文字在前、图标在后，右 2）+「恢复全部属性」 -->
+        <Button Name="More" Theme="{StaticResource PrLink}" Margin="0,0,2,0" Command="{Binding ToggleMoreCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="4">
+            <TextBlock Text="{Binding MoreText}" VerticalAlignment="Center" />
+            <c:IconView Icon="{Binding MoreIcon}" Size="15" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
+        <Button Name="Restore" Theme="{StaticResource PrIconButton}" b:Pr.Icon="refresh" ToolTip.Tip="恢复全部属性" AutomationProperties.Name="恢复全部属性"
+                Command="{Binding RestoreCommand}" />
+      </StackPanel>
+    </pr:PrPanel.Actions>
+
+    <Panel Name="Body">
+      <!-- 釜体：线描釜体 + 标注框 + 引线（版面按这一块的尺寸算） -->
+      <Border Name="StageBody" Background="{StaticResource BgSideBrush}" ClipToBounds="True">
+        <Border Background="{StaticResource StageGlowBrush}">
+          <v:VesselStage Name="Stage" Sv="{Binding Sv}" Ht="{Binding Ht}" Tt="{Binding Tt}" M="{Binding M}" Pt="{Binding Pt}" Lv="{Binding Lv}"
+                         IsStale="{Binding Stale}" Key="{Binding R.Key, FallbackValue=Offline}" Heating="{Binding R.Heating, FallbackValue=False}"
+                         Cooling="{Binding R.Cooling, FallbackValue=False}" Stirring="{Binding R.Stirring, FallbackValue=False}"
+                         Level="{Binding R.VesselLevel, FallbackValue=NaN}" />
+        </Border>
+      </Border>
+      <!-- 属性查看器：两列属性卡片（只显示完整的行；展开「另有 N 项」后在这里纵向滚动） -->
+      <ScrollViewer Name="PropsBody" Theme="{StaticResource PrScrollViewerOverlay}" Background="{StaticResource BgPanelBrush}"
+                    HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <ItemsControl ItemsSource="{Binding ShownProps}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <rv:PropGridPanel />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="pg:ReactorPropVm">
+              <pr:PropCard PathText="{Binding Path}" Icon="{Binding Icon}" Title="{Binding Title}" Sub="{Binding Sub}" Value="{Binding Value}"
+                           Unit="{Binding Unit}" Unit2="{Binding Unit2}" Edge="{Binding Edge}" IsStale="{Binding Stale}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </Panel>
+  </pr:PrPanel>
+</UserControl>

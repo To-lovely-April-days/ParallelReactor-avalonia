@@ -49,23 +49,42 @@ public partial class ExplorerView : UserControl
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_vm != null) _vm.RevealRequested -= OnRevealRequested;
+        if (_vm != null)
+        {
+            _vm.RevealRequested -= OnRevealRequested;
+            _vm.ScrollResetRequested -= OnScrollReset;
+        }
         _vm = Vm;
-        if (_vm != null) _vm.RevealRequested += OnRevealRequested;
+        if (_vm != null)
+        {
+            _vm.RevealRequested += OnRevealRequested;
+            _vm.ScrollResetRequested += OnScrollReset;
+        }
     }
 
     private void OnRevealRequested(object? sender, EventArgs e)
     {
         if (_revealPending) return;
         _revealPending = true;
-        Dispatcher.UIThread.Post(() => { _revealPending = false; Reveal(retry: true); }, DispatcherPriority.Background);
+        Dispatcher.UIThread.Post(() => { _revealPending = false; Reveal(RevealTries); }, DispatcherPriority.Background);
     }
+
+    /// <summary>重置视图（ShellVm.ResetView）：树滚回顶部，之后的 xReveal 从顶部算起（同新打开的页面）。</summary>
+    private void OnScrollReset(object? sender, EventArgs e)
+    {
+        if (Tree.FindDescendantOfType<ScrollViewer>() is { } sv && sv.Offset != default) sv.Offset = default;
+    }
+
+    /// <summary>选中行还没排好 / 滚动之后还要核对时，最多再等几次排版（每次 Background 优先级）。</summary>
+    private const int RevealTries = 4;
 
     /// <summary>
     /// 把选中行滚到可见处（样稿 xReveal）：在上面 → 滚到离顶 6；在下面（离底不到 22，底部 18 px 渐隐）→ 滚到离底 22。
-    /// 行还没生成容器（虚拟化）时先 ScrollIntoView，排完版再来一次。
+    /// 行还没生成容器（刚换了数据、还没排版）或还没排好时先 ScrollIntoView，排完版再来（最多 <paramref name="tries"/> 次）。
+    /// 滚动之后排完版再核对一次（复核）：上面的行在这之后才变（展开、换数据）时选中行会跟着挪 —— 已经在范围里就什么都不做，
+    /// 所以结果与一次排好的网页相同。树本身不虚拟化（ExplorerView.axaml 的 ItemsPanel = StackPanel）：行高都是实排的，结果与截图顺序无关。
     /// </summary>
-    private void Reveal(bool retry)
+    private void Reveal(int tries)
     {
         var vm = _vm;
         var sv = Tree.FindDescendantOfType<ScrollViewer>();
@@ -74,18 +93,22 @@ public partial class ExplorerView : UserControl
         if (row == null) return;
         int i = vm.Rows.IndexOf(row);
         if (i < 0) return;
-        if (Tree.ContainerFromIndex(i) is not Avalonia.Controls.Control c || !c.IsArrangeValid)
+        if (Tree.ContainerFromIndex(i) is not Avalonia.Controls.Control c || !c.IsArrangeValid || !ReferenceEquals(c.DataContext, row))
         {
             Tree.ScrollIntoView(i);
-            if (retry) Dispatcher.UIThread.Post(() => Reveal(retry: false), DispatcherPriority.Background);
+            if (tries > 0) Dispatcher.UIThread.Post(() => Reveal(tries - 1), DispatcherPriority.Background);
             return;
         }
         if (c.TranslatePoint(default, sv) is not { } p) return;
         double top = p.Y, bottom = p.Y + c.Bounds.Height, view = sv.Viewport.Height;
         if (view <= 0) return;
         const double fade = FadeH + 4;
-        if (top < 0) sv.Offset = sv.Offset.WithY(Math.Max(0, sv.Offset.Y + top - 6));
-        else if (bottom > view - fade) sv.Offset = sv.Offset.WithY(sv.Offset.Y + bottom - view + fade);
+        double y = sv.Offset.Y;
+        if (top < 0) y = Math.Max(0, y + top - 6);
+        else if (bottom > view - fade) y += bottom - view + fade;
+        if (y == sv.Offset.Y) return;
+        sv.Offset = sv.Offset.WithY(y);
+        if (tries > 0) Dispatcher.UIThread.Post(() => Reveal(tries - 1), DispatcherPriority.Background);
     }
 
     private void OnDoubleTapped(object? sender, TappedEventArgs e)

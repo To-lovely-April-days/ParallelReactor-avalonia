@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using ParallelReactor.Control.Core.Format;
 
 namespace ParallelReactor.Control.Controls.Pr;
@@ -27,6 +28,7 @@ public sealed class PropCard : TemplatedControl
     public static readonly StyledProperty<bool> ShowCloseProperty = AvaloniaProperty.Register<PropCard, bool>(nameof(ShowClose), true);
 
     public static readonly DirectProperty<PropCard, string> ShownValueProperty = AvaloniaProperty.RegisterDirect<PropCard, string>(nameof(ShownValue), o => o.ShownValue);
+    public static readonly DirectProperty<PropCard, string> ShownPathProperty = AvaloniaProperty.RegisterDirect<PropCard, string>(nameof(ShownPath), o => o.ShownPath);
     public static readonly DirectProperty<PropCard, string> UnitTextProperty = AvaloniaProperty.RegisterDirect<PropCard, string>(nameof(UnitText), o => o.UnitText);
 
     public static readonly RoutedEvent<RoutedEventArgs> CloseRequestedEvent = RoutedEvent.Register<PropCard, RoutedEventArgs>(nameof(CloseRequested), RoutingStrategies.Bubble);
@@ -50,14 +52,24 @@ public sealed class PropCard : TemplatedControl
 
     public event EventHandler<RoutedEventArgs>? CloseRequested { add => AddHandler(CloseRequestedEvent, value); remove => RemoveHandler(CloseRequestedEvent, value); }
 
-    private string _shownValue = Fmt.Dash, _unitText = "";
+    private string _shownValue = Fmt.Dash, _unitText = "", _shownPath = "";
     public string ShownValue { get => _shownValue; private set => SetAndRaise(ShownValueProperty, ref _shownValue, value); }
+
+    /// <summary>
+    /// 路径行实际显示的文字：放得下是 <see cref="PathText"/>，放不下是逐字省略的「/1号机/RV1/设备/加…」（<see cref="TextFit"/>：
+    /// Avalonia 11.1 的 CharacterEllipsis 遇到中文回退段与西文段混排时省略得过早，复核）。悬停照样是全文。
+    /// </summary>
+    public string ShownPath { get => _shownPath; private set => SetAndRaise(ShownPathProperty, ref _shownPath, value); }
     /// <summary>单位行（「MPa · 50.6 psi」；没有读数时不写第一单位）。</summary>
     public string UnitText { get => _unitText; private set => SetAndRaise(UnitTextProperty, ref _unitText, value); }
 
     public PropCard() => Update();
 
     private Button? _close;
+    private FlexRow? _pathRow;
+    private TextBlock? _path;
+    private Border? _edgeBox;
+    private (string? Text, double Width, double Size, FontFamily? Family) _fitKey;
 
     protected override void OnApplyTemplate(TemplateAppliedEventArgs e)
     {
@@ -65,6 +77,45 @@ public sealed class PropCard : TemplatedControl
         if (_close != null) _close.Click -= OnClose;
         _close = e.NameScope.Find<Button>("PART_Close");
         if (_close != null) _close.Click += OnClose;
+        _pathRow = e.NameScope.Find<FlexRow>("PART_PathRow");
+        _path = e.NameScope.Find<TextBlock>("PART_Path");
+        _edgeBox = e.NameScope.Find<Border>("PART_EdgeBox");
+        _fitKey = default;
+    }
+
+    /// <summary>量之前先定路径行的文字（按这张卡这一遍拿到的宽度，只看父元素给的宽度，R4；无穷宽 = 全文）。</summary>
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        FitPath(availableSize.Width);
+        return base.MeasureOverride(availableSize);
+    }
+
+    /// <summary>
+    /// 路径行留给文字的宽度 = 卡宽 − 左右边框 − 实时值的右边线 − 行的左右外边距 − 其它可见元素（树图标、×）− 间距；放不下时逐字省略。
+    /// 结果按（全文, 宽度, 字号, 字族）缓存，同样的输入不再量。
+    /// </summary>
+    private void FitPath(double cardWidth)
+    {
+        var full = PathText ?? "";
+        if (_pathRow is null || _path is null || double.IsInfinity(cardWidth) || double.IsNaN(cardWidth)) { ShownPath = full; return; }
+        double w = cardWidth - BorderThickness.Left - BorderThickness.Right - Padding.Left - Padding.Right;
+        if (_edgeBox is { } eb) w -= eb.BorderThickness.Left + eb.BorderThickness.Right + eb.Padding.Left + eb.Padding.Right;
+        w -= _pathRow.Margin.Left + _pathRow.Margin.Right;
+        int others = 0;
+        foreach (var c in _pathRow.Children)
+        {
+            if (ReferenceEquals(c, _path) || !c.IsVisible) continue;
+            c.Measure(Size.Infinity);
+            w -= c.DesiredSize.Width;   // DesiredSize 含外边距
+            others++;
+        }
+        w -= others * _pathRow.Spacing;
+        w = Math.Max(0, w);
+        var key = (full, Math.Round(w, 2), _path.FontSize, _path.FontFamily);
+        if (key == _fitKey) return;
+        _fitKey = key;
+        var tb = _path;
+        ShownPath = TextFit.Prefix(full, w, t => TextFit.Width(tb, t));
     }
 
     private void OnClose(object? sender, RoutedEventArgs e) => RaiseEvent(new RoutedEventArgs(CloseRequestedEvent));
@@ -74,6 +125,7 @@ public sealed class PropCard : TemplatedControl
         base.OnPropertyChanged(change);
         if (change.Property == ValueProperty || change.Property == UnitProperty || change.Property == Unit2Property
             || change.Property == EdgeProperty || change.Property == IsStaleProperty) Update();
+        if (change.Property == PathTextProperty) { _fitKey = default; ShownPath = PathText ?? ""; InvalidateMeasure(); }
     }
 
     private void Update()

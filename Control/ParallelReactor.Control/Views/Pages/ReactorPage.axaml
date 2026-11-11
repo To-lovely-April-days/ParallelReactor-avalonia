@@ -1,25 +1,119 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cp="using:ParallelReactor.Control.Controls.Steps"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:t="using:ParallelReactor.Control.Theme"
              xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
              x:Class="ParallelReactor.Control.Views.Pages.ReactorPage"
-             x:DataType="pg:ReactorPageVm">
-  <!-- 反应釜页骨架（M2；内容在 M5）：左 = 程序面板（面包屑「1号机 › RV1」，程序名在 M5 的程序台账之后）；
-       右 = 「釜体 / 属性查看器」面板标题页签 + 曲线面板。面板之间 1 px 线（line-2）。 -->
-  <Grid ColumnDefinitions="46*,54*" RowDefinitions="52*,48*" Background="{StaticResource Line2Brush}">
-    <pr:PrPanel Grid.RowSpan="2" Margin="0,0,1,0">
-      <pr:PrPanel.Title>
-        <pr:Crumb Text="{Binding Crumb}" />
-      </pr:PrPanel.Title>
-    </pr:PrPanel>
-    <pr:PrPanel Grid.Column="1" Margin="0,0,0,1">
-      <pr:PrPanel.Title>
-        <pr:PTabs Value="vessel">
-          <pr:SegOption Value="vessel" Label="釜体" />
-          <pr:SegOption Value="props" Label="属性查看器" />
-        </pr:PTabs>
-      </pr:PrPanel.Title>
-    </pr:PrPanel>
-    <pr:PrPanel Grid.Row="1" Grid.Column="1" Icon="curves" Title="曲线" />
-  </Grid>
+             x:DataType="pg:ReactorPageVm"
+             Background="{StaticResource BgAppBrush}">
+  <!-- 反应釜页（样稿 js/pages/reactor.js + css/reactor.css，PORT-PLAN §5 M5）：上方的状态条 + 面板网格（Views/Pages/Reactor/ReactorGridPanel，Core 的 ReactorPageLayout）。
+       面板：「程序」（ReactorProgramPanel）｜「釜体 / 属性查看器」（ReactorVesselPanel；宽版式时再加一块只放属性查看器的）+「曲线」（ReactorCurvesPanel）；
+       未安装的位置只有一块说明（ReactorUnPanel）。放大的面板只盖住面板网格，状态条照样显示。 -->
+  <UserControl.Styles>
+    <!-- 状态条（.reactor-alert：高 40、左 16 右 8、间距 10、15 px t-2、bg-card、下边 line-2；报警 r-bg + r-line、图标 r；等待进气图标 t-3；断线 bg-head、左 12） -->
+    <Style Selector="Border.rvalert">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="16,0,8,0" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.rvalert.err">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="Border.rvalert.off">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="Padding" Value="12,0,8,0" />
+    </Style>
+    <Style Selector="Border.rvalert c|IconView.ic">
+      <Setter Property="Size" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.rvalert.err c|IconView.ic">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="Border.rvalert.wait c|IconView.ic">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <!-- 条上自己的字（标题、时刻；说明 ChemLine 自己设字号 / 颜色 / 行高）用子选择器（doc §8 第 16 条）：后代选择器会连「连接中断」徽标模板里的字（应为 14 px r-ink）、
+         「立即重连」「确认」按钮的字（字色、行高跟着按钮：悬停 a-ink，图标不被 21 的行高顶高 2 px）一起改掉 -->
+    <Style Selector="Border.rvalert > pr|FlexRow > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.rvalert > pr|FlexRow > TextBlock.t">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.rvalert > pr|FlexRow > TextBlock.time">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+    </Style>
+    <!-- 已确认（.reactor-alert-ack：左右 8、间距 5、14 t-3、✓ 15） -->
+    <Style Selector="Border.rvalert StackPanel.ack > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 触屏操作（.reactor-touch：高 26、左右 10、圆角 4、bg-sunken、14 t-3、✋ 15、间距 6） -->
+    <Style Selector="Border.rvtouch">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    </Style>
+    <Style Selector="Border.rvtouch TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+  </UserControl.Styles>
+
+  <DockPanel>
+    <ItemsControl Name="Alerts" DockPanel.Dock="Top" ItemsSource="{Binding Alerts}">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="pg:ReactorAlertVm">
+          <Border Classes="rvalert" Classes.err="{Binding IsErr}" Classes.off="{Binding IsOff}" Classes.wait="{Binding IsWait}">
+            <pr:FlexRow Spacing="10">
+              <!-- 断线：「连接中断 · 重连中 12 s」徽标（整页唯一的红色信号）；其余：图标 + 粗体标题 -->
+              <pr:ConnBadge State="{Binding Conn}" Text="{Binding ConnText}" ToolTip.Tip="{Binding ConnText}" IsVisible="{Binding IsOff}" />
+              <c:IconView Classes="ic" Icon="{Binding Icon}" VerticalAlignment="Center" IsVisible="{Binding HasIcon}" />
+              <pr:PrText Classes="t" Text="{Binding Title}" IsVisible="{Binding HasTitle}" />
+              <cp:ChemLine Text="{Binding Text, Converter={x:Static t:TextConverters.Keep}}" FontSize="{StaticResource FsBody}" LineHeight="{StaticResource LhBody}"
+                           Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" pr:FlexRow.Shrink="1" />
+              <pr:PrText Classes="time num" Text="{Binding Time}" pr:FlexRow.PushRight="True" IsVisible="{Binding HasTime}" />
+              <Button Classes="sm" Content="{Binding ButtonText}" b:Pr.Icon="{Binding ButtonIcon}" Command="{Binding ButtonCommand}"
+                      b:Pr.Reason="{Binding ButtonReason}" IsVisible="{Binding HasButton}" pr:FlexRow.PushRight="True" />
+              <StackPanel Classes="ack" Orientation="Horizontal" Spacing="5" Margin="8,0" IsVisible="{Binding Acked}" pr:FlexRow.PushRight="True">
+                <c:IconView Icon="check" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <pr:PrText Text="已确认" VerticalAlignment="Center" />
+              </StackPanel>
+              <Border Classes="rvtouch" IsVisible="{Binding Touch}" pr:FlexRow.PushRight="True">
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <c:IconView Icon="hand" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Text="触屏操作" VerticalAlignment="Center" />
+                </StackPanel>
+              </Border>
+            </pr:FlexRow>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <rv:ReactorGridPanel Name="Grid" Background="{StaticResource LineStrongBrush}" Installed="{Binding Installed}">
+      <rv:ReactorProgramPanel Name="ProgPanel" Tag="prog" DataContext="{Binding Program}" />
+      <rv:ReactorVesselPanel Name="VesselPanel" Tag="vessel" DataContext="{Binding Vessel}" />
+      <rv:ReactorVesselPanel Name="PropsPanel" Tag="props" Mode="Props" DataContext="{Binding Vessel}" />
+      <rv:ReactorCurvesPanel Name="CurvesPanel" Tag="curves" DataContext="{Binding Curves}" />
+      <rv:ReactorUnPanel Name="UnPanel" Tag="un" DataContext="{Binding Un}" />
+    </rv:ReactorGridPanel>
+  </DockPanel>
 </UserControl>

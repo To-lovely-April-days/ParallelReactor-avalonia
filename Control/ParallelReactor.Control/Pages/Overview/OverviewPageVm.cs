@@ -22,7 +22,7 @@ namespace ParallelReactor.Control.Pages;
 /// <para>
 /// 版面：视图把总览根元素的尺寸（= 工作区，父元素给的尺寸，R4）交给 <see cref="SetViewport"/>，这里用 Core 的 <see cref="OverviewLayout"/>
 /// （样稿 cardKind / bodyHTML / paint 的数字规则）算出每个分区的网格、卡片按自身内容宽的取舍、报警条、窄工作区去掉的分区头内容，
-/// 再交给各分区 / 卡片（就地更新，R10）。温度趋势（下方剩余 ≥ 200 px 时样稿补的面板）要 M5 的曲线控件：M4 不画（<see cref="TrendDeferred"/>）。
+/// 再交给各分区 / 卡片（就地更新，R10）。下方剩余 ≥ 200 px（没有报警条、没有放大的分区）时最后一个分区下面是「温度趋势」面板（<see cref="Trend"/>，M5 的曲线控件）。
 /// </para>
 /// 数据：<see cref="Refresh"/>（外框在每次数据变化后调）按 FleetVm 的设备就地增删分区、刷新文字；选中变化时更新分区头 / 卡片的选中标记。
 /// </summary>
@@ -72,10 +72,13 @@ public sealed partial class OverviewPageVm : PageVm
     public LayoutPage? Layout { get; private set; }
 
     /// <summary>
-    /// 样稿此刻会在最后一个分区下面补「温度趋势」面板（没有报警条、下方剩余 ≥ 200 px）。曲线控件在 M5（PORT-PLAN §5 M5「TimeSeriesChart」），
-    /// M4 不画半成品：那块地方保持总览的底色（bg-app）。M5 接上时把 <see cref="OverviewLayout.Page"/> 的 drawsTrend 改成 true。
+    /// 「温度趋势」面板（样稿 overview.js：没有报警条、各分区下面剩余 ≥ 200 px 时补在最后一个分区下面，铺满剩余的高度；放大一个分区时不显示）。
+    /// 显示着时每次刷新 / 换了选中的设备都跟着重算（数据没变时不重建）。
     /// </summary>
-    public bool TrendDeferred => Layout?.Trend == true;
+    public OverviewTrendVm Trend { get; } = new();
+
+    /// <summary>温度趋势显示着时滚动区内容的最小高度（= 滚动区高度：趋势面板铺满分区下面剩余的地方）；不显示时为 0。</summary>
+    [ObservableProperty] private double _trendFill;
 
     /// <summary>请视图滚动：到某个分区的顶部（「定位」）、到底（演示参数 scroll=end）或回到顶部（换了演示参数，同样稿每张参照图都是新打开的页面）。</summary>
     public event EventHandler<OverviewScrollRequest>? ScrollRequested;
@@ -179,15 +182,24 @@ public sealed partial class OverviewPageVm : PageVm
         // 分区版面只在它的输入（型号、宽度、连上过、说明条、是不是最后一个、有没有进度条）变了时重算：每秒的刷新不重排卡片（R10）
         var secs = new List<OverviewSection>(Sections.Count);
         for (int i = 0; i < Sections.Count; i++) secs.Add(Sections[i].LayoutFor(ViewWidth, last: i == Sections.Count - 1));
-        var page = OverviewLayout.Page(ViewWidth, ViewHeight, secs, strip.Any, drawsTrend: false);
+        var page = OverviewLayout.Page(ViewWidth, ViewHeight, secs, strip.Any, drawsTrend: true);
         Layout = page;
         HideSession = page.HideSession;
         HideModel = page.HideModel;
         ScrollHeight = page.ScrollHeight;
         for (int i = 0; i < Sections.Count; i++) Sections[i].ApplyLayout(page.Sections[i]);
         Strip.IsVisible = page.AlarmStrip;
-        OnPropertyChanged(nameof(TrendDeferred));
+        SyncTrend();
         SyncOwnership();
+    }
+
+    /// <summary>温度趋势：版面说要画、没有放大的分区时显示，并按当前的设备与选中重算曲线（样稿 paint 末尾的 syncChart）。</summary>
+    private void SyncTrend()
+    {
+        bool show = Layout?.Trend == true && MaxK is null && !IsEmpty;
+        Trend.IsShown = show;
+        TrendFill = show ? Layout!.ScrollHeight : 0;
+        if (show) Trend.Refresh(Shell.Fleet.Devices, Shell.Selection.K, Shell.Fleet.Now);
     }
 
     /// <summary>报警条出现 / 消失（或换了一条）：检查器重新问一次页面拥有的报警（样稿 paint 末尾的 syncInspector）。</summary>
@@ -205,7 +217,12 @@ public sealed partial class OverviewPageVm : PageVm
 
     // ———————————————————— 选中 ————————————————————
 
-    private void OnSelectionChanged(object? sender, EventArgs e) => UpdateSelection();
+    private void OnSelectionChanged(object? sender, EventArgs e)
+    {
+        UpdateSelection();
+        // 温度趋势画的是选中的设备
+        if (Trend.IsShown) Trend.Refresh(Shell.Fleet.Devices, Shell.Selection.K, Shell.Fleet.Now);
+    }
 
     private void UpdateSelection()
     {
@@ -236,6 +253,7 @@ public sealed partial class OverviewPageVm : PageVm
     partial void OnMaxKChanged(int? value)
     {
         foreach (var s in Sections) s.UpdateMax(value);
+        SyncTrend();
     }
 
     public override void Dispose() => Shell.Selection.Changed -= OnSelectionChanged;

@@ -69,6 +69,14 @@
     <Style Selector="pr|LeaseBadge.onsel:local, pr|ConnBadge.onsel:online, pr|ConnBadge.onsel:disconnected">
       <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
     </Style>
+    <!-- 断线细节条（.pr-xoff）：外边距 上 2 右 10 下 4 左 30。控制权宽限那一条总是紧跟在连接那一条下面：样稿是相邻的两个块，
+         上一条的下边距 4 和它的上边距 2 合并成 4 —— 这里每条是单独的一行，宽限那一条不留上边距（不然两条之间是 6，下面的反应釜行整体低 2 px，复核） -->
+    <Style Selector="Border.xoff">
+      <Setter Property="Margin" Value="30,2,10,4" />
+    </Style>
+    <Style Selector="Border.xoff.grace">
+      <Setter Property="Margin" Value="30,0,10,4" />
+    </Style>
   </UserControl.Styles>
 
   <UserControl.Resources>
@@ -179,22 +187,23 @@
               </Grid>
             </DataTemplate>
 
-            <!-- 断线细节条（.pr-xoff，中性）：连接（wifi-off / 从未连上 link）+「数据停在 …」；控制权宽限（钥匙） -->
+            <!-- 断线细节条（.pr-xoff，中性）：连接（wifi-off / 从未连上 link）+「数据停在 …」；控制权宽限（钥匙）。
+                 文字逐字省略（TextFit.CharacterEllipsis，同样稿的 text-overflow）：「连接失败 · 6 s 后…」，11.1 自带的省略会丢掉整段「后」（复核） -->
             <DataTemplate DataType="sh:XOffRow" x:DataType="sh:XOffRow">
-              <Border Height="30" Margin="30,2,10,4" Padding="10,0" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSunkenBrush}">
+              <Border Classes="xoff" Classes.grace="{Binding IsGrace}" Height="30" Padding="10,0" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSunkenBrush}">
                 <Panel>
                   <pr:FlexRow Spacing="8" IsVisible="{Binding IsConn}" Background="Transparent">
                     <pr:FlexRow.Styles>
                       <Style Selector="TextBlock"><Setter Property="FontSize" Value="{StaticResource Fs2}" /></Style>
                     </pr:FlexRow.Styles>
                     <c:IconView Icon="{Binding D.OffIcon}" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding D.OffText}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1"
+                    <TextBlock Text="{Binding D.OffText}" Foreground="{StaticResource T2Brush}" TextTrimming="{x:Static pr:TextFit.CharacterEllipsis}" pr:FlexRow.Shrink="1"
                                VerticalAlignment="Center" ToolTip.Tip="{Binding D.ConnText}" />
                     <TextBlock Text="{Binding D.DataText}" Foreground="{StaticResource T3Brush}" pr:FlexRow.PushRight="True" VerticalAlignment="Center" />
                   </pr:FlexRow>
                   <pr:FlexRow Spacing="8" IsVisible="{Binding IsGrace}">
                     <c:IconView Icon="key" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding D.GraceText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis"
+                    <TextBlock Text="{Binding D.GraceText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextTrimming="{x:Static pr:TextFit.CharacterEllipsis}"
                                pr:FlexRow.Shrink="1" VerticalAlignment="Center" ToolTip.Tip="{Binding D.GraceText}" />
                   </pr:FlexRow>
                 </Panel>
@@ -209,6 +218,13 @@
               </Panel>
             </DataTemplate>
           </ListBox.DataTemplates>
+          <!-- 不虚拟化（复核）：行不多（每台设备一个头 + 它的反应釜，几十行），同样稿一次排好全部行。虚拟化时视口外的行按估计的行高排，
+               选中行滚进来之后、上面的行真正排出来时它会再挪几 px（新开的窗口与连着截图结果不同，样稿 xReveal 只在行不在视口里时滚） -->
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
         </ListBox>
 
         <!-- 还没有设备（样稿 ui.empty） -->

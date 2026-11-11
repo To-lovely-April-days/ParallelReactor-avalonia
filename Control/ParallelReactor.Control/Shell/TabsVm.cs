@@ -155,11 +155,22 @@ public sealed partial class TabsVm : ObservableObject
         return list;
     }
 
-    /// <summary>这个路由的对象还在（设备在、反应釜在且已安装）。</summary>
+    /// <summary>这个路由的对象还在（设备在、反应釜在且已安装）：默认页签与留在页签栏里的页签。</summary>
     public static bool Exists(IFleetView fleet, Route r) => r.Page switch
     {
         PageKind.Device => fleet.Device(r.K) != null,
         PageKind.Reactor => fleet.Device(r.K)?.Channels.Any(c => c.N == r.N && c.Installed) == true,
+        _ => true,
+    };
+
+    /// <summary>
+    /// 这个路由能打开（样稿 route：设备在；反应釜页只要这台设备有这个位置 —— 未安装的位置打开的是一页说明，样稿 reactor.js unPanel）。
+    /// 未安装位置的页签只在它是当前页签时留着（样稿 pruneTabs 去掉、ensureRouteTab 把当前的加回来）。
+    /// </summary>
+    public static bool Routable(IFleetView fleet, Route r) => r.Page switch
+    {
+        PageKind.Device => fleet.Device(r.K) != null,
+        PageKind.Reactor => fleet.Device(r.K)?.Channels.Any(c => c.N == r.N) == true,
         _ => true,
     };
 
@@ -201,7 +212,7 @@ public sealed partial class TabsVm : ObservableObject
     public void Refresh()
     {
         var fleet = _fleet();
-        foreach (var t in Tabs.Where(t => !Exists(fleet, t.Route)).ToList()) Tabs.Remove(t);
+        foreach (var t in Tabs.Where(t => !Exists(fleet, t.Route) && !(t.IsActive && Routable(fleet, t.Route))).ToList()) Tabs.Remove(t);
         foreach (var t in Tabs) t.Refresh(fleet);
     }
 

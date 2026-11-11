@@ -138,8 +138,17 @@ public sealed partial class ReactorInspectorVm : ObservableObject
     [ObservableProperty] private string _progName = "";
     [ObservableProperty] private string _progText = "";
     [ObservableProperty] private IReadOnlyList<StepSeg>? _steps;
+    /// <summary>进度卡里画步骤条（本机知道步骤的程序）；真机对不上台账的程序只有 k/n，不画。</summary>
+    [ObservableProperty] private bool _hasSteps;
+    /// <summary>程序名的悬停（对不上台账时是整行「RV3 程序 · 第 2/5 步 · 消息」）。</summary>
+    [ObservableProperty] private string _progTip = "";
+    /// <summary>真机对不上台账的程序：设备报的消息（「充压 1.2 / 3.5 MPa」，运行中才有），写在步骤条的位置。</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(HasHmiMessage))] private string? _hmiMessage;
+    public bool HasHmiMessage => !string.IsNullOrEmpty(HmiMessage);
     [ObservableProperty] private bool _stepsRunning;
     [ObservableProperty] private string? _waitText;
+    /// <summary>等待说明前的图标：演示「hand」（去触屏开阀）；真机「clock」（排队等共用气路）。</summary>
+    [ObservableProperty] private string _waitIcon = "hand";
     [ObservableProperty] private IReadOnlyList<ProgramChoice> _programs = Array.Empty<ProgramChoice>();
     [ObservableProperty] private ProgramChoice? _selectedProgram;
     [ObservableProperty] private string? _progReason;
@@ -167,6 +176,10 @@ public sealed partial class ReactorInspectorVm : ObservableObject
     }
 
     private void Act(DeviceAction a, ActionPayload? p = null) => _ = D.Actions.RunAsync(a, p);
+
+    /// <summary>HMI 的程序进度 → 接口的快照（降级文字 HmiProgramText 用它）。</summary>
+    private static ParallelReactor.Api.ChannelProgramSnap Snap(HmiProgram h) =>
+        new(h.Running, h.StepIndex, h.StepCount, h.State, h.Message, h.StartedBy, h.StartedAt, h.WaitingGas);
 
     private void SetQuiet(Action a)
     {
@@ -243,7 +256,10 @@ public sealed partial class ReactorInspectorVm : ObservableObject
         var ex = r.Extras;
         if (Independent)
         {
-            double? rpm = ex?.Rpm ?? r.Rpm;
+            // 转速框、「设定」「启动搅拌」用设定转速（样稿 ch.rpm）：搅拌关着时有效转速是 0，拿它就会按 0 rpm 启动；
+            // 没有设定值的来源（真机）才用读数。「搅拌中」的悬停写有效转速
+            double? rpmNow = ex?.Rpm ?? r.Rpm;
+            double? rpm = ex?.RpmSp ?? rpmNow;
             StirMeta = JsNumber.ToString(lim.RpmMin) + "–" + JsNumber.ToString(lim.RpmMax) + " rpm";
             RpmMin = lim.RpmMin;
             RpmMax = lim.RpmMax;
@@ -252,7 +268,7 @@ public sealed partial class ReactorInspectorVm : ObservableObject
             ChStirSet.Reason = c.Why(DeviceAction.ChStirSet, new ActionPayload(N: n, Rpm: rpm));
             bool stirOn = ex?.StirOn ?? false;
             StirCell = on && stirOn;
-            StirCellTip = "本釜搅拌 " + Fmt.Rpm(rpm) + " rpm";
+            StirCellTip = "本釜搅拌 " + Fmt.Rpm(rpmNow) + " rpm";
             ChStirOn.Reason = c.Why(DeviceAction.ChStirOn, P);
             ChStirOff.Reason = c.Why(DeviceAction.ChStirOff, P);
         }
@@ -272,21 +288,51 @@ public sealed partial class ReactorInspectorVm : ObservableObject
         var curId = prog?.Id ?? _choices.FirstOrDefault()?.Id;
         if (!_progDirty || SelectedProgram == null || !_choices.Contains(SelectedProgram))
             SetQuiet(() => SelectedProgram = _choices.FirstOrDefault(x => x.Id == curId) ?? _choices.FirstOrDefault());
-        ProgMeta = pr == null ? null : pr.Offline ? "离线" : pr.WaitGas ? pr.WaitWord : pr.StatusText;
-        HasProgram = pr != null;
+        // 真机：设备上有程序、但台账对不上（不是本机下发的 / 已作废）—— 同反应釜页与总览卡片，只写设备报的 k/n、状态与消息（§3.4 / R5），不画步骤条
+        var hmi = prog is null && !d.Source.IsDemo && r.Hmi is { StepCount: > 0 } h0 ? h0 : null;
+        ProgMeta = pr != null ? (pr.Offline ? "离线" : pr.WaitGas ? pr.WaitWord : pr.StatusText)
+            : hmi != null ? (!on ? "离线" : hmi is { Running: true, WaitingGas: true } ? StateMap.WaitGasWord : Progress.StatusText(LiveDeviceSource.HmiProgramStatus(Snap(hmi))))
+            : null;
+        HasProgram = pr != null || hmi != null;
         if (pr != null && prog != null)
         {
             ProgName = pr.Name;
+            ProgTip = pr.Name;
             ProgText = Progress.Text(pr);
             Steps = StepSegs.Update(Steps, Progress.Bar(prog, pr, on));
+            HasSteps = true;
+            HmiMessage = null;
             StepsRunning = on && prog.Status == ProgramStatus.Running && !pr.WaitGas;
-            WaitText = pr.WaitGas ? pr.WaitWord + " · " + pr.GasName + " 进气口关闭 · 需在" + d.Alias + "触屏打开" : null;
+            // 等待进气：演示 = 样稿（进气口关闭，去触屏打开）；真机 = 排队等共用气路「等待气路（RV3 占用中）」（§3.5 / R6）
+            WaitText = !pr.WaitGas ? null
+                : d.Source.IsDemo ? pr.WaitWord + " · " + pr.GasName + " 进气口关闭 · 需在" + d.Alias + "触屏打开"
+                : StateMap.WaitGasText(d.GasHolder) + " · 第 " + pr.K + "/" + pr.N + " 步「" + pr.StepName + "」暂停计时";
+            WaitIcon = d.Source.IsDemo ? "hand" : "clock";
+        }
+        else if (hmi != null)
+        {
+            var snap = Snap(hmi);
+            ProgName = HmiProgramText.Name(n);
+            ProgText = HmiProgramText.Steps(snap);
+            ProgTip = HmiProgramText.Full(n, snap);
+            Steps = null;
+            HasSteps = false;
+            bool active = hmi.State is ParallelReactor.Api.ChannelProgramStates.Preparing or ParallelReactor.Api.ChannelProgramStates.Running
+                or ParallelReactor.Api.ChannelProgramStates.WaitingGas or ParallelReactor.Api.ChannelProgramStates.Finishing;
+            HmiMessage = active && !string.IsNullOrWhiteSpace(hmi.Message) ? hmi.Message.Trim() : null;
+            StepsRunning = false;
+            WaitText = on && hmi is { Running: true, WaitingGas: true }
+                ? StateMap.WaitGasText(d.GasHolder) + " · 第 " + Math.Clamp(hmi.StepIndex + 1, 1, hmi.StepCount) + "/" + hmi.StepCount + " 步暂停计时" : null;
+            WaitIcon = "clock";
         }
         else
         {
             ProgName = "";
+            ProgTip = "";
             ProgText = "";
             Steps = null;
+            HasSteps = false;
+            HmiMessage = null;
             StepsRunning = false;
             WaitText = null;
         }

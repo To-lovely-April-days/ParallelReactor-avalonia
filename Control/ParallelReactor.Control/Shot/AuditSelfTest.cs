@@ -63,6 +63,8 @@ public static class AuditSelfTest
         ("字重回退成常规（11.1 回退缺陷）", "[audit] font weight"),
         ("自绘文字 11 px", "drawn text font 11.0px"),
         ("画成方块的字（Inter + U+2060 的回退缺陷）", "[audit] missing glyph"),
+        ("标注框盖住釜体（audit-fig × audit-box）", "[overlap] figure × box: Border#FigSample.audit-fig × Border#BoxBad.audit-box"),
+        ("文字压住釜体", "[overlap] figure × text: Border#FigSample.audit-fig × \"压住釜体"),
     };
 
     /// <summary>不许出现的片段（误报）。</summary>
@@ -83,6 +85,8 @@ public static class AuditSelfTest
         ("pr:PrToggle 带原因", "SafeToggle"),
         ("用了 UiFontCjk 的粗体段", "粗体合法"),
         ("UiText.Keep 处理过的句子（当前字体的连接符）", "连接符合法"),
+        ("标注框挨着釜体、留出引线（不盖住）", "BoxOk"),
+        ("标注框里的文字（框已经报了，文字不再单独报）", "标注框里的字"),
     };
 
     /// <summary>自绘文字的样例控件：画一段 11 px 的字并如实报告（IAuditText）。</summary>
@@ -233,6 +237,13 @@ public static class AuditSelfTest
         // 方块：Inter 首选时 U+2060 后面的中文留在 Inter 里（.notdef）；UiText.Keep 换成当前字体能显示的连接符（不报）
         At(new TextBlock { Text = "方块 RV\u2060超\u2060压", FontSize = 15, Foreground = Palette.T2Brush, FontFamily = new FontFamily("fonts:Inter#Inter, PingFang SC") }, 560, 535);
         At(T(UiText.Keep("连接符合法 超压 3.12 MPa · 已关闭 SV11")), 560, 565);
+        // 釜体（audit-fig）不许被盖住：一个标注框压上去 10 px（报）、一个隔开 14 px（不报）、一段文字压住它（报）；标注框里的字不单独报
+        At(new Border { Name = "FigSample", Width = 60, Height = 90, Classes = { "audit-fig" }, Background = Palette.BgSunkenBrush }, 100, 690);
+        At(new Border { Name = "BoxBad", Width = 100, Height = 30, Classes = { "audit-box" }, Background = Palette.BgCardBrush,
+            BorderBrush = Palette.Line2Brush, BorderThickness = new Thickness(1), Child = T("标注框里的字") }, 150, 700);
+        At(new Border { Name = "BoxOk", Width = 50, Height = 30, Classes = { "audit-box" }, Background = Palette.BgCardBrush,
+            BorderBrush = Palette.Line2Brush, BorderThickness = new Thickness(1) }, 36, 700);
+        At(T("压住釜体"), 90, 750);
         // 横向滚动
         At(new ScrollViewer
         {

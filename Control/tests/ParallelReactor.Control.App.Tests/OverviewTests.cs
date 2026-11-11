@@ -363,6 +363,49 @@ public class OverviewTests
         Assert.Equal("无程序", c.NoneText);
     }
 
+    /// <summary>
+    /// 复核（中）：卡片的程序没了（演示 / 台账的程序记录没了，或真机 HMI 报的程序没了 —— HMI 重启后、跑过一次之前就是这样）：
+    /// 视图模型把段列表设成 null，步骤条（StepBar.Sync，同 StepBar.SegmentsSource 的同步）跟着清空 —— 以前旧段留着，收起成 0 × 0 的步骤条照样把它们画在「无程序」上。
+    /// </summary>
+    [Fact]
+    public void Program_Gone_StepBarSegmentsCleared()
+    {
+        var (s, p) = Open();
+        var c = Card(p, 1, 1);
+        var d = c.D;
+        var bar = new List<Controls.Pr.StepSeg>();
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Equal(4, bar.Count);
+        Assert.Same(c.Segments![2], bar[2]);
+        // 程序记录 → 没有
+        var rd = new Services.ChannelReading(1, true, Core.State.StateKey.Ready, "已启用", Core.State.StateKey.Ready, "已启用", Core.State.AlarmCause.None,
+            24, null, 0.005, null, 0, 0, false, false, null);
+        c.R.Apply(rd, d.Model, online: true, everOnline: true, d.Alias, "", program: null);
+        p.Refresh(s.Fleet);
+        Assert.False(c.HasProgram);
+        Assert.Null(c.Segments);
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Empty(bar);
+        // 真机 HMI 报的程序（台账对不上）→ 没有
+        var hmi = new Services.HmiProgram(true, 1, 5, "running", "升温", null, false, null);
+        c.R.Apply(rd with { Hmi = hmi }, d.Model, true, true, d.Alias, "", null);
+        p.Refresh(s.Fleet);
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Equal(5, bar.Count);
+        c.R.Apply(rd, d.Model, true, true, d.Alias, "", null);
+        p.Refresh(s.Fleet);
+        Assert.Equal(("无程序", (IReadOnlyList<Controls.Pr.StepSeg>?)null), (c.NoneText, c.Segments));
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Empty(bar);
+        // 同步按位置、按实例：同一批段不动，换了的替换
+        var a = new[] { new Controls.Pr.StepSeg(), new Controls.Pr.StepSeg() };
+        Controls.Pr.StepBar.Sync(bar, a);
+        var first = bar[0];
+        Controls.Pr.StepBar.Sync(bar, new[] { a[0], new Controls.Pr.StepSeg(), new Controls.Pr.StepSeg() });
+        Assert.Same(first, bar[0]);
+        Assert.Equal(3, bar.Count);
+    }
+
     [Fact]
     public void Selection_FlagsFollowShell()
     {
@@ -411,12 +454,18 @@ public class OverviewTests
     }
 
     [Fact]
-    public void Trend_Deferred_OnlyDecision()
+    public void Trend_ShownOnlyWhenMockDrawsIt()
     {
         var (_, p) = Open("devs=1&freeze=1");
-        Assert.True(p.TrendDeferred);   // 样稿此刻补「温度趋势」面板（M5 的曲线控件）
+        Assert.True(p.Layout!.Trend);   // 样稿此刻补「温度趋势」面板（M5：Pages/Overview/OverviewTrendVm + TimeSeriesChart）
+        Assert.True(p.Trend.IsShown);
+        Assert.NotNull(p.Trend.Options);
+        Assert.Equal(752, p.TrendFill);                        // 趋势面板铺满分区下面剩余的高度
+        Assert.False(Sec(p, 1).Layout!.Last);                  // 最后一个分区下面还有趋势：底边回来（overview.css:17-18）
         var (_, q) = Open();
-        Assert.False(q.TrendDeferred);
+        Assert.False(q.Layout!.Trend);
+        Assert.False(q.Trend.IsShown);
+        Assert.Equal(0, q.TrendFill);
     }
 
     [Fact]

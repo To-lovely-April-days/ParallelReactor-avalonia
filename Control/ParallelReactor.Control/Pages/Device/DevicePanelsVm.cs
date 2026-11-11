@@ -359,6 +359,8 @@ public sealed partial class DeviceLogVm : ObservableObject
     private readonly DevicePageVm _page;
     private int _eventVersion = -1;
     private EventFilter _shownFilter = (EventFilter)(-1);
+    /// <summary>上次同步的事件簿（演示数据重建 = 换了数据源、换了簿：事件 Key 会重复，整份重新同步）。</summary>
+    private EventBook? _eventBook;
 
     public DeviceLogVm(DevicePageVm page)
     {
@@ -445,7 +447,10 @@ public sealed partial class DeviceLogVm : ObservableObject
     {
         var book = d.Source.EventBook;
         var f = Filter;
-        if (!force && book.Version == _eventVersion && f == _shownFilter) return;
+        bool newBook = !ReferenceEquals(book, _eventBook);
+        if (!force && !newBook && book.Version == _eventVersion && f == _shownFilter) return;
+        // 换了数据源（演示数据重建）：新簿的 Key（演示 'e13'）会与旧的重复、行又不可变 —— 先清掉，不留上一份数据的事件
+        if (newBook) { _eventBook = book; if (Events.Count > 0) Events.Clear(); }
         _eventVersion = book.Version;
         _shownFilter = f;
         var c = book.Counts;

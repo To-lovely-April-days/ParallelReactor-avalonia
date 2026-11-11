@@ -19,7 +19,7 @@ namespace ParallelReactor.Control.Views.Shell;
 /// 工作区（PORT-PLAN §2.1「工作区 / 页面宿主」；样稿 .pr-ws：bg-app）：每个打开的页签一个页面视图实例，只显示当前页签的那一个 ——
 /// 切换页签时滚动位置、输入、展开状态都不丢（不像旧界面那样所有页面一直叠在一起、或每次重建）。页签关掉后视图释放。
 /// 面板放大 / 关闭（PrPanel 的 □ / ×）：放大 = 原地铺满工作区（同一页的其它面板隐藏、所在网格的行列跨满，不搬动控件）；
-/// 关闭 = 隐藏 + toast「已关闭「…」· 视图 → 重置布局 可恢复」；视图 › 重置布局全部恢复；Esc 先还原放大的面板。
+/// 关闭 = 隐藏 + toast「已关闭「…」· 视图 → 重置布局 可恢复」；视图 › 重置布局全部恢复（所有页签）；Esc 先还原当前页面上放大的面板。
 /// </summary>
 public sealed class PageHost : Panel
 {
@@ -81,7 +81,11 @@ public sealed class PageHost : Panel
         var pages = _vm?.Pages.ToHashSet() ?? new HashSet<PageVm>();
         foreach (var gone in _views.Keys.Where(p => !pages.Contains(p)).ToList())
         {
-            Children.Remove(_views[gone]);
+            var view = _views[gone];
+            // 放大的面板在这一页里：先放掉（去掉视图之后面板不在宿主下面，IsMaximized 的变化再也到不了 OnMaximized ——
+            // 复核：关掉放大了面板的页签之后 Esc 一直被这里吞掉，外壳的 Esc 再也收不起浮层资源管理器）
+            if (_max != null && (ReferenceEquals(_max, view) || view.IsVisualAncestorOf(_max))) DropMax();
+            Children.Remove(view);
             _views.Remove(gone);
         }
         foreach (var p in pages)
@@ -184,6 +188,25 @@ public sealed class PageHost : Panel
         _watch.Clear();
     }
 
+    /// <summary>
+    /// 放掉放大的面板（它的页面视图要去掉了，或者它已经不在这个宿主下面）：撤掉订阅、还原兄弟元素与网格位置（不是页面自己放大的时候）、
+    /// 清掉放大标记。先把 _max 清空再改 IsMaximized：面板若还在宿主下面，类处理器进来时不再重复还原。
+    /// </summary>
+    private void DropMax()
+    {
+        if (_max is not { } m) return;
+        _max = null;
+        Unwatch();
+        if (!GetInPlaceMax(m)) Restore();
+        m.IsMaximized = false;
+    }
+
+    /// <summary>放大的面板已经不在这个宿主下面（视图被去掉了等）：放掉它，Esc / 重置布局不再被它挡住。</summary>
+    private void DropDetachedMax()
+    {
+        if (_max != null && !this.IsVisualAncestorOf(_max)) DropMax();
+    }
+
     private sealed class HiddenObserver : IObserver<AvaloniaPropertyChangedEventArgs>
     {
         private readonly Action _changed;
@@ -253,15 +276,20 @@ public sealed class PageHost : Panel
     /// <summary>视图 › 重置布局：还原放大的面板、重新显示关闭的面板（所有页面）。</summary>
     private void OnReset(object? sender, EventArgs e)
     {
+        DropDetachedMax();
         if (_max != null) _max.IsMaximized = false;
         foreach (var v in _views.Values)
             foreach (var p in v.GetVisualDescendants().OfType<PrPanel>()) p.IsClosed = false;
     }
 
-    /// <summary>Esc：有放大的面板就还原它（返回是否处理了）。</summary>
+    /// <summary>
+    /// Esc：当前页面上有放大的面板就还原它（返回是否处理了）。已经不在宿主下面的放掉；在藏起来的页签里的不动（切回去仍是放大的），
+    /// 这次 Esc 交给外壳 —— 样稿只在当前页面（els.ws）里找 .is-max（复核：以前切走页签之后 Esc 被它吞掉，悄悄还原了看不见的面板，浮层资源管理器收不起）。
+    /// </summary>
     public bool Escape()
     {
-        if (_max == null) return false;
+        DropDetachedMax();
+        if (_max == null || CurrentView is not { } cur || !(ReferenceEquals(cur, _max) || cur.IsVisualAncestorOf(_max))) return false;
         _max.IsMaximized = false;
         return true;
     }

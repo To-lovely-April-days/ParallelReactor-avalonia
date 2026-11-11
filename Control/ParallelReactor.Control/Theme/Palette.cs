@@ -179,6 +179,7 @@ public static class Palette
     public static readonly BoxShadows ShadowPop = BoxShadows.Parse("0 8 28 0 #29000000");   // --shadow-pop
     public static readonly BoxShadows ShadowDlg = BoxShadows.Parse("0 10 45 0 #40000000");   // --shadow-dlg
     public static readonly BoxShadows ShadowCardHover = BoxShadows.Parse("0 2 10 0 #1c282832");   // 卡片悬停 / 选中（overview.css .overview-card:hover，颜色同 --shadow-card）
+    public static readonly BoxShadows ShadowStep = BoxShadows.Parse("0 1 5 0 #12282832");   // 步骤卡片（base.css .pr-step：0 1px 5px rgba(40,40,50,.07)，颜色同 --shadow-card）
 
     /// <summary>67 个颜色令牌（与 PR.PALETTE 同序），分组同 MOCK #/gallery 的色板。</summary>
     public static readonly IReadOnlyList<Token> Tokens = new Token[]

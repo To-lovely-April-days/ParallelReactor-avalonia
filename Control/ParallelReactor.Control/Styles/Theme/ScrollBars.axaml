@@ -106,6 +106,48 @@
     </Style>
   </ControlTheme>
 
+  <!-- 反应釜页「程序」画布的滚动条（样稿 reactor.css .reactor-scroll::-webkit-scrollbar：8 px，轨道 bg-app + 左边 1 px line-soft，拇指 line、圆角 4） -->
+  <ControlTheme x:Key="PrScrollBarCanvas" TargetType="ScrollBar" BasedOn="{StaticResource PrScrollBar}">
+    <Setter Property="Background" Value="{StaticResource BgAppBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <Border Name="PART_Edge" Width="1" HorizontalAlignment="Left" Background="{StaticResource LineSoftBrush}" />
+          <Track Name="PART_Track"
+                 Minimum="{TemplateBinding Minimum}"
+                 Maximum="{TemplateBinding Maximum}"
+                 Value="{TemplateBinding Value, Mode=TwoWay}"
+                 ViewportSize="{TemplateBinding ViewportSize}"
+                 Orientation="{TemplateBinding Orientation}">
+            <Track.DecreaseButton>
+              <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource PrScrollPage}" />
+            </Track.DecreaseButton>
+            <Track.IncreaseButton>
+              <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource PrScrollPage}" />
+            </Track.IncreaseButton>
+            <Thumb Name="PART_Thumb" Theme="{StaticResource PrScrollThumb}" />
+          </Track>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrScrollViewerCanvas" TargetType="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+          <ScrollContentPresenter Name="PART_ContentPresenter"
+                                  Background="{TemplateBinding Background}"
+                                  Padding="{TemplateBinding Padding}" />
+          <ScrollBar Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal" Theme="{StaticResource PrScrollBar}" />
+          <ScrollBar Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Theme="{StaticResource PrScrollBarCanvas}" />
+          <Panel Name="PART_ScrollBarsSeparator" Grid.Row="1" Grid.Column="1" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
   <!-- 滚动区：内容在左上格，滚动条各占 8 px（同网页的经典滚动条，不浮在内容上） -->
   <ControlTheme x:Key="PrScrollViewer" TargetType="ScrollViewer">
     <Setter Property="Background" Value="Transparent" />

@@ -181,8 +181,28 @@ public sealed partial class ExplorerVm : ObservableObject
         Refresh();
     }
 
-    /// <summary>展开状态回到默认（≤ 8 路展开、16 路收起）。</summary>
-    internal void ResetOpen() => _open.Clear();
+    /// <summary>
+    /// 回到刚打开时的样子（ShellVm.ResetView：截图的每个场景、外框检查）：展开状态回到默认（≤ 8 路展开、16 路收起），树滚回顶部（<see cref="ScrollResetRequested"/>）——
+    /// 之后选中的行照样按样稿 xReveal 滚到可见处，结果就与新打开的页面相同（复核：以前留着上一个场景的滚动位置，选中的行可能不滚进来）。
+    /// </summary>
+    internal void ResetView()
+    {
+        _open.Clear();
+        ScrollResetRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>请视图把树滚回顶部（<see cref="ResetView"/>）。</summary>
+    public event EventHandler? ScrollResetRequested;
+
+    /// <summary>
+    /// 展开状态回到默认并刷新（视图 › 重置布局，样稿 resetLayout 的 xOpen = {}）：不滚动、不跟随 ——
+    /// 选中的反应釜在收起的设备里时由设备头标出（HasSel），同样稿。
+    /// </summary>
+    public void ResetOpen()
+    {
+        _open.Clear();
+        Refresh();
+    }
 
     /// <summary>双击：打开设备页 / 反应釜页（ShellVm.Navigate 同时选中它、收起浮层）。</summary>
     public void Open(XRow row)

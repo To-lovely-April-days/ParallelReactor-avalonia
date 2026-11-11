@@ -8,9 +8,11 @@ using ParallelReactor.Api;
 using ParallelReactor.Client;
 using ParallelReactor.Control.Core;
 using ParallelReactor.Control.Core.Alarms;
+using ParallelReactor.Control.Core.Chart;
 using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Guard;
+using ParallelReactor.Control.Core.History;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
 using ParallelReactor.Control.Core.State;
@@ -35,7 +37,7 @@ namespace ParallelReactor.Control.Services;
 /// <item>释放：<see cref="DisposeAsync"/> / <see cref="DisconnectAsync"/> 停止监督、<b>摘掉挂上的每一个事件处理器</b>（旧 MainViewModel 从不摘），
 ///   持有控制权时先释放（≤ 3 s）、正在申请时先取消（R7：已取消的申请还在等触屏时 REST 留给 Client 的后台守卫，批准了就立即释放），再释放连接。</item>
 /// <item>操作：<see cref="ExecAsync"/> 按样稿的操作调 Client（控制类走 ControlledWrites 带租约，停止类直接 REST）；「启动」「全部运行」绝不调 HMI 的 POST /run（D6）：
-///   本机这次下发过程序的反应釜 → program/run，否则 → /channels/{id}/start（启用 + 加热到 SP）。</item>
+///   本机这次下发过程序的反应釜 → program/run，否则 → /channels/{id}/start（启用 + 加热到 SP）；还在核对、或下发之后触屏端接管过控制的两样都不做（复核，见 ProgramLedger）。</item>
 /// <item>控制权：申请在后台等触屏确认（倒计时按 HMI 给的到期时刻与时钟偏差，<see cref="Lease"/>）；本地「取消申请」走 Client 的 CancelRequestAsync（R7：界面立即回到本地只读，
 ///   后台守卫继续查这条申请，触屏之后批准就立即释放）；丢失 → 宽限倒计时（Client 的 LostAt + 宽限）→ 恢复；被其他客户端持有（第 5 种，R8）；触屏拒绝后的冷却（守卫写明）。
 ///   Client 不自动重新申请（AutoReacquireLease = false，样稿：宽限期满「控制权已交回触屏」，要不要再申请由用户决定）。</item>
@@ -58,7 +60,10 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     private readonly AlarmBook _alarmBook = new();
     /// <summary>事件簿（M4）：GET /events（最近 200 条，分页续取）+ WS event；身份 = 序号纪元:序号。</summary>
     private readonly EventBook _eventBook = new();
-    private readonly Dictionary<int, ProgramDoc> _downloaded = new();
+    /// <summary>程序台账（M5，Core 的 ProgramLedger）：本机下发过的程序 + 步骤计时，按 HMI 启动号严格匹配（R5）。第一次用到时建（要等 <see cref="LedgerDirectory"/> 设好）。</summary>
+    private ProgramLedger? _ledger;
+    /// <summary>每一路给页面的程序记录（台账 + 最新一帧算出来的）：帧、台账 / 步骤计时的版本、启动号都没变时直接用（R10：每次刷新每一路都会问）。</summary>
+    private readonly Dictionary<int, (TelemetrySnapshot? Frame, int Lv, int Tv, string? Boot, ProgramRecord? Rec)> _progCache = new();
 
     /// <summary>报警 / 事件簿的投影（AlarmItem / EventItem，外框与检查器用），簿的 Version 变了才重建。</summary>
     private IReadOnlyList<AlarmItem> _alarms = Array.Empty<AlarmItem>();
@@ -321,17 +326,109 @@ public sealed partial class LiveDeviceSource : IDeviceSource
 
     public ChannelExtras? Extras(int n) => null;
 
-    /// <summary>程序台账在 M5；M2 只记本机这次下发过的程序（给「启动」用），不当成正在运行的程序显示。</summary>
-    public ProgramRecord? Program(int n) => null;
+    /// <summary>
+    /// 程序台账的目录（配置目录：&lt;目录&gt;/programs/&lt;设备 id&gt;.json，PORT-PLAN §5 M5「数据」）；null = 只在内存里（截图、演示、测试、不能写文件的配置）。
+    /// FleetVm 新建数据源时按配置的 CanWrite 给。
+    /// </summary>
+    public string? LedgerDirectory { get; init; }
+
+    /// <summary>
+    /// 程序台账（Core 的 <see cref="ProgramLedger"/>）：本机下发过的程序（PUT 成功之后记下）、HMI 启动号、步骤计时（每一帧观察 stepIndex）。
+    /// 只有严格对得上（同一个启动号、比下发新的执行、步数相同、本机或触屏启动）时才当成正在运行的程序显示（<see cref="Program"/>），否则降级（R5）。
+    /// </summary>
+    public ProgramLedger Ledger => _ledger ??= LedgerDirectory is { Length: > 0 } dir
+        ? ProgramLedger.Open(dir, Config.Id, _clientName)
+        : new ProgramLedger(Config.Id.ToString("D"), _clientName, null);
+
+    /// <summary>此刻的 HMI 启动号：最近一次 WS hello 的（HMI 重启后第一个知道新启动号的就是它），否则 GET /device 的。</summary>
+    private string? BootIdNow => (Connection?.Ws?.BootId is { Length: > 0 } wb ? wb : null) ?? _bootId;
+
+    private ChannelSnap? SnapOf(int n)
+    {
+        var chans = Latest?.Channels;
+        if (chans is null) return null;
+        foreach (var c in chans) if (c?.Id == n) return c;
+        return null;
+    }
+
+    /// <summary>
+    /// 反应釜上的程序（M5）：本机下发、且与 HMI 上这一路的执行严格对得上的程序（台账的 ProgramOf：HMI 的状态 / 当前步 + 步骤计时 + 剩余时间估算）；
+    /// 已下发还没跑 = 已下发 · 待运行。对不上 / 没下发过为 null —— 页面降级成「RVn 程序 · 第 k/n 步 · HMI 的消息」（<see cref="ChannelReading.Hmi"/>），
+    /// 绝不把过期的程序当成正在运行的显示（R5）。断线时按断线前最后一帧（进度停在 DataAt）。
+    /// </summary>
+    public ProgramRecord? Program(int n)
+    {
+        var frame = Latest;
+        var boot = BootIdNow;
+        var l = Ledger;
+        if (_progCache.TryGetValue(n, out var c) && ReferenceEquals(c.Frame, frame) && c.Lv == l.Version && c.Tv == l.Tracker.Version && c.Boot == boot)
+            return c.Rec;
+        ProgramRecord? rec = null;
+        if (frame != null && l.Entry(n) is { Valid: true })
+            rec = l.ProgramOf(n, frame, boot, Model, _history.Data.Has(n) ? _history.Data.Channel(n) : null, EtaRates.FromSettings(Settings));
+        _progCache[n] = (frame, l.Version, l.Tracker.Version, boot, rec);
+        return rec;
+    }
+
+    /// <summary>第 n 路为什么没按台账显示（反应釜页降级说明用）：条目被作废的原因 / 对不上的原因；没下发过为 null。</summary>
+    public string? LedgerReason(int n)
+    {
+        var e = Ledger.Entry(n);
+        if (e is null) return null;
+        if (!e.Valid) return e.Superseded;
+        var m = Ledger.Match(n, SnapOf(n)?.Program, BootIdNow);
+        return m.Usable ? null : m.Reason;
+    }
 
     /// <summary>
     /// 检查器的程序下拉：本机给第 n 路的程序草稿（drafts.json，同旧界面的「下发程序」；按型号的程序库在 M7）。
     /// 只在检查器换对象时读一次（不是每帧）；草稿没有时是模板「加氢测试-0n」（不写文件）。
     /// </summary>
-    public IReadOnlyList<ProgramChoice> ProgramChoices(int n) => new[] { new ProgramChoice("draft-" + n, new ProgramDraftStore().Get(n).Name) };
+    public IReadOnlyList<ProgramChoice> ProgramChoices(int n) => new[] { new ProgramChoice("draft-" + n, Drafts.Get(n).Name) };
 
-    /// <summary>本机这次下发到第 n 路的程序（下发成功后记下；HMI 重启 / 断开后清空）。</summary>
-    public ProgramDoc? Downloaded(int n) => _downloaded.TryGetValue(n, out var d) ? d : null;
+    /// <summary>
+    /// 实时的程序库（反应釜页没有程序时，页面每次刷新都会问）：本机给第 n 路的程序草稿（同 <see cref="ProgramChoices"/>；按型号的程序库在 M7）。
+    /// R10（复核）：不再每次刷新都读 drafts.json、解析、转换 —— 草稿读一次缓存着，草稿保存过（<see cref="ProgramDraftStore.Version"/>）、型号换了才重读；
+    /// 同一份草稿返回同一个列表与同一批 ProgramDef（页面按身份比较选中项）。
+    /// </summary>
+    public IReadOnlyList<ProgramDef> Library(int n)
+    {
+        var model = Model;
+        _ = Drafts;   // 草稿版本变了时清掉缓存
+        if (!ReferenceEquals(_libModel, model)) { _lib.Clear(); _libModel = model; }
+        if (_lib.TryGetValue(n, out var list)) return list;
+        list = new[] { ProgramDocs.ToDef(Drafts.Get(n), model, "draft-" + n) };
+        _lib[n] = list;
+        return list;
+    }
+
+    private ProgramDraftStore? _drafts;
+    private int _draftsVersion = -1;
+    private ModelProfile? _libModel;
+    private readonly Dictionary<int, IReadOnlyList<ProgramDef>> _lib = new();
+
+    /// <summary>本机的程序草稿（读一次缓存；本进程里保存过草稿 —— 程序编辑页、下发对话框 —— 才重读，同时清掉程序库的缓存）。</summary>
+    private ProgramDraftStore Drafts
+    {
+        get
+        {
+            int v = ProgramDraftStore.Version;
+            if (_drafts is null || v != _draftsVersion)
+            {
+                _drafts = new ProgramDraftStore();
+                _draftsVersion = v;
+                _lib.Clear();
+            }
+            return _drafts;
+        }
+    }
+
+    /// <summary>本机下发到第 n 路、仍然有效的程序（台账的条目：下发成功后记下；HMI 重启、被别的客户端替换、跑起来的不是它时作废）。</summary>
+    public ProgramDoc? Downloaded(int n)
+    {
+        if (Ledger.Entry(n) is not { Valid: true } e) return null;
+        try { return e.Doc(); } catch (Exception ex) when (ex is FormatException or System.Text.Json.JsonException) { return null; }
+    }
 
     /// <summary>「全部运行」要运行的反应釜（D6：本机下发过、已启用、没在运行；守卫、确认清单、执行用同一个判断 ActionGuard.IsRunAllTarget）。</summary>
     public IReadOnlyList<int> RunAllTargets() => ActionGuard.RunAllTargets(Facts());
@@ -355,10 +452,15 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         {
             var r = Read(n);
             ChannelSnap? snap = frame?.Channels.FirstOrDefault(c => c.Id == n);
-            bool mine = _downloaded.ContainsKey(n);
-            ProgramStatus? prog = snap?.Program is { } p ? HmiProgramStatus(p) : mine ? ProgramStatus.Loaded : null;
-            // Downloaded：「全部运行」只运行本机这次下发的程序（D6）；触屏放上去的程序（HMI 快照里有、本机没下发）不算
-            chans.Add(new ChannelFacts(n, r.Installed, r.Own, r.Heating, false, prog, snap?.TempSpC, Downloaded: mine));
+            // 程序台账（D6）：本机下发、HMI 上就是它（已下发待运行，或跑过的就是它）才算本机的程序；已下发还没跑 = 待运行
+            var match = Ledger.Match(n, snap?.Program, BootIdNow);
+            bool mine = match.Usable;
+            ProgramStatus? prog = match.Kind == LedgerMatchKind.Loaded ? ProgramStatus.Loaded : snap?.Program is { } p ? HmiProgramStatus(p) : null;
+            // Downloaded：「全部运行」只运行本机这次下发的程序（D6）；触屏放上去的程序（HMI 快照里有、本机没下发）不算。
+            // Checking：连上之后离线期间的事件还没核对完 ——「启动」先禁用（复核 R5）。
+            // LocalControl：下发之后触屏端接管过控制（触屏可能改过程序）——「启动」禁用、「全部运行」不算它，要重新下发（复核）
+            chans.Add(new ChannelFacts(n, r.Installed, r.Own, r.Heating, false, prog, snap?.TempSpC, Downloaded: mine, Checking: match.Kind == LedgerMatchKind.Checking,
+                LocalControl: match is { Usable: true, Entry.LocalControl: true }));
         }
         var conn = Conn;
         return new GuardFacts
@@ -460,8 +562,12 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             }
             case DeviceAction.Start:
             {
-                // D6：本机下发过程序 → 运行它；否则启用 + 加热到 SP（POST /channels/{id}/start），不调 POST /run
-                if (_downloaded.TryGetValue(n, out var doc))
+                // 连上之后还在核对离线期间的事件（复核 R5）：既不运行台账里的程序、也不改成启用 + 加热 —— 守卫已经禁用了「启动」，这里再挡一次
+                if (Ledger.IsChecking(n)) return ActionOutcome.Failed(alias + " · " + rv + " " + ProgramLedger.CheckingReason);
+                // 下发之后触屏端接管过控制（复核）：设备上的程序可能已修改，program/run 会跑那一份 —— 同样两样都不做，要重新下发（守卫同样禁用）
+                if (Ledger.IsLocalControl(n, SnapOf(n)?.Program, BootIdNow)) return ActionOutcome.Failed(alias + " · " + rv + " " + ProgramLedger.LocalControlReason);
+                // D6：本机下发过、HMI 上就是它的程序（程序台账）→ 运行它；否则启用 + 加热到 SP（POST /channels/{id}/start），不调 POST /run
+                if (Ledger.CanRun(n, SnapOf(n)?.Program, BootIdNow) && Ledger.Entry(n) is { } doc)
                 {
                     var r = await c.Control.RunProgramAsync(n, null, IdempotencyKeys.New("pc-start-rv" + n), ct).ConfigureAwait(true);
                     return Ok(rv + " 已启动 · 程序「" + doc.Name + "」", r.Warnings);
@@ -496,15 +602,17 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             }
             case DeviceAction.ProgLoad:
             {
-                // 程序库 / 台账在 M5 / M7：M2 下发本机这个反应釜的草稿（同旧界面的「下发程序」）
-                var doc = new ProgramDraftStore().Get(n);
-                return await UploadProgramAsync(n, doc, ct).ConfigureAwait(true);
+                // 按型号的程序库在 M7：下发本机这个反应釜的草稿（同旧界面的「下发程序」；反应釜页的程序库 / 检查器的下拉都是它，id「draft-n」）
+                var doc = Drafts.Get(n);
+                return await UploadProgramAsync(n, doc, ct, libraryId: a.Id).ConfigureAwait(true);
             }
             case DeviceAction.ProgRun:
             {
+                // 程序名只在台账对得上时写（本机下发、HMI 上就是它）；设备上那份不是本机下发的 / 还在核对时没有名字：「RV1 程序开始运行」（复核）。
+                // 下发之后触屏端接管过控制的同样不写：设备上那份可能已经改过，不一定还是台账里的程序（复核）
+                string? name = Ledger.Match(n, SnapOf(n)?.Program, BootIdNow) is { Usable: true, Entry: { LocalControl: false } d } ? d.Name : null;
                 var r = await c.Control.RunProgramAsync(n, null, IdempotencyKeys.New("pc-run-rv" + n), ct).ConfigureAwait(true);
-                var name = _downloaded.TryGetValue(n, out var d) ? d.Name : "";
-                return Ok(rv + " 程序「" + name + "」开始运行", r.Warnings);
+                return Ok(rv + " 程序" + (string.IsNullOrEmpty(name) ? "" : "「" + name + "」") + "开始运行", r.Warnings);
             }
             case DeviceAction.ProgAbort:
             {
@@ -547,8 +655,8 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             case DeviceAction.StopAll:
             {
                 int k = Enumerable.Range(1, Model.ChannelCount).Count(running);
-                // 样稿「全部停止」：中止程序、停止加热、关闭进气；搅拌保持当前状态（要彻底切断用急停）。
-                // 停不停搅拌只看 StopAllStopsStirring（默认 = ControlOptions.StopAllStopsStirring）→ POST /stop-all {stopStir}
+                // 样稿「全部停止」：中止程序、停止加热、关闭进气、停止搅拌（用户确认；样稿第一版是搅拌保持当前状态）。
+                // 停不停搅拌只看 StopAllStopsStirring（默认 = ControlOptions.StopAllStopsStirring = true）→ POST /stop-all {stopStir}
                 bool stir = StopAllStopsStirring;
                 var r = await c.Rest.StopAllAsync(stir, ct).ConfigureAwait(true);
                 return k > 0 ? Ok(StopAllText.Stopped(k, stir), r.Warnings, ToastKind.Warn) : Ok(StopAllText.NothingRunning(stir), r.Warnings, ToastKind.Info, true);
@@ -603,13 +711,59 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         }
     }
 
-    /// <summary>下发程序到第 n 路（PUT /channels/{n}/program，需要控制权）并记下（「启动」「全部运行」用，D6）。</summary>
-    public async Task<ActionOutcome> UploadProgramAsync(int n, ProgramDoc doc, CancellationToken ct)
+    /// <summary>
+    /// 下发程序到第 n 路（PUT /channels/{n}/program，需要控制权）并记进程序台账（「启动」「全部运行」与反应釜页的程序显示用，D6 / R5）：
+    /// 启动号、下发时刻（本机 + 设备时钟）、下发那一刻这一路的上一次执行（比它新的执行才可能是这个程序）、本机客户端名、命令的 opId。
+    /// </summary>
+    public async Task<ActionOutcome> UploadProgramAsync(int n, ProgramDoc doc, CancellationToken ct, string? libraryId = null)
     {
-        var r = await Conn0.Control.ReplaceProgramAsync(n, doc, ct).ConfigureAwait(true);
-        _downloaded[n] = doc;
+        var c = Conn0;
+        // 下发之前的这一路（PUT 返回之前 HMI 上还是旧的执行）：比它新的执行才可能是这个程序
+        var frame = Latest;
+        var prior = SnapOf(n)?.Program;
+        var r = await c.Control.ReplaceProgramAsync(n, doc, ct).ConfigureAwait(true);
+        var l = Ledger;
+        l.Client = LeaseClientName;
+        // 事件核对从下发命令自己的事件序号起（没有时从 WS 已经连续收到的最后一条起）；序号纪元 = WS hello 的（没有 hello 时 GET /device 的）。
+        // 设备时钟的下发时刻先按最近的帧估（hello 量的时钟差可能是几天前的，复核）；台账看到下发命令自己的事件时换成它的时刻
+        var hello = c.Ws?.Hello;
+        l.AddDownload(n, doc, BootIdNow ?? "", _clock.UtcNow, DownloadClockOffset(c), prior, priorKnown: frame != null,
+            opId: string.IsNullOrEmpty(r.OpId) ? null : r.OpId, opEventSeq: r.OpEventSeq > 0 ? r.OpEventSeq : null, libraryId: libraryId,
+            eventEpoch: hello?.SeqEpoch ?? Info?.SeqEpoch, eventCursor: hello != null ? c.Ws!.LastEventSeq : null);
+        // PUT 回来之前收到的事件里有跳号（补核对时中间缺了一条）：同实时跳号，这一条先不认、续取补上
+        if (l.Behind && ReferenceEquals(c, Connection))
+        {
+            l.BeginCheckBehind();
+            RequestLedgerCatchUp(c);
+        }
         MarkDirty(SourceChange.Programs);
+        ReportLedgerError();
         return ActionOutcome.Done(Config.Alias + " · 程序「" + doc.Name + "」已下发到 RV" + n, ToastKind.Ok, r.Warnings);
+    }
+
+    /// <summary>已经提示过的台账读取问题（<see cref="ProgramLedger.LoadError"/>，同一句只提示一次）。</summary>
+    private string? _ledgerLoadShown;
+    /// <summary>这一段保存失败已经提示过（<see cref="ProgramLedger.SaveError"/>；保存成功一次之后清掉，下一段失败再提示）。</summary>
+    private bool _ledgerSaveShown;
+
+    /// <summary>
+    /// 程序台账读 / 写失败时提示（复核：以前读不了时悄悄从空台账开始、之后写盘把好文件盖掉，保存失败也没有人看）：读取的问题提示一次，
+    /// 保存失败每一段（到下一次保存成功为止）提示一次 —— 不每秒刷屏。连上、下发之后、每秒（Tick）查一次。
+    /// </summary>
+    private void ReportLedgerError()
+    {
+        if (_ledger is not { } l || _disposed) return;
+        if (l.LoadError is { } load && load != _ledgerLoadShown)
+        {
+            _ledgerLoadShown = load;
+            Notice?.Invoke(Config.Alias + " · " + load, ToastKind.Warn);
+        }
+        if (l.SaveError is not { } save) _ledgerSaveShown = false;
+        else if (!_ledgerSaveShown)
+        {
+            _ledgerSaveShown = true;
+            Notice?.Invoke(Config.Alias + " · " + save, ToastKind.Warn);
+        }
     }
 
     /// <summary>改别名（本机的事，不发给 HMI）。</summary>
@@ -619,34 +773,41 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         MarkDirty(SourceChange.Info);
     }
 
-    /// <summary>曲线（实时）：TelemetryStore 里的帧（最多 7200 帧），压力 psi → MPa。M5 换成 10 s 一格的 ChannelHistory，增量追加。</summary>
+    /// <summary>
+    /// 曲线（实时，M5）：Core 的 <see cref="DeviceHistory"/> —— 每收到一帧追加一个采样（10 s 一格、同一格留最后一帧；psi → MPa），断线时插断开标记（<see cref="SetConn"/>），
+    /// HMI 重启时清空（OnRestartedCore 的「曲线缓冲已清空」）。不再每次从 TelemetryStore 的 7200 帧重建。
+    /// 横轴的「现在」按 HMI 的时钟（帧的 Ts）：本机 UTC + WS hello 给出的时钟偏差；断开之后（连接对象没了）用记下的偏差（复核，见 LiveDeviceSource.Clock.cs）。
+    /// 会话标记取自 GET /sessions/current（见 LoadMarksAsync）。
+    /// </summary>
     private sealed class LiveHistoryView : IChannelHistory
     {
         private readonly LiveDeviceSource _s;
         public LiveHistoryView(LiveDeviceSource s) => _s = s;
 
-        public IReadOnlyList<(DateTime T, double? V)> Series(int n, HistoryKey key, double minutes = 60)
+        /// <summary>全部反应釜的环形缓冲。</summary>
+        public DeviceHistory Data { get; } = new();
+
+        public IReadOnlyList<(DateTime T, double? V)> Series(int n, HistoryKey key, double minutes = 60) =>
+            Data.Series(n, (HistoryField)(int)key, Now, minutes);
+
+        public ChannelHistory? Channel(int n) => Data.Has(n) ? Data.Channel(n) : null;
+
+        /// <summary>
+        /// HMI 时钟的「现在」，向上取整到整秒（同样稿的演示时钟按秒走）：横轴每秒至多右移一次 —— 曲线一秒内多次刷新不重排；
+        /// 向上取整，刚到的那一帧（帧时刻 ≤ 现在）一定画在右端。
+        /// </summary>
+        public DateTime Now
         {
-            var c = _s.Connection;
-            if (c == null) return Array.Empty<(DateTime, double?)>();
-            var frames = c.Telemetry.Since(DateTime.UtcNow.AddMinutes(-Math.Max(1, minutes)));
-            var list = new List<(DateTime, double?)>(frames.Length);
-            foreach (var f in frames)
+            get
             {
-                var ch = f.Channels.FirstOrDefault(x => x.Id == n);
-                double? v = ch is null ? null : key switch
-                {
-                    HistoryKey.TempC => ch.TempC,
-                    HistoryKey.PressureMPa => Units.PsiToMpa(ch.PressurePsi),
-                    HistoryKey.HeaterPct => ch.HeatOutputPct,
-                    HistoryKey.Rpm => f.Stir.On ? f.Stir.RpmSp : 0,
-                    HistoryKey.SpC => ch.TempSpC,
-                    HistoryKey.PTargetMPa => ch.PressureSpPsi > 0 ? Units.PsiToMpa(ch.PressureSpPsi) : null,
-                    _ => null,
-                };
-                list.Add((f.Ts.ToLocalTime(), v));
+                var t = _s._clock.UtcNow + _s.HistoryClockOffset;
+                long rem = t.Ticks % TimeSpan.TicksPerSecond;
+                if (rem != 0) t = t.AddTicks(TimeSpan.TicksPerSecond - rem);
+                return t.ToLocalTime();
             }
-            return list;
         }
+
+        /// <summary>当前会话的标记（GET /sessions/current，会话 / 标记的事件之后重取；见 LoadMarksAsync）。</summary>
+        public IReadOnlyList<SessionMark> Marks => _s._marks;
     }
 }

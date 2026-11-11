@@ -126,11 +126,15 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     /// <summary>数据源变了：下一次问守卫时重取事实。</summary>
     internal void InvalidateFacts() => _facts = null;
 
-    /// <summary>演示数据重建：换数据源（视图模型的身份不变）。</summary>
+    /// <summary>
+    /// 演示数据重建：换数据源（视图模型的身份不变）。事件按 Id 增量同步，而新数据源的事件 Id 会与旧的重复（演示数据的 'e13'）——
+    /// 先清掉，整份重新同步（复核：以前留着上一份演示数据的事件，检查器的「最近事件」因此跟截图顺序有关）。
+    /// </summary>
     internal void SetSource(IDeviceSource source)
     {
         Source = source;
         _facts = null;
+        if (Events.Count > 0) Events.Clear();
         Refresh(Fleet.Now);
     }
 
@@ -301,8 +305,16 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     private ProgressContext ContextFor(ChannelReading rd, DateTime now)
     {
         var s = Source;
-        return new ProgressContext(now, s.Conn.Online, s.DataAt, rd.Own, Model, s.GasOpen, s.IsDemo ? Progress.WaitGasWordDemo : StateMap.WaitGasWord);
+        // 真机：程序台账给的时刻是设备时钟（帧的 Ts、program.startedAt）—— 剩余时间、预计结束按设备时钟的「现在」算（IChannelHistory.Now：本机 UTC + HMI 时钟偏差）
+        var t = s.IsDemo ? now : s.History.Now;
+        return new ProgressContext(t, s.Conn.Online, s.DataAt, rd.Own, Model, s.GasOpen, s.IsDemo ? Progress.WaitGasWordDemo : StateMap.WaitGasWord);
     }
+
+    /// <summary>
+    /// 真机：此刻持有共用气路的反应釜（帧的 programs.gasHolder）；演示 / 不知道为 null。等待气路的说明「等待气路（RV3 占用中）」用
+    /// （真机的 waitingGas 是排队等共用气路，不是样稿的进气口关闭，PORT-PLAN §3.5 / R6）。
+    /// </summary>
+    public int? GasHolder => Source is LiveDeviceSource l ? l.Latest?.Programs?.GasHolder : null;
 
     /// <summary>时间轴分段（样稿 PR.sim.segments）：没有程序（真机在 M5 的程序台账之前）为空。</summary>
     public IReadOnlyList<ProgramSegment> Segments(int n) => Source.Program(n) is { } p ? Progress.Segments(p, ContextFor(n)) : Array.Empty<ProgramSegment>();

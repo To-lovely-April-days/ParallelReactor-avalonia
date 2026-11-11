@@ -84,11 +84,12 @@
                 BorderThickness="{TemplateBinding BorderThickness}">
           <Border Name="PART_EdgeBox" BorderBrush="{StaticResource GEdgeBrush}" BorderThickness="0">
             <DockPanel>
-              <pr:FlexRow DockPanel.Dock="Top" Height="24" Spacing="6" Margin="2,0">
+              <!-- 路径：放不下时由 PropCard 逐字省略（ShownPath，见 Controls/Pr/TextFit；TextTrimming 只兜底） -->
+              <pr:FlexRow Name="PART_PathRow" DockPanel.Dock="Top" Height="24" Spacing="6" Margin="2,0">
                 <c:IconView Icon="tree" Size="15" Foreground="{StaticResource T3Brush}" />
-                <TextBlock Text="{TemplateBinding PathText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                <TextBlock Name="PART_Path" Text="{TemplateBinding ShownPath}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
                            TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding PathText}" pr:FlexRow.Shrink="1" />
-                <Button Name="PART_Close" Theme="{StaticResource PrIconButtonS}" Width="24" Height="24" b:Pr.Icon="x"
+                <Button Name="PART_Close" Theme="{StaticResource PrIconButton}" Margin="0,-4" b:Pr.Icon="x"
                         ToolTip.Tip="隐藏属性" AutomationProperties.Name="隐藏属性" pr:FlexRow.PushRight="True"
                         IsVisible="{TemplateBinding ShowClose}" />
               </pr:FlexRow>

@@ -319,6 +319,8 @@ public sealed partial class FleetVm : ObservableObject, IFleetView, IAsyncDispos
         StopAllStopsStirring = StopAllStopsStirring,
         LastSerial = e.LastSerial,
         InitialModelKey = e.LastModel,
+        // 程序台账（M5）：<配置目录>/programs/<设备 id>.json；截图 / 演示 / 测试的内存配置（CanWrite = false）只在内存里
+        LedgerDirectory = Config is { CanWrite: true } cfg ? cfg.DirectoryPath : null,
     };
 
     /// <summary>启动：并行连接全部「启动时自动连接」且记住了令牌的设备（D7）。不抛。演示数据什么都不做。</summary>

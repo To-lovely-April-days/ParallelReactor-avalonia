@@ -272,6 +272,51 @@ public class DeviceTests
         Assert.All(p3.Tiles.Cast<DeviceCardVm>(), c => Assert.True(c.IsCompact && c.SimpleVessel));
     }
 
+    /// <summary>
+    /// 复核（中）：设备页卡片的程序没了 —— 段列表设成 null，步骤条（StepBar.Sync）清空：没有程序时这里照样可能画空轨（NoneBar），不能画成旧的分段。
+    /// </summary>
+    [Fact]
+    public void Card_ProgramGone_StepBarSegmentsCleared()
+    {
+        var (s, p) = Open(1);
+        var c = Card(p, 1);
+        var d = s.Fleet.Device(1)!;
+        var bar = new List<Controls.Pr.StepSeg>();
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Equal(4, bar.Count);
+        var rd = new Services.ChannelReading(1, true, StateKey.Ready, "已启用", StateKey.Ready, "已启用", AlarmCause.None,
+            24, null, 0.005, null, 0, 0, false, false, null);
+        c.R.Apply(rd with { Hmi = new Services.HmiProgram(false, 3, 4, "completed", "4 步全部完成", null, false, null) }, d.Model, true, true, d.Alias, "", null);
+        p.Refresh(s.Fleet);
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Equal(4, bar.Count);
+        c.R.Apply(rd, d.Model, true, true, d.Alias, "", null);
+        p.Refresh(s.Fleet);
+        Assert.False(c.HasProgram);
+        Assert.Null(c.Segments);
+        Controls.Pr.StepBar.Sync(bar, c.Segments);
+        Assert.Empty(bar);
+    }
+
+    /// <summary>
+    /// 复核（低）：演示数据重建（截图的每个场景）后同一台设备的事件 Key（'e13'）会重复 ——「报警与事件」的最近事件、外框的事件列表都是这一份数据的，
+    /// 不留上一份的文字（以前按 Key 只增不改，结果跟截图顺序有关）。
+    /// </summary>
+    [Fact]
+    public void Events_AfterADemoRebuild_AreTheNewData()
+    {
+        var (s, p) = Open(1, "devs=PR16,PR4&sel=2&freeze=1");
+        Assert.NotEmpty(p.Log.Events);
+        var q = DemoParams.Parse("devs=PR8,PR4,PR16&freeze=1");
+        s.Fleet.ResetDemo(q);
+        s.ApplyDemoParams(q, Route.Device(1));
+        var pp = Assert.IsType<DevicePageVm>(s.Page);
+        var d = s.Fleet.Device(1)!;
+        var book = d.Source.EventBook.Filter(pp.Log.Filter, Core.Events.EventBook.ListMax);
+        Assert.Equal(book.Select(e => e.AtText + " " + e.Text), pp.Log.Events.Select(e => e.Time + " " + e.Tip));
+        Assert.Equal(d.Source.Events.Select(e => e.Id + " " + e.Text), d.Events.Select(e => e.Id + " " + e.Text));
+    }
+
     [Fact]
     public void Cards_RowCards_Texts_AsMock()
     {

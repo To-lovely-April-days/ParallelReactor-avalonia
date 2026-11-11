@@ -91,6 +91,16 @@ public sealed record ProgramRecord
     /// <summary>已完成的步骤（不含当前步）。</summary>
     public IReadOnlyList<StepLogEntry> Log { get; init; } = Array.Empty<StepLogEntry>();
     public ProgramSource Source { get; init; } = ProgramSource.Demo;
+    /// <summary>
+    /// 真机：这次执行是在本机下发之后由触屏启动的（台账照规则认它，见 ProgramLedger 的「剩余的风险」）—— 程序面板的状态行写明「触屏启动 · 按本机下发的程序显示」。
+    /// 演示数据与本机启动的为 false。
+    /// </summary>
+    public bool StartedByTouch { get; init; }
+    /// <summary>
+    /// 真机：本机下发之后触屏端接管过控制（ProgramLedger 的 LedgerEntry.LocalControl），这次执行是在那之后开始的、或还没跑（已下发 · 待运行）——
+    /// 设备上的程序可能已修改：程序面板的状态行写「触屏接管过控制」，悬停写全（ProgramPanelText）。触屏启动的照旧写「触屏启动」（两样不同时写）。演示数据为 false。
+    /// </summary>
+    public bool AfterLocalControl { get; init; }
 
     /// <summary>当前步；越界为 null。</summary>
     public ProgramStep? CurrentStep => StepIndex >= 0 && StepIndex < Steps.Count ? Steps[StepIndex] : null;

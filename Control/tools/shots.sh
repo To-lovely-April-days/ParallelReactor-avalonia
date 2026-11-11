@@ -15,7 +15,7 @@
 #   PR_CONTROL_SHOT_NAMES=gallery,…  只跑这些截图（任意尺寸）。
 #   PR_CONTROL_TREE_DUMP=1           每张截图另写 <name>-<w>.tree.txt（可视树：类型、名字、类、矩形、文字、字号、实际字体）。
 #   PR_CONTROL_SHOT_REF=<目录>        参照图目录（final-<name>-<w>.png）；默认用样稿的 research/pc-v3/shots。
-#   PR_CONTROL_CONFIG / PR_CONTROL_DATA 可覆盖（默认 <输出目录>/cfg、<输出目录>/data）。
+#   PR_CONTROL_CONFIG / PR_CONTROL_DATA 可覆盖（默认 <输出目录>/cfg、<输出目录>/data；PR_CONTROL_CONFIG 以 .json 结尾时是 devices.json 文件本身，只建它所在的目录）。
 #   PR_SHOTS_ALT_FONT=<字体栈>        第二遍审计的字体栈（macOS 默认 Theme/UiFonts.MacSystemStack；none = 不跑第二遍）。
 #   PR_SHOTS_FAKE2=0                  不跑场景 fake2（默认：外壳的三个尺寸各跑一次 —— 四台进程内的假 HMI 经真 ReactorConnection 连接，
 #                                     fake2-overview / fake2-device1 / fake2-reactor11 / fake2-device3 / fake2-device4 / fake2-devices /
@@ -41,7 +41,10 @@ mkdir -p "$OUT" || exit 2
 OUT="$(cd "$OUT" && pwd)"
 CFG="${PR_CONTROL_CONFIG:-$OUT/cfg}"
 DATA="${PR_CONTROL_DATA:-$OUT/data}"
-mkdir -p "$CFG" "$DATA"
+# PR_CONTROL_CONFIG 可以是配置目录，也可以是 devices.json 文件本身（以 .json 结尾、还不是目录，同 App 的 ControlConfig.Locate）：
+# 后者只建它所在的目录 —— 不能把文件名建成目录（复核：以前 cfg/config.json 被建成了目录，App 就把它当配置目录用）
+if [[ "$CFG" == *.json && ! -d "$CFG" ]]; then mkdir -p "$(dirname "$CFG")"; else mkdir -p "$CFG"; fi
+mkdir -p "$DATA"
 
 # 上一次的结果（只删本脚本自己产生的这几类文件）
 for d in "$OUT" "$OUT/selftest" "$OUT/alt-font"; do

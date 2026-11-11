@@ -11,7 +11,7 @@ namespace ParallelReactor.Control.Pages;
 
 /// <summary>
 /// 页面视图模型的基类：一个页签一个实例（PageHost 给每个页签一份视图，切换页签时滚动位置和输入不丢）。
-/// 总览（M4）见 Pages/Overview，设备页（M4）见 Pages/Device；反应釜页还是只带样稿面板标题的 PrPanel 骨架（M5），第二阶段视图是占位页；
+/// 总览（M4）见 Pages/Overview，设备页（M4）见 Pages/Device，反应釜页（M5）见 Pages/Reactor；第二阶段视图是占位页；
 /// 程序编辑与性能测试是旧样式的页面（Pages/LegacyPages.cs，D5）。
 /// </summary>
 public abstract partial class PageVm : ObservableObject, IDisposable
@@ -50,19 +50,6 @@ public abstract partial class PageVm : ObservableObject, IDisposable
 
     /// <summary>页签关掉、页面被释放（退订事件等）。</summary>
     public virtual void Dispose() { }
-}
-
-/// <summary>反应釜页（M5：程序画布、釜体 / 属性查看器、曲线；M2 是这三个面板的骨架）。</summary>
-public sealed partial class ReactorPageVm : PageVm
-{
-    public ReactorPageVm(Route route) : base(route) { }
-
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(Crumb))] private string _alias = "";
-    public string Rv => "RV" + Route.N;
-    /// <summary>程序面板的面包屑（「1号机 › RV1」；程序名在 M5 的程序台账之后接上）。</summary>
-    public string Crumb => Alias + " › " + Rv;
-
-    public override void Refresh(IFleetView fleet) => Alias = fleet.Device(Route.K)?.Alias ?? "设备 " + Route.K;
 }
 
 /// <summary>第二阶段视图的占位页（样稿 pages/placeholder.js：标题 + 一句「第二阶段设计：……」，不做半成品）。</summary>

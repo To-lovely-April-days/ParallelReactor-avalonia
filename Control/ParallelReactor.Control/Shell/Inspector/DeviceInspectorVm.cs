@@ -220,7 +220,7 @@ public sealed partial class DeviceInspectorVm : ObservableObject
             HasAlarms = Alarms.Count > 0;
             EventMeta = d.Events.Count + " 条";
             var ev = d.Events.Take(5).ToList();
-            ListSync.Sync(Events, ev, e => e.Id, v => v.Id, e => new InspEventVm(e));
+            ListSync.Sync(Events, ev, e => e.Id, v => v.Id, e => new InspEventVm(e), same: (e, v) => ReferenceEquals(v.E, e));
             HasEvents = Events.Count > 0;
         }
         else

@@ -35,6 +35,12 @@ public sealed class FakeReactorConnection : IReactorConnection
     /// </summary>
     public List<(string Method, string Path, TimeSpan Delay)> Delays { get; } = new();
 
+    /// <summary>
+    /// 请求在到达脚本之前先等这个任务（异步：调用方不会被卡住；null 或回 null = 不等）。测试在这里拦住某个请求（例如台账的续取），
+    /// 在它回来之前核对中间状态。脚本里的处理是同步的，在那里阻塞会卡住发请求的线程（假连接上整个调用链都是同步完成的）。
+    /// </summary>
+    public Func<System.Net.Http.HttpRequestMessage, Task?>? Gate { get; set; }
+
     /// <summary>把 <see cref="Delays"/> 里匹配的请求延后（异步，可取消），再交给脚本化的假服务端。</summary>
     private sealed class DelayHandler : System.Net.Http.DelegatingHandler
     {
@@ -49,6 +55,7 @@ public sealed class FakeReactorConnection : IReactorConnection
             foreach (var (m, p, d) in _owner.Delays)
                 if (string.Equals(m, request.Method.Method, StringComparison.OrdinalIgnoreCase) && System.Text.RegularExpressions.Regex.IsMatch(path, "^" + p + "$"))
                     await Task.Delay(d, ct);
+            if (_owner.Gate?.Invoke(request) is { } gate) await gate.WaitAsync(ct);
             return await base.SendAsync(request, ct);
         }
     }

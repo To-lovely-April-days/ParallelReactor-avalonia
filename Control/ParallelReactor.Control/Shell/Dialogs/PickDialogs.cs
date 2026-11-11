@@ -258,7 +258,7 @@ public sealed partial class StopAllDialogVm : PickDialogVm
         GoButton = new FootButton("停止所选 0 台", new AsyncRelayCommand(GoAsync), FootKind.PrimaryStop, "stop", large: true);
         Footer = new FootBar(CancelButton, GoButton);
         Caption = "选择设备（已连接的默认全选）";
-        // 样稿：全部停止<b>不需要控制权</b>，连接正常就会发送（…）。搅拌保持当前状态；需要彻底切断请用急停。（最后一句跟着设置，StopAllText.StirNote）
+        // 样稿：全部停止<b>不需要控制权</b>，连接正常就会发送（…）。搅拌也会一并停止；需要立即切断并锁定请用急停。（最后一句跟着设置，StopAllText.StirNote）
         Note = new[]
         {
             new TextSeg("全部停止"), new TextSeg("不需要控制权", Bold: true),

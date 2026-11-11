@@ -62,23 +62,40 @@ public sealed class StepBar : Avalonia.Controls.Control
 
     /// <summary>
     /// 绑定用的段列表（视图模型自己持有 <see cref="StepSeg"/> 实例、每次刷新就地改它们的属性）：设置后 <see cref="Segments"/> 按位置同步成同一批实例 ——
-    /// 实例没变的位置不动（进度只重画），段数变了才增删。null = 不同步（XAML 里直接写段时用）。
+    /// 实例没变的位置不动（进度只重画），段数变了才增删。从有变成 null（程序没了）时清空；一直是 null = 不同步（XAML 里直接写段时用）。
     /// </summary>
     public static readonly StyledProperty<IReadOnlyList<StepSeg>?> SegmentsSourceProperty =
         AvaloniaProperty.Register<StepBar, IReadOnlyList<StepSeg>?>(nameof(SegmentsSource));
 
     public IReadOnlyList<StepSeg>? SegmentsSource { get => GetValue(SegmentsSourceProperty); set => SetValue(SegmentsSourceProperty, value); }
 
+    /// <summary>段来自 <see cref="SegmentsSource"/>（不是 XAML 里直接写的）。</summary>
+    private bool _fromSource;
+
     private void SyncSource()
     {
         var src = SegmentsSource;
-        if (src is null) return;
-        for (int i = 0; i < src.Count; i++)
+        // 复核：卡片的程序没了（视图模型把段列表设成 null）时以前直接返回、旧段留着 —— 收起成 0 × 0 的步骤条照样把它们画在「无程序」上
+        if (src is null && !_fromSource) return;
+        _fromSource = src is not null;
+        Sync(Segments, src);
+    }
+
+    /// <summary>
+    /// 把 <paramref name="target"/> 按位置同步成 <paramref name="src"/> 的同一批实例：实例没变的位置不动，换了的替换，段数变了才增删；
+    /// <paramref name="src"/> 为 null（没有程序）= 清空。
+    /// </summary>
+    public static void Sync(IList<StepSeg> target, IReadOnlyList<StepSeg>? src)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        int n = src?.Count ?? 0;
+        for (int i = 0; i < n; i++)
         {
-            if (i < Segments.Count) { if (!ReferenceEquals(Segments[i], src[i])) Segments[i] = src[i]; }
-            else Segments.Add(src[i]);
+            var seg = src![i];
+            if (i < target.Count) { if (!ReferenceEquals(target[i], seg)) target[i] = seg; }
+            else target.Add(seg);
         }
-        while (Segments.Count > src.Count) Segments.RemoveAt(Segments.Count - 1);
+        while (target.Count > n) target.RemoveAt(target.Count - 1);
     }
 
     static StepBar()
@@ -246,9 +263,11 @@ public sealed class StepBar : Avalonia.Controls.Control
         tb.Foreground = cur ? Palette.T1Brush : Palette.T3Brush;
     }
 
-    private double SegWidth(double width)
+    private double SegWidth(double width) => SegWidth(Segments.Count, width);
+
+    private static double SegWidth(int count, double width)
     {
-        int n = Math.Max(1, Segments.Count);
+        int n = Math.Max(1, count);
         return Math.Max(MinSegment, (width - (n - 1) * Gap) / n);
     }
 
@@ -265,12 +284,19 @@ public sealed class StepBar : Avalonia.Controls.Control
         return new Size(MinBarWidthSelf, h);
     }
 
-    /// <summary>第 i 段的横向范围（左右边取整像素：段的 1 px 边框不发虚，同网页）。</summary>
-    private (double X, double W) Seg(int i, double width)
+    private (double X, double W) Seg(int i, double width) => SegBounds(i, Segments.Count, width);
+
+    /// <summary>
+    /// 共 <paramref name="count"/> 段、宽 <paramref name="width"/> 时第 i 段的横向范围（左右边取整像素：段的 1 px 边框不发虚，同网页）。
+    /// .5 一律进位（同 WebKit 的像素对齐）：Math.Round 的银行家舍入让相邻两条边往相反方向取整，段间成了 4 / 3 / 2 px（复核）；
+    /// 右边按下一段的左边减 3 算，浮点误差也不会让段间差 1 px —— 段间总是 3 px，段宽最多差 1 px。
+    /// </summary>
+    public static (double X, double W) SegBounds(int i, int count, double width)
     {
-        var segW = SegWidth(width);
-        var x0 = Math.Round(i * (segW + Gap));
-        var x1 = Math.Round(i * (segW + Gap) + segW);
+        var segW = SegWidth(count, width);
+        static double Px(double v) => Math.Floor(v + 0.5);
+        var x0 = Px(i * (segW + Gap));
+        var x1 = Px((i + 1) * (segW + Gap)) - Gap;
         return (x0, Math.Max(1, x1 - x0));
     }
 
@@ -286,6 +312,8 @@ public sealed class StepBar : Avalonia.Controls.Control
 
     public override void Render(DrawingContext context)
     {
+        // 被父元素收起（排成 0 × 0：没有程序的卡片、窄紧凑卡不画进度条时）什么都不画 —— 段宽至少 6 px / 1 px，不拦着就会画到框外
+        if (Bounds.Width <= 0 || Bounds.Height <= 0) return;
         if (Segments.Count == 0)
         {
             DrawTrack(context, new Rect(0, 0, Bounds.Width, Track), Palette.Line2Color);

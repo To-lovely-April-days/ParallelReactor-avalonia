@@ -22,7 +22,8 @@ namespace ParallelReactor.Control.Views.Shell;
 /// 行尾的「11:54 ›」在最上面。段：上 7、高 22、1 px line-2 边、白底；已完成 g-2 → g-3；当前段填充 g-2 → g-4 + 末端 1 px g-dot-line（运行中呼吸）；
 /// 选中行的当前段 a-tab 边；报警暂停灰色停住（line 边、bg-press 填充）；等待进气白 / bg-sunken 斜纹；中止 bg-sunken / line-soft 斜纹 + line 边。
 /// 段宽放得下才写名字（15 px，当前段 t-1 600，其余 t-2）：先「反应 · 当前」，放不下写「反应」，再放不下不写（不出现「充…」）。
-/// 断线设备（样稿 .is-off：grayscale + 75 % 不透明）：绿色换成色板里最接近的灰（bg-head / bg-panel / bg-sunken / n-dot）。
+/// 断线设备（样稿 .is-off：grayscale + 75 % 不透明）：绿色换成色板里最接近的灰（bg-head / bg-panel / bg-sunken / n-dot）；白底 75 % 不透明；
+/// 选中行的当前段边框不是 a-tab，而是它灰显后的灰（<see cref="OffSelColor"/>）。
 /// 自绘的文字经 <see cref="IAuditText"/> 报给截图审计。
 /// </summary>
 public sealed class TimelineTrack : Avalonia.Controls.Control, IAuditText
@@ -185,7 +186,7 @@ public sealed class TimelineTrack : Avalonia.Controls.Control, IAuditText
                 }
             }
             var border = s.Held || s.State == SegmentState.Abort ? Palette.LineColor
-                : sel && s.State == SegmentState.Cur ? Palette.ATabColor
+                : sel && s.State == SegmentState.Cur ? (off ? OffSelColor : Palette.ATabColor)
                 : off ? Palette.LineSoftColor : Palette.Line2Color;
             context.DrawRectangle(null, Palette.Pen(border, 1), box.Deflate(0.5));
 
@@ -231,6 +232,16 @@ public sealed class TimelineTrack : Avalonia.Controls.Control, IAuditText
     /// <summary>断线设备的「当前段填充」：绿色渐变换成灰（bg-panel → bg-sunken）。</summary>
     private static readonly IBrush OffRunFill = Gradient(Palette.BgPanelColor, Palette.BgSunkenColor);
     private static readonly IBrush OffDoneFill = Gradient(Palette.BgHeadColor, Palette.BgPanelColor);
+    /// <summary>断线设备的白底：段 75 % 不透明（样稿 .pr-tl-group.is-off .pr-tl-seg { opacity: .75 }，叠在 bg-panel 上同样稿的 252 灰左右，网格线透上来）。</summary>
+    private static readonly IBrush OffCardBrush = new ImmutableSolidColorBrush(Palette.WithAlpha(Palette.BgCardColor, 0.75));
+
+    /// <summary>
+    /// 断线设备选中行的当前段边框。样稿：a-tab 经 grayscale(1)（亮度 0.2126 R + 0.7152 G + 0.0722 B）再 75 % 不透明，叠在 bg-panel 上是 158 灰 ——
+    /// 色板里没有这么近的灰（最近的 t-dis 差 13），用 t-2 叠出同样的灰（同网格竖线的画法）：不透明度 = 0.75 ×（bg-panel − 亮度）/（bg-panel − t-2）≈ 48 %。
+    /// </summary>
+    private static readonly Color OffSelColor = Palette.WithAlpha(Palette.T2Color,
+        0.75 * (Palette.BgPanelColor.R - (0.2126 * Palette.ATabColor.R + 0.7152 * Palette.ATabColor.G + 0.0722 * Palette.ATabColor.B))
+        / (Palette.BgPanelColor.R - Palette.T2Color.R));
 
     private static IBrush Gradient(Color a, Color b) => new ImmutableLinearGradientBrush(
         new[] { new ImmutableGradientStop(0, a), new ImmutableGradientStop(1, b) },
@@ -241,7 +252,7 @@ public sealed class TimelineTrack : Avalonia.Controls.Control, IAuditText
         if (s.State == SegmentState.Done) { context.FillRectangle(off ? OffDoneFill : ProgressPr.DoneFill, inner); return; }
         if (s.State == SegmentState.Abort) { Hatch(context, inner, Palette.BgSunkenColor, Palette.LineSoftColor); return; }
         if (s.Wait) { Hatch(context, inner, Palette.BgCardColor, Palette.BgSunkenColor); return; }
-        context.FillRectangle(Palette.BgCardBrush, inner);
+        context.FillRectangle(off ? OffCardBrush : Palette.BgCardBrush, inner);
     }
 
     /// <summary>135° 斜纹（样稿 repeating-linear-gradient(135deg, a 0 5px, b 5px 10px)：条纹「/」方向，宽 5、周期 10）。</summary>

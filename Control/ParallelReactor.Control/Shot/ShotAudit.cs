@@ -39,12 +39,15 @@ namespace ParallelReactor.Control.Shot;
 ///  · [audit] reason on plain ToggleButton：普通 ToggleButton / CheckBox 带 Pr.Reason（UI 自动化 / HotKey 仍能翻动它，见 Behaviors/Reason.cs）；
 ///  · [overlap] 同层元素重叠：文字 × 文字、文字 × 控件、控件 × 控件（嵌套的不算；上下相碰、重叠高度 &lt; 较小者 30 % 的不算），
 ///    文字 × 图形（IconView：任何超过 2 × 2 px 的重叠都算，同 MOCK 的 figure）；
+///  · [overlap] figure × box / figure × text：不许被盖住的图形（类 audit-fig，反应釜页的大号釜体，同 MOCK 的 data-ov-fig）被标注框（类 audit-box）、
+///    控件或文字盖住（任何超过 2 × 2 px 的重叠；标注框里的文字只报框）；
 ///  · [palette] Background / Foreground（含 Run 自己的前景 / 底色）/ BorderBrush / BoxShadow / Fill / Stroke 的颜色与最近的令牌任一通道差 &gt; 6
 ///    （忽略透明度；阴影色只许在阴影里）；
 ///  · 自绘文字的控件（<see cref="IAuditText"/>）报告的文字：字号、颜色、重叠同上（drawn text）；
 ///  · [audit] 横向溢出 / 横向滚动条（ScrollViewer 的 Extent.Width &gt; Viewport.Width，或横向 ScrollBar 可见；输入框自己的滚动区按 input text clipped 报）。
 /// 约定：类 audit-skip 的子树不查（同 data-audit-skip）；类 audit-ctl 的元素按「控件」参与重叠检查；类 audit-hscroll-ok 的 ScrollViewer 允许横向滚动；
 /// 类 audit-layer 的子树是浮在上面的一层（窄屏的浮层资源管理器）：重叠只在同一层里比（浮层盖住下面是设计如此，同 MOCK 不同层叠上下文不比）。
+/// 类 audit-fig 的元素是不许被盖住的图形、类 audit-box 的元素是它旁边的标注框（同 MOCK 的 data-ov-fig / data-ov-box，见 Controls/Vessel/VesselCallouts）。
 /// 干净时返回空列表（&lt;name&gt;-&lt;w&gt;.audit.txt 为空文件）。
 /// </summary>
 public static class ShotAudit
@@ -69,6 +72,9 @@ public static class ShotAudit
         public readonly List<(Visual El, Rect Rc)> Leaves = new();
         /// <summary>图形（IconView）。</summary>
         public readonly List<(Visual El, Rect Rc)> Figures = new();
+        /// <summary>不许被盖住的图形（类 audit-fig：反应釜页的大号釜体，同 MOCK 的 data-ov-fig）与标注框（类 audit-box，同 data-ov-box）。</summary>
+        public readonly List<(Visual El, Rect Rc)> OvFigs = new();
+        public readonly List<(Visual El, Rect Rc)> OvBoxes = new();
         /// <summary>色板外的颜色（键 = 「#rrggbb」）。</summary>
         public readonly Dictionary<string, (int N, string Where, string Prop, string Near, int D)> Bad = new();
     }
@@ -80,7 +86,7 @@ public static class ShotAudit
         Overlaps(ctx);
         foreach (var kv in ctx.Bad.OrderByDescending(k => k.Value.N))
             ctx.Issues.Add($"[palette] {kv.Key} ({kv.Value.N}×) on {kv.Value.Where} · {kv.Value.Prop}（最近 {kv.Value.Near} Δ{kv.Value.D}）");
-        LastStats = $"visuals={ctx.Visuals} text-lines={ctx.Texts.Count} controls={ctx.Controls.Count} leaves={ctx.Leaves.Count} figures={ctx.Figures.Count} colours={ctx.Colors}";
+        LastStats = $"visuals={ctx.Visuals} text-lines={ctx.Texts.Count} controls={ctx.Controls.Count} leaves={ctx.Leaves.Count} figures={ctx.Figures.Count} ov-figs={ctx.OvFigs.Count} ov-boxes={ctx.OvBoxes.Count} colours={ctx.Colors}";
         return ctx.Issues;
     }
 
@@ -106,6 +112,8 @@ public static class ShotAudit
                 if (IsLeaf(v)) ctx.Leaves.Add((v, rc));
             }
             if (v is IconView && ToRoot(ctx, v, new Rect(v.Bounds.Size)) is { } fr) ctx.Figures.Add((v, fr));
+            if (v is StyledElement ov && (ov.Classes.Contains("audit-fig") || ov.Classes.Contains("audit-box")) && ToRoot(ctx, v, new Rect(v.Bounds.Size)) is { } orc)
+                (ov.Classes.Contains("audit-fig") ? ctx.OvFigs : ctx.OvBoxes).Add((v, orc));
         }
         if (v is StepBar sb) CheckStepBar(ctx, sb);
         if (v is ToggleButton tg && tg is not IReasonGuarded && Pr.IsLocked(tg))
@@ -532,6 +540,34 @@ public static class ShotAudit
                 if (Nested(A.El, B.El) || Apart(A.El, B.El)) continue;
                 if (Inter(A.Rc, B.Rc) > 3) ctx.Issues.Add($"[overlap] control × control: {Describe(A.El)} × {Describe(B.El)}");
             }
+        FigureOverlaps(ctx, Apart);
+    }
+
+    /// <summary>
+    /// 图形（类 audit-fig，反应釜页的大号釜体）不能被标注框（类 audit-box）、控件或文字盖住 —— 任何超过 2 × 2 px 的重叠都算（MOCK core.js overlaps 的
+    /// data-ov-fig × data-ov-box / 控件 / 文字；上面的文字检查看不到自绘线描被盖住）。标注框里的文字不再单独报（框已经报了）。
+    /// </summary>
+    private static void FigureOverlaps(Ctx ctx, Func<Visual, Visual, bool> apart)
+    {
+        static bool InBox(Visual v) => v.GetSelfAndVisualAncestors().OfType<StyledElement>().Any(a => a.Classes.Contains("audit-box"));
+        foreach (var F in ctx.OvFigs)
+        {
+            double area = Math.Max(1, F.Rc.Width * F.Rc.Height);
+            string Pct(double c) => Math.Round(100 * c / area).ToString(CultureInfo.InvariantCulture) + " %";
+            foreach (var B in ctx.OvBoxes.Concat(ctx.Leaves))
+            {
+                if (Nested(F.El, B.El) || apart(F.El, B.El)) continue;
+                var c = Cover(F.Rc, B.Rc);
+                if (c > 0) ctx.Issues.Add($"[overlap] figure × box: {Describe(F.El)} × {Describe(B.El)} 盖住 {Pct(c)}");
+            }
+            var seen = new HashSet<Visual>();
+            foreach (var T in ctx.Texts)
+            {
+                if (Nested(F.El, T.El) || apart(F.El, T.El) || InBox(T.El) || !seen.Add(T.El)) continue;
+                if (Cover(F.Rc, T.Rc) > 0) ctx.Issues.Add($"[overlap] figure × text: {Describe(F.El)} × \"{Snip(T.Text, 18)}\"");
+                else seen.Remove(T.El);
+            }
+        }
     }
 
     // ---------------- 横向滚动 ----------------

@@ -321,6 +321,35 @@ public class GuardTests
         Assert.Equal("", ActionGuard.Why(onlyHmi, DeviceAction.ProgRun, ActionPayload.Ch(1)));
     }
 
+    /// <summary>
+    /// 复核（R5）：真机连上之后、离线期间的事件还没核对完时（ChannelFacts.Checking，程序台账 LedgerMatchKind.Checking），「启动」先禁用并写明 ——
+    /// 不运行没核对过的程序、也不改成启用 + 加热；「全部运行」没有别的对象时写同一个原因。核对完照常。
+    /// </summary>
+    [Fact]
+    public void Start_WhileTheLedgerIsChecking_IsHeldBack()
+    {
+        var chans = new[]
+        {
+            new ChannelFacts(1, true, StateKey.Ready, Checking: true),                                                   // 本机下发过、还在核对
+            new ChannelFacts(2, true, StateKey.Ready),
+            new ChannelFacts(3, true, StateKey.Idle, Checking: true),                                                     // 停用：先说停用
+        };
+        var f = F() with { Channels = chans };
+        Assert.Equal("RV1 正在核对离线期间的事件 · 稍候", ActionGuard.Why(f, DeviceAction.Start, ActionPayload.Ch(1)));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.Start, ActionPayload.Ch(2)));
+        Assert.Equal("RV3 已停用 · 先启用", ActionGuard.Why(f, DeviceAction.Start, ActionPayload.Ch(3)));
+        Assert.Equal(ProgramLedger.CheckingReason, ActionGuard.Why(f, DeviceAction.RunAll));
+        Assert.Empty(ActionGuard.RunAllTargets(f));
+        // 别的反应釜有能运行的：「全部运行」照常（还在核对的那一路不在对象里）
+        var g = F() with { Channels = chans.Append(new ChannelFacts(4, true, StateKey.Ready, Program: ProgramStatus.Loaded, Downloaded: true)).ToArray() };
+        Assert.Equal("", ActionGuard.Why(g, DeviceAction.RunAll));
+        Assert.Equal(new[] { 4 }, ActionGuard.RunAllTargets(g));
+        // 核对完：照常
+        var done = F() with { Channels = new[] { chans[0] with { Checking = false } } };
+        Assert.Equal("", ActionGuard.Why(done, DeviceAction.Start, ActionPayload.Ch(1)));
+        Assert.Equal("没有可运行的反应釜", ActionGuard.Why(done, DeviceAction.RunAll));
+    }
+
     [Fact]
     public void Sessions()
     {

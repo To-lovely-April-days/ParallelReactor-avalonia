@@ -239,7 +239,8 @@ public static partial class ShellChecks
         // ---------------- 原因 → toast ----------------
         vm.Timeline.ZoomCommand.Execute("-1");
         await Settle();
-        var zoomIn = Find<Button>(window, b => (ToolTip.GetTip(b) as string) == "放大（缩短时间范围）" || Behaviors.Pr.GetIcon(b) == "zoomin");
+        // 时间轴自己的「放大」（反应釜页「程序」画布也有一个放大按钮：只在时间轴里找）
+        var zoomIn = Find<Button>(Find<Views.Shell.TimelineView>(window, _ => true), b => (ToolTip.GetTip(b) as string) == "放大（缩短时间范围）" || Behaviors.Pr.GetIcon(b) == "zoomin");
         Check(Behaviors.Pr.GetReason(zoomIn) == "已是最短 1 h", $"跨度 1 h 时「放大」带原因（{Behaviors.Pr.GetReason(zoomIn)}）");
         int before = vm.Toasts.Items.Count;
         Click(window, zoomIn);
@@ -422,6 +423,11 @@ public static partial class ShellChecks
         await InspectorAndTimeline(window, vm, dir, width, Check, Info, lines);
         await OverviewChecks(window, vm, dir, width, Check, Info, lines);
         await DeviceChecks(window, vm, dir, width, Check, Info, lines);
+        await ReactorChecks(window, vm, dir, width, Check, Info, lines);
+        await CurvesChecks(window, vm, dir, width, Check, Info, lines);
+        await ProgramChecks(window, vm, dir, width, Check, Info, lines);
+        await OrderChecks(window, vm, dir, width, Check, Info, lines);
+        await M5ReviewChecks(window, vm, dir, width, Check, Info, lines);
         return (fails, lines);
     }
 
@@ -592,8 +598,12 @@ public static partial class ShellChecks
         if (!L.ExplorerOpen) { vm.ToggleExplorer(); await Settle(); }
         var tree = Find<ListBox>(window, l => l.Name == "Tree");
         var dev2 = tree.GetVisualDescendants().OfType<ListBoxItem>().FirstOrDefault(c => (c.DataContext as XRow)?.Key == "d2");
+        Check(dev2 != null, "资源管理器里有 2号机 的行（树不虚拟化：每一行都有容器）");
         if (dev2 != null)
         {
+            // 先滚到看得见（用户也只能右键看得见的行；以前虚拟化时滚出视口的行没有容器，这一项在 1600 上不跑）
+            dev2.BringIntoView();
+            await Settle();
             RightClick(window, dev2);
             await Settle();
             var dm = MenuLabels(ContextMenus.Last?.ItemsSource?.Cast<object>());

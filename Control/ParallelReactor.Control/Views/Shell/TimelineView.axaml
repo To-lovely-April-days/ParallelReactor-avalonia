@@ -17,7 +17,8 @@
        正文（.pr-tl-body，纵向滚动，浮层滚动条）：按设备分组，组下边 1 px line-2；组头 36（吸顶，bg-head，下边 line-2）：
          标签（左 6 右 10、间距 6：展开箭头 28 · 设备图标 17（窄于 1600 不画）· 别名 15/600 · 型号 14 t-3 放得下才显示）|
          摘要（左右 14，14 px t-3：运行 k/n 600 t-2 · 急停 / 报警（红点 + 600 t-1）· 提醒 · 控制权；断线时连接 + 数据停在 …）| 全部停止 · 打开。
-         反应釜行 36（下边 line-faint，bg-head，悬停 bg-hover，选中 a-tint + 标签左侧 3 px a-tab；断线设备 bg-panel）：
+         反应釜行 36（下边 line-faint，bg-head，悬停 bg-hover，选中 a-tint + 标签左侧 3 px a-tab；断线设备 bg-panel，悬停 / 选中也不变，选中时只有标签列 a-tint；
+         断线设备组里合并的未安装行也 bg-panel、悬停不变）：
          标签（左 36 右 10、间距 8：状态点 · RV 44 宽 16/600 · 状态字 15 · 程序名 15 t-3 靠右）| 轨道（Views/Shell/TimelineTrack 自绘）|
          运行 · 停止 · 打开（悬停 / 选中 / 键盘聚焦时出现）。 -->
   <UserControl.Styles>
@@ -27,14 +28,16 @@
       <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
       <Setter Property="BorderThickness" Value="0,0,0,1" />
     </Style>
-    <Style Selector="Border.tlrow.off">
-      <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
-    </Style>
     <Style Selector="Border.tlrow:pointerover">
       <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
     </Style>
     <Style Selector="Border.tlrow.sel">
       <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <!-- 断线设备的行（样稿 .pr-tl-group.is-off .pr-tl-row，特异性高于悬停 / 选中；含合并的未安装行）：悬停、选中都保持 bg-panel。
+         写在悬停 / 选中之后才压得住（Avalonia 不比特异性，后写的样式赢）；选中时只有标签列 a-tint（下面的 tllabel 样式）+ 左侧 3 px a-tab（模板） -->
+    <Style Selector="Border.tlrow.off">
+      <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
     </Style>
     <!-- 行操作：平时不画，悬停 / 选中 / 键盘聚焦时出现（样稿 .pr-tl-acts > * opacity） -->
     <Style Selector="Border.tlrow StackPanel.acts > Button">
@@ -51,6 +54,10 @@
     </Style>
     <Style Selector="Border.tllabel:pressed">
       <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <!-- 选中的断线行：标签列 a-tint（样稿 .pr-tl-row.is-sel .pr-tl-label，按下时也是）；写在 tllabel 的两条之后才压得住 -->
+    <Style Selector="Border.tlrow.off.sel > Grid > Border.tllabel">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
     </Style>
     <Style Selector="TextBlock.tl14">
       <Setter Property="FontSize" Value="{StaticResource Fs2}" />
@@ -213,7 +220,7 @@
                         </Border>
                       </DataTemplate>
                       <DataTemplate DataType="sh:TlUnRowVm" x:DataType="sh:TlUnRowVm">
-                        <Border Classes="tlrow un">
+                        <Border Classes="tlrow un" Classes.off="{Binding Offline}">
                           <Grid ColumnDefinitions="Auto,*,Auto">
                             <Border Width="{Binding Tl.LabelWidth}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0" Padding="36,0,10,0">
                               <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

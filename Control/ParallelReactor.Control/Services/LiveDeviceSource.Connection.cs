@@ -1,9 +1,12 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
 using ParallelReactor.Client;
 using ParallelReactor.Control.Core.Guard;
+using ParallelReactor.Control.Core.Programs;
 using ParallelReactor.Control.Core.State;
 using ClientLease = ParallelReactor.Client.LeaseState;
 using FleetActions = ParallelReactor.Control.Fleet.DeviceActions;
@@ -232,6 +235,15 @@ public sealed partial class LiveDeviceSource
         bool restarted = _bootId != null && Info?.BootId is { } boot && boot != _bootId;
         if (Info?.BootId is { } b) _bootId = b;
         if (restarted) OnRestartedCore(refetch: false);
+        // 台账文件上次读不了（IO / 权限，文件没动、本次不写盘）而内存里还什么都没记：再读一次（复核）
+        Ledger.RetryLoad();
+        // 程序台账：认这次的启动号（别的启动号的条目作废 —— 包括本机重启后从台账文件读回来的、HMI 期间重启过的）
+        if (_bootId is { Length: > 0 } nb) Ledger.ObserveBoot(nb);
+        // 离线期间的事件核对完（LoadExtrasAsync → 续取）之前，台账的条目先不认：不按台账显示、「启动」先禁用（复核 R5：以前这段时间里还能运行没核对过的程序）
+        Ledger.BeginCheck();
+        ReportLedgerError();
+        // 程序库（本机的草稿）：每次连上重读一次 drafts.json（平时缓存着，见 Library；别的进程改过草稿时这里跟上）
+        _drafts = null;
         MarkDirty(SourceChange.All);
         UpdateConnFromWs();
         _ = LoadExtrasAsync(c, refetchDevice: false);
@@ -272,6 +284,7 @@ public sealed partial class LiveDeviceSource
                 Info = info;
                 _bootId = info.BootId;
                 _model = _models.Resolve(info, Settings);
+                if (!string.IsNullOrEmpty(info.BootId)) Ledger.ObserveBoot(info.BootId);
                 MarkDirty(SourceChange.Info);
             }
             catch { }
@@ -307,7 +320,172 @@ public sealed partial class LiveDeviceSource
             }
         }
         catch { }
+        if (!ReferenceEquals(c, Connection)) return;
+        // 程序台账：断开期间的事件从每个条目核对到的位置续取（不是只看最近 200 条 —— 复核 R5，见 LedgerCatchUpAsync）
+        RequestLedgerCatchUp(c);
+        await LoadMarksAsync(c).ConfigureAwait(true);
         await PollCommAsync(c).ConfigureAwait(true);
+    }
+
+    // ———————————————————— M5 复核：程序台账的事件核对（断开期间别的客户端替换了程序） ————————————————————
+
+    /// <summary>续取事件每页多少条（HMI 的 GET /events 上限 1000）。</summary>
+    public const int LedgerPageSize = 1000;
+    /// <summary>一次续取最多几页（5 万条：断开期间的事件再多就不核对了，作废、要重新下发）。</summary>
+    public const int LedgerPagesMax = 50;
+
+    /// <summary>正在续取 / 续取时又有人要求（跑完再来一遍）。</summary>
+    private bool _catchUpRunning, _catchUpAgain;
+    /// <summary>上一次把台账的核对位置写盘的时刻（<see cref="IClock"/>）。</summary>
+    private DateTime _cursorFlushAt;
+
+    /// <summary>台账核对位置定时写盘的间隔（落后的位置只会让下次多核对几条，不会漏）。</summary>
+    public static readonly TimeSpan CursorFlushInterval = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// 要求核对一次（REST 起步之后、WS 每次连上（hello）、实时事件跳号时）：有效条目从各自核对到的序号续取 GET /events 直到序号头（ProgramLedger.ObservePage）。
+    /// 没有要核对的有效条目时什么都不做（不发请求）。一次只跑一个，跑的时候又要求了就再跑一遍（WS hello 的序号头可能在第一遍之后）。
+    /// </summary>
+    private void RequestLedgerCatchUp(IReactorConnection c)
+    {
+        if (_disposed || !ReferenceEquals(c, Connection)) return;
+        var l = Ledger;
+        if (l.CatchUpAfter is null && !l.Entries.Any(e => e.Valid && e.CheckedSeq is null))
+        {
+            EndLedgerCheck();   // 没有要核对的有效条目
+            return;
+        }
+        _ = LedgerCatchUpAsync(c);
+    }
+
+    private async Task LedgerCatchUpAsync(IReactorConnection c)
+    {
+        if (_catchUpRunning) { _catchUpAgain = true; return; }
+        _catchUpRunning = true;
+        try
+        {
+            do
+            {
+                _catchUpAgain = false;
+                await LedgerCatchUpOnceAsync(c).ConfigureAwait(true);
+            } while (_catchUpAgain && ReferenceEquals(c, Connection) && !_disposed);
+        }
+        finally { _catchUpRunning = false; }
+        if (_disposed) return;
+        // 这次连接的续取做完了（核对到序号头，或核对不了的已经作废）：条目照常匹配。
+        // 跑的时候连接换了：新连接在这期间要求的那一遍还没跑（被合并进了这一轮）—— 给新连接再跑
+        if (ReferenceEquals(c, Connection)) EndLedgerCheck();
+        else if (_catchUpAgain && _restReady && Connection is { } now) RequestLedgerCatchUp(now);
+    }
+
+    /// <summary>台账结束核对窗口（<see cref="ProgramLedger.EndCheck"/>）：有条目从「核对中」变回来时重算程序、刷新界面。</summary>
+    private void EndLedgerCheck()
+    {
+        if (!Ledger.EndCheck()) return;
+        _progCache.Clear();
+        MarkDirty(SourceChange.Programs);
+    }
+
+    /// <summary>
+    /// 续取一遍：不知道核对位置的条目作废；从最早的核对位置起一页一页取（每页 <see cref="LedgerPageSize"/>，最多 <see cref="LedgerPagesMax"/> 页）交给台账核对，
+    /// 直到序号头。设备上已经没有中间那段事件、序号纪元变了、请求失败、页数超限 → 还落在后面的有效条目作废（宁可降级，R5；这次连接上刚下发、
+    /// 一直连续核对着的照样有效，复核，见 ProgramLedger.FailCatchUp）；连接换了就不管了。
+    /// </summary>
+    private async Task LedgerCatchUpOnceAsync(IReactorConnection c)
+    {
+        var l = Ledger;
+        int v = l.Version;
+        l.SupersedeUnchecked();
+        long? head = null;   // 这一遍取到过的序号头（最后一页的）：失败时核对位置已经到了它的条目不算落在后面
+        try
+        {
+            for (int page = 0; ; page++)
+            {
+                if (l.CatchUpAfter is not long after) break;
+                if (page >= LedgerPagesMax) { l.FailCatchUp(head: head); break; }
+                var p = await c.Rest.EventsAsync(after, LedgerPageSize, CancellationToken.None).ConfigureAwait(true);
+                if (!ReferenceEquals(c, Connection) || _disposed) return;
+                head = p.EventSeqHead;
+                if (!l.ObservePage(p, after)) break;
+            }
+        }
+        catch (Exception) when (ReferenceEquals(c, Connection) && !_disposed)
+        {
+            l.FailCatchUp(head: head);
+        }
+        catch { return; }
+        if (l.CursorDirty) { l.FlushCursors(); _cursorFlushAt = _clock.UtcNow; }
+        if (l.Version != v) { _progCache.Clear(); MarkDirty(SourceChange.Programs); }
+    }
+
+    // ———————————————————— M5 复核：曲线上的会话标记（真机） ————————————————————
+
+    /// <summary>当前会话的标记（GET /sessions/current 的 manifest.markers）；没有会话 / 还没取到为空。</summary>
+    private IReadOnlyList<Core.Chart.SessionMark> _marks = Array.Empty<Core.Chart.SessionMark>();
+    private bool _marksLoading, _marksAgain;
+
+    /// <summary>
+    /// 取当前会话的标记（连上时、会话开始 / 结束 / 打标记的事件之后）：manifest 的每个标记 → SessionMark(时刻（UTC，设备时钟）, 文字, 文字开头「RVn」的反应釜号，
+    /// 没有为 null = 整机的，每个反应釜的曲线都画；A11 之前 HMI 的标记没有反应釜号）。没有会话 → 空。失败不提示（下一次事件再取）。
+    /// 正在取的时候又要求了（会话事件、新连接连上）就再取一遍；这一遍失败了或连接换了，排着的那一遍照样给当前连接取（同 LedgerCatchUpAsync，复核：以前丢掉了）。
+    /// </summary>
+    private async Task LoadMarksAsync(IReactorConnection c)
+    {
+        if (_marksLoading) { _marksAgain = true; return; }
+        _marksLoading = true;
+        try
+        {
+            do
+            {
+                _marksAgain = false;
+                SessionDetailDto? s;
+                try { s = await c.Rest.SessionCurrentAsync(CancellationToken.None).ConfigureAwait(true); }
+                catch { return; }
+                if (!ReferenceEquals(c, Connection) || _disposed) return;
+                var next = MarksOf(s);
+                if (!SameMarks(next, _marks))
+                {
+                    _marks = next;
+                    MarkDirty(SourceChange.Frame);
+                }
+            } while (_marksAgain && ReferenceEquals(c, Connection) && !_disposed);
+        }
+        finally
+        {
+            _marksLoading = false;
+            // 这一遍失败了 / 连接换了而还有排着的：给当前连接再取（失败时没有排着的就等下一次事件，不重试成死循环）
+            if (_marksAgain && !_disposed && _restReady && Connection is { } now) _ = LoadMarksAsync(now);
+        }
+    }
+
+    /// <summary>会话详情 → 曲线的标记（没有活动会话、没有 manifest 为空）。</summary>
+    public static IReadOnlyList<Core.Chart.SessionMark> MarksOf(SessionDetailDto? s)
+    {
+        if (s is not { Active: true, Manifest: { } m } || m.Markers is not { Length: > 0 } list) return Array.Empty<Core.Chart.SessionMark>();
+        var a = new Core.Chart.SessionMark[list.Length];
+        for (int i = 0; i < list.Length; i++)
+        {
+            var x = list[i];
+            var at = x.Ts.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(x.Ts, DateTimeKind.Utc) : x.Ts.ToUniversalTime();
+            a[i] = new Core.Chart.SessionMark(at, x.Text ?? "", MarkRv(x.Text));
+        }
+        return a;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex MarkRvRe = new(@"^\s*RV(\d{1,2})(?!\d)", System.Text.RegularExpressions.RegexOptions.CultureInvariant);
+
+    /// <summary>标记文字开头的「RVn」→ n（「RV3 标记」→ 3）；没有为 null（整机的标记）。</summary>
+    public static int? MarkRv(string? text)
+    {
+        var m = MarkRvRe.Match(text ?? "");
+        return m.Success && int.TryParse(m.Groups[1].Value, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int n) ? n : null;
+    }
+
+    private static bool SameMarks(IReadOnlyList<Core.Chart.SessionMark> a, IReadOnlyList<Core.Chart.SessionMark> b)
+    {
+        if (a.Count != b.Count) return false;
+        for (int i = 0; i < a.Count; i++) if (a[i] != b[i]) return false;
+        return true;
     }
 
     // ———————————————————— M4：/device/comm 与 /settings 轮询 ————————————————————
@@ -421,6 +599,7 @@ public sealed partial class LiveDeviceSource
     /// <summary>
     /// 改了设备设置（编辑设置 / 重命名）：别名立即生效；地址、端口或令牌变了且正连着（或正在连 / 在重试等待）时先释放控制权（≤ 3 s）、取消申请、断开，
     /// 再按新设置连接（样稿 editDevice：地址改变 → 重新连接）。换了令牌时学到的令牌权限作废。
+    /// 换了地址 / 端口（后面可能是另一台设备）：曲线先按旧设备的时钟差断开，再忘掉旧设备的时钟差与会话标记（复核）。
     /// </summary>
     public async Task UpdateConfigAsync(DeviceConfig config)
     {
@@ -429,12 +608,33 @@ public sealed partial class LiveDeviceSource
         Config = config;
         bool tokenChanged = !string.Equals(old.Token ?? "", config.Token ?? "", StringComparison.Ordinal);
         if (tokenChanged) _role = TokenRole.Unknown;
-        bool moved = !string.Equals(old.Host, config.Host, StringComparison.OrdinalIgnoreCase) || old.Port != config.Port || tokenChanged;
+        bool hostChanged = !string.Equals(old.Host, config.Host, StringComparison.OrdinalIgnoreCase) || old.Port != config.Port;
+        bool moved = hostChanged || tokenChanged;
         MarkDirty(SourceChange.Info);
-        if (!moved || _disposed || (_sup == null && Connection == null)) return;
+        if (!moved || _disposed || (_sup == null && Connection == null))
+        {
+            if (hostChanged && !_disposed) ForgetTarget();
+            return;
+        }
         StopSupervision();
         await CloseAsync(releaseLease: true).ConfigureAwait(true);
+        if (hostChanged)
+        {
+            SetConn(ConnStatus.Connecting);   // 离开「已连接」：断开标记按记下的（旧设备的）时钟差插，之后才忘掉它
+            ForgetTarget();
+        }
         await StartAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>换了连接目标（地址 / 端口）：旧设备的时钟差、会话标记不再算数。</summary>
+    private void ForgetTarget()
+    {
+        ForgetClock();
+        if (_marks.Count > 0)
+        {
+            _marks = Array.Empty<Core.Chart.SessionMark>();
+            MarkDirty(SourceChange.Frame);
+        }
     }
 
     /// <summary>
@@ -469,7 +669,7 @@ public sealed partial class LiveDeviceSource
     }
 
     /// <summary>
-    /// 关掉当前连接：摘掉事件、清掉本机下发记录；正在申请 → 先取消（Client 的 CancelRequestAsync）；持有 → 释放（≤ 3 s）；
+    /// 关掉当前连接：摘掉事件（程序台账不动：断开不清，重新连上时从核对位置续取，§4.8「程序台账」）；正在申请 → 先取消（Client 的 CancelRequestAsync）；持有 → 释放（≤ 3 s）；
     /// 已取消的申请还在等触屏（R7）→ 先停掉 WS，REST 留给后台守卫（最多 <see cref="GuardWait"/>），守卫结束再释放连接；否则立即释放。
     /// </summary>
     private async Task CloseAsync(bool releaseLease)
@@ -486,7 +686,6 @@ public sealed partial class LiveDeviceSource
         _ws = ConnectionState.Disconnected;
         _requestAt = null;
         _requestDue = null;
-        _downloaded.Clear();
         try
         {
             if (c.Lease.State == ClientLease.Requesting) await c.Lease.CancelRequestAsync().ConfigureAwait(false);
@@ -523,6 +722,7 @@ public sealed partial class LiveDeviceSource
         if (_disposed) return;
         _disposed = true;
         StopSupervision();
+        try { _ledger?.FlushCursors(); } catch { }
         await CloseAsync(releaseLease: !_releaseTried).ConfigureAwait(false);
         Changed = null;
         Notice = null;
@@ -571,13 +771,24 @@ public sealed partial class LiveDeviceSource
     private void OnTelemetry(TelemetrySnapshot f)
     {
         _pending = f;
+        // 设备时钟：每一帧一个时钟差样本（下发时刻按它换到设备时钟），顺手记下 hello 的时钟差（断开之后曲线用，复核）
+        NoteClock(f);
+        // 曲线：每一帧都进环形缓冲（10 s 一格留最后一帧；刷新会合并几帧，曲线不丢格）
+        _history.Data.AppendFrame(f);
+        // 程序台账：每一帧都看（步骤计时取相邻两帧的中点，合并刷新之前就要记）；跑起来的不是本机下发的程序时条目作废（R5）
+        if (BootIdNow is { Length: > 0 } boot) Ledger.ObserveFrame(f, boot);
         MarkDirty(SourceChange.Frame);
     }
 
     private void OnConnState(ConnectionState s)
     {
+        // WS 连上（hello 之后的事件由 WS 连续送来）：hello 之前、上次核对之后的事件再续取一遍（REST 起步时的续取可能在 hello 之前）；
+        // 续取做完之前台账的条目先不认（复核 R5）—— 在状态变成「已连接」之前就标上，界面不会有一刻按没核对过的条目显示
+        bool check = s == ConnectionState.Connected && _restReady && Connection is not null;
+        if (check && Ledger.BeginCheck()) { _progCache.Clear(); MarkDirty(SourceChange.Programs); }
         _ws = s;
         UpdateConnFromWs();
+        if (check && Connection is { } c) RequestLedgerCatchUp(c);
     }
 
     private void OnReconnectScheduled(DateTime? at) => UpdateConnFromWs();
@@ -725,7 +936,13 @@ public sealed partial class LiveDeviceSource
             _reported = null;
             _failures = 0;
         }
-        else if (_conn == ConnStatus.Online) _lostAt = _now();
+        else if (_conn == ConnStatus.Online)
+        {
+            _lostAt = _now();
+            // 曲线在断线处断开（重连后的第一帧不和断线前的最后一帧连成一条直线）。时刻按设备时钟：用户断开、改地址时连接对象已经没了，
+            // 用记下的时钟差（复核：以前退回到本机时钟，HMI 的钟慢几个小时时这一个标记就把 4 h 的曲线全裁掉了）
+            _history.Data.MarkGap(_clock.UtcNow + HistoryClockOffset);
+        }
         _conn = st;
         MarkDirty(SourceChange.Conn);
     }
@@ -756,6 +973,14 @@ public sealed partial class LiveDeviceSource
     {
         if (_disposed) return;
         if (_conn == ConnStatus.Offline) MarkDirty(SourceChange.Conn);
+        // 程序台账的核对位置：每条事件只在内存里往前推，这里定时写盘（落后的位置只会让下次多核对几条）
+        if (_ledger is { CursorDirty: true } led && _clock.UtcNow - _cursorFlushAt >= CursorFlushInterval)
+        {
+            _cursorFlushAt = _clock.UtcNow;
+            led.FlushCursors();
+        }
+        // 台账读 / 写失败：提示一次（任何一次写盘都可能失败，这里每秒查一下）
+        ReportLedgerError();
         var c = Connection;
         if (c != null && (c.Lease.State is ClientLease.Requesting or ClientLease.Lost || DenySeconds(c) > 0)) MarkDirty(SourceChange.Lease);
     }
@@ -774,6 +999,24 @@ public sealed partial class LiveDeviceSource
     private void OnEvent(EventMsg e)
     {
         if (_eventBook.Add(e)) MarkDirty(SourceChange.Events);
+        // 程序台账：别的客户端替换 / 复制了程序 → 本机的条目作废（之后降级显示，R5）；HMI 回到本地控制 → 条目标上「触屏接管过控制」（复核）；
+        // 按序号核对，跳号了（中间的还没核对）再续取一次
+        var l = Ledger;
+        int v = l.Version;
+        l.ObserveEvent(e.Kind, ProgramLedger.EventText(e.Title, e.Message), e.Client, e.OpId, e.Level, e.Ts, e.Seq, e.SeqEpoch);
+        if (l.Behind && Connection is { } c)
+        {
+            // 跳号了（中间的事件还没核对）：续取补上之前，落在后面的条目先不认（同连上时，复核 R5）—— 只是落在后面的那几条
+            // （复核：以前全部有效条目都进核对；刚下发的条目也不会因为 PUT 回来之前收到的事件而落在后面，见 ProgramLedger.AddDownload）
+            l.BeginCheckBehind();
+            _progCache.Clear();
+            MarkDirty(SourceChange.Programs);
+            RequestLedgerCatchUp(c);
+        }
+        else if (l.Version != v) MarkDirty(SourceChange.Programs);
+        // 曲线的会话标记：会话开始 / 结束 / 打标记之后重新取（标记的文字与时刻以 manifest 为准）
+        if (e.Kind is { } k && (k.StartsWith("session.", StringComparison.Ordinal) || k.StartsWith("op.session.", StringComparison.Ordinal)) && Connection is { } sc)
+            _ = LoadMarksAsync(sc);
     }
 
     private void OnError(Exception ex) => MarkDirty(SourceChange.Lease);   // 心跳异常时控制权的说明要跟着变
@@ -787,10 +1030,19 @@ public sealed partial class LiveDeviceSource
     private void OnRestartedCore(bool refetch)
     {
         _alarmBook.Clear();
+        // 曲线缓冲：旧启动的数据作废（提示里写「曲线缓冲已清空」）
+        _history.Data.Clear();
         // 令牌的角色在 HMI 的配置里，改了要重启 HMI 才生效：重启后之前学到的权限（R9）作废，下一个 403 再学（M3 复核）
         _role = TokenRole.Unknown;
-        // HMI 重启后它手里的程序不一定还是本机下发的那份：「启动」回到启用 + 加热（D6），「全部运行」没有对象，要先重新下发
-        _downloaded.Clear();
+        // HMI 重启后它手里的程序不一定还是本机下发的那份：程序台账的条目全部作废（「启动」回到启用 + 加热，D6；「全部运行」没有对象，要先重新下发），
+        // 步骤计时清空；新的启动号（WS hello 已经带来时）立即记下
+        Ledger.ObserveRestart();
+        _progCache.Clear();
+        // 会话标记：旧启动的会话不算（重取 /sessions/current 时再按新的来）
+        _marks = Array.Empty<Core.Chart.SessionMark>();
+        // 按帧估的时钟差：HMI 的钟可能在启动时校过，旧样本不算
+        ForgetFrameClock();
+        if (Connection?.Ws?.BootId is { Length: > 0 } wb) { _bootId = wb; Ledger.ObserveBoot(wb); }
         Notice?.Invoke(Config.Alias + " · 设备 HMI 已重启 · 曲线缓冲已清空", ToastKind.Warn);
         MarkDirty(SourceChange.All);
         if (refetch && Connection is { } c) _ = LoadExtrasAsync(c, refetchDevice: true);

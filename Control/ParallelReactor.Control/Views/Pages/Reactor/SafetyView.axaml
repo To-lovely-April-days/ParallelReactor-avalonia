@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:t="using:ParallelReactor.Control.Theme"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.SafetyView"
+             x:DataType="pg:ReactorProgramVm"
+             Classes.err="{Binding SafeErr}" Classes.mute="{Binding SafeMute}">
+  <!-- 画布最后的安全联锁框（样稿 reactor.js safetyHTML + css .reactor-safe*，原稿「RV1 : 硬件自检 = 通过」）：
+       上方 1 px line-2 分隔线 + 26 内边距（上边距 30 由 StepFlowPanel 留）；框（步骤卡宽）：内边距 8 14 9、bg-head、1 px line-soft，
+       「RV1 :」14 t-3 + 「安全联锁 …… = 正常」（14 t-3 / 16/500 t-1；急停 / 报警 600 r-ink；未知 t-3），行间距 2；
+       说明（步骤卡宽，间距 10）：内边距 9 14、bg-card、1 px line-faint、14 px 行高 1.5 t-2，断行保护（「4.14 MPa」不拆开）。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.k">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <Style Selector="TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhTitle}" />
+    </Style>
+    <Style Selector="rv|SafetyView.err TextBlock.v">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="rv|SafetyView.mute TextBlock.v">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <Border BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,1,0,0" Padding="0,26,0,0">
+    <StackPanel Spacing="10" HorizontalAlignment="Left">
+      <Border Name="Box" Padding="14,8,14,9" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1">
+        <StackPanel Spacing="2">
+          <pr:PrText Classes="k" Text="{Binding SafeRv}" />
+          <c:BaselineStack Spacing="10">
+            <pr:PrText Classes="k" Text="安全联锁" />
+            <pr:PrText Classes="v" Text="{Binding SafeValue}" c:BaselineStack.PushRight="True" />
+          </c:BaselineStack>
+        </StackPanel>
+      </Border>
+      <Border Name="Note" Padding="14,9" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="1">
+        <pr:PrText Name="NoteText" FontSize="{StaticResource Fs2}" LineHeight="21" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap"
+                   Text="{Binding SafeNote, Converter={x:Static t:TextConverters.Keep}}" ToolTip.Tip="{Binding SafeNote}" />
+      </Border>
+    </StackPanel>
+  </Border>
+</UserControl>

@@ -1,7 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!-- App（Avalonia 桌面程序）的回归测试（R13）：视图模型（Fleet/、Shell/：投影、页签、检查器、时间轴）、操作守卫的接线（Fleet/DeviceActions、对话框）、
-       实时数据源 Services/LiveDeviceSource（假连接 + 脚本化的 REST）。只用视图模型与数据源：不创建窗口、不启动 Avalonia。
+       实时数据源 Services/LiveDeviceSource（假连接 + 脚本化的 REST）。只用视图模型与数据源：不创建窗口、不启动 Avalonia ——
+       例外是 M5 复核的无头界面测试（只在 Debug 构建里：App 只在 Debug 里引用 Avalonia.Headless / Skia）：M5ReviewStepFlowUiTests、M5ReviewLibraryPickTests
+       （步骤卡片画布与程序库）与 M5ReviewHeadlessTests（反应釜页的主窗口；另两条只建单个控件：舞台、曲线）在无头 Avalonia + Skia 里建真的控件核对，
+       共用 M5ReviewHeadless 起的一个无头会话。Avalonia 的平台与 UI 线程是进程级的，所以它们在同一个不并行的集合里：xunit 等并行的集合都跑完再跑
+       （与另一个不并行的集合 Env 先后随机）。
        Contracts / Client / PerfTest / Core 的测试与色板 / 字号检查在 ../ParallelReactor.Control.Tests（不引用 App，PORT-PLAN §1.1 / §4.7）。
        命名空间沿用 ParallelReactor.Control.Tests（与那边共用的测试工具也在这个命名空间里）：不用工程名 ParallelReactor.Control.App.Tests ——
        App 里有类型 ParallelReactor.Control.App，同名的命名空间会与它冲突（CS0435）。 -->
@@ -34,6 +38,10 @@
          （MockVectors/PageMockVectors.cs 的 dv-* / dx-* / td-* / tt-*；Core 那边用同一份数据直接测计算器） -->
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageVectorData.cs" Link="MockVectors/PageVectorData.cs" />
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageMockVectors.cs" Link="MockVectors/PageMockVectors.cs" />
+    <!-- M5 反应釜页「程序」面板（ReactorProgramTests）：样稿在 WebKit 里量的画布、状态行、工具、卡片标记、安全联锁（Core 的 StepFlowLayoutTests 用同一份数据测版面）；
+         程序台账的实时接线（LiveLedgerTests）用手造的遥测帧（LiveFrames，同 Core 的 LedgerMatchTests / StepTrackerTests） -->
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/ReactorMockVectors.cs" Link="MockVectors/ReactorMockVectors.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/LiveFrames.cs" Link="LiveFrames.cs" />
     <Content Include="../ParallelReactor.Control.Tests/Samples/**" Link="Samples/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

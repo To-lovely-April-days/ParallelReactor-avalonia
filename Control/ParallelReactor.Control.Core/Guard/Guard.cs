@@ -16,8 +16,16 @@ namespace ParallelReactor.Control.Core.Guard;
 /// 程序是本机这次下发的（真机，D6：「全部运行」只运行本机下发过、没在运行的反应釜，不调 HMI 的 POST /run）；false = 触屏或别的客户端放上去的程序，
 /// 「全部运行」不碰它。null = 不区分（演示数据 / 样稿：有能再跑的程序就算）。
 /// </param>
+/// <param name="Checking">
+/// 真机：本机下发过的程序，连上之后离线期间的事件还没核对完（程序台账 <see cref="LedgerMatchKind.Checking"/>，复核 R5）——「启动」先禁用并写明，
+/// 不运行它、也不改成启用 + 加热（核对完再按台账决定）。演示数据恒为 false。
+/// </param>
+/// <param name="LocalControl">
+/// 真机：本机下发、HMI 上就是它的程序，但下发之后触屏端接管过控制（程序台账 <see cref="ProgramLedger.IsLocalControl"/>，复核）—— 触屏可能改过程序：
+/// 「启动」禁用并写 <see cref="ProgramLedger.LocalControlReason"/>（不运行它、也不改成启用 + 加热），「全部运行」不算它；重新下发之后照常。演示数据恒为 false。
+/// </param>
 public sealed record ChannelFacts(int N, bool Installed, StateKey State = StateKey.Idle, bool Heating = false, bool StirOn = false,
-    ProgramStatus? Program = null, double? Sp = null, bool? Downloaded = null)
+    ProgramStatus? Program = null, double? Sp = null, bool? Downloaded = null, bool Checking = false, bool LocalControl = false)
 {
     /// <summary>占用通道（样稿 isRunning：已安装且状态属于 RUNNING，报警也算）。</summary>
     public bool IsRunning => Installed && StateKeys.IsRunning(State);
@@ -341,6 +349,8 @@ public static class ActionGuard
                 var ch = f.Channel(p.N)!;
                 if (ch.State == StateKey.Idle) return Rv(p) + " 已停用 · 先启用";
                 if (ch.IsRunning) return Rv(p) + " 已在运行";
+                if (ch.Checking) return Rv(p) + " " + ProgramLedger.CheckingReason;
+                if (ch.LocalControl) return Rv(p) + " " + ProgramLedger.LocalControlReason;
                 return "";
             }
             case DeviceAction.HeatStart:
@@ -397,10 +407,17 @@ public static class ActionGuard
                 return r.Length > 0 ? r : RpmCheck(f.Model, p.Rpm);
             }
             case DeviceAction.RunAll:
+            {
+                bool checking = false, local = false;
                 foreach (var c in f.Channels)
-                    if (IsRunAllTarget(c))
-                        return "";
-                return "没有可运行的反应釜";
+                {
+                    if (IsRunAllTarget(c)) return "";
+                    checking |= c.Checking && c.Installed;
+                    local |= c.LocalControl && IsRunAllTarget(c with { LocalControl = false });
+                }
+                // 本机下发过的程序还在核对（连上之后）：先写明，核对完就能运行；触屏端接管过控制的（本来能运行）：写明要重新下发
+                return checking ? ProgramLedger.CheckingReason : local ? ProgramLedger.LocalControlReason : "没有可运行的反应釜";
+            }
             case DeviceAction.Estop:
                 return f.EstopActive ? f.Alias + "已在急停 · 需在触屏复位" : f.Role.NoEstop ? TokenRole.NoEstopText(f.Alias) : "";
             case DeviceAction.SessionStart:
@@ -461,10 +478,11 @@ public static class ActionGuard
 
     /// <summary>
     /// 「全部运行」会运行这个反应釜吗（样稿 runAll 的条件：已安装、已启用、没在运行、有能再跑的程序；真机另外要求程序是本机下发的，
-    /// <see cref="ChannelFacts.Downloaded"/>）。守卫（「没有可运行的反应釜」）、确认清单和执行都用这一个判断，所以三处永远一致。
+    /// <see cref="ChannelFacts.Downloaded"/>，而且下发之后触屏端没有接管过控制，<see cref="ChannelFacts.LocalControl"/>）。
+    /// 守卫（「没有可运行的反应釜」）、确认清单和执行都用这一个判断，所以三处永远一致。
     /// </summary>
     public static bool IsRunAllTarget(ChannelFacts c) =>
-        c.Installed && c.State != StateKey.Idle && !c.IsRunning && IsRerunnable(c.Program) && c.Downloaded != false;
+        c.Installed && c.State != StateKey.Idle && !c.IsRunning && IsRerunnable(c.Program) && c.Downloaded != false && !c.LocalControl;
 
     /// <summary>「全部运行」要运行的反应釜号（按 RV 号）。</summary>
     public static IReadOnlyList<int> RunAllTargets(GuardFacts f)

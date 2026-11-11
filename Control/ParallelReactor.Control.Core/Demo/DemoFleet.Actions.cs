@@ -226,7 +226,8 @@ public sealed partial class DemoFleet
                 int k = 0;
                 foreach (var c in d.ChannelList)
                     if (c.Installed && (c.IsRunning || c.Heating)) { StopChannel(c); k++; }
-                // 样稿：搅拌保持当前状态。StopAllStopsStirring（ControlOptions）打开时搅拌也停，停法同急停：共用搅拌 + 各釜搅拌
+                // 样稿：搅拌一并停止（用户确认）。StopAllStopsStirring（ControlOptions，默认 true）打开时搅拌也停，停法同急停：共用搅拌 + 各釜搅拌；
+                // 关掉就是样稿第一版的做法（搅拌保持当前状态）
                 bool stir = StopAllStopsStirring;
                 if (stir)
                 {

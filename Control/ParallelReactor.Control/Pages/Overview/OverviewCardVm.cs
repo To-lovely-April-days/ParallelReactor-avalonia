@@ -287,7 +287,7 @@ public sealed partial class OverviewCardVm : ObservableObject
         // 悬停提示（样稿 progHTML 的 data-tip）
         ProgTip = pr.Name + " · " + Progress.Text(pr)
             + (pr.Status == ProgramStatus.Running && !pr.Offline && !pr.WaitGas ? " · 全程剩 " + Fmt.Minutes(pr.TotalRemainMin) : "")
-            + (pr.WaitGas ? " · 等待" + pr.GasName + "进气（触屏开阀）" : "");
+            + (!pr.WaitGas ? "" : d.Source.IsDemo ? " · 等待" + pr.GasName + "进气（触屏开阀）" : " · " + Core.State.StateMap.WaitGasText(d.GasHolder));
     }
 
     /// <summary>

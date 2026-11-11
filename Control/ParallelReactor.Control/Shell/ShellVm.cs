@@ -19,7 +19,8 @@ namespace ParallelReactor.Control.Shell;
 /// 选择（<see cref="Selection"/>，检查器显示谁）、资源管理器（<see cref="Explorer"/>）、页面（每个页签一个页面视图模型）、外框布局。
 /// 数据只从 <see cref="Fleet"/>（Fleet/FleetVm，实现 IFleetView）读；数据变化（合并过的 Changed）或布局变化时各部分就地刷新，不重建集合。
 /// 导航：<see cref="Navigate"/>（页签不在栏里时追加；设备 / 反应釜页同时选中该对象）。选择：<see cref="Select"/>。
-/// 演示：<see cref="ApplyDemoParams"/> 套用样稿的地址参数（devs、sel、lease、offline、alarm、estop、explorer、tl、stress、freeze、dialog）。
+/// 演示：<see cref="ApplyDemoParams"/> 套用样稿的地址参数（devs、sel、lease、offline、alarm、estop、explorer、tl、stress、freeze、dialog）；
+/// 交互走查启动用 <see cref="ApplyStartParams"/>，截图用 <see cref="ResetView"/> + <see cref="ApplyDemoParams"/>（都同样稿新开的页面）。
 /// </summary>
 public sealed partial class ShellVm : ObservableObject, IDisposable
 {
@@ -130,7 +131,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     /// </summary>
     public void Navigate(Route route)
     {
-        if (!TabsVm.Exists(Fleet, route)) route = Route.Overview;
+        if (!TabsVm.Routable(Fleet, route)) route = Route.Overview;
         Tabs.Activate(route);
         Route = route;
         Page = PageFor(route);
@@ -155,7 +156,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         p = r.Page switch
         {
             PageKind.Device => new DevicePageVm(this, r),
-            PageKind.Reactor => new ReactorPageVm(r),
+            PageKind.Reactor => new ReactorPageVm(this, r),
             // 程序编辑 / 下发 / 导出与性能测试（D5）：M2 起以旧样式挂在新外壳的页签里，M7 换新组件；其余第二阶段视图是占位页
             PageKind.Placeholder when r.Key == "program" => new LegacyProgramPageVm(this),
             PageKind.Placeholder when r.Key == "perf" => new PerfPageVm(this),
@@ -196,8 +197,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     /// <summary>
     /// 套用样稿的地址参数（README「常用查询参数」）：数据（devs / lease / offline / alarm / estop / stress / freeze）交给 FleetVm（只对演示数据有效），
-    /// 外框（explorer / tl）交给 ShellLayout；给了 <paramref name="route"/> 时再导航过去；sel 选中检查器对象（设备页 / 反应釜页选中自己），
-    /// dialog 打开对话框（对话框在 M3：没注册的给「未定义」提示）。
+    /// 外框（explorer / tl）交给 ShellLayout；sel 选中检查器对象（设备页 / 反应釜页选中自己），给了 <paramref name="route"/> 时再导航过去
+    /// （tl、sel 在导航之前套用，explorer 在导航之后），dialog 打开对话框（对话框在 M3：没注册的给「未定义」提示）。
     /// </summary>
     public void ApplyDemoParams(DemoParams p, Route? route = null)
     {
@@ -206,32 +207,51 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         // 换了设备组合：页签回到默认（样稿 pruneTabs 的 _tabsFor）
         if (Fleet.Params?.Devs + "|" + Fleet.Params?.Stress != devsBefore) Tabs.ResetToDefaults();
         Tabs.Refresh();
-        if (route != null) Navigate(route);
-        else if (!TabsVm.Exists(Fleet, Route)) Navigate(Route.Overview);
-        // 外框参数在导航之后套用：导航会收起浮层资源管理器（Navigate → CloseFloat），explorer=1 在窄屏上要的正是浮层打开
+        var dest = route ?? (TabsVm.Routable(Fleet, Route) ? null : Route.Overview);
+        var kind = dest == null ? Route.Page : TabsVm.Routable(Fleet, dest) ? dest.Page : PageKind.Overview;
+        // 样稿 shell.render 的顺序：先读 tl，再 syncSel（设备页 / 反应釜页选中自己，其它页面按 sel），最后跟随（tlFollow）——
+        // 时间轴收起和 sel 都在导航之前套用，导航的时间轴跟随才按新页面的对象展开组（复核：以前先导航，跟随了上一个选中对象，展开了它的 16 路组）
+        if (p.TimelineCollapsed is bool tc) Layout.ApplyParams(null, tc ? "0" : "1");
+        if (p.Sel is { } s && kind is not (PageKind.Device or PageKind.Reactor)) Select(s.K, s.N);
+        if (dest != null) Navigate(dest);
+        // 外框参数在导航之后（再）套用：导航会收起浮层资源管理器（Navigate → CloseFloat），explorer=1 在窄屏上要的正是浮层打开
         Layout.ApplyParams(p.Explorer is bool x ? (x ? "1" : "0") : null, p.TimelineCollapsed is bool t ? (t ? "0" : "1") : null);
-        // 样稿 syncSel：设备页 / 反应釜页选中自己；其它页面按 sel
-        if (p.Sel is { } s && Route.Page is not (PageKind.Device or PageKind.Reactor)) Select(s.K, s.N);
         Selection.Prune();
         RefreshChrome();
         if (p.DialogName is { Length: > 0 } dn) OpenDialog(dn, p.DialogArg);
     }
 
     /// <summary>
+    /// 演示的交互走查启动（ShotRunner.StartDemo：PR_CONTROL_ROUTE「路径?参数」，没给路径时总览），同样稿新开的页面：构造时导航到总览已经跟随了第一台
+    /// （16 路时展开它的组）—— 先清掉时间轴的展开 / 跟随状态，再套用参数并导航，只由这次导航跟随（同截图的 ResetView → ApplyDemoParams）。
+    /// 复核：以前直接 ApplyDemoParams，sel / 路由是别的设备时第一台的 16 路组还展开着；没给路径时不导航，清了之后就没有跟随，所以总是导航。
+    /// </summary>
+    public void ApplyStartParams(DemoParams p, Route? route)
+    {
+        Timeline.ResetOpen(fresh: true);
+        ApplyDemoParams(p, route ?? Route.Overview);
+    }
+
+    /// <summary>
     /// 回到刚打开时的样子（截图：样稿的每张参照图都是新开的页面）：默认外框布局与页签、关掉对话框与浮层、选中第一台设备、
-    /// 资源管理器的展开状态回到默认。
+    /// 资源管理器与时间轴的展开状态回到默认、树滚回顶部；页面里关掉 / 放大的面板还原（<see cref="LayoutReset"/>），提示清空
+    /// （M5：反应釜页的截图准备会关掉「程序」并弹提示，下一张截图不能带着它们）。之后由 <see cref="ApplyDemoParams"/> 导航到截图的页面。
     /// </summary>
     public void ResetView()
     {
         Dialogs.Close();
+        Toasts.Clear();
+        LayoutReset?.Invoke(this, EventArgs.Empty);
         Layout.Reset();
         Timeline.ResetSpan();
-        Timeline.ResetOpen();
         Tabs.ResetToDefaults();
-        Explorer.ResetOpen();
+        Explorer.ResetView();
         var first = Fleet.Devices.FirstOrDefault();
         if (first != null) Select(first.K);
         Navigate(Route.Overview);
+        // 时间轴的展开状态最后才清：上面的选中 / 导航都会跟随（Follow），选中时路由还是上一张截图的页面，会把那一台（如 16 路的 3号机）展开
+        // （复核：截图的结果取决于前一张）。清完之后只有接下来的导航跟随一次，同样稿新开的页面
+        Timeline.ResetOpen(fresh: true);
     }
 
     // ---------------- 动作 ----------------
@@ -261,11 +281,16 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Toast(on ? "已收起资源管理器与时间轴" : "已展开资源管理器与时间轴", ToastKind.Info);
     }
 
-    /// <summary>视图 › 重置布局：外框（资源管理器、时间轴、专注）+ 时间轴跨度 + 页面里放大 / 关闭的面板（<see cref="LayoutReset"/>，PageHost 处理）。</summary>
+    /// <summary>
+    /// 视图 › 重置布局（样稿 resetLayout）：外框（资源管理器、时间轴、专注）+ 时间轴跨度 + 资源管理器与时间轴的展开状态回到默认
+    /// （样稿 xOpen = {}、tlOpen = {}：不跟随、不滚动）+ 页面里放大 / 关闭的面板（<see cref="LayoutReset"/>，PageHost 处理）。
+    /// </summary>
     public void ResetLayout()
     {
         Layout.Reset();
         Timeline.ResetSpan();
+        Explorer.ResetOpen();
+        Timeline.ResetOpen();
         LayoutReset?.Invoke(this, EventArgs.Empty);
         RefreshChrome();
         Toast("布局已重置", ToastKind.Info);
@@ -327,7 +352,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     private void OnFleetChanged(object? sender, EventArgs e)
     {
         Tabs.Refresh();
-        if (!TabsVm.Exists(Fleet, Route)) { Navigate(Route.Overview); return; }
+        if (!TabsVm.Routable(Fleet, Route)) { Navigate(Route.Overview); return; }
         Selection.Prune();
         // 看得见的页面每次都刷新；藏在别的页签后面的总览 / 设备页等切回来时再刷新（PageVm.RefreshWhenHidden，R10）
         foreach (var p in Pages) if (p.RefreshWhenHidden || ReferenceEquals(p, Page)) p.Refresh(Fleet);

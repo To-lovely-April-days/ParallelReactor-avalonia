@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.StepsSection">
+  <!-- 陈列页「步骤卡片」分区（MOCK placeholder.js 的 flow + css .gallery-flow：bg-side 底、1 px line-soft、可滚动）：
+       1号机 RV1 的程序（样稿 ui.stepFlow：卡宽 248、普通条件框、内边距 24 28 32、靠左、分隔线横跨），每行几张按陈列区的宽度（Core 的 StepFlowLayout.GalleryPerRow：
+       放得下几张 248 + 56 的卡，再把各行均衡 —— 1920 下 2 + 2，同样稿）。 -->
+  <rv:WidthProbe Name="Probe">
+    <Border Background="{StaticResource BgSideBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1">
+      <rv:StepFlowPanel Name="Flow" GalleryPer="2" />
+    </Border>
+  </rv:WidthProbe>
+</UserControl>

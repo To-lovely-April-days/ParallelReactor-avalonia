@@ -445,16 +445,20 @@
             <TextBlock Classes="objm" Text="{Binding Sub, Converter={x:Static th:TextConverters.KeepRange}}" />
           </StackPanel>
         </Grid>
-        <!-- 说明框（.pr-insp-unnote）：1 px line 虚线边（3 / 3）、圆角 6、bg-head；ⓘ 17 t-3 · 15 px t-2 -->
+        <!-- 说明框（.pr-insp-unnote）：1 px line 虚线边（3 / 3）、圆角 6、bg-head、内边距 10 12；ⓘ 17 t-3 · 15 px t-2。
+             虚线是画出来的（不是 Border），内容的边距要把 1 px 边算进去：13 / 11（框高 1 + 10 + 21 + 10 + 1 = 43，同样稿） -->
         <Panel Margin="0,0,0,14">
           <Rectangle Fill="{StaticResource BgHeadBrush}" Stroke="{StaticResource LineBrush}" StrokeThickness="1" StrokeDashArray="3,3" RadiusX="6" RadiusY="6" />
-          <StackPanel Orientation="Horizontal" Spacing="8" Margin="12,10">
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="13,11">
             <c:IconView Icon="info" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Note}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource LhBody}" VerticalAlignment="Center" />
           </StackPanel>
         </Panel>
-        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,12">
-          <c:IconView Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        <!-- 「1号机 整机操作」（.pr-insp-devsub）：样稿上 4 下 12，上边距与说明框的下边距 14 合并（取 14），所以这里不再留上边距；
+             行高 23（别名 16/600 的行高 1.45 → 23.2）。行高给在这一行上、不给别名：别名的字照旧居中（基线位置同样稿）；
+             18 px 图标在 23.2 里居中是 2.6 —— 居中取整会落在 2，上面补 1 -->
+        <StackPanel Orientation="Horizontal" Spacing="8" Height="23" Margin="0,0,0,12">
+          <c:IconView Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" Margin="0,1,0,0" VerticalAlignment="Center" />
           <TextBlock Text="{Binding Alias}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
           <TextBlock Classes="t14" Text="整机操作" VerticalAlignment="Center" />
         </StackPanel>
@@ -622,29 +626,36 @@
             </pr:Subhead>
             <Border Margin="0,10,0,0" Padding="12" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
                     Background="{StaticResource BgCardBrush}" IsVisible="{Binding HasProgram}">
-              <StackPanel>
-                <DockPanel Margin="0,0,0,10">
+              <!-- 真机对不上台账的程序（R5）：没有步骤条，只写设备报的 k/n 与消息（消息写在步骤条的位置，省略 + 悬停全文） -->
+              <StackPanel Spacing="10">
+                <DockPanel>
                   <TextBlock DockPanel.Dock="Right" Classes="t14" Margin="8,0,0,0" VerticalAlignment="Bottom" Text="{Binding ProgText}" />
-                  <TextBlock Text="{Binding ProgName}" ToolTip.Tip="{Binding ProgName}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold"
+                  <TextBlock Text="{Binding ProgName}" ToolTip.Tip="{Binding ProgTip}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold"
                              Foreground="{StaticResource T1Brush}" LineHeight="{StaticResource LhBody}" TextTrimming="CharacterEllipsis" VerticalAlignment="Bottom" />
                 </DockPanel>
-                <pr:StepBar ShowLabels="True" SegmentsSource="{Binding Steps}" IsRunning="{Binding StepsRunning}" />
+                <pr:StepBar ShowLabels="True" SegmentsSource="{Binding Steps}" IsRunning="{Binding StepsRunning}" IsVisible="{Binding HasSteps}" />
+                <TextBlock Classes="t14" Text="{Binding HmiMessage}" ToolTip.Tip="{Binding HmiMessage}" TextTrimming="CharacterEllipsis"
+                           IsVisible="{Binding HasHmiMessage}" />
               </StackPanel>
             </Border>
             <TextBlock Classes="t14" Margin="0,10,0,0" Text="没有程序 · 选择后下发" IsVisible="{Binding !HasProgram}" />
             <Border Margin="0,10,0,0" Padding="12,10" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
                     Background="{StaticResource BgHeadBrush}" IsVisible="{Binding WaitText, Converter={x:Static ObjectConverters.IsNotNull}}">
               <DockPanel>
-                <c:IconView DockPanel.Dock="Left" Icon="hand" Size="16" Foreground="{StaticResource T3Brush}" Margin="0,2,8,0" VerticalAlignment="Top" />
+                <c:IconView DockPanel.Dock="Left" Icon="{Binding WaitIcon}" Size="16" Foreground="{StaticResource T3Brush}" Margin="0,2,8,0" VerticalAlignment="Top" />
                 <TextBlock Text="{Binding WaitText, Converter={x:Static th:TextConverters.Keep}}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="21" TextWrapping="Wrap" />
               </DockPanel>
             </Border>
+            <!-- 程序下拉：样稿是原生 select —— 名字放不下时不加省略号，整个名字画出来、在内容框（边框 1 + 左右内边距 12 / 34）的边上裁掉。
+                 这里同样不省略，TextBlock 在自己的框上裁（ClipToBounds 默认开）；右边留 1 px 是 select 的边框（框的右边 = 下拉宽 − 35），
+                 11.1 的 CharacterEllipsis 会把「催化评价-200-长时反应」丢成「催化评价-200-…」（复核）。
+                 这个 TextBlock 不审计（类 audit-skip）：有意裁掉的名字会被报成 overflow；样稿的审计对 select 也不查文字放不放得下（core.js 只对 input / textarea 查） -->
             <DockPanel Margin="0,10,0,0">
               <Button DockPanel.Dock="Right" Margin="8,0,0,0" vs:InspBind.Act="{Binding ProgLoad}" />
               <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Programs}" SelectedItem="{Binding SelectedProgram}" b:Pr.Reason="{Binding ProgReason}">
                 <ComboBox.ItemTemplate>
                   <DataTemplate x:DataType="svc:ProgramChoice">
-                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="audit-skip" Text="{Binding Name}" Margin="0,0,1,0" ToolTip.Tip="{Binding Name}" />
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
@@ -700,11 +711,12 @@
           <c:IconView DockPanel.Dock="Left" Icon="layout" Size="18" Foreground="{StaticResource T3Brush}" Margin="0,0,8,0" VerticalAlignment="Center" />
           <pr:PrText DockPanel.Dock="Left" Text="检查器" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
                      Margin="0,0,8,0" VerticalAlignment="Center" />
-          <!-- 路径「/1号机/RV1」：两段（别名可以省略，「/RV1」永远完整）都用 pr:PrText（按 WebKit 量宽），中间不留空 -->
+          <!-- 路径「/1号机/RV1」：两段（别名可以省略，「/RV1」永远完整）都用 pr:PrText（按 WebKit 量宽），中间不留空；
+               别名不加 num（可以省略的名字不是读数 —— 审计的 number truncated 只管读数，stress=2 的长别名省略时曾被报出来） -->
           <DockPanel Background="Transparent" ToolTip.Tip="{Binding Inspector.PathTip}" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="0,0,8,0">
             <pr:PrText DockPanel.Dock="Right" Classes="num" Text="{Binding Inspector.PathRv}" FontSize="{StaticResource Fs2}"
                        Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
-            <pr:PrText Classes="num" Text="{Binding Inspector.PathAlias}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+            <pr:PrText Text="{Binding Inspector.PathAlias}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
                        TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           </DockPanel>
         </DockPanel>

@@ -29,6 +29,31 @@ public class InspectorTests
         return s;
     }
 
+    /// <summary>
+    /// 复核（低）：检查器的「最近事件」在演示数据重建（截图的每个场景：DeviceVm 留着、换数据源）之后是这一份数据的 ——
+    /// 新数据的事件 Id（'e13'）会与旧的重复，以前按 Id 留着旧行（截图 ov-trend-sel2 → ov-devsmix 写着上一份的「09:44:00 RV5 进入第 3 步 反应」）。
+    /// </summary>
+    [Fact]
+    public void RecentEvents_AfterADemoRebuild_AreTheNewData()
+    {
+        var s = Shell("devs=PR16,PR4&sel=2&freeze=1");
+        s.ApplyDemoParams(DemoParams.Parse("devs=PR16,PR4&sel=2&freeze=1"), Route.Overview);
+        s.Select(1);
+        var a = Assert.IsType<DeviceInspectorVm>(s.Inspector.Body);
+        Assert.NotEmpty(a.Events);
+        var q = DemoParams.Parse("devs=PR8,PR4,PR16&freeze=1");
+        s.Fleet.ResetDemo(q);
+        s.ApplyDemoParams(q);
+        s.ResetView();
+        s.ApplyDemoParams(q, Route.Overview);
+        var b = Assert.IsType<DeviceInspectorVm>(s.Inspector.Body);
+        var d = s.Fleet.Device(b.D.K)!;
+        var want = d.Source.Events.Take(5).Select(e => Core.Format.Fmt.Time(e.At) + " " + e.Text).ToList();
+        Assert.NotEmpty(want);
+        Assert.Equal(want, b.Events.Select(e => e.AtText + " " + e.Text));
+        Assert.All(b.Events, e => Assert.Contains(e.E, d.Events));
+    }
+
     [Fact]
     public void Overview_FirstDevice_DeviceInspector()
     {
@@ -224,14 +249,25 @@ public class InspectorTests
         Assert.Null(card.WhereText);
         Assert.True(card.IsErrCard);
 
-        // 反应釜检查器：这一路未确认的报警在标题下面（M2 的反应釜页是骨架、没有报警条，所以仍带确认）
+        // 反应釜页（M5）：顶部报警条上有这条报警唯一的「确认」（页面拥有它）—— 反应釜检查器不再在标题下面重复它（样稿 final-reactor311）
         s.Navigate(Route.Reactor(3, 11));
         var r = (ReactorInspectorVm)s.Inspector.Body!;
-        Assert.Single(r.TopAlarms);
-        Assert.True(r.TopAlarms[0].ShowAck);
+        Assert.Empty(r.TopAlarms);
         Assert.True(r.RunCellHeld);
         Assert.Equal("报警暂停", r.RunCellText);
         Assert.Equal("报警暂停", r.ProgCellText);
+        // 同一页上选中整台设备：设备检查器照样列出这条报警，但不放第二个「确认」（中性卡片，写「确认在顶部报警条」）
+        s.Select(3);
+        var dv = (DeviceInspectorVm)s.Inspector.Body!;
+        var c = dv.Alarms.Single(a => a.A.Id == alarm.Id);
+        Assert.False(c.ShowAck);
+        Assert.Equal("确认在顶部报警条", c.WhereText);
+        // 别的页面（没有报警条）：反应釜检查器照常带「确认」
+        s.Navigate(Route.Device(1));
+        s.Select(3, 11);
+        r = (ReactorInspectorVm)s.Inspector.Body!;
+        Assert.Single(r.TopAlarms);
+        Assert.True(r.TopAlarms[0].ShowAck);
     }
 
     [Fact]

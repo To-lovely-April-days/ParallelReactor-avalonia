@@ -1,0 +1,198 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cp="using:ParallelReactor.Control.Controls.Steps"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.StepCardView"
+             x:DataType="pg:StepCardVm"
+             ClipToBounds="False"
+             Classes.cur="{Binding IsCur}" Classes.held="{Binding Held}" Classes.abort="{Binding IsAbort}"
+             Classes.preview="{Binding Preview}" Classes.stale="{Binding Stale}">
+  <!-- 步骤卡片（样稿 ui.stepCard + base.css .pr-step*：原稿程序编辑器的白卡细边框）：
+       卡片 bg-card、1 px line-faint、圆角 2、阴影 0 1 5（ShadowStep）；当前步 105° g-1 → g-2 渐变 + g-line 边（内部分隔线也是 g-line）；
+       报警暂停的当前步白卡 + r-line 边（内部分隔线回到 line-faint，绿 + 红不同时出现）；中止 = line 虚线、没有阴影；程序库预览 = line-2 虚线、没有阴影；
+       断线（样稿 grayscale(1)）：浅绿 / 红换成色板里最接近的灰（g-1 / g-2 → bg-head，g-line → line-faint，r-line → line，r-ink / r → t-3）。
+       标题 44（含下边 1 px）：「3: 反应」16/600 t-1 + 标记（14 t-3，图标 15；当前 15/600 t-1；报警暂停 r-ink 600 + r 图标；中止 t-2 600）；
+       三节：内边距 8 14 10，设备名 14 t-3（行高 20）、方式 16 t-1（行高 23，上 4 下 8）、标签 14 t-3 + 数值 18/600 t-1（行高 24，基线对齐、两端）。
+       行高取 WebKit 的整数行高（卡片高 339，同样稿在 WebKit 里量的）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border#Card">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowStep}" />
+    </Style>
+    <Style Selector="rv|StepCardView.cur Border#Card">
+      <Setter Property="Background" Value="{StaticResource StepActiveGradientBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.cur.stale Border#Card">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.held Border#Card">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.held.stale Border#Card">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.abort Border#Card, rv|StepCardView.preview Border#Card">
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="cp|DashFrame#Dash">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="rv|StepCardView.abort cp|DashFrame#Dash">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Color" Value="{StaticResource LineColor}" />
+    </Style>
+    <Style Selector="rv|StepCardView.preview cp|DashFrame#Dash">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Color" Value="{StaticResource Line2Color}" />
+    </Style>
+
+    <!-- 分隔线（标题与前两节的下边） -->
+    <Style Selector="Border.sep">
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="rv|StepCardView.cur Border.sep">
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.cur.held Border.sep, rv|StepCardView.cur.stale Border.sep">
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+
+    <!-- 标题与标记 -->
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhTitle}" />
+    </Style>
+    <Style Selector="StackPanel.mark > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.mark > c|IconView">
+      <Setter Property="Size" Value="15" />
+      <Setter Property="StrokeWidth" Value="2" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.mark.cur > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+    </Style>
+    <Style Selector="StackPanel.mark.held > TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="StackPanel.mark.held > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.stale StackPanel.mark.held > TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="rv|StepCardView.stale StackPanel.mark.held > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="StackPanel.mark.abort > TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+
+    <!-- 一节 -->
+    <Style Selector="Border.sec">
+      <Setter Property="Padding" Value="14,8,14,10" />
+    </Style>
+    <Style Selector="TextBlock.dev">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="cp|ChemLine.mode">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhTitle}" />
+      <Setter Property="Height" Value="23" />
+      <Setter Property="Margin" Value="0,4,0,8" />
+    </Style>
+    <Style Selector="c|BaselineStack.row">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Spacing" Value="8" />
+    </Style>
+    <Style Selector="c|BaselineStack.row > TextBlock.lbl">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="c|BaselineStack.row > TextBlock.val">
+      <Setter Property="FontSize" Value="{StaticResource FsHead}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="24" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <Border Name="Card">
+      <StackPanel>
+        <Border Classes="sep" Height="44" Padding="14,0">
+          <pr:FlexRow Spacing="8">
+            <pr:PrText Classes="title" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" pr:FlexRow.Shrink="1" />
+            <StackPanel Classes="mark" Classes.cur="{Binding MarkCur}" Classes.held="{Binding MarkHeld}" Classes.abort="{Binding MarkAbort}"
+                        Orientation="Horizontal" Spacing="4" pr:FlexRow.PushRight="True"
+                        IsVisible="{Binding Mark, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <c:IconView Icon="{Binding MarkIcon}" IsVisible="{Binding HasMarkIcon}" />
+              <pr:PrText Classes="num" Text="{Binding Mark}" />
+            </StackPanel>
+          </pr:FlexRow>
+        </Border>
+        <Border Classes="sep sec">
+          <StackPanel>
+            <pr:PrText Classes="dev" Text="{Binding Sections[0].Dev}" ToolTip.Tip="{Binding Sections[0].DevTip}" />
+            <cp:ChemLine Classes="mode" Text="{Binding Sections[0].Mode}" />
+            <c:BaselineStack Classes="row">
+              <pr:PrText Classes="lbl" Text="{Binding Sections[0].Label}" />
+              <pr:PrText Classes="val num" Text="{Binding Sections[0].Value}" c:BaselineStack.PushRight="True" />
+            </c:BaselineStack>
+          </StackPanel>
+        </Border>
+        <Border Classes="sep sec">
+          <StackPanel>
+            <pr:PrText Classes="dev" Text="{Binding Sections[1].Dev}" ToolTip.Tip="{Binding Sections[1].DevTip}" />
+            <cp:ChemLine Classes="mode" Text="{Binding Sections[1].Mode}" />
+            <c:BaselineStack Classes="row">
+              <pr:PrText Classes="lbl" Text="{Binding Sections[1].Label}" />
+              <pr:PrText Classes="val num" Text="{Binding Sections[1].Value}" c:BaselineStack.PushRight="True" />
+            </c:BaselineStack>
+          </StackPanel>
+        </Border>
+        <Border Classes="sec">
+          <StackPanel>
+            <pr:PrText Classes="dev" Text="{Binding Sections[2].Dev}" ToolTip.Tip="{Binding Sections[2].DevTip}" />
+            <cp:ChemLine Classes="mode" Text="{Binding Sections[2].Mode}" />
+            <c:BaselineStack Classes="row">
+              <pr:PrText Classes="lbl" Text="{Binding Sections[2].Label}" />
+              <pr:PrText Classes="val num" Text="{Binding Sections[2].Value}" c:BaselineStack.PushRight="True" />
+            </c:BaselineStack>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+    <cp:DashFrame Name="Dash" />
+  </Panel>
+</UserControl>

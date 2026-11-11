@@ -99,8 +99,16 @@ public class TabsTests
         s.Navigate(Route.Device(9));                                           // 不存在：回到总览，不加页签
         Assert.Equal("overview", s.Route.Id);
         Assert.Equal(5, s.Tabs.Tabs.Count);
-        s.Navigate(Route.Reactor(1, 6));                                       // 未安装：同上
+        s.Navigate(Route.Reactor(1, 9));                                       // 没有这个位置（HT-PR8 只有 8 路）：同上
         Assert.Equal("overview", s.Route.Id);
+        // M5：未安装的位置能打开（样稿 route → reactor.js unPanel：一页说明），页签只在它是当前页签时留着（样稿 pruneTabs + ensureRouteTab）
+        s.Navigate(Route.Reactor(1, 6));
+        Assert.Equal("reactor/1/6", s.Route.Id);
+        Assert.Contains("reactor/1/6", Ids(s));
+        s.Navigate(Route.Overview);
+        s.RefreshChrome();
+        Assert.DoesNotContain("reactor/1/6", Ids(s));
+        Assert.Equal(new[] { "overview", "device/1", "reactor/1/1", "reactor/1/3", "placeholder/curves" }, Ids(s));
     }
 
     [Fact]

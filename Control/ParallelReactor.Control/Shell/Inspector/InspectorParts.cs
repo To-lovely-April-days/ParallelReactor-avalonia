@@ -266,8 +266,12 @@ public sealed class InspEventVm
 /// <summary>按 Id 就地同步一个视图模型列表（不重建集合：已有的移动 / 更新，没有的插入，多余的去掉）。</summary>
 internal static class ListSync
 {
+    /// <param name="same">
+    /// Id 相同时还要是同一个来源才留着旧的视图模型（不可变的行用：例如事件行留着的是哪一个 EventVm）；不是时换成新建的。
+    /// 复核：演示数据重建后同一台设备的事件 Id（'e13'）会重复，只比 Id 时检查器的「最近事件」留着上一份数据的文字。null = 只比 Id。
+    /// </param>
     public static void Sync<TSrc, TVm>(ObservableCollection<TVm> list, IReadOnlyList<TSrc> want, Func<TSrc, string> key, Func<TVm, string> vmKey,
-        Func<TSrc, TVm> make, Action<TVm>? update = null)
+        Func<TSrc, TVm> make, Action<TVm>? update = null, Func<TSrc, TVm, bool>? same = null)
     {
         var keys = new HashSet<string>(want.Select(key), StringComparer.Ordinal);
         for (int i = list.Count - 1; i >= 0; i--) if (!keys.Contains(vmKey(list[i]))) list.RemoveAt(i);
@@ -278,7 +282,12 @@ internal static class ListSync
             for (int j = i; j < list.Count; j++) if (vmKey(list[j]) == k) { at = j; break; }
             TVm vm;
             if (at < 0) { vm = make(want[i]); list.Insert(i, vm); }
-            else { vm = list[at]; if (at != i) list.Move(at, i); }
+            else
+            {
+                vm = list[at];
+                if (same != null && !same(want[i], vm)) { vm = make(want[i]); list[at] = vm; }
+                if (at != i) list.Move(at, i);
+            }
             update?.Invoke(vm);
         }
     }

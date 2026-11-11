@@ -43,9 +43,48 @@ public static class ShotPlan
         // 演示路由的状态（样稿 README 的地址参数，M2 起由 Core 的 DemoFleet 给出）：4 台（4号机断线重连中）、选中 3号机 · RV11（16 路设备展开）。
         // 外框（资源管理器、页签、状态栏）与参照图对上；工作区是骨架（M4 / M5）
         new Spec("overview4dev", "overview", "devs=4&scroll=end", new[] { new PixelSize(1920, 1080) }),
-        new Spec("reactor311", "reactor/3/11", "sel=3/11", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("reactor311", "reactor/3/11", "sel=3/11", Screens),
         // 反应釜页 · 独立搅拌的型号（2号机 HT-PR4）：检查器「搅拌（本釜）」转速框；工作区是骨架（M5）
-        new Spec("reactor21", "reactor/2/1", "", new[] { new PixelSize(1920, 1080) }),
+        new Spec("reactor21", "reactor/2/1", "", Screens),
+        // 反应釜页 · 升温中的 RV3（曲线：温度斜坡 + 设定值虚线、分带按「变化大」铺满；标记「RV3 加样后升温」）—— 样稿冻结的参照图 final-reactor13-1920；
+        // 1600 / 1366 与 reactor21 / reactor311 的其它尺寸用 snap 现拍样稿同一个地址（曲线的窗口、刻度、上限文字的位置逐张对照）
+        new Spec("reactor13", "reactor/1/3", "", Screens),
+        // 反应釜页「釜体 / 属性查看器」（M5，Views/Pages/Reactor/ReactorVesselPanel）：属性查看器页签（Setup rvprops = 点「属性查看器」；参照用 snap 现拍样稿同一个地址、
+        // js 参数点同一个页签，final-rvp*-<w>.png，见 doc §9）—— 两列卡片、只显示完整的行、「另有 N 项」
+        new Spec("rvp11", "reactor/1/1", "", Screens, Setup: "rvprops"),
+        new Spec("rvp21", "reactor/2/1", "", new[] { new PixelSize(1920, 1080) }, Setup: "rvprops"),
+        new Spec("rvp311", "reactor/3/11", "sel=3/11", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }, Setup: "rvprops"),
+        // 釜体页签的最坏值与状态（API.md §3.5 stress=1 / 2：长读数、1234.50 mmol、长气体名；断线：「断线前保温」、不画火焰、读数 t-3；急停：已停止、OFF；
+        // 2号机 RV1 一条超压报警：PT「上限 9.99 MPa」、压力表红圈、标题栏不写状态；stress 的最后一路：超压报警 + 程序报警暂停）—— 参照 snap 现拍 final-rv-*-<w>.png
+        new Spec("rv-stress1", "reactor/1/1", "stress=1", Screens),
+        new Spec("rv-stress2", "reactor/1/1", "stress=2", Screens),
+        new Spec("rv-stress1-14", "reactor/1/4", "stress=1", Screens),
+        new Spec("rv-stress2-316", "reactor/3/16", "stress=2&sel=3/16", Screens),
+        new Spec("rvp-stress1", "reactor/1/1", "stress=1", Screens, Setup: "rvprops"),
+        new Spec("rvp-stress2", "reactor/2/1", "stress=2", Screens, Setup: "rvprops"),
+        new Spec("rv-off1", "reactor/1/1", "offline=1", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("rv-estop1", "reactor/1/1", "estop=1", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("rv-alarm21", "reactor/2/1", "alarm=2:1", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        // 反应釜页「程序」面板与整页的其它状态（M5 第四部分；参照用 snap 现拍样稿同一个地址，final-rv-*-<w>.png，见 doc §9）：
+        // 未安装的位置（说明页）、没有程序（程序库 + 预览；本地只读 = 原因写一次 / 远程控制中 = 每行「下发」）、断线（4号机：连接中断条 +「立即重连」、卡片去色）、
+        // 急停（3号机：急停条 + 超压报警条、程序已中止）、程序已结束（2号机 RV4）、刚添加从未连上的设备（只有一句说明）、
+        // 关掉「程序」（右边一栏铺满整个宽度 + 提示）、画布放大一档 / 两档（每行的卡变少）、放大「程序」面板（状态条照样显示）、最坏值的程序（stress=1 的 3号机 RV16）、
+        // 1920 收起资源管理器（工作区 1526：同一版式，画布和曲线更宽）、2560 × 1440 收起资源管理器（工作区 ≥ 1800：三列宽版式）
+        new Spec("rv-un15", "reactor/1/5", "", Screens),
+        new Spec("rv-noprog313", "reactor/3/13", "sel=3/13", Screens),
+        new Spec("rv-noprog313r", "reactor/3/13", "sel=3/13&lease=3:remote", Screens),
+        new Spec("rv-off41", "reactor/4/1", "devs=4&sel=4/1", Screens),
+        new Spec("rv-estop311", "reactor/3/11", "estop=3&sel=3/11", Screens),
+        new Spec("rv-done24", "reactor/2/4", "sel=2/4", Screens),
+        new Spec("rv-never", "reactor/4/1", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }, Setup: "adddevice"),
+        new Spec("rv-progx", "reactor/1/1", "", Screens, Setup: "rvprogx"),
+        new Spec("rv-zoom1", "reactor/1/1", "", Screens, Setup: "rvzoom1"),
+        new Spec("rv-zoom2", "reactor/1/1", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }, Setup: "rvzoom2"),
+        new Spec("rv-maxprog", "reactor/1/1", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }, Setup: "rvmaxprog"),
+        new Spec("rv-stress1-prog", "reactor/3/16", "stress=1&sel=3/16", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
+        new Spec("rv-x0", "reactor/1/1", "explorer=0", new[] { new PixelSize(1920, 1080) }),
+        new Spec("rv-wide", "reactor/1/1", "explorer=0", new[] { new PixelSize(2560, 1440) }),
+        new Spec("rv-wide-311", "reactor/3/11", "explorer=0&sel=3/11", new[] { new PixelSize(2560, 1440) }),
         // 外框的状态集（PORT-PLAN §5.9「状态集」；参照图用 snap 现拍样稿同一个地址，文件名 final-st-*-<w>.png，见 doc §9）：
         // 急停（检查器红框、资源管理器 / 时间轴组头「急停中」）、申请控制权中、断线（4 种区域的写法）、宽限、资源管理器收起、时间轴收起、未安装的位置、4 台
         new Spec("st-estop3", "overview", "estop=3", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
@@ -99,11 +138,15 @@ public static class ShotPlan
         new Spec("st-stress2", "overview", "stress=2", Screens),
         new Spec("ov-stress1-end", "overview", "stress=1&scroll=end", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
         new Spec("ov-stress2-end", "overview", "stress=2&scroll=end", new[] { new PixelSize(1600, 900), new PixelSize(1366, 768) }),
-        // 状态：申请控制权中（分区头「申请中 45 s」）、2号机加一条超压报警（PR4 宽卡的报警卡 + 分区头「● RV1 超压报警」）、只有一台（样稿此时补温度趋势面板 —— M5，
-        // 这里那块是总览底色，见 OverviewPageVm.TrendDeferred）、三种型号各一台且 8 路装满（PR8 用紧凑卡）
+        // 状态：申请控制权中（分区头「申请中 45 s」）、2号机加一条超压报警（PR4 宽卡的报警卡 + 分区头「● RV1 超压报警」）、只有一台（下面补「温度趋势」面板，M5）、
+        // 三种型号各一台且 8 路装满（PR8 用紧凑卡）
         new Spec("ov-lease2req", "overview", "lease=2:requested", new[] { new PixelSize(1920, 1080) }),
         new Spec("ov-alarm21", "overview", "alarm=2:1", new[] { new PixelSize(1920, 1080) }),
-        new Spec("ov-devs1", "overview", "devs=1", new[] { new PixelSize(1920, 1080) }),
+        new Spec("ov-devs1", "overview", "devs=1", Screens),
+        // 温度趋势（M5，Pages/Overview/OverviewTrendVm + Controls/Chart/TimeSeriesChart）：16 路 + 4 路两台、最坏值（选中的 3号机 RV1–RV4 四条线、「显示 4/n」）；
+        // 选中 2号机（HT-PR4：画它的反应釜）。参照用 snap 现拍样稿同一个地址（final-ov-trend*-1920.png，见 doc §9）
+        new Spec("ov-trend-stress2", "overview", "devs=PR16,PR4&stress=2", new[] { new PixelSize(1920, 1080) }),
+        new Spec("ov-trend-sel2", "overview", "devs=PR16,PR4&sel=2", new[] { new PixelSize(1920, 1080) }),
         new Spec("ov-devsmix", "overview", "devs=PR8,PR4,PR16", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
         // 样稿 API.md §9 要求的组合（每种再配 stress=1 / 2）：急停 + 断线一起（分区头最挤：红「急停中 / 断线前已急停」+ 连接徽标 + 报警小块 + 说明条）、
         // 4 台全部在线（8 路装满的 HT-PR8 + 16 路，滚到底）

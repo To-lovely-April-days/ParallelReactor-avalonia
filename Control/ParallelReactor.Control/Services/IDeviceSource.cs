@@ -4,8 +4,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Api;
 using ParallelReactor.Control.Core.Alarms;
+using ParallelReactor.Control.Core.Chart;
 using ParallelReactor.Control.Core.Events;
 using ParallelReactor.Control.Core.Guard;
+using ParallelReactor.Control.Core.History;
 using ParallelReactor.Control.Core.Models;
 using ParallelReactor.Control.Core.Programs;
 using ParallelReactor.Control.Core.State;
@@ -79,6 +81,11 @@ public interface IDeviceSource : IAsyncDisposable
     /// 实时 = 本机给这个反应釜的程序草稿（M2 的「下发」照旧下发它；按型号的程序库在 M7）。
     /// </summary>
     IReadOnlyList<ProgramChoice> ProgramChoices(int n);
+    /// <summary>
+    /// 反应釜页没有程序时的程序库（样稿 noProgHTML 的 PR.sim.programs(d)：名称、说明、步骤，给预览用）：演示 = 这一型号的演示程序库；
+    /// 实时 = 本机给这个反应釜的程序草稿（drafts.json，同 <see cref="ProgramChoices"/>；按型号的程序库在 M7）。顺序与 id 同 <see cref="ProgramChoices"/>。
+    /// </summary>
+    IReadOnlyList<ProgramDef> Library(int n);
     IChannelHistory History { get; }
 
     /// <summary>数据变了（合并后、在 UI 线程上触发）。</summary>
@@ -183,17 +190,41 @@ public sealed record ProgramChoice(string Id, string Name)
 /// <summary>测试会话：记录中、会话号、开始时刻、标记个数。</summary>
 public sealed record SessionInfo(bool Active, string? Id, DateTime? StartAt, int Markers);
 
-/// <summary>HMI 没有、演示有的反应釜数据（样稿 Channel 的 volumeMl / rpm / stirOn / cooling / mmol）。</summary>
-public sealed record ChannelExtras(double? VolumeMl, double? Rpm, bool StirOn, bool Cooling, double? Mmol);
+/// <summary>
+/// HMI 没有、演示有的反应釜数据（样稿 Channel 的 volumeMl / rpm / stirOn / cooling / mmol）。
+/// <see cref="Rpm"/> = 有效转速（搅拌关着为 0，读数用）；<see cref="RpmSp"/> = 本釜的设定转速（样稿 ch.rpm，关着也是设定值）——
+/// 检查器的转速框、「设定」「启动搅拌」用它，不然关着的搅拌一启动就是 0 rpm（复核）。没有设定值的来源为 null。
+/// </summary>
+public sealed record ChannelExtras(double? VolumeMl, double? Rpm, bool StirOn, bool Cooling, double? Mmol, double? RpmSp = null);
 
 /// <summary>曲线数据的量（样稿 series 的 key）。</summary>
 public enum HistoryKey { TempC, PressureMPa, HeaterPct, Rpm, Mmol, SpC, PTargetMPa }
 
-/// <summary>曲线数据（演示：60 min 预生成 + 每 10 s 追加；实时：TelemetryStore 的帧，M5 换成 10 s 一格的 ChannelHistory 环形缓冲）。</summary>
+/// <summary>
+/// 曲线数据（M5）：每个反应釜一个 Core 的 <see cref="ChannelHistory"/>（10 s 一格的环形缓冲，保留 4 h，增量追加；PORT-PLAN §3.2 第 11 条）。
+/// 演示：DemoDevice 的历史（60 min 预生成 + 每 10 s 一个采样）同步进来（DeviceHistory.SyncDemo，与 DemoDevice.Series 逐点相同）；
+/// 实时：每收到一帧 AppendFrame（psi → MPa），断线时插断开标记，HMI 重启时清空（取代旧界面每帧从 TelemetryStore 的 7200 帧重建）。
+/// 只在 UI 线程上读写。
+/// </summary>
 public interface IChannelHistory
 {
-    /// <summary>最近 <paramref name="minutes"/> 分钟的 (时刻（本地）, 值)，值缺失为 null，最旧在前。</summary>
+    /// <summary>最近 <paramref name="minutes"/> 分钟的 (时刻（本地）, 值)，值缺失为 null，最旧在前（一份新列表；曲线用 <see cref="Channel"/>）。</summary>
     IReadOnlyList<(DateTime T, double? V)> Series(int n, HistoryKey key, double minutes = 60);
+
+    /// <summary>第 n 路的环形缓冲（曲线按窗口把点拷进自己的缓冲，不分配）；还没有这一路的数据为 null。</summary>
+    ChannelHistory? Channel(int n);
+
+    /// <summary>
+    /// 曲线横轴的「现在」（窗口 = [现在 − 分钟, 现在]，本地时间）：演示 = 演示时钟（冻结时不走）；真机 = 本机 UTC + HMI 时钟偏差（帧的时刻是设备时钟，
+    /// 两边的钟不齐时最新的点也落在右端）。
+    /// </summary>
+    DateTime Now { get; }
+
+    /// <summary>
+    /// 当前会话的标记（曲线上的紫色竖虚线 + 文字；样稿 dev.session.markers，反应釜号为 null 的整机标记每个反应釜都画）。演示 = 会话标记；
+    /// 真机暂为空（GET /sessions/current 的 markers 还没有接上，A11 之前标记也没有反应釜号）。
+    /// </summary>
+    IReadOnlyList<SessionMark> Marks { get; }
 }
 
 /// <summary>数据源这次变了什么（合并后的标志，订阅方一般全部刷新）。</summary>
