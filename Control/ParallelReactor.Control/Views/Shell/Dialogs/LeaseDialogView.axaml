@@ -45,16 +45,21 @@
       <Setter Property="FontWeight" Value="Medium" />
       <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
     </Style>
+    <!-- 设备卡片里的徽标字一律 t-3（M6，同样稿：.dlg-devcard span { color: t-3 } 也选中了徽标这个 span，特异性 0,1,1 高过 .pr-badge 的 b-fg）——
+         图标（b-ic：申请中紫色时钟、宽限 / 断线红色）与底色、边框照旧按状态 -->
+    <Style Selector="pr|LeaseBadge.devcard /template/ TextBlock#PART_Text, pr|ConnBadge.devcard /template/ TextBlock#PART_Text">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
   </UserControl.Styles>
   <StackPanel>
-    <!-- 设备卡片（.dlg-devcard：间距 12、下边距 16、内边距 12 14、line-2 边、bg-head；图标 24 t-3；别名 16/600；「型号 · 地址 · SN」14 t-3） -->
+    <!-- 设备卡片（.dlg-devcard：间距 12、下边距 16、内边距 12 14、line-2 边、bg-head；图标 24 t-3；别名 16/600；「型号 · 地址 · SN」14 t-3；徽标的字 t-3） -->
     <Border Margin="0,0,0,16" Padding="14,12" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
             Background="{StaticResource BgHeadBrush}">
       <DockPanel>
         <c:IconView DockPanel.Dock="Left" Icon="machine" Size="24" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,12,0" />
         <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
-          <pr:LeaseBadge State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}" IsVisible="{Binding Badge.ShowLease}" />
-          <pr:ConnBadge State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}" IsVisible="{Binding !Badge.ShowLease}" />
+          <pr:LeaseBadge Classes="devcard" State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}" IsVisible="{Binding Badge.ShowLease}" />
+          <pr:ConnBadge Classes="devcard" State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}" IsVisible="{Binding !Badge.ShowLease}" />
         </Panel>
         <StackPanel Spacing="2" VerticalAlignment="Center">
           <pr:PrText Text="{Binding Alias}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />

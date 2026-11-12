@@ -14,12 +14,13 @@ namespace ParallelReactor.Control.Shell.Dialogs;
 /// <summary>
 /// 重命名（样稿 dialogs.js 'rename'）：只有别名一栏（输入时就地校验，计数「5/16」）；「确定」带别名错误作原因。确定 = 样稿 act(rename)：
 /// 演示改 DemoFleet，真机只改本机（devices.json），提示「新名 · 已重命名（原名 旧名）」。设备被移除时关闭。
+/// 底栏的异步命令执行期间按钮不灰（AsyncRelayCommand 默认执行期间是没有原因的禁用，M6）：正在改名时再点一次不重复执行。
 /// </summary>
 public sealed partial class RenameDialogVm : DialogVm
 {
     private readonly ShellVm _shell;
     private readonly int _k;
-    private bool _closed;
+    private bool _closed, _busy;
 
     private RenameDialogVm(ShellVm shell, int k, DeviceVm d)
     {
@@ -30,7 +31,7 @@ public sealed partial class RenameDialogVm : DialogVm
         Icon = "edit";
         Width = 480;
         Field = new AliasFieldVm(d.Alias, a => shell.Fleet.AliasError(a, k));
-        OkButton = new FootButton("确定", new AsyncRelayCommand(OkAsync), FootKind.Primary);
+        OkButton = new FootButton("确定", new AsyncRelayCommand(OkAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary);
         Footer = new FootBar(new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this))), OkButton);
         Field.PropertyChanged += (_, _) => OkButton.Reason = FootButton.Nz(Field.Error);
         OkButton.Reason = FootButton.Nz(Field.Error);
@@ -56,10 +57,15 @@ public sealed partial class RenameDialogVm : DialogVm
     private async Task OkAsync()
     {
         var d = _shell.Fleet.Device(_k);
-        if (d == null) return;
-        var o = await d.Actions.RunAsync(DeviceAction.Rename, new ActionPayload(Alias: Field.Alias)).ConfigureAwait(true);
-        if (o.Ok) _shell.Dialogs.Close(this);
-        else Field.Validate();
+        if (d == null || _busy) return;
+        _busy = true;
+        try
+        {
+            var o = await d.Actions.RunAsync(DeviceAction.Rename, new ActionPayload(Alias: Field.Alias)).ConfigureAwait(true);
+            if (o.Ok) _shell.Dialogs.Close(this);
+            else Field.Validate();
+        }
+        finally { _busy = false; }
     }
 
     public override void OnClosed() => _closed = true;
@@ -67,7 +73,8 @@ public sealed partial class RenameDialogVm : DialogVm
 
 /// <summary>
 /// 移除确认（样稿 dialogs.js 'remove'）：说明「会断开连接并从本机列表中删除…」；本机持有 / 申请着控制权时多一条 warn 说明（移除前先释放 / 取消申请）。
-/// 「移除」（主要，垃圾桶）= 先释放 / 取消（quiet），关掉对话框，再 act(remove)（真机：从 devices.json 删掉、断开；提示「已移除 2号机」）。
+/// 「移除」（主要，垃圾桶）= 关掉对话框，先释放 / 取消（quiet），再 act(remove)（真机：从 devices.json 删掉、断开；提示「已移除 2号机」）。
+/// 先关对话框（M6）：真机释放控制权最长要等 3 s，这期间对话框不能留着一个没有原因的灰按钮（样稿是同步的，看不出先后）。
 /// </summary>
 public sealed partial class RemoveDialogVm : DialogVm
 {
@@ -85,7 +92,7 @@ public sealed partial class RemoveDialogVm : DialogVm
         Width = 520;
         Footer = new FootBar(
             new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this))),
-            new FootButton("移除", new AsyncRelayCommand(OkAsync), FootKind.Primary, "trash"));
+            new FootButton("移除", new AsyncRelayCommand(OkAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "trash"));
         Body = this;
         Refresh();
     }
@@ -115,10 +122,10 @@ public sealed partial class RemoveDialogVm : DialogVm
     private async Task OkAsync()
     {
         var d = _shell.Fleet.Device(_k);
-        if (d == null) return;
+        if (d == null || _closed) return;
+        _shell.Dialogs.Close(this);
         if (d.LeaseStatus is LeaseStatus.Remote or LeaseStatus.Lost) await d.Actions.RunAsync(DeviceAction.LeaseRelease, quiet: true).ConfigureAwait(true);
         else if (d.LeaseStatus == LeaseStatus.Requested) await d.Actions.RunAsync(DeviceAction.LeaseCancel, quiet: true).ConfigureAwait(true);
-        _shell.Dialogs.Close(this);
         await d.Actions.RunAsync(DeviceAction.Remove).ConfigureAwait(true);
     }
 
@@ -143,7 +150,7 @@ public sealed partial class DisconnectDialogVm : DialogVm
         Arg = DialogText.K(k);
         Icon = "unplug";
         Width = 540;
-        OkButton = new FootButton("释放并断开", new AsyncRelayCommand(OkAsync), FootKind.Primary, "unplug");
+        OkButton = new FootButton("释放并断开", new AsyncRelayCommand(OkAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "unplug");
         Footer = new FootBar(new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this))), OkButton);
         Body = this;
         Refresh();
@@ -172,7 +179,7 @@ public sealed partial class DisconnectDialogVm : DialogVm
     private async Task OkAsync()
     {
         var d = _shell.Fleet.Device(_k);
-        if (d == null) return;
+        if (d == null || _closed) return;
         _shell.Dialogs.Close(this);
         await d.Actions.RunAsync(DeviceAction.Disconnect).ConfigureAwait(true);
     }
@@ -189,13 +196,15 @@ public sealed record RunAllRowVm(string Name, string Sub, string Status);
 /// 运行的正是确认时看到的这些（打开之后才下发的不算）。绝不调 HMI 的 POST /run（触屏的「开始运行」，含义不同）。
 /// 打开时守卫不让运行（没有可运行的反应釜、没有控制权…）：不打开，提示原因。演示数据照样稿直接运行（不注册这个对话框的确认）。
 /// 样稿没有这个对话框：外观照样稿其它对话框（行 = 急停 / 全部停止的勾选行，不能勾），文字新加 —— 行「1号机 · RV1」/「程序「…」」/ 程序状态、
-/// 底栏左「已选 N 个反应釜」、按钮「全部运行」（样稿的按钮名）。
+/// 底栏左「已选 N 个反应釜」、按钮「全部运行」（样稿的按钮名）。命令的警告同一句的几个反应釜合成一条（M6），跟在「已启动 N 个反应釜」后面；
+/// 硬件未确认（HW_UNCONFIRMED）的反应釜只写在那一条里、不算进「已启动」（同单台的一条 warn）。现在的 HMI 不会这样回：TryRunProgram 同步就回 accepted。
 /// </summary>
 public sealed partial class RunAllDialogVm : DialogVm
 {
     private readonly ShellVm _shell;
     private readonly DeviceVm _d;
     private readonly IReadOnlyList<int> _targets;
+    private bool _going;
 
     private RunAllDialogVm(ShellVm shell, DeviceVm d, IReadOnlyList<int> targets, LiveDeviceSource live)
     {
@@ -218,7 +227,8 @@ public sealed partial class RunAllDialogVm : DialogVm
         FooterLeft = "已选 " + targets.Count + " 个反应釜";
         Footer = new FootBar(
             new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this))),
-            new FootButton("全部运行", new AsyncRelayCommand(GoAsync), FootKind.Primary, "play", large: true) { Reason = targets.Count == 0 ? "没有可运行的反应釜" : null });
+            new FootButton("全部运行", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "play", large: true)
+                { Reason = targets.Count == 0 ? "没有可运行的反应釜" : null });
         Body = this;
     }
 
@@ -236,16 +246,24 @@ public sealed partial class RunAllDialogVm : DialogVm
 
     private async Task GoAsync()
     {
-        if (_targets.Count == 0) return;
+        if (_targets.Count == 0 || _going) return;
+        _going = true;
         _shell.Dialogs.Close(this);
         int k = 0;
         var failed = new List<ActionOutcome>();
+        var warned = new List<(int N, IReadOnlyList<string> Warnings)>();
         foreach (var n in _targets)
         {
             var o = await _d.Actions.RunAsync(DeviceAction.ProgRun, ActionPayload.Ch(n), quiet: true).ConfigureAwait(true);
-            if (o.Ok) k++; else failed.Add(o);
+            if (!o.Ok) { failed.Add(o); continue; }
+            // 硬件未确认的只写在合成的警告里（同单台：一条 warn 代替「已启动」+ 警告）
+            if (!Fleet.DeviceActions.HasHwUnconfirmed(o.Warnings)) k++;
+            if (o.Warnings.Count > 0) warned.Add((n, o.Warnings));
         }
         if (k > 0) _shell.Toast(_d.Alias + " · 已启动 " + k + " 个反应釜", ToastKind.Ok);
+        foreach (var g in warned.GroupBy(w => Fleet.DeviceActions.WarningText(w.Warnings)))
+            _shell.Toast(Fleet.DeviceActions.WarnLine(_d.Alias, "RV" + string.Join("、RV", g.Select(w => w.N)) + " " + Fleet.DeviceActions.Label(DeviceAction.ProgRun),
+                g.First().Warnings), ToastKind.Warn);
         foreach (var f in failed) _shell.Toast(f.Message, f.Tone == ToastKind.Err ? ToastKind.Err : ToastKind.Warn);
     }
 }

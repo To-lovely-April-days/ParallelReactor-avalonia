@@ -45,6 +45,7 @@ public sealed partial class ProgramVm : ObservableObject
 /// <summary>
 /// 一条当前报警（样稿 alarm；真机 AlarmDto 归一化后的 AlarmItem）。身份 = Id，就地更新已确认状态。
 /// 确认报警是停止类操作：不需要控制权，只要连接（<see cref="AckReason"/> 给原因，<see cref="AckCommand"/> 执行时再查一次）。
+/// 「确认」允许并发执行（M6）：AsyncRelayCommand 默认在请求回来之前把按钮变成没有原因的禁用；执行时照样再查一次守卫。
 /// </summary>
 public sealed partial class AlarmVm : ObservableObject
 {
@@ -54,7 +55,7 @@ public sealed partial class AlarmVm : ObservableObject
     {
         _device = device;
         Id = a.Id;
-        AckCommand = new AsyncRelayCommand(() => _device.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: Id)));
+        AckCommand = new AsyncRelayCommand(() => _device.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: Id)), AsyncRelayCommandOptions.AllowConcurrentExecutions);
         Apply(a);
     }
 

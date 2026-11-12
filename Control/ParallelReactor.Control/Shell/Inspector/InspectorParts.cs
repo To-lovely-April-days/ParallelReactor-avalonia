@@ -91,6 +91,11 @@ public sealed partial class LeaseBoxVm : ObservableObject
     [ObservableProperty] private LeaseState _leaseState;
     [ObservableProperty] private string _leaseText = "";
     [ObservableProperty] private string? _leaseTip;
+    /// <summary>
+    /// 第 5 种控制权的短写法「其他客户端 PC-工位2」（完整的一整行都放不下时换它，持有者的名字不被省略掉，见 Controls/Shell/FirstFit）；
+    /// 别的状态没有（null）。
+    /// </summary>
+    [ObservableProperty] private string? _leaseShortText;
     [ObservableProperty] private ConnState _connState;
     [ObservableProperty] private string _connText = "";
     [ObservableProperty] private string _connTip = "";
@@ -108,6 +113,10 @@ public sealed partial class LeaseBoxVm : ObservableObject
     [ObservableProperty] private string _noteTip = "";
 
     public bool HasBtn => BtnLabel != null;
+    /// <summary>在线且有短写法：短的徽标也在候选里。</summary>
+    public bool ShowLeaseShort => ShowLease && LeaseShortText != null;
+    partial void OnShowLeaseChanged(bool value) => OnPropertyChanged(nameof(ShowLeaseShort));
+    partial void OnLeaseShortTextChanged(string? value) => OnPropertyChanged(nameof(ShowLeaseShort));
     public bool HasCta => CtaLabel != null;
     public bool HasCtaPrimary => CtaLabel != null && CtaPrimary;
     public bool HasCtaPlain => CtaLabel != null && !CtaPrimary;
@@ -118,6 +127,16 @@ public sealed partial class LeaseBoxVm : ObservableObject
     private void Run(DeviceAction? a)
     {
         if (_d is { } d && a is { } action) _ = d.Actions.RunAsync(action);
+    }
+
+    /// <summary>
+    /// 本地只读（和被其他客户端持有）时控制权卡的说明。令牌的权限已经学到是只读时（真机第一个 403 之后，Core.Guard.TokenRole）写明原因，
+    /// 不再写「需要控制权」—— 申请控制权也会被拒；停止类也被拒过（只读且没有急停权限位）时第二行改成停止要什么（M6；HMI 自己的 403 写法，同 TokenRole 的原因文字）。
+    /// </summary>
+    public static string LocalNote(string alias, TokenRole role)
+    {
+        if (!role.ReadOnly) return "本机只读 · 启动、设定等需要控制权\n停止类操作随时可用";
+        return TokenRole.ReadOnlyText(alias) + "\n" + (role.CanStop ? "停止类操作随时可用" : "停止需要 operator 令牌或急停权限");
     }
 
     internal void Refresh(InspCtx c)
@@ -180,7 +199,7 @@ public sealed partial class LeaseBoxVm : ObservableObject
             // 本地只读（以及真机的「被其他客户端持有」）：「申请控制权」是这一块唯一的主要操作
             cta = "申请控制权"; ctaIcon = "key"; ctaA = DeviceAction.LeaseRequest; primary = true;
             ctaReason = c.Why(DeviceAction.LeaseRequest);
-            note = "本机只读 · 启动、设定等需要控制权\n停止类操作随时可用";
+            note = LocalNote(d.Alias, c.F.Role);
         }
         _btnAction = btnA;
         _ctaAction = ctaA;
@@ -190,7 +209,9 @@ public sealed partial class LeaseBoxVm : ObservableObject
         ShowLease = online;
         LeaseState = d.Lease;
         LeaseText = lease.State == LeaseStatus.Lost ? "心跳中断" : d.LeaseText;
-        LeaseTip = lease.State == LeaseStatus.Lost ? d.LeaseText : null;
+        // 第 5 种「远程控制中（其他客户端 X）」：上面一行放不下时先换行（见 InspectorView），一整行都放不下时换短的「其他客户端 X」；悬停给全文
+        LeaseTip = lease.State is LeaseStatus.Lost or LeaseStatus.Other ? d.LeaseText : null;
+        LeaseShortText = lease.State == LeaseStatus.Other && d.LeaseShort != d.LeaseText ? d.LeaseShort : null;
         ConnState = d.Conn;
         ConnText = d.ConnShort;
         ConnTip = d.ConnText;

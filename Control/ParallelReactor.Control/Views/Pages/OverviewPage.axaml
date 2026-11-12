@@ -131,7 +131,10 @@
       <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
     </Style>
 
-    <!-- ———— 卡片的键盘焦点环（只在键盘聚焦时） ———— -->
+    <!-- ———— 卡片的键盘焦点环（只在键盘聚焦时）；不要 Fluent 默认的焦点装饰（黑色 2 px 方框会盖在 a-d 环上） ———— -->
+    <Style Selector="Panel.ovtile">
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+    </Style>
     <Style Selector="Border.ovfocus">
       <Setter Property="IsVisible" Value="False" />
     </Style>
@@ -432,7 +435,7 @@
                         <Button Theme="{StaticResource PrGhost}" Classes="sm" b:Pr.Icon="open" Content="打开" ToolTip.Tip="{Binding OpenTip}" Command="{Binding OpenCommand}" />
                         <Button Name="More" Theme="{StaticResource PrIconButton}" b:Pr.Icon="more" ToolTip.Tip="{Binding MoreTip}" AutomationProperties.Name="{Binding MoreTip}">
                           <Button.Flyout>
-                            <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" Opening="OnMoreOpening" />
+                            <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" VerticalOffset="2" Opening="OnMoreOpening" />
                           </Button.Flyout>
                         </Button>
                       </StackPanel>

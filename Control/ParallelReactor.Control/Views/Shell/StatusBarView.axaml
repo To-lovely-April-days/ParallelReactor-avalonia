@@ -40,7 +40,8 @@
   </UserControl.Styles>
   <Border Background="{StaticResource BgSideBrush}" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,1,0,0" Padding="14,0"
           TextElement.FontSize="{StaticResource Fs2}" TextElement.Foreground="{StaticResource T2Brush}">
-    <DockPanel>
+    <!-- 裁剪在上边框以内（样稿 .pr-status overflow: hidden 裁到边框里面）：报警项的焦点环画在按钮外 2–4 px，上下两边被裁掉，不压到上边框那条线上 -->
+    <DockPanel ClipToBounds="True">
       <!-- 右：示例型号 · 参数为假设（演示时前面加「演示数据」）| 日期 周几 时间 -->
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
         <StackPanel Classes="st-item" IsVisible="{Binding Status.NoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
@@ -67,7 +68,8 @@
                        IsVisible="{Binding Status.GraceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </StackPanel>
           <Border Classes="st-sep" />
-          <Button Theme="{StaticResource PrStatusButton}" Margin="-6,0" Classes.idle="{Binding !Status.AlarmClickable}"
+          <!-- 没有可选的报警对象时不在 Tab 顺序里（样稿 tabindex -1；仍可点，只是不做事） -->
+          <Button Theme="{StaticResource PrStatusButton}" Margin="-6,0" Classes.idle="{Binding !Status.AlarmClickable}" IsTabStop="{Binding Status.AlarmClickable}"
                   Command="{Binding Status.SelectAlarmCommand}" ToolTip.Tip="{Binding Status.AlarmTip}" AutomationProperties.Name="{Binding Status.AlarmTip}">
             <StackPanel Classes="st-item">
               <c:IconView Icon="bell" />

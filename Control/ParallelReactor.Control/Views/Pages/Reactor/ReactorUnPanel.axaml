@@ -19,8 +19,11 @@
       <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
       <GradientStop Offset="0.3" Color="Transparent" />
     </LinearGradientBrush>
-    <!-- 位置按钮（.reactor-slot）：44 × 58、1 px line-2、圆角 6、bg-card；悬停 a-line 边 + a-tint；未安装透明 + 虚线；当前 2 px a-line + a-tint -->
+    <!-- 位置按钮（.reactor-slot）：44 × 58、1 px line-2、圆角 6、bg-card；悬停 a-line 边 + a-tint；未安装透明 + 虚线；当前 2 px a-line + a-tint。
+         键盘焦点（M6）：外侧 2 px 处 2 px a-d 环（样稿默认的 outline-offset 2，圆角 10），不用 Fluent 的黑框；未安装的不是 Tab 停靠点（样稿 tabindex -1） -->
     <ControlTheme x:Key="UnSlot" TargetType="Button">
+      <!-- 不裁剪：焦点环画在按钮外面（模板控件默认裁剪到自己的框） -->
+      <Setter Property="ClipToBounds" Value="False" />
       <Setter Property="Width" Value="44" />
       <Setter Property="Height" Value="58" />
       <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
@@ -28,6 +31,7 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
       <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
       <Setter Property="Template">
         <ControlTemplate>
           <Panel>
@@ -36,9 +40,17 @@
               <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
             <cp:DashFrame Name="PART_Dash" IsVisible="False" Color="{StaticResource Line2Color}" Radius="6" />
+            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                    IsVisible="False" IsHitTestVisible="False" />
           </Panel>
         </ControlTemplate>
       </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^.un">
+        <Setter Property="IsTabStop" Value="False" />
+      </Style>
       <Style Selector="^:pointerover">
         <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
         <Setter Property="Background" Value="{StaticResource ATintBrush}" />
@@ -67,8 +79,9 @@
         <Setter Property="BorderBrush" Value="Transparent" />
       </Style>
     </ControlTheme>
-    <!-- 芯片（.reactor-unchip）：高 36、内边距 0 14 0 10、1 px line-2、圆角 6、bg-card、阴影；悬停 a-line + a-tint -->
+    <!-- 芯片（.reactor-unchip）：高 36、内边距 0 14 0 10、1 px line-2、圆角 6、bg-card、阴影；悬停 a-line + a-tint；键盘焦点同位置按钮（外侧 2 px 的 a-d 环） -->
     <ControlTheme x:Key="UnChip" TargetType="Button">
+      <Setter Property="ClipToBounds" Value="False" />
       <Setter Property="Height" Value="36" />
       <Setter Property="Padding" Value="10,0,14,0" />
       <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
@@ -76,14 +89,22 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
       <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
-                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" BoxShadow="{StaticResource ShadowCard}">
-            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
-          </Border>
+          <Panel>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" BoxShadow="{StaticResource ShadowCard}">
+              <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+            </Border>
+            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                    IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
         </ControlTemplate>
       </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
       <Style Selector="^:pointerover">
         <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
         <Setter Property="Background" Value="{StaticResource ATintBrush}" />
@@ -94,6 +115,10 @@
     </ControlTheme>
   </UserControl.Resources>
   <UserControl.Styles>
+    <!-- 位置按钮 / 芯片的列表不裁剪：焦点环画在按钮外 4 px（第一列、第一行的环在列表的框外） -->
+    <Style Selector="ItemsControl.unlist, ItemsControl.unlist ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
     <Style Selector="TextBlock.untitle">
       <Setter Property="FontSize" Value="{StaticResource FsReadS}" />
       <Setter Property="FontWeight" Value="SemiBold" />
@@ -164,7 +189,7 @@
               </pr:Kv>
             </Border>
             <pr:PrText Classes="unsec" Text="{Binding SlotsTitle}" />
-            <ItemsControl ItemsSource="{Binding Slots}" Margin="0,-6,-8,-8">
+            <ItemsControl Classes="unlist" ItemsSource="{Binding Slots}" Margin="0,-6,-8,-8">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <WrapPanel />
@@ -185,7 +210,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <pr:PrText Classes="unsec" Text="{Binding ChipsTitle}" />
-            <ItemsControl ItemsSource="{Binding Chips}" Margin="0,-6,-8,-8">
+            <ItemsControl Classes="unlist" ItemsSource="{Binding Chips}" Margin="0,-6,-8,-8">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <WrapPanel />

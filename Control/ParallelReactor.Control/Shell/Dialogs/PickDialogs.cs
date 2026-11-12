@@ -134,44 +134,81 @@ public abstract partial class PickDialogVm : DialogVm
     /// <summary>发出之后最多等这么久再汇总提示（<see cref="SendAsync"/>）。</summary>
     public static readonly TimeSpan DefaultSummaryWait = TimeSpan.FromSeconds(1.5);
 
+    /// <summary>汇总之后先回来的一台再等其它的这么久，一起提示（<see cref="SendAsync"/>）。</summary>
+    public static readonly TimeSpan DefaultLateBatch = TimeSpan.FromSeconds(1);
+
     /// <summary>这个对话框发出之后最多等多久再汇总提示（测试可以改短 / 改长）。</summary>
     public TimeSpan SummaryWait { get; set; } = DefaultSummaryWait;
 
+    /// <summary>汇总之后的结果一批等多久（测试可以改）。</summary>
+    public TimeSpan LateBatch { get; set; } = DefaultLateBatch;
+
     /// <summary>
     /// 发送（样稿 actMany → closeDialog → toast，M3 复核）：并行发给所选设备（每台照样再查一次守卫），<b>发出后立即关掉对话框</b> —— 慢的 / 不通的设备不能把对话框
-    /// 拖住（停止类命令遇到网络错误会同键重试，最长约 1 min），急停按钮也不能在这期间一直灰着。然后最多等 <see cref="SummaryWait"/>：
-    /// 已经成功的汇总成一条（样稿的写法 <paramref name="okText"/>），已经失败的各一条（err）；到时还没结果的设备，结果出来时各自再提示一条
-    /// （成功同样稿的写法、只列这一台；失败写原因）。
+    /// 拖住（停止类命令遇到网络错误会同键重试，最长约 1 min），急停按钮也不能在这期间一直灰着。然后最多等 <see cref="SummaryWait"/> 汇总提示（<see cref="Report"/>）。
+    /// 到时还没结果的设备在后台按批提示（<see cref="ReportLateAsync"/>）：一台回来后再等其它的最多 <see cref="LateBatch"/>，这期间回来的合成一批
+    /// （M6：真机 HMI 的 202 + HW_UNCONFIRMED 要等硬件 2 s 才回 —— UiCommandBridge.HwWait，总比汇总晚；以前晚到的每台各一条，最多 3 条，第 4 台就挤掉了）。
+    /// 不通的设备（重试最长约 1 min）自己一批，不拖住别的。这个任务在汇总之后就结束。
     /// </summary>
     protected async Task SendAsync(IReadOnlyList<DeviceVm> list, DeviceAction action, Func<IReadOnlyList<string>, string> okText, ToastKind okKind)
     {
         var tasks = list.Select(d => d.Actions.RunAsync(action, quiet: true)).ToArray();
         Shell.Dialogs.Close(this);
         var all = Task.WhenAll(tasks);
-        if (!all.IsCompleted && SummaryWait > TimeSpan.Zero)
+        if (!all.IsCompleted && SummaryWait > TimeSpan.Zero) await WaitAtMostAsync(all, SummaryWait).ConfigureAwait(true);
+        var left = Enumerable.Range(0, tasks.Length).ToList();
+        var now = left.Where(i => tasks[i].IsCompleted).ToList();
+        left.RemoveAll(now.Contains);
+        Report(now.Select(i => (list[i].Alias, tasks[i])).ToList(), action, okText, okKind);
+        if (left.Count > 0) _ = ReportLateAsync(left.Select(i => (list[i].Alias, tasks[i])).ToList(), action, okText, okKind);
+    }
+
+    /// <summary>汇总之后才有结果的设备：先回来的一台再等其它的最多 <see cref="LateBatch"/>，一起提示（<see cref="Report"/>）；剩下的照样一批一批来。</summary>
+    private async Task ReportLateAsync(List<(string Alias, Task<ActionOutcome> Task)> left, DeviceAction action, Func<IReadOnlyList<string>, string> okText, ToastKind okKind)
+    {
+        while (left.Count > 0)
         {
-            using var cts = new System.Threading.CancellationTokenSource();
-            await Task.WhenAny(all, Task.Delay(SummaryWait, cts.Token)).ConfigureAwait(true);
-            cts.Cancel();
+            await Task.WhenAny(left.Select(x => (Task)x.Task)).ConfigureAwait(true);
+            var rest = Task.WhenAll(left.Where(x => !x.Task.IsCompleted).Select(x => (Task)x.Task));
+            if (!rest.IsCompleted && LateBatch > TimeSpan.Zero) await WaitAtMostAsync(rest, LateBatch).ConfigureAwait(true);
+            var batch = left.Where(x => x.Task.IsCompleted).ToList();
+            left.RemoveAll(batch.Contains);
+            Report(batch, action, okText, okKind);
         }
+    }
+
+    /// <summary>
+    /// 一批已经有结果的设备：成功的汇总成一条（样稿的写法 <paramref name="okText"/>）；警告同一句的几台合成一条（「1号机、3号机 · 全部停止 · 硬件未确认：…」），
+    /// 硬件未确认的那几台只写在这一条里（这句自己说了「命令已下发」；同单台的一条 warn 代替 ✓ + 警告，急停的语气不降成 warn）；失败的各一条（err）。
+    /// </summary>
+    private void Report(IReadOnlyList<(string Alias, Task<ActionOutcome> Task)> batch, DeviceAction action, Func<IReadOnlyList<string>, string> okText, ToastKind okKind)
+    {
         var ok = new List<string>();
+        var warned = new List<(string Alias, IReadOnlyList<string> Warnings)>();
         var failed = new List<string>();
-        for (int i = 0; i < tasks.Length; i++)
+        foreach (var (alias, t) in batch)
         {
-            if (!tasks[i].IsCompleted) { _ = ReportLateAsync(list[i].Alias, tasks[i], okText, okKind); continue; }
-            var o = Outcome(list[i].Alias, tasks[i]);
-            if (o.Ok) ok.Add(list[i].Alias); else failed.Add(o.Message);
+            var o = Outcome(alias, t);
+            if (!o.Ok) { failed.Add(o.Message); continue; }
+            if (!Fleet.DeviceActions.HasHwUnconfirmed(o.Warnings)) ok.Add(alias);
+            if (o.Warnings.Count > 0) warned.Add((alias, o.Warnings));
         }
         if (ok.Count > 0) Shell.Toast(okText(ok), okKind);
+        foreach (var g in warned.GroupBy(w => Fleet.DeviceActions.WarningText(w.Warnings)))
+        {
+            var warnings = g.First().Warnings;
+            var tone = Fleet.DeviceActions.HasHwUnconfirmed(warnings) && okKind == ToastKind.Err ? ToastKind.Err : ToastKind.Warn;
+            Shell.Toast(Fleet.DeviceActions.WarnLine(string.Join("、", g.Select(w => w.Alias)), Fleet.DeviceActions.Label(action), warnings), tone);
+        }
         foreach (var f in failed) Shell.Toast(f, ToastKind.Err);
     }
 
-    /// <summary>汇总之后才有结果的一台：成功 = 样稿的写法只列这一台，失败 = 原因（err）。</summary>
-    private async Task ReportLateAsync(string alias, Task<ActionOutcome> t, Func<IReadOnlyList<string>, string> okText, ToastKind okKind)
+    /// <summary>等 <paramref name="t"/>，最多 <paramref name="max"/>（不抛；到时取消计时器）。</summary>
+    private static async Task WaitAtMostAsync(Task t, TimeSpan max)
     {
-        try { await t.ConfigureAwait(true); } catch { }
-        var o = Outcome(alias, t);
-        Shell.Toast(o.Ok ? okText(new[] { alias }) : o.Message, o.Ok ? okKind : ToastKind.Err);
+        using var cts = new System.Threading.CancellationTokenSource();
+        await Task.WhenAny(t, Task.Delay(max, cts.Token)).ConfigureAwait(true);
+        cts.Cancel();
     }
 
     /// <summary>已完成的一次发送的结果（DeviceActions.RunAsync 自己不抛：异常已经翻译成失败；万一抛了也翻译）。</summary>
@@ -183,8 +220,10 @@ public abstract partial class PickDialogVm : DialogVm
 /// <summary>
 /// 急停（样稿 dialogs.js 'estop'，final-dlg-estop）：多选设备，已连接的默认全选；estop:k（总览 «⋯» / 右键「急停 1号机…」）只预选这一台。
 /// 说明跟着真正的勾选状态走（样稿第 3 轮）：「已预选 1号机 · 可再勾选其它设备」/「1号机 未勾选 · 勾选后才会急停」/
-/// 「1号机 连接中断 · 无法预选 · 可勾选其它设备」/「1号机 已在急停 · 可勾选其它设备」。确认按钮是对话框里唯一的红色实心按钮（全局「急停」之外）；
-/// 已在急停的设备不能选（「已在急停 · 需在触屏复位」）。急停不需要控制权：每台照样再查一次守卫（DeviceActions，停止类只要连接），并行发送。
+/// 「1号机 连接中断 · 无法预选 · 可勾选其它设备」/「1号机 已在急停 · 可勾选其它设备」/「1号机 令牌没有急停权限 · 可勾选其它设备」（M6）。
+/// 确认按钮是对话框里唯一的红色实心按钮（全局「急停」之外）；
+/// 已在急停的设备不能选（「已在急停 · 需在触屏复位」）；令牌没有急停权限的（真机，第一个 403 之后学到，Core 的 TokenRole）也不能选（M6：「1号机的令牌没有急停权限」，
+/// 以前照样能勾、发出去才失败）。急停不需要控制权：每台照样再查一次守卫（DeviceActions，停止类只要连接），并行发送。
 /// </summary>
 public sealed partial class EstopDialogVm : PickDialogVm
 {
@@ -197,7 +236,8 @@ public sealed partial class EstopDialogVm : PickDialogVm
         Sub = "立即切断所选设备的加热、进气与搅拌，运行中的程序全部中止";
         Icon = "estop";
         IsDanger = true;
-        GoButton = new FootButton("急停所选 0 台", new AsyncRelayCommand(GoAsync), FootKind.Danger, "estop", large: true);
+        // 发出即关（SendAsync）：执行期间按钮不灰（AsyncRelayCommand 默认执行期间是没有原因的禁用，M6）
+        GoButton = new FootButton("急停所选 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Danger, "estop", large: true);
         Footer = new FootBar(CancelButton, GoButton);
         // 样稿：急停<b>不需要控制权</b>，连接正常就会发送。<span nw>急停<b>复位只能在设备触屏上操作</b>，</span><span nw>本机不能复位。</span>
         Note = new[]
@@ -211,7 +251,8 @@ public sealed partial class EstopDialogVm : PickDialogVm
 
     public FootButton GoButton { get; }
 
-    protected override string Excluded(DeviceVm d) => d.EstopActive ? "已在急停 · 需在触屏复位" : "";
+    protected override string Excluded(DeviceVm d) =>
+        d.EstopActive ? "已在急停 · 需在触屏复位" : d.Facts.Role.NoEstop ? TokenRole.NoEstopText(d.Alias) : "";
 
     protected override void RefreshTexts()
     {
@@ -219,7 +260,8 @@ public sealed partial class EstopDialogVm : PickDialogVm
         if (one == null) Caption = "选择设备（已连接的默认全选）";
         else
         {
-            string why = !one.CanStop ? one.ConnShort + " · 无法预选" : one.EstopActive ? "已在急停" : "";
+            // 不能勾的那一台（同 Excluded）：不能叫用户去勾它 —— 令牌的急停权限可能在对话框打开之后才学到（另一处急停的 403）
+            string why = !one.CanStop ? one.ConnShort + " · 无法预选" : one.EstopActive ? "已在急停" : one.Facts.Role.NoEstop ? "令牌没有急停权限" : "";
             Caption = why.Length > 0 ? one.Alias + " " + why + " · 可勾选其它设备"
                 : Sel.TryGetValue(one.K, out var on) && on ? "已预选 " + one.Alias + " · 可再勾选其它设备"
                 : one.Alias + " 未勾选 · 勾选后才会急停";
@@ -240,7 +282,8 @@ public sealed partial class EstopDialogVm : PickDialogVm
 }
 
 /// <summary>
-/// 全部停止（样稿 dialogs.js 'stopall'）：多选设备，已连接的默认全选（参数忽略，同样稿）。停止类「永远可用」：只有断线的设备不能选；
+/// 全部停止（样稿 dialogs.js 'stopall'）：多选设备，已连接的默认全选（参数忽略，同样稿）。停止类「永远可用」：只有断线的设备不能选
+/// （真机另有：令牌只能读取、又没有急停权限的不能选，M6：「1号机的令牌只能读取 · 停止需要 operator 令牌或急停权限」）；
 /// 本机看到没有运行中的反应釜时照样可以发送（「无运行中 · 仍会发送」）。确认 = 主要按钮 + 白色实心方块（不用红色）。
 /// 停不停搅拌看 FleetVm.StopAllStopsStirring（= Core 的 ControlOptions.StopAllStopsStirring）：副标题、说明、发送后的提示都跟着它（Core 的 StopAllText；
 /// 不停搅拌时逐字同样稿）。打开时取一次，确认时照这个值提示。
@@ -255,7 +298,7 @@ public sealed partial class StopAllDialogVm : PickDialogVm
         Title = "全部停止";
         Sub = StopAllText.Sub(_stopsStirring);
         Icon = "stop";
-        GoButton = new FootButton("停止所选 0 台", new AsyncRelayCommand(GoAsync), FootKind.PrimaryStop, "stop", large: true);
+        GoButton = new FootButton("停止所选 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "stop", large: true);
         Footer = new FootBar(CancelButton, GoButton);
         Caption = "选择设备（已连接的默认全选）";
         // 样稿：全部停止<b>不需要控制权</b>，连接正常就会发送（…）。搅拌也会一并停止；需要立即切断并锁定请用急停。（最后一句跟着设置，StopAllText.StirNote）
@@ -272,7 +315,7 @@ public sealed partial class StopAllDialogVm : PickDialogVm
     /// <summary>这次打开时的设置（测试用）。</summary>
     public bool StopsStirring => _stopsStirring;
 
-    protected override string Excluded(DeviceVm d) => "";
+    protected override string Excluded(DeviceVm d) => d.Facts.Role.CanStop ? "" : TokenRole.NoStopText(d.Alias);
 
     protected override string RunTextOf(DeviceVm d) => d.Running > 0 ? DialogText.RunText(d) : "无运行中 · 仍会发送";
 

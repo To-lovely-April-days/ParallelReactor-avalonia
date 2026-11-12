@@ -53,7 +53,7 @@ public sealed class SegOption : INotifyPropertyChanged
 
 /// <summary>
 /// 一组互斥的开关（分段控件与面板标题页签的共同部分）：Options → 按钮（<see cref="PrToggle"/>，主题 <see cref="ItemTheme"/>），
-/// 点哪个 Value 就是哪个的 Value；← → Home End 切换（只有当前项在 Tab 顺序里，roving tabindex）。
+/// 点哪个 Value 就是哪个的 Value。键盘见 <see cref="Roving"/>：面板标题页签只有当前项在 Tab 顺序里、← → Home End 切换；分段控件每段都是 Tab 停靠点。
 /// 选项增删改都是增量的：改某项的属性只更新那个按钮，替换 / 插入 / 删除只动对应的按钮（R10：实时更新不重建，焦点不丢）。
 /// </summary>
 public abstract class ToggleGroup : TemplatedControl
@@ -101,6 +101,12 @@ public abstract class ToggleGroup : TemplatedControl
 
     /// <summary>按钮的主题键（PrSegItem / PrPTab）。</summary>
     protected abstract string ItemTheme { get; }
+
+    /// <summary>
+    /// 键盘：true = 只有当前项在 Tab 顺序里（roving tabindex），← → Home End 切到相邻项并打开它（面板标题页签，样稿 ui.ptabs + 外框的方向键）；
+    /// false = 每项都是普通按钮、都是 Tab 停靠点，方向键不管（分段控件，样稿 ui.seg：外框的方向键只管 .pr-ptab）。Enter / 空格照常点击。
+    /// </summary>
+    protected virtual bool Roving => true;
 
     private Panel? _host;
     private ControlTheme? _theme;
@@ -245,13 +251,13 @@ public abstract class ToggleGroup : TemplatedControl
         {
             bool on = b.Tag is SegOption op && Same(op.Value, Value);
             b.IsChecked = on;
-            b.IsTabStop = on || (!any && ReferenceEquals(b, items.FirstOrDefault(x => !PrAttach.IsLocked(x))));
+            b.IsTabStop = !Roving || on || (!any && ReferenceEquals(b, items.FirstOrDefault(x => !PrAttach.IsLocked(x))));
         }
     }
 
     private void OnItemKeyDown(object? sender, KeyEventArgs e)
     {
-        if (_host == null || sender is not PrToggle cur) return;
+        if (!Roving || _host == null || sender is not PrToggle cur) return;
         var items = _host.Children.OfType<PrToggle>().Where(x => !PrAttach.IsLocked(x)).ToList();
         int i = items.IndexOf(cur);
         if (i < 0 || items.Count == 0) return;
@@ -267,10 +273,13 @@ public abstract class ToggleGroup : TemplatedControl
 /// <summary>
 /// 中性分段控件（样稿 ui.seg / .pr-seg）：高 34、bg-sunken 底、1 px line 边、内边距 2、段间 2；
 /// 段 14 px 500 t-3，悬停 bg-press，当前段 a-soft + a-ink（唯一的强调色）。段里的红点只给未确认的错误报警。
+/// 键盘同样稿（每段是普通按钮）：每段都是 Tab 停靠点（带原因的段也是，同样稿 aria-disabled），方向键不切换。
 /// </summary>
 public sealed class SegControl : ToggleGroup
 {
     protected override string ItemTheme => "PrSegItem";
+
+    protected override bool Roving => false;
 }
 
 /// <summary>

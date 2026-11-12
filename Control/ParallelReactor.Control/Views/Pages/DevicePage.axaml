@@ -854,9 +854,9 @@
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.DataTemplates>
-                <!-- 反应釜卡片 -->
+                <!-- 反应釜卡片：键盘焦点只画自己的环（dvfocus，外侧 2 px）—— FocusAdorner 写成本地值 null，不然 Fluent 默认的 2 px 黑框也画在上面（M6） -->
                 <DataTemplate DataType="pg:DeviceCardVm" x:DataType="pg:DeviceCardVm">
-                  <Panel Classes="dvtile" ClipToBounds="False" Focusable="True" Cursor="Hand">
+                  <Panel Classes="dvtile" ClipToBounds="False" Focusable="True" FocusAdorner="{x:Null}" Cursor="Hand">
                     <Border Margin="-1" CornerRadius="7" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}"
                             IsVisible="{Binding IsSelected}" IsHitTestVisible="False" />
                     <Border Classes="dvfocus" Margin="-4" CornerRadius="10" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsHitTestVisible="False" />

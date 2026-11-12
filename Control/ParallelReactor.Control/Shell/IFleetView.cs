@@ -92,6 +92,10 @@ public interface IFleetChannel
 {
     int N { get; }
     bool Installed { get; }
+    /// <summary>界面上的状态（设备断线时是「离线」）。</summary>
     StateKey Key { get; }
     string Word { get; }
+    /// <summary>反应釜自己的状态（断线时是断线前的，样稿 ch.state）：反应釜页签的报警红点与悬停提示看它。</summary>
+    StateKey Own { get; }
+    string OwnWord { get; }
 }

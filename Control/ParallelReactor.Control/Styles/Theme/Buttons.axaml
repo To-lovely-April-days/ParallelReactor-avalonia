@@ -306,7 +306,7 @@
     </Style>
   </ControlTheme>
 
-  <!-- 图标按钮 32 × 32：灰色图标 t-3，悬停 bg-press + t-1，按下 line-soft；激活（类 on 或 ToggleButton 选中）a-soft + a-d；
+  <!-- 图标按钮 32 × 32：灰色图标 t-3，悬停 bg-press + t-1，按下 line-soft；激活（类 on 或 ToggleButton 选中）a-soft + a-d；打开着菜单时 bg-press + t-1；
        类 stop = 停止色调（深灰实心方块 15 px，不用红色）；提示与无障碍名由使用处给（ToolTip.Tip / AutomationProperties.Name） -->
   <ControlTheme x:Key="PrIconButton" TargetType="Button">
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
@@ -360,6 +360,12 @@
       <Setter Property="Size" Value="15" />
       <Setter Property="Fill" Value="True" />
       <Setter Property="StrokeWidth" Value="1" />
+    </Style>
+    <!-- 打开着自己的菜单 / 弹出框时一直是按下的样子（样稿 .pr-icon-btn.is-menu-open：bg-press + t-1，指针移进菜单里也不变）：
+         Button.Flyout 的 :flyout-open；锚在它上面的别的弹出框（«⋯» › 设备信息）由 Views/Shell/PopupMenus 加类 menu-open -->
+    <Style Selector="^:flyout-open, ^.menu-open">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />

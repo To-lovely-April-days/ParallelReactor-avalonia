@@ -69,7 +69,8 @@ public sealed class OvGridPanel : Panel
 /// 读数行（样稿 .overview-r.pr-fitrow：大数字 + 小单位 + 右侧目标，按基线对齐，固定一行高）：
 /// 子元素 [0] 数值（字号 / 行高由 <see cref="ValueSize"/> / <see cref="ValueLineHeight"/> 决定 —— Core 的 data-len 阶梯）、[1] 单位、[2] 目标（可选）。
 /// <list type="bullet">
-/// <item>单位：<see cref="ShowUnit"/> = false（阶梯的最后一档）时不画；数值 + 3 + 单位放不下时也不画（同 flex-wrap 把它换到看不见的第二行）。</item>
+/// <item>单位：<see cref="ShowUnit"/> = false（阶梯的最后一档）时不画；数值 + 3 + 单位放不下时也不画（同 flex-wrap 把它换到看不见的第二行）。
+/// 放不放得下都按文字小数的前进宽度（PrText.NaturalWidth，同 WebKit），不按取整后的框宽。</item>
 /// <item>目标「放得下才显示」（.pr-fitopt：margin-left auto + padding-left 8，整个放不下时换到看不见的第二行）：不省略、不挤读数；单位被挤走时目标也不画。</item>
 /// <item>兜底（样稿没有，Skia 与 WebKit 的字宽不同时）：数值自己都放不下就从阶梯字号起每次缩 1 px（≥ 13），读数永远不被截断。</item>
 /// </list>
@@ -100,6 +101,10 @@ public sealed class OvReadRow : Panel
 
     private static bool HasText(Avalonia.Controls.Control? c) => c is { IsVisible: true } && (c is not TextBlock tb || !string.IsNullOrEmpty(tb.Text));
 
+    /// <summary>量过的宽度（小数）：PrText 是文字的前进宽度（不取整），其它控件是框宽；不显示的 0。</summary>
+    private static double Natural(Avalonia.Controls.Control? c) =>
+        c is not { IsVisible: true } ? 0 : c is PrText p ? p.NaturalWidth : c.DesiredSize.Width;
+
     protected override Size MeasureOverride(Size availableSize)
     {
         var v = Value;
@@ -111,7 +116,7 @@ public sealed class OvReadRow : Panel
         double w = availableSize.Width;
         bool finite = !double.IsInfinity(w);
         // 兜底：数值自己放不下 → 缩字号（≥ 13），行高不变
-        while (finite && v.DesiredSize.Width > w + 0.01 && size > FitText.MinSize)
+        while (finite && Natural(v) > w + 0.01 && size > FitText.MinSize)
         {
             size = Math.Max(FitText.MinSize, size - 1);
             v.FontSize = size;
@@ -124,7 +129,9 @@ public sealed class OvReadRow : Panel
         unit?.Measure(Size.Infinity);
         target?.Measure(Size.Infinity);
         double uw = unit?.DesiredSize.Width ?? 0, tw = target?.DesiredSize.Width ?? 0;
-        (_unit, _target) = OvFit.Read(w, vw, uw, tw, unitWanted, HasText(target));
+        // 放不放得下按小数的前进宽度判断（同 WebKit 的小数排版）：取整后的框宽每段多算到 1 px ——「-0.001 MPa」在 1366 的紧凑卡上
+        // 61.89 + 3 + 27.14 = 92.03 ≤ 92.5 放得下（样稿写单位），按框宽 62 + 3 + 28 = 93 就把单位挤掉了
+        (_unit, _target) = OvFit.Read(w, Natural(v), Natural(unit), Natural(target), unitWanted, HasText(target));
         double used = vw + (_unit ? Gap + uw : 0);
         Chosen = (_unit, _target, size);
         double h = double.IsInfinity(availableSize.Height) ? ValueLineHeight : availableSize.Height;

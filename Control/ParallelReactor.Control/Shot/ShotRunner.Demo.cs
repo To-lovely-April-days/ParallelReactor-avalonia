@@ -37,7 +37,8 @@ namespace ParallelReactor.Control.Shot;
 ///  · PR_CONTROL_THEME_SHEET=1：主题核对表（Shot/ThemeSheet：各主题的悬停 / 按下 / 焦点 / 禁用 / 原因状态、菜单、弹出、列表、页签、对话框、
 ///    BarFitPanel / FitText / SizeClasses / Keep 断行）+ 审计 + 无头点击的行为核对（theme-sheet-&lt;w&gt;.{png,audit.txt,checks.txt}，
 ///    真正弹出的下拉 / 子菜单 / 提示框另存 theme-popup-*.png）；有 FAIL 时退出码 4。
-///  · 没有 PR_CONTROL_SHOT：打开新外壳的主窗口（演示数据，路由 PR_CONTROL_ROUTE = 「路径?参数」，默认总览；不冻结时每秒推进），交互走查用。
+///  · 没有 PR_CONTROL_SHOT：打开新外壳的主窗口（演示数据，路由 PR_CONTROL_ROUTE = 「路径?参数」，默认总览；不冻结时每秒推进），交互走查用；
+///    旁边是「演示控制」工具窗口（Views/Demo，样稿的演示条：运行时改控制权、断线、报警、急停、设备组合、冻结、重置）。
 /// 截图路由（overview、device/1、reactor/1/1、gallery …）都在新外壳里显示（Views/MainWindow + Shell/ShellVm + Fleet/FleetVm，数据 = Core 的 DemoFleet）；
 /// 路由参数同样稿（README「常用查询参数」：devs、sel、lease、offline、alarm、estop、explorer、tl、stress、dialog …），截图一律 freeze=1
 /// （同样稿的参照图 ?bare=1&amp;freeze=1）。截图时窗口带 frozen（Theme/Frozen.cs）：没有过渡和动画，toast 不自动消失。
@@ -84,9 +85,17 @@ public static partial class ShotRunner
             var ticker = new UiTicker { Frozen = shot || p0.Freeze };
             ticker.Tick += fleet.OnTick;
             if (!shot) ticker.Start();
-            window = new MainWindow { DataContext = shellVm };
+            var main = new MainWindow { DataContext = shellVm };
+            window = main;
             window.Closed += (_, _) => { ticker.Dispose(); shellVm.Dispose(); };
-            if (!shot) shellVm.ApplyStartParams(p0, Shell.Route.Parse(startRoute));
+            if (!shot)
+            {
+                shellVm.ApplyStartParams(p0, Shell.Route.Parse(startRoute));
+                // 交互走查：freeze=1 同样稿，桨、气泡、进度条的呼吸与过渡也停（截图时由 Show 冻结）；toast 照常消失。
+                // 旁边开「演示控制」工具窗口（样稿的演示条：控制权、断线、报警、急停、设备组合、冻结、重置；Views/Demo）
+                Frozen.Apply(main, p0.Freeze);
+                main.Opened += (_, _) => Views.Demo.DemoControlWindow.OpenBeside(main, shellVm, ticker);
+            }
         }
 
         window.Width = size.Width; window.Height = size.Height;
@@ -253,8 +262,10 @@ public static partial class ShotRunner
             demo2.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
             vm.Fleet.RefreshNow();
         }
+        else if (spec.Setup != null && spec.Setup.StartsWith("m6g", StringComparison.Ordinal))
+            M6Pre(window, vm, spec);                      // M6 各组的截图准备（ShotRunner.M6G*.cs）
         else if (spec.Setup != null && spec.Setup is not ("rvprops" or "rvprogx" or "rvzoom1" or "rvzoom2" or "rvmaxprog"))
-            throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice、rvprops、rvprogx、rvzoom1、rvzoom2、rvmaxprog）");
+            throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice、rvprops、rvprogx、rvzoom1、rvzoom2、rvmaxprog、m6g*-…）");
         vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
         vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true }, route);
         // 反应釜页：「釜体 / 属性查看器」从头来（rvprops = 点了「属性查看器」页签，同 snap 参照的 js 参数）；曲线回到近 30 min
@@ -284,6 +295,7 @@ public static partial class ShotRunner
                 }
             }
         }
+        if (spec.Setup != null && spec.Setup.StartsWith("m6g", StringComparison.Ordinal)) M6Post(window, vm, spec);
         Frozen.Apply(window);
     }
 

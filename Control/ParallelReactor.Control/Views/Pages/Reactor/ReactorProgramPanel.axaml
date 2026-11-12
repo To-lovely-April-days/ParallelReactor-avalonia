@@ -19,7 +19,8 @@
       <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
       <GradientStop Offset="0.24" Color="Transparent" />
     </LinearGradientBrush>
-    <!-- 程序库一行左边的选择按钮（.reactor-lib-pick：铺满「下发」左边的整行、整行高，内边距 8 0 8 16、透明，行本身管悬停 / 选中的底色） -->
+    <!-- 程序库一行左边的选择按钮（.reactor-lib-pick：铺满「下发」左边的整行、整行高，内边距 8 0 8 16、透明，行本身管悬停 / 选中的底色）。
+         键盘焦点（M6）：按钮里面 2 px a-d 环（样稿 outline-offset −2，直角），不用 Fluent 的黑框 -->
     <ControlTheme x:Key="LibPick" TargetType="Button">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="16,8,0,8" />
@@ -28,13 +29,20 @@
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
       <Setter Property="Template">
         <ControlTemplate>
-          <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
-                            Content="{TemplateBinding Content}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <Panel>
+            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+                              Content="{TemplateBinding Content}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
         </ControlTemplate>
       </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
     </ControlTheme>
   </UserControl.Resources>
   <UserControl.Styles>

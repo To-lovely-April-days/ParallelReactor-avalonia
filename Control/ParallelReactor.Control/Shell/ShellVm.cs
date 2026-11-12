@@ -129,7 +129,13 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     /// 打开（或切到）页签（样稿 PR.route.go）：设备 / 反应釜不存在时回到总览；设备页 / 反应釜页同时选中该对象；
     /// 浮层资源管理器在导航后收起。
     /// </summary>
-    public void Navigate(Route route)
+    public void Navigate(Route route) => Navigate(route, keepFloat: false);
+
+    /// <summary>
+    /// 同 <see cref="Navigate(Route)"/>；<paramref name="keepFloat"/> = 浮层资源管理器不收起：资源管理器的树里按 Enter 打开页签（样稿 treeKey 只导航，
+    /// 浮层只在指针的单击 / 双击时收起，shell.js :1555 / :1564）。别的导航（指针、菜单、页签）照旧收起浮层。
+    /// </summary>
+    public void Navigate(Route route, bool keepFloat)
     {
         if (!TabsVm.Routable(Fleet, route)) route = Route.Overview;
         Tabs.Activate(route);
@@ -138,7 +144,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         if (route.Page == PageKind.Device) Select(route.K);
         else if (route.Page == PageKind.Reactor) Select(route.K, route.N);
         else Selection.Prune();
-        Layout.CloseFloat();
+        if (!keepFloat) Layout.CloseFloat();
         PrunePages();
         RefreshChrome();
         Explorer.RequestReveal();
@@ -337,7 +343,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Esc（样稿 keydown Escape 的外框部分）：先关对话框；再收起浮层资源管理器。打开的菜单 / 弹出框由 Avalonia 自己关；
+    /// Esc（样稿 keydown Escape 的外框部分）：先关对话框；再收起浮层资源管理器。打开着的菜单 / 弹出框由 Views/Shell/PopupMenus 先关（到此为止）；
     /// 放大的面板由 PageHost 先处理。返回是否处理了。
     /// </summary>
     public bool Escape()

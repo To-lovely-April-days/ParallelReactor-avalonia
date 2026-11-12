@@ -24,6 +24,8 @@ public partial class LiveDeviceSourceTests
         "TelemetryReceived", "ConnectionStateChanged", "LeaseTransitioned", "ControlChanged", "AlarmChanged", "EventReceived", "Error", "ServerRestarted",
         // M3：重连倒计时、HMI 报告的控制权现状、403、已取消申请的结局
         "ReconnectScheduled", "LeaseServerViewChanged", "ForbiddenRole", "LeaseCancelledRequestSettled",
+        // M6：硬件未确认的命令的最终结果（opEvent）
+        "OpEventReceived",
     };
 
     private static (LiveDeviceSource Src, ManualPost Post, Func<FakeReactorConnection> Fake) Make(Action<FakeReactorConnection>? setup = null)

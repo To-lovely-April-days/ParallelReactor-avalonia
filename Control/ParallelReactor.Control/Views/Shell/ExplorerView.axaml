@@ -101,9 +101,9 @@
             <Button Classes="sm" Margin="0,0,2,0" b:Pr.Icon="plus" Content="添加" Command="{Binding Explorer.AddCommand}" />
             <Button Name="Legend" Theme="{StaticResource PrIconButton}" b:Pr.Icon="info" ToolTip.Tip="状态图例">
               <Button.Flyout>
-                <Flyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2">
+                <vs:PrFlyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2">
                   <vs:ExplorerLegend />
-                </Flyout>
+                </vs:PrFlyout>
               </Button.Flyout>
             </Button>
             <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="{Binding Explorer.CloseIcon}" ToolTip.Tip="{Binding Explorer.CloseTip}"
@@ -130,7 +130,9 @@
                     <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="{Binding TwistIcon}" ToolTip.Tip="{Binding TwistTip}"
                             AutomationProperties.Name="{Binding TwistTip}" Command="{Binding TwistCommand}" Focusable="False" />
                     <c:IconView Icon="machine" Size="18" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
-                    <TextBlock Classes="xname" Text="{Binding D.Alias}" Margin="2,0,0,0" pr:FlexRow.Shrink="1"
+                    <!-- 行高 20（框本来就是 20 高、居中，位置不变）：基线 15.8，不落在半像素上 —— 默认行高时基线正好 15.5，苹方的「号机」随树里的浮点误差
+                         落在上下两行像素之一，同一个名字在不同截图里差 1 px（Inter 的数字段不受影响；总览紧凑卡片的「RV1」同样是 16 px、行高 20） -->
+                    <TextBlock Classes="xname" Text="{Binding D.Alias}" Margin="2,0,0,0" pr:FlexRow.Shrink="1" LineHeight="20"
                                FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
                                TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding D.ModelLabel}" Margin="4,0,0,0" pr:FlexRow.FitOpt="True"
@@ -188,9 +190,18 @@
             </DataTemplate>
 
             <!-- 断线细节条（.pr-xoff，中性）：连接（wifi-off / 从未连上 link）+「数据停在 …」；控制权宽限（钥匙）。
-                 文字逐字省略（TextFit.CharacterEllipsis，同样稿的 text-overflow）：「连接失败 · 6 s 后…」，11.1 自带的省略会丢掉整段「后」（复核） -->
+                 文字逐字省略（TextFit.CharacterEllipsis，同样稿的 text-overflow）：「连接失败 · 6 s 后…」，11.1 自带的省略会丢掉整段「后」（复核）。
+                 连接那一条整条带提示「连接说明 · 数据停在 …」（样稿 .pr-xoff 的 title）；这一行不可选、整行禁用，所以提示要 ShowOnDisabled -->
             <DataTemplate DataType="sh:XOffRow" x:DataType="sh:XOffRow">
-              <Border Classes="xoff" Classes.grace="{Binding IsGrace}" Height="30" Padding="10,0" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSunkenBrush}">
+              <Border Classes="xoff" Classes.grace="{Binding IsGrace}" Height="30" Padding="10,0" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSunkenBrush}"
+                      ToolTip.ShowOnDisabled="True">
+                <ToolTip.Tip>
+                  <MultiBinding Converter="{x:Static vs:ExplorerTips.XOff}">
+                    <Binding Path="IsConn" />
+                    <Binding Path="D.ConnText" />
+                    <Binding Path="D.DataText" />
+                  </MultiBinding>
+                </ToolTip.Tip>
                 <Panel>
                   <pr:FlexRow Spacing="8" IsVisible="{Binding IsConn}" Background="Transparent">
                     <pr:FlexRow.Styles>
@@ -198,13 +209,13 @@
                     </pr:FlexRow.Styles>
                     <c:IconView Icon="{Binding D.OffIcon}" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding D.OffText}" Foreground="{StaticResource T2Brush}" TextTrimming="{x:Static pr:TextFit.CharacterEllipsis}" pr:FlexRow.Shrink="1"
-                               VerticalAlignment="Center" ToolTip.Tip="{Binding D.ConnText}" />
+                               VerticalAlignment="Center" />
                     <TextBlock Text="{Binding D.DataText}" Foreground="{StaticResource T3Brush}" pr:FlexRow.PushRight="True" VerticalAlignment="Center" />
                   </pr:FlexRow>
                   <pr:FlexRow Spacing="8" IsVisible="{Binding IsGrace}">
                     <c:IconView Icon="key" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                     <TextBlock Text="{Binding D.GraceText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" TextTrimming="{x:Static pr:TextFit.CharacterEllipsis}"
-                               pr:FlexRow.Shrink="1" VerticalAlignment="Center" ToolTip.Tip="{Binding D.GraceText}" />
+                               pr:FlexRow.Shrink="1" VerticalAlignment="Center" ToolTip.Tip="{Binding D.GraceText}" ToolTip.ShowOnDisabled="True" />
                   </pr:FlexRow>
                 </Panel>
               </Border>

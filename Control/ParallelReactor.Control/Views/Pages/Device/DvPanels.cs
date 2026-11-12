@@ -452,6 +452,9 @@ public sealed class DvReads : DvPanel
     /// <summary>这张卡的取舍（DvCard 测量时给）：读数字号阶梯、设定值 / 目标的排法与 fitSubs、宽卡的次要行。</summary>
     public void Configure(DeviceCard card, ReadingFont temp, ReadingFont press, ReadingFont stir, ReadingFont heat, ReadingFont gas, bool hideSetpoint, bool hideTarget)
     {
+        // 取舍变了就重新测量：读数列的可用宽度没变时（卡片只是变高：放大「反应釜」面板）Measure 直接跳过，排列却按新的取舍把「SP 120 ℃」
+        // 单独一行排出来 —— 那一行按 0 × 0 排过，文字是空的（M6 面板状态审计：lines dropped）
+        if (card != _card || hideSetpoint != _hideSp || hideTarget != _hideTg) InvalidateMeasure();
         _card = card;
         _hideSp = hideSetpoint;
         _hideTg = hideTarget;

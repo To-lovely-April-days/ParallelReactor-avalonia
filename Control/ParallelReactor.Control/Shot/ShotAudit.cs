@@ -47,6 +47,8 @@ namespace ParallelReactor.Control.Shot;
 ///  · [audit] 横向溢出 / 横向滚动条（ScrollViewer 的 Extent.Width &gt; Viewport.Width，或横向 ScrollBar 可见；输入框自己的滚动区按 input text clipped 报）。
 /// 约定：类 audit-skip 的子树不查（同 data-audit-skip）；类 audit-ctl 的元素按「控件」参与重叠检查；类 audit-hscroll-ok 的 ScrollViewer 允许横向滚动；
 /// 类 audit-layer 的子树是浮在上面的一层（窄屏的浮层资源管理器）：重叠只在同一层里比（浮层盖住下面是设计如此，同 MOCK 不同层叠上下文不比）。
+/// 打开着的菜单 / 弹出框（无头截图里是窗口覆盖层上的 OverlayPopupHost，桌面上是 PopupRoot）同样各算一层：重叠只在弹出层里比，
+/// 字号、省略、色板、横向滚动照常查（同 MOCK 审计打开着的 .pr-menu）。
 /// 类 audit-fig 的元素是不许被盖住的图形、类 audit-box 的元素是它旁边的标注框（同 MOCK 的 data-ov-fig / data-ov-box，见 Controls/Vessel/VesselCallouts）。
 /// 干净时返回空列表（&lt;name&gt;-&lt;w&gt;.audit.txt 为空文件）。
 /// </summary>
@@ -495,11 +497,11 @@ public static class ShotAudit
 
     private static bool Nested(Visual a, Visual b) => a == b || a.IsVisualAncestorOf(b) || b.IsVisualAncestorOf(a);
 
-    /// <summary>元素所在的浮层（最近的类 audit-layer 的祖先，含自己）；不在浮层里为 null。</summary>
+    /// <summary>元素所在的浮层（最近的类 audit-layer 的祖先或弹出层的宿主，含自己）；不在浮层里为 null。</summary>
     private static Visual? LayerOf(Dictionary<Visual, Visual?> cache, Visual v)
     {
         if (cache.TryGetValue(v, out var l)) return l;
-        l = v.GetSelfAndVisualAncestors().OfType<StyledElement>().FirstOrDefault(a => a.Classes.Contains("audit-layer")) as Visual;
+        l = v.GetSelfAndVisualAncestors().OfType<StyledElement>().FirstOrDefault(a => a.Classes.Contains("audit-layer") || a is OverlayPopupHost or PopupRoot) as Visual;
         cache[v] = l;
         return l;
     }

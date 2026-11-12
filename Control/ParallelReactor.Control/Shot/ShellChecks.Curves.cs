@@ -80,10 +80,18 @@ public static partial class ShellChecks
         Click(window, Seg("60"));
         await Settle();
         Check(cv.Range == "60" && cv.Options is { } o60 && o60.XMax - o60.XMin == 60 * 60000.0, "点「60」→ 近 60 min");
-        Seg("60").Focus(NavigationMethod.Directional);
+        // 键盘同样稿 ui.seg（每段是普通按钮，M6）：每段都是 Tab 停靠点，方向键不切换；之后点回「30」，后面的核对与以前相同
+        Seg("10").Focus(NavigationMethod.Tab);
+        Tab(window);
+        await Settle();
+        var segFocus = window.FocusManager?.GetFocusedElement();
         Key1(window, Key.Left, PhysicalKey.ArrowLeft);
         await Settle();
-        Check(cv.Range == "30", $"← → 在分段之间切换（{cv.Range}）");
+        Check(ReferenceEquals(segFocus, Seg("30")) && cv.Range == "60" && ReferenceEquals(window.FocusManager?.GetFocusedElement(), Seg("30")),
+            $"分段：每段都是 Tab 停靠点（Tab 从「10」到「{(segFocus as PrToggle)?.Content}」），← 不切换（{cv.Range}）");
+        Click(window, Seg("30"));
+        await Settle();
+        Check(cv.Range == "30", $"点「30」→ 近 30 min（{cv.Range}）");
 
         // ---------------- 图例按面板宽度 ----------------
         string Legend() => panel.LegendText;

@@ -8,6 +8,7 @@
 # dv-never（截图准备 adddevice：刚添加、从未连上的 5号机）：样稿先开总览，JS 调 PR.sim.addDevice(...) 再 PR.route.go('device', [k])。
 # rvp*（截图准备 rvprops：反应釜页点了「属性查看器」页签）：JS 点样稿同一个页签再拍。
 # rv-progx / rv-maxprog / rv-zoom1 / rv-zoom2（截图准备 rvprogx / rvmaxprog / rvzoom1 / rvzoom2）：JS 点样稿「程序」面板的关闭 / 放大 / 放大画布（一次 / 两次）；
+# rv-maxalarm21（截图准备 m6g4-maxcurves）：JS 点样稿「曲线」面板的放大；
 # rv-never（截图准备 adddevice）：样稿先开总览，JS 调 PR.sim.addDevice(...) 再 PR.route.go('reactor', [k, 1])。
 # 样稿冻结的 final-*.png（research/pc-v3/shots，M1 固定的那份）不重拍：给了 FROZEN=<目录> 时把那里的 final-*.png 链接进输出目录，
 # 输出目录就能直接当 PR_CONTROL_SHOT_REF 用。必须在 bash 下运行（snap 是 WebKit 截图工具，见 PORT-PLAN 附录 B）。
@@ -64,6 +65,8 @@ while read -r name route sizes query; do
         js="document.querySelector('[data-key=\"rvp-prog\"] [data-panel-close]').click()" ;;
       rv-maxprog)
         js="document.querySelector('[data-key=\"rvp-prog\"] [data-panel-max]').click()" ;;
+      rv-maxalarm21)
+        js="document.querySelector('[data-key=\"rvp-curves\"] [data-panel-max]').click()" ;;
       rv-zoom1)
         js="document.querySelector('[data-rv-zoom=\"1\"]').click()" ;;
       rv-zoom2)

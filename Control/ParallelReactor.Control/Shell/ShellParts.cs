@@ -161,7 +161,7 @@ public sealed partial class StopCellVm : ObservableObject
     public ICommand EstopCommand { get; }
 
     public const string StopAllTip = "选择设备后停止全部反应釜（不需要控制权）";
-    public const string EstopTip = "选择设备后急停 · 复位只能在触屏";
+    public const string EstopTip = "选择设备后急停 · 复位只能在触屏上操作";
 
     /// <summary>没有已连接的设备时的原因（b:Pr.Reason）；有连接时 null。</summary>
     [ObservableProperty] private string? _reason;

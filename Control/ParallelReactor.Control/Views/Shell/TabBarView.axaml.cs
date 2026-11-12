@@ -9,7 +9,7 @@ using ParallelReactor.Control.Shell;
 namespace ParallelReactor.Control.Views.Shell;
 
 /// <summary>
-/// 页签栏：DocTabStrip 量出的隐藏集合写回 TabsVm（「›」上的个数，变宽后再排一次直到稳定）；当前页签变了就重排（当前页签始终可见）；
+/// 页签栏：DocTabStrip 量出的隐藏集合写回 TabsVm（「›」上的个数；收起哪些按「›」不写个数时的宽度定，见 TabOverflowPanel）；当前页签变了就重排（当前页签始终可见）；
 /// 「›」菜单（DynamicMenuFlyout）和「+」弹出框在打开时按当前状态生成。
 /// </summary>
 public partial class TabBarView : UserControl

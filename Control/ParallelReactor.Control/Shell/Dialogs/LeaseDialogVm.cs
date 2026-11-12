@@ -37,6 +37,8 @@ public sealed partial class LeaseStepVm : ObservableObject
 /// <item>断线：红色说明（连接的原因）+「连接恢复后才能申请。」；「关闭」+「立即重连」/「连接」（用户断开的）。图标块红色。</item>
 /// </list>
 /// 操作都走 DeviceActions（执行前再查守卫、提示同样稿 act）。设备被移除时自动关闭（样稿 onDevices）。
+/// 底栏的异步命令执行期间按钮不灰（AsyncRelayCommand 默认执行期间是没有原因的禁用，M6）：申请 / 重连发出去就返回（结局按状态刷新），
+/// 取消申请 / 释放先关对话框 —— 所以允许并发执行也不会重复发。
 /// </summary>
 public sealed partial class LeaseDialogVm : DialogVm
 {
@@ -55,14 +57,14 @@ public sealed partial class LeaseDialogVm : DialogVm
         Steps = new[] { new LeaseStepVm(1, "done"), new LeaseStepVm(2, "cur"), new LeaseStepVm(3, "next") };
         var close = new RelayCommand(() => shell.Dialogs.Close(this));
         CancelButton = new FootButton("取消", close);
-        SendButton = new FootButton("发送申请", new AsyncRelayCommand(() => Act(DeviceAction.LeaseRequest, keepOpen: true)), FootKind.Primary, "key", large: true);
-        CancelRequestButton = new FootButton("取消申请", new AsyncRelayCommand(() => Act(DeviceAction.LeaseCancel, keepOpen: false)));
+        SendButton = new FootButton("发送申请", new AsyncRelayCommand(() => Act(DeviceAction.LeaseRequest, keepOpen: true), AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "key", large: true);
+        CancelRequestButton = new FootButton("取消申请", new AsyncRelayCommand(() => Act(DeviceAction.LeaseCancel, keepOpen: false), AsyncRelayCommandOptions.AllowConcurrentExecutions));
         WaitButton = new FootButton("后台等待", close, FootKind.Primary);
-        ReleaseButton = new FootButton("释放控制权", new AsyncRelayCommand(() => Act(DeviceAction.LeaseRelease, keepOpen: false)), icon: "unlock");
+        ReleaseButton = new FootButton("释放控制权", new AsyncRelayCommand(() => Act(DeviceAction.LeaseRelease, keepOpen: false), AsyncRelayCommandOptions.AllowConcurrentExecutions), icon: "unlock");
         DoneButton = new FootButton("完成", close, FootKind.Primary);
         ClosePrimaryButton = new FootButton("关闭", close, FootKind.Primary);
         CloseButton = new FootButton("关闭", close);
-        ReconnectButton = new FootButton("立即重连", new AsyncRelayCommand(() => Act(DeviceAction.Reconnect, keepOpen: true)), FootKind.Primary, "refresh");
+        ReconnectButton = new FootButton("立即重连", new AsyncRelayCommand(() => Act(DeviceAction.Reconnect, keepOpen: true), AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "refresh");
         Body = this;
         Refresh();
     }

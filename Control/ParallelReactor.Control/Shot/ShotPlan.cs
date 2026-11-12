@@ -13,7 +13,7 @@ namespace ParallelReactor.Control.Shot;
 /// 路由 = 样稿的 hash 路由（overview、device/1、reactor/1/1、placeholder/curves、gallery），参数同样稿 README「常用查询参数」（explorer、tl、sel）。
 /// M2：外壳（菜单、页签、图标栏、资源管理器 / 检查器 / 时间轴的框架、状态栏、全局停止格）+ 页面骨架；M4 / M5 起工作区与参照图逐张对上。
 /// </summary>
-public static class ShotPlan
+public static partial class ShotPlan
 {
     /// <summary>
     /// 一张截图。Route 与样稿的 hash 路由同名；Query 是路由参数（a=1&amp;b=2）。
@@ -31,7 +31,8 @@ public static class ShotPlan
     /// <summary>外壳的三个标准尺寸（PORT-PLAN §5.9）。</summary>
     private static readonly PixelSize[] Screens = { new(1920, 1080), new(1600, 900), new(1366, 768) };
 
-    public static readonly IReadOnlyList<Spec> All = new[]
+    /// <summary>M1–M5 的截图（M6 起各组加的在 ShotPlan.M6G*.cs，见 <see cref="All"/>）。</summary>
+    private static readonly Spec[] Base = new[]
     {
         // 陈列页：新外壳里的「组件」页签（与样稿整页截图同样含外框）；样稿只有 1920 的参照图，
         // 1600 / 1366（工作区 936 / 1002）只做审计，窗口高度让工作区（高 − 菜单 34 − 页签 44 − 时间轴 220 − 状态栏 30）放得下整页、不出滚动条
@@ -180,6 +181,12 @@ public static class ShotPlan
         new Spec("program", "placeholder/program", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
         new Spec("perf", "placeholder/perf", "", new[] { new PixelSize(1920, 1080), new PixelSize(1366, 768) }),
     };
+
+    /// <summary>
+    /// 全部截图：M1–M5 + M6 各组加的（每组一个文件 ShotPlan.M6G1.cs … M6G5.cs，方法而不是静态字段 —— 分部类各文件的静态字段初始化先后不定）。
+    /// </summary>
+    public static readonly IReadOnlyList<Spec> All =
+        Base.Concat(M6G1Shots()).Concat(M6G2Shots()).Concat(M6G3Shots()).Concat(M6G4Shots()).Concat(M6G5Shots()).ToArray();
 
     public static Spec? Find(string name) => All.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 

@@ -23,8 +23,10 @@ namespace ParallelReactor.Control.Views.Pages;
 /// <list type="bullet">
 /// <item>尺寸：根元素的尺寸（= 工作区，父元素给的）交给 <see cref="OverviewPageVm.SetViewport"/>（Core 的 OverviewLayout 据此排版，R4）。</item>
 /// <item>单击卡片 = 选中反应釜，双击 = 打开反应釜页签，右键 = 反应釜菜单；单击分区（头或空白）= 选中设备，双击 = 打开设备页，右键 = 设备菜单
-///   （样稿 data-sel / data-open / data-ctx）；按钮自己处理自己的点击。</item>
-/// <item>«⋯»：设备菜单（打开时生成，同右键菜单 + 「设备信息」），打开时选中这台设备（样稿 openMenu）；「设备信息」锚在 «⋯» 下。</item>
+///   （样稿 data-sel / data-open / data-ctx）；按钮自己处理自己的点击，但右键分区里的按钮（打开、«⋯»、放大、立即重连、报警小块）也是设备菜单
+///   （样稿 closest('[data-ctx]')：按钮属于分区）。</item>
+/// <item>«⋯»：设备菜单（打开时生成、打开着时刷新，同右键菜单 + 「设备信息」），打开时选中这台设备（样稿 openMenu）；「设备信息」锚在 «⋯» 下
+///   （右对齐、下沿 + 2；开着时 «⋯» 是按下的样子，再点 «⋯» 一下关掉它并打开菜单）。键盘、点在外面、Esc 见 Views/Shell/PopupMenus。</item>
 /// <item>键盘（样稿 onKey）：卡片可 Tab 到，Enter = 打开反应釜页签，空格 = 选中，方向键按位置在卡片之间移动（跨设备分区）；
 ///   分区头也可 Tab 到（焦点环画在头里面 2 px），空格 = 选中设备，Enter = 打开设备页。</item>
 /// <item>按下（样稿 :active）：按住左键时卡片是按下的样子（.overview-card:active：类 pressed），分区头 bg-press（头里的按钮按下时也算，同 CSS 的 :active 链）。</item>
@@ -84,12 +86,12 @@ public partial class OverviewPage : UserControl
 
     // ———————————————————— 单击 / 双击 / 右键 ————————————————————
 
-    /// <summary>事件来源所在的卡片 / 分区（在按钮里的不算：按钮自己处理）。</summary>
-    private static (OverviewCardVm? Card, OverviewSectionVm? Section, Visual? Anchor) Hit(object? source)
+    /// <summary>事件来源所在的卡片 / 分区。<paramref name="throughButtons"/> = false 时在按钮里的不算（单击 / 双击：按钮自己处理）；右键要算（按钮属于分区）。</summary>
+    private static (OverviewCardVm? Card, OverviewSectionVm? Section, Visual? Anchor) Hit(object? source, bool throughButtons = false)
     {
         for (var v = source as Visual; v != null; v = v.GetVisualParent())
         {
-            if (v is Button) return (null, null, null);
+            if (v is Button && !throughButtons) return (null, null, null);
             if (v is Panel { DataContext: OverviewCardVm c } p && p.Classes.Contains("ovtile")) return (c, c.Section, p);
             if (v is PrPanel { DataContext: OverviewSectionVm s } pp && pp.Classes.Contains("ovdev")) return (null, s, pp);
         }
@@ -110,10 +112,10 @@ public partial class OverviewPage : UserControl
         else if (sec != null) { sec.OpenCommand.Execute(null); e.Handled = true; }
     }
 
-    /// <summary>右键（样稿 data-ctx）：先选中，再弹出菜单 —— 卡片 = 反应釜菜单，分区 = 设备菜单（同 «⋯»）。</summary>
+    /// <summary>右键（样稿 data-ctx）：先选中，再弹出菜单 —— 卡片 = 反应釜菜单，分区（含分区里的按钮）= 设备菜单（同 «⋯»）。</summary>
     private void OnContext(object? sender, ContextRequestedEventArgs e)
     {
-        var (card, sec, anchor) = Hit(e.Source);
+        var (card, sec, anchor) = Hit(e.Source, throughButtons: true);
         if (anchor is not Avalonia.Controls.Control target) return;
         if (card != null)
         {
@@ -175,7 +177,10 @@ public partial class OverviewPage : UserControl
     /// <summary>最近一次打开的「设备信息」弹出框（截图核对 Shot/ShellChecks 用）。</summary>
     internal static Flyout? LastInfo { get; private set; }
 
-    /// <summary>设备信息（样稿 infoPop：锚在 «⋯» 下的弹出框，宽 340）：设备图标 + 别名 16/600 + 型号 14 t-3 · 键值表 · 「打开设备页」。</summary>
+    /// <summary>
+    /// 设备信息（样稿 infoPop：锚在 «⋯» 下的弹出框，右对齐、下沿 + 2，宽 340）：设备图标 + 别名 16/600 + 型号 14 t-3 · 键值表 · 「打开设备页」。
+    /// PrFlyout：开着时 «⋯» 是按下的样子；它不是 «⋯» 自己的 Flyout，点 «⋯» 一下就关掉它并打开菜单（样稿 same = false）。
+    /// </summary>
     private static void ShowInfo(Button anchor, OverviewSectionVm s)
     {
         LastInfo?.Hide();
@@ -189,7 +194,7 @@ public partial class OverviewPage : UserControl
             kv.Children.Add(new TextBlock { Text = k });
             kv.Children.Add(new TextBlock { Text = v, TextWrapping = Avalonia.Media.TextWrapping.Wrap });
         }
-        var flyout = new Flyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        var flyout = new PrFlyout { Placement = PlacementMode.BottomEdgeAlignedRight, VerticalOffset = 2 };
         var open = new Button { Content = "打开设备页", HorizontalAlignment = HorizontalAlignment.Right };
         open.Classes.Add("sm");
         Pr.SetIcon(open, "open");

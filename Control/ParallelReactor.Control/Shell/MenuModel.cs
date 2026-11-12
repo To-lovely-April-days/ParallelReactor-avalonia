@@ -30,8 +30,21 @@ public sealed record MenuEntry
 }
 
 /// <summary>
+/// 一份菜单项，带着按当时的状态重新生成自己的方法（样稿 shell.menu 的 items 是函数：打开着的菜单每秒、每次动作后重新生成 ——
+/// 原因里的倒计时、「取消申请控制权 → 释放控制权」、勾选、「未显示」跟着变，见 Views/Shell/PopupMenus）。
+/// <see cref="Rebuild"/> 返回 null = 菜单说的对象没了（设备已移除），打开着的菜单关掉。
+/// 用 List 的子类：调用方（页面的视图模型、时间轴、设备页）照旧拿 IReadOnlyList，不用改就能刷新。
+/// </summary>
+public sealed class MenuEntries : List<MenuEntry>
+{
+    public MenuEntries(IEnumerable<MenuEntry> items, Func<IReadOnlyList<MenuEntry>?>? rebuild) : base(items) => Rebuild = rebuild;
+
+    public Func<IReadOnlyList<MenuEntry>?>? Rebuild { get; }
+}
+
+/// <summary>
 /// 菜单（PORT-PLAN §2.1「菜单栏 34 px」；样稿 shell.js MENUS / menuItems / devMenuItems，文字与顺序逐字照抄）：
-/// 文件 设备 视图 程序 工具 窗口 帮助。每次打开时按当前状态重新生成（勾选、标题项「当前：1号机」、禁用原因）。
+/// 文件 设备 视图 程序 工具 窗口 帮助。打开时按当前状态生成，打开着时每秒 / 每次动作后重新生成（<see cref="MenuEntries"/>：勾选、标题项「当前：1号机」、禁用原因）。
 /// 设备菜单只有一份（菜单栏「设备」、右键、总览分区 «⋯» 共用 <see cref="DeviceItems"/>）。
 /// 对话框（添加设备、设备管理、控制权、急停、全部停止、编辑、重命名、移除、断开连接）见 Shell/Dialogs（M3）。
 /// </summary>
@@ -42,7 +55,10 @@ public static class MenuModel
         ("file", "文件"), ("device", "设备"), ("view", "视图"), ("program", "程序"), ("tools", "工具"), ("window", "窗口"), ("help", "帮助"),
     };
 
-    public static IReadOnlyList<MenuEntry> Items(ShellVm shell, string key)
+    /// <summary>菜单栏的一个下拉菜单（打开着时每秒、每次动作后按 <see cref="MenuEntries.Rebuild"/> 重新生成）。</summary>
+    public static IReadOnlyList<MenuEntry> Items(ShellVm shell, string key) => new MenuEntries(BarItems(shell, key), () => BarItems(shell, key));
+
+    private static IReadOnlyList<MenuEntry> BarItems(ShellVm shell, string key)
     {
         MenuEntry Go(string label, string icon, Route r) => new() { Label = label, Icon = icon, Run = () => shell.Navigate(r) };
         MenuEntry Ph(string k)
@@ -127,7 +143,9 @@ public static class MenuModel
     }
 
     /// <summary>「›」溢出菜单：全部页签（断线 = wifi-off 图标，错误报警红点，当前页签打勾，放不下的写「未显示」）。</summary>
-    public static IReadOnlyList<MenuEntry> TabItems(ShellVm shell) =>
+    public static IReadOnlyList<MenuEntry> TabItems(ShellVm shell) => new MenuEntries(TabList(shell), () => TabList(shell));
+
+    private static List<MenuEntry> TabList(ShellVm shell) =>
         shell.Tabs.Tabs.Select(t => new MenuEntry
         {
             Label = t.Label, Icon = t.Offline ? "wifioff" : t.Icon ?? t.MenuIcon, Alarm = t.ErrAlarm, Check = t.IsActive,
@@ -169,6 +187,15 @@ public static class MenuModel
     /// </summary>
     public static IReadOnlyList<MenuEntry> DeviceItems(ShellVm shell, IFleetDevice d, IEnumerable<MenuEntry>? extra = null)
     {
+        var more = extra?.ToList();
+        // 设备移除之后（同一个 K 也可能是新加的另一台）不再生成：打开着的菜单关掉
+        return new MenuEntries(DeviceList(shell, d, more), () => Alive(shell, d) ? DeviceList(shell, d, more) : null);
+    }
+
+    private static bool Alive(ShellVm shell, IFleetDevice d) => shell.Fleet.Devices.Any(x => ReferenceEquals(x, d));
+
+    private static List<MenuEntry> DeviceList(ShellVm shell, IFleetDevice d, IReadOnlyList<MenuEntry>? extra)
+    {
         var k = d.K.ToString();
         var list = new List<MenuEntry>
         {
@@ -195,7 +222,10 @@ public static class MenuModel
     /// 标题「1号机 · RV1 · 反应中」· 打开 · 运行程序（已下发 / 已中止 / 已结束的程序）或启动 · 停止 · 停止加热 · 中止程序 · 打标记。
     /// 原因来自 Core 的守卫（停止类只要连接）；执行时 DeviceActions 再查一次。
     /// </summary>
-    public static IReadOnlyList<MenuEntry> ReactorItems(ShellVm shell, Fleet.DeviceVm d, Fleet.ReactorVm r)
+    public static IReadOnlyList<MenuEntry> ReactorItems(ShellVm shell, Fleet.DeviceVm d, Fleet.ReactorVm r) =>
+        new MenuEntries(ReactorList(shell, d, r), () => Alive(shell, d) && d.Reactor(r.N) is { } cur ? ReactorList(shell, d, cur) : null);
+
+    private static IReadOnlyList<MenuEntry> ReactorList(ShellVm shell, Fleet.DeviceVm d, Fleet.ReactorVm r)
     {
         int n = r.N;
         var p = Core.Guard.ActionPayload.Ch(n);

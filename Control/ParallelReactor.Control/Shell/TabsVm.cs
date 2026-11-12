@@ -98,9 +98,9 @@ public sealed partial class DocTabVm : ObservableObject, IOverflowItem
                 var rv = "RV" + Rv;
                 if (d == null || ch == null) { var l = (d?.Alias ?? "设备 " + DeviceId) + " · " + rv; Set(l, l, "", null, "devices", false, false, l); break; }
                 bool off = d.Conn != ConnState.Online;
-                var word = off ? StateKeys.OfflineText(d.EverOnline) : ch.Word;
-                var tip = d.Alias + " · " + rv + " · " + word + (off && d.DataText.Length > 0 ? " · " + d.DataText : "");
-                Set(d.Alias + " · " + rv, d.Alias, "\u00a0·\u00a0" + rv, null, "devices", off, ch.Key == StateKey.Alarm, tip);
+                // 红点与提示看反应釜自己的状态（样稿 tabInfo：ch.state / stateText）—— 断线时界面状态是「离线」，断线前的超压报警照样标红点（同设备页签的报警计数）
+                var tip = d.Alias + " · " + rv + " · " + ch.OwnWord + (off && d.DataText.Length > 0 ? " · " + d.DataText : "");
+                Set(d.Alias + " · " + rv, d.Alias, "\u00a0·\u00a0" + rv, null, "devices", off, ch.Own == StateKey.Alarm, tip);
                 break;
             }
         }

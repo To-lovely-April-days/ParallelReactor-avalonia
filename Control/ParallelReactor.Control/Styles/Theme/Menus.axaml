@@ -6,8 +6,11 @@
        菜单栏项高 28、15 px、圆角 4（悬停 / 展开 bg-hover，按下 bg-press）；下拉面板白底 line 边、圆角 6、ShadowPop、上下 6、最小宽 220、最宽 480；
        菜单项高 36、15 px t-2、左 12 右 16、图标列 20（图标 17 t-3）+ 间距 10；悬停 bg-hover + t-1，按下 bg-press；
        提示（b:Pr.Hint，14 px t-3）跟在标签后面；勾选项在最右侧画 17 px ✓（a-d，描边 2），图标照常（同样稿 .pr-menu-check）；
-       红点（b:Pr.Dot，8 px r）压在图标右上角（溢出菜单里有错误报警的页签）；分隔 1 px line-faint（上下 6）；标题项（类 head）14 px 600 t-3；
+       红点（b:Pr.Dot，8 px r）压在图标右上角（溢出菜单里有错误报警的页签）；分隔 1 px line-faint（上下 6）；标题项（类 head）14 px 600 t-3、行高 20
+       （样稿 .pr-menu-head 上 8 下 4 + 14 px × 1.45 = 32 高）；
        类 danger = r-ink 字 + r 图标、悬停 r-bg；类 stop = 深灰实心方块；禁用项 t-dis，原因写在 ToolTip 里（b:Pr.Reason，ToolTip.ShowOnDisabled）。
+       键盘移到的项（:focus-visible，Views/Shell/PopupMenus 用 Directional 聚焦）：内侧 2 px a-d 环，不画悬停底色、字不变深（样稿 outline-offset -2，背景只跟 :hover）。
+       标题不认访问键（样稿没有助记符；别名里的「_」照原样显示）。
        右键菜单 PrContextMenu、菜单弹出 PrMenuFlyout、自定义内容的弹出框 PrPopover 与下拉面板同一外观。 -->
 
   <!-- 分隔线（菜单里的 Separator，或 Header="-" 的菜单项） -->
@@ -52,7 +55,7 @@
                                 Content="{TemplateBinding Header}"
                                 ContentTemplate="{TemplateBinding HeaderTemplate}"
                                 Foreground="{TemplateBinding Foreground}"
-                                VerticalAlignment="Center" RecognizesAccessKey="True" />
+                                VerticalAlignment="Center" RecognizesAccessKey="False" />
               <TextBlock Name="PART_Hint" Grid.Column="2" Margin="10,0,0,0" Text="{TemplateBinding (b:Pr.Hint)}"
                          FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
                          IsVisible="{TemplateBinding (b:Pr.Hint), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
@@ -86,6 +89,13 @@
     <Style Selector="^:pointerover, ^:selected">
       <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
     </Style>
+    <!-- 键盘焦点（聚焦的项同时是 :selected）：只画内侧的环（PART_Focus），不画悬停底色、字仍是 t-2；指针也在它上面时照常悬停 -->
+    <Style Selector="^:focus-visible:not(:pointerover) /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="^:focus-visible:not(:pointerover)">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
     <Style Selector="^:pressed /template/ Border#PART_LayoutRoot">
       <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
     </Style>
@@ -114,7 +124,7 @@
       <Setter Property="Fill" Value="True" />
       <Setter Property="StrokeWidth" Value="1" />
     </Style>
-    <!-- 标题项：不可点 -->
+    <!-- 标题项：不可点；行高 20（14 px × 1.45）→ 上 8 + 20 + 下 4 = 32 高，同样稿 -->
     <Style Selector="^.head">
       <Setter Property="Height" Value="NaN" />
       <Setter Property="Padding" Value="16,8,16,4" />
@@ -126,7 +136,8 @@
       <Setter Property="IsHitTestVisible" Value="False" />
       <Setter Property="Template">
         <ControlTemplate>
-          <ContentPresenter Content="{TemplateBinding Header}" Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}" />
+          <ContentPresenter Content="{TemplateBinding Header}" Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                            LineHeight="{StaticResource Lh2}" />
         </ControlTemplate>
       </Setter>
     </Style>
@@ -153,8 +164,11 @@
     </Style>
   </ControlTheme>
 
-  <!-- 菜单栏项（顶层）：高 28、左右 12、圆角 4、15 px t-2；悬停 / 展开 bg-hover + t-1，按下 bg-press；下拉面板在下方 -->
+  <!-- 菜单栏项（顶层）：高 28、左右 12、圆角 4、15 px t-2；悬停 / 展开 bg-hover + t-1，按下 bg-press；下拉面板在下方。
+       键盘焦点（Tab 到它）：外侧 2 px 处 2 px a-d 环（样稿 .pr-menuitem 用默认的 outline-offset 2px），不画悬停底色 -->
   <ControlTheme x:Key="PrMenuBarItem" TargetType="MenuItem">
+    <!-- 不裁剪：焦点环画在控件外面 -->
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Height" Value="28" />
     <Setter Property="Padding" Value="12,0" />
     <Setter Property="Background" Value="Transparent" />
@@ -180,15 +194,18 @@
                               ContentTemplate="{TemplateBinding HeaderTemplate}"
                               Foreground="{TemplateBinding Foreground}"
                               Margin="{TemplateBinding Padding}" LineHeight="{StaticResource LhBody}"
-                              VerticalAlignment="Center" RecognizesAccessKey="True" />
+                              VerticalAlignment="Center" RecognizesAccessKey="False" />
           </Border>
-          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="{TemplateBinding CornerRadius}"
+          <!-- 外侧 2..4 px 的环：圆角 = 项的 4 + 4 -->
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
                   IsVisible="False" IsHitTestVisible="False" />
+          <!-- 点在菜单栏外面：关掉，这一下照常落到下面（样稿一下就点到急停 / 别的按钮，Views/Shell/PopupMenus）；菜单栏上的点击直接给菜单栏（换菜单） -->
           <Popup Name="PART_Popup"
                  WindowManagerAddShadowHint="False"
                  Placement="BottomEdgeAlignedLeft"
                  VerticalOffset="3"
                  IsLightDismissEnabled="True"
+                 OverlayDismissEventPassThrough="True"
                  OverlayInputPassThroughElement="{Binding $parent[Menu]}"
                  IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
             <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
@@ -202,7 +219,8 @@
         </Panel>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^:pointerover, ^:open, ^:selected">
+    <!-- 选中（11.1 的菜单模式：Alt、换菜单）也是 bg-hover；Tab 来的键盘焦点只画环（同样稿 :focus-visible） -->
+    <Style Selector="^:pointerover, ^:open, ^:selected:not(:focus-visible)">
       <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
       <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
     </Style>
@@ -217,8 +235,9 @@
     </Style>
   </ControlTheme>
 
-  <!-- 菜单栏：透明、横排 -->
+  <!-- 菜单栏：透明、横排；不裁剪（菜单栏项的焦点环画在项外面 2..4 px，下边压到菜单栏的底线上，同样稿） -->
   <ControlTheme x:Key="PrMenu" TargetType="Menu">
+    <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="ItemContainerTheme" Value="{StaticResource PrMenuBarItem}" />
     <Setter Property="ItemsPanel">
@@ -230,7 +249,7 @@
       <ControlTemplate>
         <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
           <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" VerticalAlignment="Center"
-                          KeyboardNavigation.TabNavigation="Continue" />
+                          KeyboardNavigation.TabNavigation="Continue" ClipToBounds="False" />
         </Border>
       </ControlTemplate>
     </Setter>

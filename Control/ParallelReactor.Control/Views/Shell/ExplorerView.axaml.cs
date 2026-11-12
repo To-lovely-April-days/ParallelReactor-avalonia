@@ -40,6 +40,7 @@ public partial class ExplorerView : UserControl
         Tree.DoubleTapped += OnDoubleTapped;
         Tree.AddHandler(ContextRequestedEvent, OnContext, Avalonia.Interactivity.RoutingStrategies.Bubble);
         Tree.SizeChanged += (_, e) => UpdateFade(e.NewSize.Height);
+        InitKeyboard();   // 树的键盘与 Tab 停靠点（ExplorerView.Keys.cs）
     }
 
     private ExplorerVm? Vm => (DataContext as ShellVm)?.Explorer;

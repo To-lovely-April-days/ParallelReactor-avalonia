@@ -8,10 +8,16 @@
              Classes="audit-layer"
              IsHitTestVisible="False">
   <!-- Toast（样稿 .pr-toasts / .pr-toast）：距外框底 48、水平居中、上下堆叠间距 8，不接收指针；
-       每条：toast 深色底、圆角 6、内边距 11 20 11 16、15 px 白字（行高 21）、ShadowPop、最宽 820、不换行；
+       每条：toast 深色底、圆角 6、内边距 11 20 11 16、15 px 白字（行高 21）、ShadowPop、最宽 820；
+       一行放不下的换行、最多 3 行（M6，本机才有的长句：「硬件未确认：…勿直接重发」「硬件执行失败：…」—— 样稿的提示都短，nowrap 时字会画到框外；
+       省略号会把句末要做的事截掉）。语气标记停靠在左边，文字占剩下的宽度（横向 StackPanel 给文字无限宽，换行、省略都不起作用；
+       Grid 的 * 列会按文字量出来的宽度排，比剩下的宽 1 px，DockPanel 的最后一个照剩下的排）；
        语气：ok = 白色 ✓（16，描边 2.2；成功不用绿色）· info = a-line 点 · warn = n-dot 点 · err = r 点 + 2 px 白环（8 px 点）。
        类 audit-layer：提示浮在外框上面（同样稿 position: fixed 的 .pr-toasts），盖住下面的时间轴 / 页面是设计如此 —— 截图审计的重叠只在这一层里比
-       （M5 的 rv-progx 截的就是关掉「程序」之后的提示，1600 / 1366 时盖在时间轴的步骤条上）。 -->
+       （M5 的 rv-progx 截的就是关掉「程序」之后的提示，1600 / 1366 时盖在时间轴的步骤条上）。
+       层叠：在窗口里画在对话框遮罩（200）之上（ZIndex 400，ShellView）；菜单、右键菜单、悬停提示是单独的弹出窗口，总在它上面 ——
+       样稿的提示（z 400）盖在菜单（z 300）上，这里反过来（M6 认可：菜单里点了带原因的项，提示可能被打开着的菜单挡住，菜单一关就看见）。
+       读屏（M6，样稿 aria-live="polite"）：列表和每一条都是 polite 的实时区域，每条的无障碍名 = 提示文字。 -->
   <UserControl.Styles>
     <!-- 阴影（ShadowPop：0 8 28）画在框外：ItemsControl、模板里的 ItemsPresenter、每条的 ContentPresenter 都不裁剪
          （Avalonia 11.1 的模板控件默认 ClipToBounds=true，它们正好是提示那么大 —— 阴影整个被裁掉；同 DialogHost） -->
@@ -19,7 +25,8 @@
       <Setter Property="ClipToBounds" Value="False" />
     </Style>
   </UserControl.Styles>
-  <ItemsControl Name="ToastList" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48">
+  <ItemsControl Name="ToastList" ItemsSource="{Binding Toasts.Items}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,48"
+                AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="提示">
     <ItemsControl.ItemsPanel>
       <ItemsPanelTemplate>
         <StackPanel Spacing="8" />
@@ -28,8 +35,9 @@
     <ItemsControl.ItemTemplate>
       <DataTemplate x:DataType="sv:ToastItem">
         <Border HorizontalAlignment="Center" MaxWidth="820" Padding="16,11,20,11" CornerRadius="{StaticResource Radius}"
-                Background="{StaticResource ToastBrush}" BoxShadow="{StaticResource ShadowPop}">
-          <StackPanel Orientation="Horizontal" Spacing="10">
+                Background="{StaticResource ToastBrush}" BoxShadow="{StaticResource ShadowPop}"
+                AutomationProperties.LiveSetting="Polite" AutomationProperties.Name="{Binding Text}">
+          <DockPanel>
             <c:IconView Icon="check" Size="16" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}" VerticalAlignment="Center"
                         IsVisible="{Binding IsOk}" />
             <Panel Width="8" Height="8" VerticalAlignment="Center" ClipToBounds="False" IsVisible="{Binding IsErr}">
@@ -38,9 +46,9 @@
             </Panel>
             <Ellipse Width="8" Height="8" Fill="{StaticResource ALineBrush}" VerticalAlignment="Center" IsVisible="{Binding IsInfo}" />
             <Ellipse Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="{Binding IsWarn}" />
-            <TextBlock Text="{Binding Text}" FontSize="{StaticResource FsBody}" LineHeight="{StaticResource LhBody}" Foreground="{StaticResource TInvBrush}"
-                       TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-          </StackPanel>
+            <TextBlock Margin="10,0,0,0" Text="{Binding Text}" FontSize="{StaticResource FsBody}" LineHeight="{StaticResource LhBody}"
+                       Foreground="{StaticResource TInvBrush}" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          </DockPanel>
         </Border>
       </DataTemplate>
     </ItemsControl.ItemTemplate>

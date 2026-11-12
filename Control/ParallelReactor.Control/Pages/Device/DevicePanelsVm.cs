@@ -474,6 +474,7 @@ public sealed partial class DeviceLogVm : ObservableObject
 /// <summary>
 /// 「报警与事件」里的一张报警卡（device.js alarmHTML）：图标（错误 alert 红 / 提醒 ⚠ t-1 / 已确认 t-3）· 文字（15/600，可以折行，断行保护）·
 /// 「10:09:42 · 报警 · 未确认」（悬停全文带 RV 与代码）· 「确认」（未确认才有；原因 = 守卫，可用时提示「确认报警不需要控制权，连接正常就可用」）。
+/// 「确认」允许并发执行（M6）：AsyncRelayCommand 默认在请求回来之前把按钮变成没有原因的禁用；执行时照样再查一次守卫。
 /// </summary>
 public sealed partial class LogAlarmVm : ObservableObject
 {
@@ -484,7 +485,7 @@ public sealed partial class LogAlarmVm : ObservableObject
         _d = d;
         Key = a.Key;
         Id = a.Id;
-        AckCommand = new AsyncRelayCommand(() => _d.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: Id)));
+        AckCommand = new AsyncRelayCommand(() => _d.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: Id)), AsyncRelayCommandOptions.AllowConcurrentExecutions);
     }
 
     public string Key { get; }

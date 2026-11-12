@@ -42,11 +42,20 @@
       <Setter Property="MaxLines" Value="2" />
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
-    <!-- 分区（.pr-insp-sec）：上边 1 px line-soft、上下 16 -->
+    <!-- 分区（.pr-insp-sec）：上边 1 px line-soft、上下 16。
+         「设置」链接跳过来时提亮 1.2 s（类 flash，样稿 .pr-insp-sec.is-flash：a-tint 底 + 8 px a-tint 外圈）。进出 400 ms 的过渡由 InspectorView 在提亮时给
+         （不冻结时才给：这里的样式比全局的 .frozen 近，写在这里会盖掉冻结）。底色平时是透明、外圈平时是 0 px 透明的一圈（不是没有）：
+         过渡要从一个值变到另一个值（没有阴影时 Avalonia 不插值，外圈会在最后一刻才整圈出现，见 InspectorView.NoRing） -->
     <Style Selector="Border.sec">
       <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
       <Setter Property="BorderThickness" Value="0,1,0,0" />
       <Setter Property="Padding" Value="0,16" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BoxShadow" Value="{x:Static vs:InspectorView.NoRing}" />
+    </Style>
+    <Style Selector="Border.sec.flash">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BoxShadow" Value="{x:Static vs:InspectorView.FlashRing}" />
     </Style>
     <!-- 状态格（.pr-insp-state）：和按钮一样大（36）、bg-sunken、圆角 6、15/500 t-2，点 / 图标 + 字居中，间距 7 -->
     <Style Selector="Border.state">
@@ -211,15 +220,19 @@
     <DataTemplate DataType="sh:LeaseBoxVm" x:DataType="sh:LeaseBoxVm">
       <Border Classes="lease" Classes.req="{Binding IsRequested}" Classes.conn="{Binding IsConnecting}">
         <StackPanel>
-          <DockPanel>
-            <Button DockPanel.Dock="Right" Classes="sm" Margin="8,0,0,0" Content="{Binding BtnLabel}" b:Pr.Icon="{Binding BtnIcon}"
-                    b:Pr.Reason="{Binding BtnReason}" Command="{Binding BtnCommand}" IsVisible="{Binding HasBtn}" VerticalAlignment="Center" />
-            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-              <TextBlock Classes="t14" Text="控制权" VerticalAlignment="Center" IsVisible="{Binding ShowKey}" />
+          <!-- 「控制权 [徽标] … [按钮]」一行（.pr-insp-lease-top：flex-wrap，间距 8，按钮 margin-left: auto）：放不下时徽标 / 按钮换到下一行，
+               按钮在它那一行靠右（M6：真机第 5 种「远程控制中（其他客户端 X）」的长徽标以前在一行里放不下、压出卡片）。
+               一整行都放不下的完整徽标换成短的「其他客户端 X」（cs:FirstFit：省略号会切掉持有者的名字；悬停全文），再放不下才省略 -->
+          <cs:WrapEnd RowGap="8">
+            <TextBlock Classes="t14" Text="控制权" Margin="0,0,8,0" VerticalAlignment="Center" IsVisible="{Binding ShowKey}" />
+            <cs:FirstFit VerticalAlignment="Center">
               <pr:LeaseBadge State="{Binding LeaseState}" Text="{Binding LeaseText}" ToolTip.Tip="{Binding LeaseTip}" IsVisible="{Binding ShowLease}" />
+              <pr:LeaseBadge State="{Binding LeaseState}" Text="{Binding LeaseShortText}" ToolTip.Tip="{Binding LeaseTip}" IsVisible="{Binding ShowLeaseShort}" />
               <pr:ConnBadge State="{Binding ConnState}" Text="{Binding ConnText}" ToolTip.Tip="{Binding ConnTip}" IsVisible="{Binding !ShowLease}" />
-            </StackPanel>
-          </DockPanel>
+            </cs:FirstFit>
+            <Button Classes="sm" Margin="8,0,0,0" Content="{Binding BtnLabel}" b:Pr.Icon="{Binding BtnIcon}"
+                    b:Pr.Reason="{Binding BtnReason}" Command="{Binding BtnCommand}" IsVisible="{Binding HasBtn}" VerticalAlignment="Center" />
+          </cs:WrapEnd>
           <TextBlock Classes="t14 wrap" Margin="0,8,0,0" LineHeight="21" MaxLines="3" TextTrimming="CharacterEllipsis"
                      Text="{Binding Note, Converter={x:Static th:TextConverters.Keep}}" ToolTip.Tip="{Binding NoteTip}" />
           <Button Theme="{StaticResource PrPrimary}" HorizontalAlignment="Stretch" Margin="0,10,0,0" Content="{Binding CtaLabel}" b:Pr.Icon="{Binding CtaIcon}"
@@ -727,13 +740,13 @@
             <!-- 检查器对象 ≠ 当前页签：顶部提示条（a-tint 底、a-soft 边），避免对错的设备操作 -->
             <Border Margin="0,-4,0,14" Padding="12,8,8,8" BorderBrush="{StaticResource ASoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
                     Background="{StaticResource ATintBrush}" IsVisible="{Binding Inspector.HasOther}">
-              <!-- 图标 · 说明（放不下时换行）…「回到 …」靠右（样稿 flex-wrap + margin-left: auto） -->
+              <!-- 图标 · 说明 …「回到 …」靠右（样稿 flex-wrap + margin-left: auto）。说明是一整句（样稿一个 span，名字加粗）：
+                   跟图标放不下时整句换到下一行、比一行还宽时在句子里面折行（M6：以前「检查器：」/ 名字 /「（不是当前页签）」三块各自换行，
+                   1366 下比样稿少一行，下面的内容整体高 40 px） -->
               <cs:WrapEnd RowGap="2">
                 <c:IconView Icon="info" Size="16" Foreground="{StaticResource ADBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
-                <TextBlock Text="检查器：" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource Lh2}" />
-                <TextBlock Text="{Binding Inspector.OtherName}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
-                           LineHeight="{StaticResource Lh2}" TextWrapping="Wrap" />
-                <TextBlock Text="（不是当前页签）" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" LineHeight="{StaticResource Lh2}" />
+                <pr:SegText Segments="{Binding Inspector.OtherSegments}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}"
+                            LineHeight="{StaticResource Lh2}" TextWrapping="Wrap" />
                 <Button Theme="{StaticResource PrLink}" Margin="6,0,0,0" Content="{Binding Inspector.OtherBack}" Command="{Binding Inspector.BackCommand}" />
               </cs:WrapEnd>
             </Border>

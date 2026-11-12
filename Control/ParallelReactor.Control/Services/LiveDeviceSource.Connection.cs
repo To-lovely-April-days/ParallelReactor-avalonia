@@ -746,6 +746,8 @@ public sealed partial class LiveDeviceSource
         c.LeaseServerViewChanged += OnServerView;
         c.ForbiddenRole += OnForbidden;
         c.LeaseCancelledRequestSettled += OnCancelSettled;
+        // M6：硬件未确认的命令的最终结果（opEvent「<action>.result」，LiveDeviceSource.Hw.cs）
+        c.OpEventReceived += OnOpEvent;
         _attachedTo = c;
     }
 
@@ -765,7 +767,10 @@ public sealed partial class LiveDeviceSource
         c.LeaseServerViewChanged -= OnServerView;
         c.ForbiddenRole -= OnForbidden;
         c.LeaseCancelledRequestSettled -= OnCancelSettled;
+        c.OpEventReceived -= OnOpEvent;
         _attachedTo = null;
+        // 这条连接上还在等的硬件结果不会再来了
+        ForgetHw();
     }
 
     private void OnTelemetry(TelemetrySnapshot f)
@@ -981,6 +986,8 @@ public sealed partial class LiveDeviceSource
         }
         // 台账读 / 写失败：提示一次（任何一次写盘都可能失败，这里每秒查一下）
         ReportLedgerError();
+        // 硬件未确认的命令：等太久的不再等、到齐的结果放出去（LiveDeviceSource.Hw.cs）
+        TickHw();
         var c = Connection;
         if (c != null && (c.Lease.State is ClientLease.Requesting or ClientLease.Lost || DenySeconds(c) > 0)) MarkDirty(SourceChange.Lease);
     }
@@ -989,11 +996,16 @@ public sealed partial class LiveDeviceSource
 
     private void OnServerView() => MarkDirty(SourceChange.Lease);
 
+    /// <summary>
+    /// WS 报警（出现 / 确认 / 解除，HMI 每次都推整条）：记进报警簿；只在一条报警出现时提示一次，带设备名（M6，见 LiveDeviceSource.Hw.cs 的 IsRaise）——
+    /// 错误报警 err「3号机 · 报警 RV11：超压」，提醒 warn。确认、解除不再提示（以前确认 / 解除错误报警时又红一次，就在本机「…已确认」的提示旁边）。
+    /// </summary>
     private void OnAlarm(AlarmMsg a)
     {
+        bool raised = IsRaise(a.Alarm);
         if (_alarmBook.Apply(a, _bootId)) MarkDirty(SourceChange.Alarms);
-        if (a.Alarm.Level is "err" or "error" || a.Alarm.State == "active" && a.Alarm.Level == "warn")
-            Notice?.Invoke("报警 " + a.Alarm.Rv + "：" + a.Alarm.Title, a.Alarm.Level is "err" or "error" ? ToastKind.Err : ToastKind.Warn);
+        if (raised)
+            Notice?.Invoke(AlarmNotice(Config.Alias, a.Alarm), AlarmNoticeTone(a.Alarm));
     }
 
     private void OnEvent(EventMsg e)
@@ -1030,6 +1042,8 @@ public sealed partial class LiveDeviceSource
     private void OnRestartedCore(bool refetch)
     {
         _alarmBook.Clear();
+        // 旧启动的命令的最终结果不会再来了
+        ForgetHw();
         // 曲线缓冲：旧启动的数据作废（提示里写「曲线缓冲已清空」）
         _history.Data.Clear();
         // 令牌的角色在 HMI 的配置里，改了要重启 HMI 才生效：重启后之前学到的权限（R9）作废，下一个 403 再学（M3 复核）

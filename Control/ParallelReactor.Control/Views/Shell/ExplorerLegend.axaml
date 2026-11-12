@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              x:Class="ParallelReactor.Control.Views.Shell.ExplorerLegend">
-  <!-- 状态图例（资源管理器标题栏 ⓘ 弹出；样稿 shell.js legendHTML / .pr-xlegend）：宽 360、内边距 14 16；
+  <!-- 状态图例（资源管理器标题栏 ⓘ 弹出；样稿 shell.js legendHTML / .pr-xlegend）：宽 360 含内边距 14 16（内容 328）；标题 15 px 600、行高 22（15 × 1.45）；
        每行 32 高：状态点（18 列）· 名称（86 列，500 t-1）· 说明（14 px t-3）；最后一段说明上边 line-faint。颜色只表示三件事。 -->
   <UserControl.Styles>
     <Style Selector="Grid.lg">
@@ -20,8 +20,8 @@
       <Setter Property="TextWrapping" Value="NoWrap" />
     </Style>
   </UserControl.Styles>
-  <StackPanel Width="360" Margin="16,14">
-    <TextBlock Text="状态图例" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Margin="0,0,0,8" />
+  <StackPanel Width="328" Margin="16,14">
+    <TextBlock Text="状态图例" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="22" Margin="0,0,0,8" />
     <Grid Classes="lg" ColumnDefinitions="18,8,86,8,*">
       <pr:KeyDot Key="React" HorizontalAlignment="Center" VerticalAlignment="Center" />
       <TextBlock Grid.Column="2" Classes="k" Text="运行中" />

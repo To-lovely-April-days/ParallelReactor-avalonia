@@ -169,11 +169,13 @@
       <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="sh:DialogVm">
           <!-- 键盘（M3 复核）：打开时焦点移到框里第一个位置上一个看不见的锚点（0 × 0、不在 Tab 顺序里、没有焦点外观）；
-               Tab 从它进到对话框的第一个控件，只在这一组里循环（TabNavigation = Cycle），到不了下面的页面（见 DialogHost.axaml.cs） -->
+               Tab 从它进到对话框的第一个控件，只在这一组里循环（TabNavigation = Cycle），到不了下面的页面（见 DialogHost.axaml.cs）。
+               读屏（M6，样稿 role="dialog" + 标题）：对话框框的无障碍名 = 标题 -->
           <Panel KeyboardNavigation.TabNavigation="Cycle">
             <Border Name="FocusAnchor" Width="0" Height="0" HorizontalAlignment="Left" VerticalAlignment="Top" Focusable="True" IsTabStop="False" />
             <pr:DialogFrame Width="{Binding Width}" Title="{Binding Title}" Sub="{Binding Sub}" Icon="{Binding Icon}" IsDanger="{Binding IsDanger}"
-                            Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}" />
+                            Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}"
+                            AutomationProperties.Name="{Binding Title}" />
           </Panel>
         </DataTemplate>
       </ContentControl.ContentTemplate>

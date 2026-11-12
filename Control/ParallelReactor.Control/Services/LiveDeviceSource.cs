@@ -507,6 +507,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     /// <summary>
     /// 执行一个操作（见 <see cref="IDeviceSource.ExecAsync"/>）。发给 HMI 的命令的结局也是「REST 通不通」的证据（<see cref="StopReachable"/>）：
     /// HMI 回了 HTTP（成功或 4xx / 5xx）→ 通；网络层失败 / 超时 → 不通（例如断线时尽力发出的急停没送到：这台立即只剩 none 类）。
+    /// 命令回 202 + HW_UNCONFIRMED 时记下 opId，等 HMI 的最终结果再提示（M6，LiveDeviceSource.Hw.cs）。
     /// </summary>
     public async Task<ActionOutcome> ExecAsync(DeviceAction action, ActionPayload a, CancellationToken ct)
     {
@@ -515,9 +516,10 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             or DeviceAction.Rename or DeviceAction.Remove);
         try
         {
-            var o = await ExecCoreAsync(action, a, ct).ConfigureAwait(true);
+            var hw = new List<string>();
+            var o = await ExecCoreAsync(action, a, hw, ct).ConfigureAwait(true);
             if (rest) NoteRestOutcome(c!, null, ct);
-            return o;
+            return hw.Count > 0 && !_disposed ? AwaitHardware(action, a, hw, o) : o;
         }
         catch (Exception ex) when (rest)
         {
@@ -526,7 +528,8 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         }
     }
 
-    private async Task<ActionOutcome> ExecCoreAsync(DeviceAction action, ActionPayload a, CancellationToken ct)
+    /// <summary>执行；<paramref name="hw"/> 收集回 202 + HW_UNCONFIRMED 的命令的 opId（结果的警告都经 <see cref="Hw"/> 取）。</summary>
+    private async Task<ActionOutcome> ExecCoreAsync(DeviceAction action, ActionPayload a, List<string> hw, CancellationToken ct)
     {
         string rv = "RV" + a.N;
         int n = a.N ?? 0;
@@ -553,12 +556,12 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         switch (action)
         {
             case DeviceAction.Enable:
-                return Ok(rv + " 已启用", (await c.Control.EnableChannelAsync(n, ct).ConfigureAwait(true)).Warnings);
+                return Ok(rv + " 已启用", Hw(await c.Control.EnableChannelAsync(n, ct).ConfigureAwait(true), hw));
             case DeviceAction.Disable:
             {
                 bool idle = Read(n).Own == StateKey.Idle;
                 var r = await c.Rest.DisableChannelAsync(n, ct).ConfigureAwait(true);
-                return idle ? Ok(rv + " 本来就是停用 · 已发送停用", r.Warnings, ToastKind.Info, true) : Ok(rv + " 已停用", r.Warnings, ToastKind.Warn);
+                return idle ? Ok(rv + " 本来就是停用 · 已发送停用", Hw(r, hw), ToastKind.Info, true) : Ok(rv + " 已停用", Hw(r, hw), ToastKind.Warn);
             }
             case DeviceAction.Start:
             {
@@ -570,41 +573,41 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 if (Ledger.CanRun(n, SnapOf(n)?.Program, BootIdNow) && Ledger.Entry(n) is { } doc)
                 {
                     var r = await c.Control.RunProgramAsync(n, null, IdempotencyKeys.New("pc-start-rv" + n), ct).ConfigureAwait(true);
-                    return Ok(rv + " 已启动 · 程序「" + doc.Name + "」", r.Warnings);
+                    return Ok(rv + " 已启动 · 程序「" + doc.Name + "」", Hw(r, hw));
                 }
                 double? sp = a.Sp ?? Latest?.Channels.FirstOrDefault(x => x.Id == n)?.TempSpC;
                 var s = await c.Control.StartChannelAsync(n, sp, ct).ConfigureAwait(true);
-                return Ok(rv + " 已启动 · 加热至 " + (sp is double v ? JsNumber.ToString(v) : "—") + " ℃", s.Warnings);
+                return Ok(rv + " 已启动 · 加热至 " + (sp is double v ? JsNumber.ToString(v) : "—") + " ℃", Hw(s, hw));
             }
             case DeviceAction.Stop:
             {
                 bool was = running(n);
                 var r = await c.Rest.StopChannelAsync(n, ct).ConfigureAwait(true);
-                return was ? Ok(rv + " 已停止", r.Warnings, ToastKind.Warn) : Ok(rv + " 未在运行 · 已发送停止", r.Warnings, ToastKind.Info, true);
+                return was ? Ok(rv + " 已停止", Hw(r, hw), ToastKind.Warn) : Ok(rv + " 未在运行 · 已发送停止", Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.HeatStart:
             {
                 double? sp = a.Sp ?? Latest?.Channels.FirstOrDefault(x => x.Id == n)?.TempSpC;
                 var r = await c.Control.StartHeatAsync(n, sp, ct).ConfigureAwait(true);
-                return Ok(rv + " 开始加热 · 设定 " + (sp is double v ? JsNumber.ToString(v) : "—") + " ℃", r.Warnings);
+                return Ok(rv + " 开始加热 · 设定 " + (sp is double v ? JsNumber.ToString(v) : "—") + " ℃", Hw(r, hw));
             }
             case DeviceAction.HeatStop:
             {
                 bool heating = Read(n).Heating;
                 var r = await c.Rest.StopHeatAsync(n, ct).ConfigureAwait(true);
-                return heating ? Ok(rv + " 已停止加热", r.Warnings) : Ok(rv + " 未在加热 · 已发送停止加热", r.Warnings, ToastKind.Info, true);
+                return heating ? Ok(rv + " 已停止加热", Hw(r, hw)) : Ok(rv + " 未在加热 · 已发送停止加热", Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.SetSp:
             {
                 double sp = a.Sp ?? throw new ArgumentException("请输入设定温度");
                 var r = await c.Control.SetSetpointAsync(n, sp, ct).ConfigureAwait(true);
-                return Ok(rv + " 设定温度 " + JsNumber.ToString(sp) + " ℃", r.Warnings);
+                return Ok(rv + " 设定温度 " + JsNumber.ToString(sp) + " ℃", Hw(r, hw));
             }
             case DeviceAction.ProgLoad:
             {
                 // 按型号的程序库在 M7：下发本机这个反应釜的草稿（同旧界面的「下发程序」；反应釜页的程序库 / 检查器的下拉都是它，id「draft-n」）
                 var doc = Drafts.Get(n);
-                return await UploadProgramAsync(n, doc, ct, libraryId: a.Id).ConfigureAwait(true);
+                return await UploadProgramAsync(n, doc, ct, libraryId: a.Id, hw: hw).ConfigureAwait(true);
             }
             case DeviceAction.ProgRun:
             {
@@ -612,31 +615,31 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 // 下发之后触屏端接管过控制的同样不写：设备上那份可能已经改过，不一定还是台账里的程序（复核）
                 string? name = Ledger.Match(n, SnapOf(n)?.Program, BootIdNow) is { Usable: true, Entry: { LocalControl: false } d } ? d.Name : null;
                 var r = await c.Control.RunProgramAsync(n, null, IdempotencyKeys.New("pc-run-rv" + n), ct).ConfigureAwait(true);
-                return Ok(rv + " 程序" + (string.IsNullOrEmpty(name) ? "" : "「" + name + "」") + "开始运行", r.Warnings);
+                return Ok(rv + " 程序" + (string.IsNullOrEmpty(name) ? "" : "「" + name + "」") + "开始运行", Hw(r, hw));
             }
             case DeviceAction.ProgAbort:
             {
                 bool was = Latest?.Channels.FirstOrDefault(x => x.Id == n)?.Program?.Running ?? false;
                 var r = await c.Rest.AbortProgramAsync(n, ct).ConfigureAwait(true);
-                return was ? Ok(rv + " 程序已中止", r.Warnings, ToastKind.Warn) : Ok(rv + " 没有运行中的程序 · 已发送中止", r.Warnings, ToastKind.Info, true);
+                return was ? Ok(rv + " 程序已中止", Hw(r, hw), ToastKind.Warn) : Ok(rv + " 没有运行中的程序 · 已发送中止", Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.StirOn:
             {
                 int rpm = (int)Math.Round(a.Rpm ?? Latest?.Stir.RpmSp ?? 300);
                 var r = await c.Control.SetStirAsync(true, rpm, ct).ConfigureAwait(true);
-                return Ok("共用搅拌已启动 · " + rpm + " rpm", r.Warnings);
+                return Ok("共用搅拌已启动 · " + rpm + " rpm", Hw(r, hw));
             }
             case DeviceAction.StirOff:
             {
                 bool on = Latest?.Stir.On ?? false;
                 var r = await c.Rest.StopStirAsync(ct).ConfigureAwait(true);
-                return on ? Ok("共用搅拌已停止", r.Warnings) : Ok("共用搅拌未运行 · 已发送停止", r.Warnings, ToastKind.Info, true);
+                return on ? Ok("共用搅拌已停止", Hw(r, hw)) : Ok("共用搅拌未运行 · 已发送停止", Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.StirSet:
             {
                 int rpm = (int)Math.Round(a.Rpm ?? throw new ArgumentException("请输入转速"));
                 var r = await c.Control.SetStirAsync(null, rpm, ct).ConfigureAwait(true);
-                return Ok("共用搅拌转速 " + rpm + " rpm", r.Warnings);
+                return Ok("共用搅拌转速 " + rpm + " rpm", Hw(r, hw));
             }
             case DeviceAction.RunAll:
             {
@@ -647,7 +650,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 foreach (var rvN in RunAllTargets())
                 {
                     var r = await c.Control.RunProgramAsync(rvN, null, IdempotencyKeys.New("pc-runall-rv" + rvN), ct).ConfigureAwait(true);
-                    warnings.AddRange(r.Warnings);
+                    warnings.AddRange(Hw(r, hw));
                     k++;
                 }
                 return Ok("已启动 " + k + " 个反应釜", warnings);
@@ -659,31 +662,31 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 // 停不停搅拌只看 StopAllStopsStirring（默认 = ControlOptions.StopAllStopsStirring = true）→ POST /stop-all {stopStir}
                 bool stir = StopAllStopsStirring;
                 var r = await c.Rest.StopAllAsync(stir, ct).ConfigureAwait(true);
-                return k > 0 ? Ok(StopAllText.Stopped(k, stir), r.Warnings, ToastKind.Warn) : Ok(StopAllText.NothingRunning(stir), r.Warnings, ToastKind.Info, true);
+                return k > 0 ? Ok(StopAllText.Stopped(k, stir), Hw(r, hw), ToastKind.Warn) : Ok(StopAllText.NothingRunning(stir), Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.Estop:
             {
                 var r = await c.Rest.EstopAsync("PC 急停", ct).ConfigureAwait(true);
-                return Ok("急停已发送 · 复位需在触屏操作", r.Warnings, ToastKind.Err);
+                return Ok("急停已发送 · 复位需在触屏操作", Hw(r, hw), ToastKind.Err);
             }
             case DeviceAction.SessionStart:
             {
                 var now = _now();
                 string id = "PT-" + now.ToString("yyyyMMdd-HHmm", System.Globalization.CultureInfo.InvariantCulture) + (Sn.Length > 0 ? "-" + Sn : "");
                 var r = await c.Rest.BeginSessionAsync(id, a.Text, IdempotencyKeys.New("pc-session"), ct).ConfigureAwait(true);
-                return Ok("会话 " + (r.Result?.Id ?? id) + " 开始记录", r.Warnings);
+                return Ok("会话 " + (r.Result?.Id ?? id) + " 开始记录", Hw(r, hw));
             }
             case DeviceAction.SessionMark:
             {
                 string text = !string.IsNullOrEmpty(a.Text) ? a.Text : a.N is int mn && mn != 0 ? "RV" + mn + " 标记" : "标记";
                 var r = await c.Rest.AddMarkerAsync(text, IdempotencyKeys.New("pc-mark"), ct).ConfigureAwait(true);
-                return Ok("已打标记「" + text + "」", r.Warnings);
+                return Ok("已打标记「" + text + "」", Hw(r, hw));
             }
             case DeviceAction.SessionEnd:
             {
                 var id = Session?.Id;
                 var r = await c.Rest.EndSessionAsync(ct).ConfigureAwait(true);
-                return Ok("会话 " + id + " 已结束", r.Warnings);
+                return Ok("会话 " + id + " 已结束", Hw(r, hw));
             }
             case DeviceAction.AlarmAck:
             {
@@ -692,7 +695,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 // 确认成功：本地先标上（确认人 = 本机这条连接的客户端名，HMI 没有确认人字段，A6），不等 WS 推来 ack 状态
                 if (a.Id is { } ackId && _alarmBook.MarkAcked(ackId, LeaseClientName)) MarkDirty(SourceChange.Alarms);
                 string what = al is null || al.Level != AlarmLevel.Err ? "提醒" : al.Code == AlarmCodes.PressureHigh ? "超压报警" : al.Code == AlarmCodes.Estop ? "急停报警" : "报警";
-                return Ok((al?.Ch is int ac ? "RV" + ac + " " : "") + what + "已确认", r.Warnings);
+                return Ok((al?.Ch is int ac ? "RV" + ac + " " : "") + what + "已确认", Hw(r, hw));
             }
             case DeviceAction.LeaseRequest:
                 await RequestLeaseAsync().ConfigureAwait(true);
@@ -715,7 +718,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     /// 下发程序到第 n 路（PUT /channels/{n}/program，需要控制权）并记进程序台账（「启动」「全部运行」与反应釜页的程序显示用，D6 / R5）：
     /// 启动号、下发时刻（本机 + 设备时钟）、下发那一刻这一路的上一次执行（比它新的执行才可能是这个程序）、本机客户端名、命令的 opId。
     /// </summary>
-    public async Task<ActionOutcome> UploadProgramAsync(int n, ProgramDoc doc, CancellationToken ct, string? libraryId = null)
+    public async Task<ActionOutcome> UploadProgramAsync(int n, ProgramDoc doc, CancellationToken ct, string? libraryId = null, List<string>? hw = null)
     {
         var c = Conn0;
         // 下发之前的这一路（PUT 返回之前 HMI 上还是旧的执行）：比它新的执行才可能是这个程序
@@ -738,7 +741,7 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         }
         MarkDirty(SourceChange.Programs);
         ReportLedgerError();
-        return ActionOutcome.Done(Config.Alias + " · 程序「" + doc.Name + "」已下发到 RV" + n, ToastKind.Ok, r.Warnings);
+        return ActionOutcome.Done(Config.Alias + " · 程序「" + doc.Name + "」已下发到 RV" + n, ToastKind.Ok, Hw(r, hw));
     }
 
     /// <summary>已经提示过的台账读取问题（<see cref="ProgramLedger.LoadError"/>，同一句只提示一次）。</summary>

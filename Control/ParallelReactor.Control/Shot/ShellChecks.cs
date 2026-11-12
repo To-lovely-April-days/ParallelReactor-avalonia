@@ -428,6 +428,12 @@ public static partial class ShellChecks
         await ProgramChecks(window, vm, dir, width, Check, Info, lines);
         await OrderChecks(window, vm, dir, width, Check, Info, lines);
         await M5ReviewChecks(window, vm, dir, width, Check, Info, lines);
+        // M6 各组的核对（ShellChecks.M6G1.cs … M6G5.cs，每组一个文件；每组跑完把演示数据和外框恢复原样）
+        await M6G1Checks(window, vm, dir, width, Check, Info, lines);
+        await M6G2Checks(window, vm, dir, width, Check, Info, lines);
+        await M6G3Checks(window, vm, dir, width, Check, Info, lines);
+        await M6G4Checks(window, vm, dir, width, Check, Info, lines);
+        await M6G5Checks(window, vm, dir, width, Check, Info, lines);
         return (fails, lines);
     }
 

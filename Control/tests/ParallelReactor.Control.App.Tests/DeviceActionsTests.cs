@@ -167,8 +167,9 @@ public class DeviceActionsTests
         var o = await d.Actions.RunAsync(DeviceAction.Stop, ActionPayload.Ch(1));
         Assert.True(o.Ok);
         Assert.Equal(1, fake.Http.Count("POST", "^/channels/1/stop$"));
-        Assert.Contains(toasts, t => t.Item1 == "1号机 · RV1 未在运行 · 已发送停止" && t.Item2 == ToastKind.Info);
-        Assert.Contains(toasts, t => t.Item1 == "1号机 · " + DeviceActions.HwUnconfirmedText && t.Item2 == ToastKind.Warn);
+        // M6：硬件未确认时只提示一条 warn（代替 info 结果 + 警告两条）
+        Assert.Contains(toasts, t => t.Item1 == "1号机 · RV1 停止 · " + DeviceActions.HwUnconfirmedText && t.Item2 == ToastKind.Warn);
+        Assert.DoesNotContain(toasts, t => t.Item1 == "1号机 · RV1 未在运行 · 已发送停止");
         await f.DisposeAsync();
         Assert.Equal(0, fake.TotalHandlers);
     }

@@ -5,6 +5,7 @@ using System.Linq;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Control.Controls.Pr;
 using ParallelReactor.Control.Fleet;
 using ParallelReactor.Control.Pages;
 
@@ -62,6 +63,11 @@ public sealed partial class InspectorVm : ObservableObject
     [ObservableProperty] private bool _hasOther;
     [ObservableProperty] private string _otherName = "";
     [ObservableProperty] private string _otherBack = "";
+    /// <summary>
+    /// 提示条的那一句「检查器：<b>3号机 · RV11</b>（不是当前页签）」：一段文字（同样稿一个 span，名字加粗）—— 放不下时整句换到图标下面、句子里面再折行
+    /// （M6：以前拆成三块分别换行，1366 下两行，样稿是三行）。
+    /// </summary>
+    [ObservableProperty] private IReadOnlyList<TextSeg> _otherSegments = Array.Empty<TextSeg>();
 
     /// <summary>「设置」链接（共用转速）：选中设备后请视图把对应的输入框滚到可见处并聚焦（参数 = 输入的名字，「rpm」）。</summary>
     public event EventHandler<string>? FocusRequested;
@@ -112,6 +118,8 @@ public sealed partial class InspectorVm : ObservableObject
             var pd = _shell.Fleet.Device(page!.K)!;
             OtherName = d.Alias + (r != null ? " · RV" + r.N : "");
             OtherBack = "回到 " + pd.Alias + (page.Page == PageKind.Reactor ? " · RV" + page.N : "");
+            if (OtherSegments.Count != 3 || OtherSegments[1].Text != OtherName)
+                OtherSegments = new[] { new TextSeg("检查器："), new TextSeg(OtherName, Bold: true), new TextSeg("（不是当前页签）") };
             _back = (page.K, page.Page == PageKind.Reactor ? page.N : 0);
         }
 

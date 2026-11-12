@@ -27,7 +27,7 @@ namespace ParallelReactor.Control.Shot;
 /// 1号机、2号机在线（1号机申请控制权 → autoGrant → 远程控制中；2号机被其他客户端持有、一条超压报警），3号机主机不通（「连接失败 · N s 后重试」），
 /// 4号机连上后断线（「连接中断 · 重连中 N s」）。配置只在内存里（不读不写 devices.json），时钟是真的（倒计时照常走）。
 /// <list type="bullet">
-/// <item>有 PR_CONTROL_SHOT=目录：截 fake2-overview / fake2-device1 / fake2-reactor11 / fake2-device3 / fake2-device4 / fake2-devices（设备管理对话框）、
+/// <item>有 PR_CONTROL_SHOT=目录：截 fake2-overview / fake2-device1 / fake2-reactor11 / fake2-device3 / fake2-device4 / fake2-device2（M6：被其他客户端持有）/ fake2-devices（设备管理对话框）、
 ///   fake2-client（本机客户端名）/ fake2-exit（退出确认：1号机申请中，M3 复核新加）-&lt;w&gt;.png，各写 .audit.txt；
 ///   shot.log 记每台的连接 / 控制权 / 失败原因与出现过的提示。审计有问题退出码 1，异常退出码 2（error.txt）。</item>
 /// <item>没有 PR_CONTROL_SHOT：打开主窗口（交互走查，UiTicker 照常每秒刷新）。</item>
@@ -46,6 +46,9 @@ public static partial class ShotRunner
         // 选中断线的两台：检查器的连接卡（从未连上「正在连接 …」/ 连上过「重连中 N s · 数据停在 …」+「立即重连」）、资源管理器滚到这台
         ("fake2-device3", Route.Device(3), null),
         ("fake2-device4", Route.Device(4), null),
+        // M6：选中被其他客户端持有的 2号机（第 5 种控制权）：检查器控制权卡的长徽标「远程控制中（其他客户端 PC-工位2）」—— 那一行放不下时换行、
+        // 一整行都放不下时换短的「其他客户端 PC-工位2」（悬停全文），不再压出卡片；设备页 2 的头部是完整的徽标
+        ("fake2-device2", Route.Device(2), null),
         ("fake2-devices", Route.Overview, "devices"),
     };
 

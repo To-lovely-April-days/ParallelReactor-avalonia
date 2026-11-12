@@ -13,6 +13,12 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="Template">
       <ControlTemplate>
+        <Panel>
+        <!-- 放大（:max，样稿 .pr-panel.is-max 的 box-shadow「0 0 0 1px line-strong, shadow-dlg」）：框外 1 px line-strong 的圈 + ShadowDlg，都画在框外。
+             模板控件默认裁剪到自己的框，平时看不见（总览、设备页同样稿：放大的面板正好铺满裁剪区）；反应釜页的面板网格放大时把裁剪去掉
+             （Views/Pages/Reactor/ReactorGridPanel），圈和阴影盖到上方的状态条上，同样稿 -->
+        <Border Name="PART_MaxShade" Background="{TemplateBinding Background}" BoxShadow="{StaticResource ShadowDlg}" IsVisible="False" IsHitTestVisible="False" />
+        <Border Name="PART_MaxRing" Margin="-1" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1" IsVisible="False" IsHitTestVisible="False" />
         <DockPanel Background="{TemplateBinding Background}">
           <!-- 标题栏的底色与间距写在下面的样式里（不写成模板里的本地值）：页面可以按类改（总览分区头：悬停 bg-hover、选中 a-tint、间距 10） -->
           <Border Name="PART_Head" DockPanel.Dock="Top" Height="{StaticResource HeadH}"
@@ -49,6 +55,7 @@
                             ContentTemplate="{TemplateBinding ContentTemplate}"
                             Padding="{TemplateBinding Padding}" />
         </DockPanel>
+        </Panel>
       </ControlTemplate>
     </Setter>
     <Style Selector="^ /template/ Border#PART_Head">
@@ -62,6 +69,9 @@
     </Style>
     <Style Selector="^:closed">
       <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:max /template/ Border#PART_MaxShade, ^:max /template/ Border#PART_MaxRing">
+      <Setter Property="IsVisible" Value="True" />
     </Style>
   </ControlTheme>
 

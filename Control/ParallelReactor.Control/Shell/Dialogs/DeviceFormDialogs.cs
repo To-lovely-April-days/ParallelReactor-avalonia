@@ -206,7 +206,8 @@ public sealed partial class AddDeviceDialogVm : DeviceFormVm
         var models = shell.Fleet.DemoData?.Models ?? ModelProfiles.Embedded;
         Models = models.All.Select(m => new ModelChoice(m.Key, m.Label + " · " + m.ChannelCount + " 路")).ToList();
         Model = Models.FirstOrDefault(m => m.Key == "PR8") ?? Models.FirstOrDefault();
-        Test = new TestFootVm(new FootButton("测试连接", new AsyncRelayCommand(TestAsync), icon: "link"));
+        // 再点一次「测试连接」= 重新测（TestAsync 先取消上一次）：允许并发执行，测的时候按钮不灰（AsyncRelayCommand 默认执行期间是没有原因的禁用，M6）
+        Test = new TestFootVm(new FootButton("测试连接", new AsyncRelayCommand(TestAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), icon: "link"));
         FooterLeft = Test;
         CancelButton = new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this)));
         AddButton = new FootButton("添加并连接", new RelayCommand(Add), FootKind.Primary, "plus", large: true);
@@ -245,7 +246,10 @@ public sealed partial class AddDeviceDialogVm : DeviceFormVm
         _testCts?.Cancel();
         var cts = _testCts = new CancellationTokenSource();
         Test.Set(IsDemo ? "" : "正在连接…", false, false, !IsDemo);
-        var r = await Shell.Fleet.TestConnectionAsync(Host, PortValue ?? 0, Token, Model?.Key, cts.Token).ConfigureAwait(true);
+        ConnectionTestResult r;
+        // 被下一次「测试连接」或关对话框取消的那一次：结果作废、不抛（ConnectionTester 照样抛出取消；不接住的话 AsyncRelayCommand 会把它抛回 UI 线程）
+        try { r = await Shell.Fleet.TestConnectionAsync(Host, PortValue ?? 0, Token, Model?.Key, cts.Token).ConfigureAwait(true); }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested) { return; }
         if (cts.IsCancellationRequested || _closed) return;
         Test.Set(r.Text, r.Ok, !r.Ok, false);
         if (r.Ok && !IsDemo && r.Model is { } m) ModelText = m.Label + " · " + m.ChannelCount + " 路";
@@ -279,7 +283,7 @@ public sealed partial class EditDeviceDialogVm : DeviceFormVm
 {
     private readonly int _k;
     private readonly DeviceSettings _orig;
-    private bool _closed;
+    private bool _closed, _saving;
 
     private EditDeviceDialogVm(ShellVm shell, int k, DeviceSettings s)
         : base(shell, s.Host, s.Port.ToString(CultureInfo.InvariantCulture), s.Token, s.Alias, s.RememberToken, s.AutoConnect,
@@ -292,7 +296,8 @@ public sealed partial class EditDeviceDialogVm : DeviceFormVm
         Icon = "edit";
         ModelText = s.ModelText;
         CancelButton = new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this)));
-        SaveButton = new FootButton("保存", new AsyncRelayCommand(SaveAsync), FootKind.Primary, "check", large: true);
+        // 保存期间按钮不灰（M6）：正在保存时再点一次不重复执行（_saving）
+        SaveButton = new FootButton("保存", new AsyncRelayCommand(SaveAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "check", large: true);
         Footer = new FootBar(CancelButton, SaveButton);
         Validate();
         Refresh();
@@ -350,20 +355,26 @@ public sealed partial class EditDeviceDialogVm : DeviceFormVm
 
     private async Task SaveAsync()
     {
+        if (_saving || _closed) return;
         Validate();
         if (SubmitReason != null) return;
         var d = Shell.Fleet.Device(_k);
         if (d == null) return;
-        // 样稿：地址变了且本机持有 / 申请着控制权 → 先释放 / 取消（quiet）。真机的数据源换地址时自己先释放；演示在这里做
-        if (Moved && IsDemo && d.LeaseStatus is LeaseStatus.Requested or LeaseStatus.Remote or LeaseStatus.Lost)
-            await d.Actions.RunAsync(d.LeaseStatus == LeaseStatus.Requested ? DeviceAction.LeaseCancel : DeviceAction.LeaseRelease, quiet: true).ConfigureAwait(true);
-        var token = string.IsNullOrWhiteSpace(Token) || Token == _orig.Token ? null : Token.Trim();
-        // 真机：存好就关（background）—— 释放控制权、断开、按新设置的第一次连接在后台做，结果照常提示（M3 复核：以前对话框要等最长约 13 s）
-        var r = await Shell.Fleet.EditDeviceAsync(_k, new DeviceSettingsEdit(Alias.Alias, Host.Trim(), PortValue ?? _orig.Port, token, RememberToken, AutoConnect),
-            background: true).ConfigureAwait(true);
-        if (r.Length > 0) { Shell.Toast(r, ToastKind.Warn); return; }
-        Shell.Dialogs.Close(this);
-        Shell.Toast("已保存 " + (Shell.Fleet.Device(_k)?.Alias ?? Alias.Alias) + " 的设置", ToastKind.Ok);
+        _saving = true;
+        try
+        {
+            // 样稿：地址变了且本机持有 / 申请着控制权 → 先释放 / 取消（quiet）。真机的数据源换地址时自己先释放；演示在这里做
+            if (Moved && IsDemo && d.LeaseStatus is LeaseStatus.Requested or LeaseStatus.Remote or LeaseStatus.Lost)
+                await d.Actions.RunAsync(d.LeaseStatus == LeaseStatus.Requested ? DeviceAction.LeaseCancel : DeviceAction.LeaseRelease, quiet: true).ConfigureAwait(true);
+            var token = string.IsNullOrWhiteSpace(Token) || Token == _orig.Token ? null : Token.Trim();
+            // 真机：存好就关（background）—— 释放控制权、断开、按新设置的第一次连接在后台做，结果照常提示（M3 复核：以前对话框要等最长约 13 s）
+            var r = await Shell.Fleet.EditDeviceAsync(_k, new DeviceSettingsEdit(Alias.Alias, Host.Trim(), PortValue ?? _orig.Port, token, RememberToken, AutoConnect),
+                background: true).ConfigureAwait(true);
+            if (r.Length > 0) { Shell.Toast(r, ToastKind.Warn); return; }
+            Shell.Dialogs.Close(this);
+            Shell.Toast("已保存 " + (Shell.Fleet.Device(_k)?.Alias ?? Alias.Alias) + " 的设置", ToastKind.Ok);
+        }
+        finally { _saving = false; }
     }
 
     public override void OnClosed() => _closed = true;

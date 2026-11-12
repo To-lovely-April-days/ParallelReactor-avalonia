@@ -17,21 +17,10 @@
     </Style>
   </UserControl.Styles>
   <Border Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,0,0,1">
-    <DockPanel>
-      <Button Name="More" DockPanel.Dock="Right" Theme="{StaticResource PrTabBarButton}" Classes="more" Classes.has-more="{Binding Tabs.HasHidden}"
-              b:Pr.Icon="right" b:Pr.Count="{Binding Tabs.HiddenCountText}" ToolTip.Tip="{Binding Tabs.MoreTip}"
-              AutomationProperties.Name="全部页签">
-        <Button.Flyout>
-          <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" VerticalOffset="2" />
-        </Button.Flyout>
-      </Button>
-      <Button Name="Add" DockPanel.Dock="Right" Theme="{StaticResource PrTabBarButton}" Classes="add" b:Pr.Icon="plus"
-              ToolTip.Tip="打开新页签" AutomationProperties.Name="打开新页签">
-        <Button.Flyout>
-          <Flyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2" />
-        </Button.Flyout>
-      </Button>
-      <cs:DocTabStrip Name="Strip" ItemsSource="{Binding Tabs.Tabs}">
+    <!-- 子元素按样稿的顺序（.pr-tabs、.pr-tab-add、.pr-tab-more）：Tab 键照这个顺序走，从最后一个页签到「+」再到「›」（以前 DockPanel 先放「›」「+」，
+         Tab 先到它们、从最后一个页签跳过它们）。Grid 先量 Auto 列再量 * 列：「›」照样先于页签条量（TabOverflowPanel.More 要它现在的宽） -->
+    <Grid ColumnDefinitions="*,Auto,Auto">
+      <cs:DocTabStrip Name="Strip" ItemsSource="{Binding Tabs.Tabs}" MoreButton="{Binding #More}">
         <cs:DocTabStrip.ItemTemplate>
           <DataTemplate x:DataType="sh:DocTabVm">
             <cs:NavToggle Theme="{StaticResource PrDocTab}" Classes.pinned="{Binding Pinned}"
@@ -50,6 +39,19 @@
           </DataTemplate>
         </cs:DocTabStrip.ItemTemplate>
       </cs:DocTabStrip>
-    </DockPanel>
+      <Button Name="Add" Grid.Column="1" Theme="{StaticResource PrTabBarButton}" Classes="add" b:Pr.Icon="plus"
+              ToolTip.Tip="打开新页签" AutomationProperties.Name="打开新页签">
+        <Button.Flyout>
+          <vs:PrFlyout Placement="BottomEdgeAlignedLeft" VerticalOffset="2" />
+        </Button.Flyout>
+      </Button>
+      <Button Name="More" Grid.Column="2" Theme="{StaticResource PrTabBarButton}" Classes="more" Classes.has-more="{Binding Tabs.HasHidden}"
+              b:Pr.Icon="right" b:Pr.Count="{Binding Tabs.HiddenCountText}" ToolTip.Tip="{Binding Tabs.MoreTip}"
+              AutomationProperties.Name="全部页签">
+        <Button.Flyout>
+          <vs:DynamicMenuFlyout Placement="BottomEdgeAlignedRight" VerticalOffset="2" />
+        </Button.Flyout>
+      </Button>
+    </Grid>
   </Border>
 </UserControl>

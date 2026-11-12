@@ -21,8 +21,10 @@ namespace ParallelReactor.Control.Fleet;
 /// <item><see cref="Why"/>：Core 守卫（ActionGuard.Why）给出的原因，按钮用 b:Pr.Reason 显示（锁图标提示、点击 toast 原因）。</item>
 /// <item><see cref="RunAsync"/>：<b>执行前再查一次守卫</b>（界面上的状态可能已经过期）；控制类要连接 + 不在急停 + 本机远程控制中，
 ///   <b>停止类只要连接</b>（不看控制权，也不因为本机「以为」没在运行而拦下）；然后交给数据源执行，结果 / 原因 / 异常都 toast 出来；
-///   命令带警告（HW_UNCONFIRMED：硬件未在时限内确认）时另外提示一条。</item>
-/// <item><see cref="Command"/>：按钮用的 ICommand（同一个操作同一个实例）；不带 CanExecute（禁用由 Pr.Reason 表达），执行时照样走守卫。</item>
+///   命令带警告时另外提示一条 —— HW_UNCONFIRMED（硬件未在时限内确认）例外：只提示一条 warn「1号机 · RV1 停止 · 硬件未确认：…」，
+///   代替 ✓ 结果 + 警告两条（M6：结果的「已停止」还没得到硬件确认）；最终结果由数据源跟着 HMI 的 op.*.result 事件再提示（LiveDeviceSource.Hw.cs）。</item>
+/// <item><see cref="Command"/>：按钮用的 ICommand（同一个操作同一个实例）；不带 CanExecute（禁用由 Pr.Reason 表达），允许并发执行（M6：AsyncRelayCommand
+///   默认在命令执行期间把按钮变成没有原因的禁用），执行时照样走守卫。</item>
 /// </list>
 /// 改名 / 移除是本机的事（实时设备不发给 HMI），由 FleetVm 处理。
 /// </summary>
@@ -45,20 +47,21 @@ public sealed class DeviceActions
     /// <summary>只看连接 / 急停 / 控制权的原因（每个区域写一次，同样稿 PR.sim.guard）。</summary>
     public string GuardText(GuardKind kind) => ActionGuard.GuardText(_d.Facts, kind);
 
-    /// <summary>按钮用的命令（无参数的操作；同一个操作同一个实例）。</summary>
+    /// <summary>按钮用的命令（无参数的操作；同一个操作同一个实例；执行期间不灰，见类注释）。</summary>
     public ICommand Command(DeviceAction action)
     {
         if (!_commands.TryGetValue(action, out var c))
-            _commands[action] = c = new AsyncRelayCommand(() => RunAsync(action));
+            _commands[action] = c = new AsyncRelayCommand(() => RunAsync(action), AsyncRelayCommandOptions.AllowConcurrentExecutions);
         return c;
     }
 
-    /// <summary>带参数的命令（参数在执行时取，例如输入框里的设定值）。</summary>
-    public ICommand Command(DeviceAction action, Func<ActionPayload?> payload) => new AsyncRelayCommand(() => RunAsync(action, payload()));
+    /// <summary>带参数的命令（参数在执行时取，例如输入框里的设定值；执行期间不灰）。</summary>
+    public ICommand Command(DeviceAction action, Func<ActionPayload?> payload) =>
+        new AsyncRelayCommand(() => RunAsync(action, payload()), AsyncRelayCommandOptions.AllowConcurrentExecutions);
 
     /// <summary>
-    /// 执行：先再查一次守卫（被拦下 → warn toast 原因），再交给数据源；结果 toast（停止类没在运行时 info 语气），警告另提示，异常翻译成文字（err）。
-    /// <paramref name="quiet"/> = 不 toast（多台一起执行的对话框，自己汇总提示）。
+    /// 执行：先再查一次守卫（被拦下 → warn toast 原因），再交给数据源；结果 toast（停止类没在运行时 info 语气），警告另提示（HW_UNCONFIRMED 合成一条，见类注释），
+    /// 异常翻译成文字（err）。<paramref name="quiet"/> = 不 toast，警告也不（多台 / 多个反应釜一起执行的对话框自己汇总：同一句警告合成一条，M6）。
     /// </summary>
     public async Task<ActionOutcome> RunAsync(DeviceAction action, ActionPayload? payload = null, bool quiet = false, CancellationToken ct = default)
     {
@@ -77,8 +80,18 @@ public sealed class DeviceActions
                 o = await _d.Fleet.LocalActionAsync(_d, action, p).ConfigureAwait(true);
             else
                 o = await _d.Source.ExecAsync(action, p, ct).ConfigureAwait(true);
-            if (!quiet && o.Message.Length > 0) _d.Fleet.RaiseToast(o.Message, o.Ok ? o.Tone : ToastKind.Warn);
-            if (WarningText(o.Warnings) is { } w) _d.Fleet.RaiseToast(_d.Alias + " · " + w, ToastKind.Warn);
+            if (!quiet)
+            {
+                if (o.Ok && HasHwUnconfirmed(o.Warnings))
+                    // 硬件未确认：一条 warn 代替 ✓ 结果 + 警告（急停的结果本来是 err：不降成 warn）
+                    _d.Fleet.RaiseToast(WarnLine(_d.Alias, What(action, p), o.Warnings), o.Tone == ToastKind.Err ? ToastKind.Err : ToastKind.Warn);
+                else
+                {
+                    // 失败一般是 warn（原因）；数据源给了 err 的照旧 err（例如硬件的最终结果先到了、是失败）
+                    if (o.Message.Length > 0) _d.Fleet.RaiseToast(o.Message, o.Ok || o.Tone == ToastKind.Err ? o.Tone : ToastKind.Warn);
+                    if (WarningText(o.Warnings) is { } w) _d.Fleet.RaiseToast(_d.Alias + " · " + w, ToastKind.Warn);
+                }
+            }
             _d.Fleet.RequestRefresh();
             return o;
         }
@@ -116,12 +129,28 @@ public sealed class DeviceActions
     /// <summary>HW_UNCONFIRMED 的说明（命令已下发、硬件没在时限内确认）。</summary>
     public const string HwUnconfirmedText = "硬件未确认：命令已下发但设备未在时限内确认，请核对属性卡 / 快照后再操作，勿直接重发";
 
-    /// <summary>命令结果的警告 → 提示文字（HW_UNCONFIRMED 用上面的说明，其它原样）；没有警告返回 null。</summary>
+    /// <summary>
+    /// 命令结果的警告 → 提示文字（HW_UNCONFIRMED 用上面的说明，其它原样；重复的只写一次 ——「全部运行」逐个反应釜下发，每个都可能带 HW_UNCONFIRMED）；
+    /// 没有警告返回 null。
+    /// </summary>
     public static string? WarningText(IReadOnlyList<string>? warnings)
     {
         if (warnings is null || warnings.Count == 0) return null;
-        return string.Join("；", warnings.Select(w => w == OpCodes.HwUnconfirmed ? HwUnconfirmedText : w));
+        return string.Join("；", warnings.Distinct().Select(w => w == OpCodes.HwUnconfirmed ? HwUnconfirmedText : w));
     }
+
+    /// <summary>警告里有 HW_UNCONFIRMED（命令已下发，硬件没在时限内确认）。</summary>
+    public static bool HasHwUnconfirmed(IReadOnlyList<string>? warnings) => warnings?.Contains(OpCodes.HwUnconfirmed) == true;
+
+    /// <summary>提示里操作的说法：针对某个反应釜的带「RVn 」（「RV1 停止」），其它是按钮文字（「急停」「全部停止」）。</summary>
+    public static string What(DeviceAction action, ActionPayload? payload) =>
+        (CoreActions.Spec(action).PerChannel && payload?.N is int n ? "RV" + n + " " : "") + Label(action);
+
+    /// <summary>
+    /// 带警告的结果的一条提示（M6）：「1号机 · RV1 停止 · 硬件未确认：…」。<paramref name="who"/> = 别名（几台一起时「1号机、3号机」），
+    /// <paramref name="what"/> = <see cref="What"/>（几个反应釜一起时「RV1、RV3 运行程序」）。
+    /// </summary>
+    public static string WarnLine(string who, string what, IReadOnlyList<string> warnings) => who + " · " + what + " · " + WarningText(warnings);
 
     /// <summary>操作的按钮文字（样稿 ACTIONS 的 label）。</summary>
     public static string Label(DeviceAction action) => CoreActions.Label(action);

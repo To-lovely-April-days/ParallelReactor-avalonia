@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.VisualTree;
 using ParallelReactor.Control.Controls.Pr;
 using ParallelReactor.Control.Core.Layout;
 using ParallelReactor.Control.Views.Shell;
@@ -18,7 +19,9 @@ namespace ParallelReactor.Control.Views.Pages.Reactor;
 /// <item>宽版式（网格 ≥ 1800，支持的屏幕上不出现）：程序 ｜ 釜体 ｜ 属性查看器 / 曲线；页签版式：程序 ｜「釜体 / 属性查看器」+ 曲线（网格 ≥ 1100 时程序栏每行 2 张卡）。</item>
 /// <item>关掉的面板（PrPanel :closed）由其余面板补位（关掉「程序」时右边一栏铺满整个宽度），规则同样稿的 :has(.is-closed)；视图 › 重置布局恢复。</item>
 /// <item>放大（PrPanel 的 □）在网格里原地做（同样稿 .reactor-grid { position: relative }：放大的面板只盖住面板网格，上方的报警条照样显示）：
-///   放大的那一块铺满网格，其余的藏起来（Animation 优先级，还原时撤掉）。宿主 PageHost 只记着它（Esc、重置布局照常还原，PageHost.InPlaceMax）。</item>
+///   放大的那一块铺满网格，其余的藏起来（Animation 优先级，还原时撤掉）。宿主 PageHost 只记着它（Esc、重置布局照常还原，PageHost.InPlaceMax）。
+///   放大的面板框外的圈（1 px line-strong）和 ShadowDlg（PrPanel 模板的 :max）要画出来：它到网格之间各层不裁剪（同样用 Animation 优先级），
+///   圈和阴影盖到上方的状态条上（样稿 .reactor-grid 不裁剪：状态条最下一行变 line-strong、往上一截被阴影压暗）；左右下三边在页面外，照样被裁掉。</item>
 /// <item>边按设备像素对齐（<see cref="Snap"/>，100 % 时就是整 DIP：小数的面板（CSS 网格的 661.05）不会因为 Avalonia 把尺寸向上取整而多出 1 px；
 ///   分隔线在 100 % / 125 % / 150 % / 175 % 下都正好 1 个设备像素）；曲线 / 程序面板的容器查询按小数宽度判断。</item>
 /// </list>
@@ -29,6 +32,8 @@ public sealed class ReactorGridPanel : Panel
     public static readonly StyledProperty<bool> InstalledProperty = AvaloniaProperty.Register<ReactorGridPanel, bool>(nameof(Installed), true);
 
     private readonly Dictionary<Avalonia.Controls.Control, IDisposable> _hidden = new();
+    /// <summary>放大的面板到网格之间各层的「不裁剪」（还原时撤掉）。</summary>
+    private readonly List<IDisposable> _unclipped = new();
     private readonly HashSet<PrPanel> _watched = new();
     private Avalonia.Controls.Control? _max;
     private bool? _wide;
@@ -89,7 +94,10 @@ public sealed class ReactorGridPanel : Panel
         else if (e.Property == PrPanel.IsClosedProperty) InvalidateMeasure();
     }
 
-    /// <summary>放大的面板：铺满网格，其余的藏起来（Animation 优先级，盖过本地值 / 绑定 / 样式，还原时撤掉）。</summary>
+    /// <summary>
+    /// 放大的面板：铺满网格，其余的藏起来（Animation 优先级，盖过本地值 / 绑定 / 样式，还原时撤掉）；
+    /// 它到网格之间各层（PrPanel、放它的 UserControl 和模板里的 ContentPresenter —— 模板控件默认裁剪到自己的框）不裁剪，框外的圈和阴影画得出来。
+    /// </summary>
     private void SyncMax()
     {
         Avalonia.Controls.Control? max = null;
@@ -97,10 +105,16 @@ public sealed class ReactorGridPanel : Panel
         if (ReferenceEquals(max, _max)) return;
         foreach (var h in _hidden.Values) h.Dispose();
         _hidden.Clear();
+        foreach (var u in _unclipped) u.Dispose();
+        _unclipped.Clear();
         _max = max;
         if (max != null)
+        {
             foreach (var c in Children)
                 if (!ReferenceEquals(c, max)) _hidden[c] = c.SetValue(IsVisibleProperty, false, Avalonia.Data.BindingPriority.Animation)!;
+            for (Visual? v = FrameOf(max); v != null && !ReferenceEquals(v, this); v = v.GetVisualParent())
+                if (v.SetValue(ClipToBoundsProperty, false, Avalonia.Data.BindingPriority.Animation) is { } d) _unclipped.Add(d);
+        }
         InvalidateMeasure();
     }
 

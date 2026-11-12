@@ -120,6 +120,9 @@ public sealed partial class XGapRow : XRow
     }
 }
 
+/// <summary>树处理的键（样稿 treeKey 的那几个；视图把 Avalonia 的键换成它，视图模型不碰界面类型）。</summary>
+public enum XTreeKey { Down, Up, Home, End, Right, Left, Enter, Space }
+
 /// <summary>
 /// 设备资源管理器（PORT-PLAN §2.1「设备资源管理器」、§5 M2；样稿 shell.js renderExplorer / devNodeHTML / rvRowHTML）：
 /// 标题栏（设备 · N 台 · 添加 · 状态图例 · 收起 / 浮层时关闭）+ 安静的树。树是<b>扁平行</b>（<see cref="Rows"/>）：设备头、断线细节、反应釜、
@@ -127,7 +130,8 @@ public sealed partial class XGapRow : XRow
 /// 读数、状态字等由行引用的 DeviceVm / ReactorVm 就地更新（绑定直接读它们）。
 /// <list type="bullet">
 /// <item>展开：默认 ≤ 8 路的设备展开、16 路收起（样稿 isXOpen）；展开箭头切换；选中收起的设备里的反应釜时自动展开（样稿 xReveal）。</item>
-/// <item>单击选中（设备 / 反应釜，检查器跟着换），双击打开页签（设备页 / 反应釜页；浮层资源管理器随即收起）。键盘细节、右键菜单在 M6。</item>
+/// <item>单击选中（设备 / 反应釜，检查器跟着换），双击打开页签（设备页 / 反应釜页；浮层资源管理器随即收起）。</item>
+/// <item>键盘（M6，样稿 treeKey / xTabTarget）：树只有一个 Tab 停靠点（<see cref="TabTarget"/>），方向键、Home、End、Enter、空格见 <see cref="TreeKey"/>。</item>
 /// </list>
 /// </summary>
 public sealed partial class ExplorerVm : ObservableObject
@@ -162,11 +166,68 @@ public sealed partial class ExplorerVm : ObservableObject
     partial void OnSelectedRowChanged(XRow? value)
     {
         if (_syncingSelection || value == null) return;
-        switch (value)
+        Choose(value);
+    }
+
+    /// <summary>选中这一行的设备 / 反应釜（样稿 shell.select）。</summary>
+    private void Choose(XRow row)
+    {
+        switch (row)
         {
             case XDeviceRow d: _shell.Select(d.D.K); break;
             case XReactorRow r: _shell.Select(r.D.K, r.R.N); break;
         }
+    }
+
+    /// <summary>
+    /// 键盘 Tab 进树时落在哪一行（样稿 xTabTarget，roving tabindex：整棵树只有这一个 Tab 停靠点）：选中的行；选中的反应釜不在树里时它的设备头
+    /// （在收起的设备里，同样稿；或者是未安装的位置 —— 样稿这时一行都不给，Tab 进不了树）；没有选中时第一台。
+    /// </summary>
+    public XRow? TabTarget =>
+        SelectedRow ?? Rows.OfType<XDeviceRow>().FirstOrDefault(r => r.D.K == _shell.Selection.K) ?? Rows.OfType<XDeviceRow>().FirstOrDefault();
+
+    /// <summary>
+    /// 树的键盘操作（样稿 shell.js treeKey；视图把焦点所在的行和键交过来，返回之后焦点该在的行 —— 不动时就是 <paramref name="at"/>）。
+    /// 可见的设备头与反应釜行排成一列（间隔、断线细节、未安装的行不算）：
+    /// ↑ ↓ Home End = 上一项 / 下一项 / 第一项 / 最后一项，并选中它（到头了不动，不循环）；
+    /// → 收起的设备头 = 展开（选中不变），展开的设备头 = 下一项（它的第一个反应釜）并选中，反应釜行上什么都不做；
+    /// ← 展开的设备头 = 收起，收起的设备头上什么都不做，反应釜行 = 回到它的设备头并选中设备；
+    /// Enter = 打开页签（设备页 / 反应釜页），浮层资源管理器不收起（样稿只有指针的单击 / 双击收起它）；空格 = 选中。
+    /// </summary>
+    public XRow TreeKey(XRow at, XTreeKey key)
+    {
+        var list = Rows.Where(r => r.Selectable).ToList();
+        int i = list.IndexOf(at);
+        if (i < 0) return at;
+        XRow Pick(int j)
+        {
+            if (j < 0 || j >= list.Count) return at;
+            Choose(list[j]);
+            return list[j];
+        }
+        switch (key)
+        {
+            case XTreeKey.Down: return Pick(i + 1);
+            case XTreeKey.Up: return Pick(i - 1);
+            case XTreeKey.Home: return Pick(0);
+            case XTreeKey.End: return Pick(list.Count - 1);
+            case XTreeKey.Right when at is XDeviceRow d:
+                if (IsOpen(d.D)) return Pick(i + 1);
+                Toggle(d.D.K);
+                return at;
+            case XTreeKey.Left when at is XDeviceRow d:
+                if (IsOpen(d.D)) Toggle(d.D.K);
+                return at;
+            case XTreeKey.Left when at is XReactorRow r:
+                return Pick(list.FindIndex(x => x is XDeviceRow h && ReferenceEquals(h.D, r.D)));
+            case XTreeKey.Enter:
+                Open(at, keepFloat: true);
+                return at;
+            case XTreeKey.Space:
+                Choose(at);
+                return at;
+        }
+        return at;
     }
 
     /// <summary>这台设备展开着（默认 ≤ 8 路展开，样稿 isXOpen）。</summary>
@@ -204,13 +265,16 @@ public sealed partial class ExplorerVm : ObservableObject
         Refresh();
     }
 
-    /// <summary>双击：打开设备页 / 反应釜页（ShellVm.Navigate 同时选中它、收起浮层）。</summary>
-    public void Open(XRow row)
+    /// <summary>
+    /// 双击：打开设备页 / 反应釜页（ShellVm.Navigate 同时选中它、收起浮层）。<paramref name="keepFloat"/>：浮层资源管理器不收起
+    /// （键盘 Enter，样稿 treeKey 只导航；指针的双击照旧收起）。
+    /// </summary>
+    public void Open(XRow row, bool keepFloat = false)
     {
         switch (row)
         {
-            case XDeviceRow d: _shell.Navigate(Route.Device(d.D.K)); break;
-            case XReactorRow r: _shell.Navigate(Route.Reactor(r.D.K, r.R.N)); break;
+            case XDeviceRow d: _shell.Navigate(Route.Device(d.D.K), keepFloat); break;
+            case XReactorRow r: _shell.Navigate(Route.Reactor(r.D.K, r.R.N), keepFloat); break;
         }
     }
 
@@ -291,7 +355,11 @@ public sealed partial class ExplorerVm : ObservableObject
         _syncingSelection = true;
         try { SelectedRow = want.FirstOrDefault(r => r.IsSelected && r.Selectable); }
         finally { _syncingSelection = false; }
+        Refreshed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>刷新完了（行、选中行都是新的）：视图按 <see cref="TabTarget"/> 重设树的 Tab 停靠点。</summary>
+    public event EventHandler? Refreshed;
 
     private T Get<T>(string key, Func<T> make, Func<T, bool>? valid = null) where T : XRow
     {

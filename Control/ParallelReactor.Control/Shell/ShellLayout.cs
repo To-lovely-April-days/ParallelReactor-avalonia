@@ -68,7 +68,11 @@ public sealed partial class ShellLayout : ObservableObject
     /// <summary>布局变了（列宽、类名、开关）。</summary>
     public event EventHandler? Changed;
 
-    /// <summary>窗口尺寸变了（MainWindow 在 ClientSize 变化时调用）。</summary>
+    /// <summary>
+    /// 窗口尺寸变了（MainWindow 在 ClientSize 变化时调用）。没动过开关时随宽度停靠 / 收起（样稿要等下一次导航才改，这里立刻改）；
+    /// 窄屏打开的浮层在窗口变宽到 ≥ 1600 时改成停靠（样稿留着 320 的浮层和遮罩，下一次导航才停靠 —— 这里直接停靠，宽窗口上不留浮层）。
+    /// 用户在宽屏停靠的窗口变窄时收起，导航时不再弹成浮层（样稿下一次导航会弹出来）。
+    /// </summary>
     public void Update(Size window)
     {
         var (frame, k) = FrameFor(window);
@@ -77,6 +81,7 @@ public sealed partial class ShellLayout : ObservableObject
         FrameHeight = frame.Height;
         bool narrow = frame.Width < NarrowW;
         if (!_modeFromUser) _mode = narrow ? ExplorerMode.Collapsed : ExplorerMode.Docked;
+        else if (!narrow && _mode == ExplorerMode.Float) _mode = ExplorerMode.Docked;
         Apply();
     }
 
