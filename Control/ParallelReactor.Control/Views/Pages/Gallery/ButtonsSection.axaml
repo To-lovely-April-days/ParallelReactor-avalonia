@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.ButtonsSection">
+  <!-- 按钮（MOCK #/gallery「按钮」）：两行按钮（两行之间不留空，同样稿两个 .gallery-row）+ 禁用原因行 + 图标按钮行（上边距 14） -->
+  <StackPanel>
+    <g:GalleryRow>
+      <Button Theme="{StaticResource PrButton}" b:Pr.Icon="edit" Content="编辑程序" />
+      <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="key" Content="申请控制权" />
+      <Button Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="停止加热" />
+      <Button Theme="{StaticResource PrEstopOutline}" b:Pr.Icon="estop" Content="急停" />
+      <Button Theme="{StaticResource PrDanger}" Classes="estop" b:Pr.Icon="estop" Content="急停" />
+      <Button Theme="{StaticResource PrGhost}" Classes="sm" b:Pr.Icon="x" Content="全不选" />
+      <Button Theme="{StaticResource PrLink}" Content="回到 1号机 · RV1" />
+    </g:GalleryRow>
+    <g:GalleryRow>
+      <Button Theme="{StaticResource PrButton}" Classes="sm" Content="设定" />
+      <Button Theme="{StaticResource PrPrimary}" Classes="lg" b:Pr.Icon="key" Content="发送申请" />
+      <Button Theme="{StaticResource PrButton}" b:Pr.Icon="flame" Content="启动加热" b:Pr.Reason="2号机为本地只读 · 先申请控制权" />
+      <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Content="运行" b:Pr.Reason="先申请控制权" />
+    </g:GalleryRow>
+    <pr:ReasonLine Text="2号机为本地只读 · 先申请控制权" />
+    <g:GalleryRow Margin="0,14,0,0">
+      <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomin" ToolTip.Tip="放大" AutomationProperties.Name="放大" />
+      <Button Theme="{StaticResource PrIconButton}" Classes="on" b:Pr.Icon="play" ToolTip.Tip="运行中" AutomationProperties.Name="运行中" />
+      <Button Theme="{StaticResource PrIconButton}" Classes="stop" b:Pr.Icon="stop" ToolTip.Tip="停止" AutomationProperties.Name="停止" />
+      <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="open" b:Pr.Reason="不可用" AutomationProperties.Name="打开" />
+      <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="x" ToolTip.Tip="紧凑 28" AutomationProperties.Name="紧凑 28" />
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="6,0,0,0" Text="图标按钮 32 · 激活 · 停止 · 禁用 · 紧凑 28" />
+    </g:GalleryRow>
+  </StackPanel>
+</UserControl>

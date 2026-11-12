@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.TypeScaleSection">
+  <!-- 字号（MOCK #/gallery「字号」）：每行「说明 260 px | 样例」，基线对齐，行间 line-faint 细线；字号取自 Tokens.axaml 的 Fs* -->
+  <ItemsControl ItemsSource="{x:Static g:TypeScaleSection.Rows}">
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="g:TypeSample">
+        <Border BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="{Binding Border}" Padding="0,6">
+          <c:BaselineStack FirstWidth="260" Spacing="12">
+            <TextBlock Text="{Binding Caption}" FontSize="{StaticResource Fs2}" LineHeight="{Binding CaptionLineHeight}"
+                       Foreground="{StaticResource T3Brush}" />
+            <TextBlock Classes.num="{Binding Numeric}" Text="{Binding Sample}" FontSize="{Binding Size}" FontWeight="{Binding Weight}"
+                       LineHeight="{Binding LineHeight}" Foreground="{StaticResource T1Brush}"
+                       TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sample}" />
+          </c:BaselineStack>
+        </Border>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

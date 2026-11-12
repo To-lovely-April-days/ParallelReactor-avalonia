@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
              xmlns:v="using:ParallelReactor.Control.Views"
              xmlns:c="using:ParallelReactor.Control.Controls"
              x:Class="ParallelReactor.Control.Views.PlanEditorView"
-             x:DataType="vm:MainViewModel">
+             x:DataType="pg:LegacyProgramPageVm">
   <!-- .panel.plan-editor：面包屑标题 + 绝对定位画布（步骤卡 / 时长块 / 连线 / 分隔线 / 硬件自检） -->
   <Border Classes="panel">
     <Grid RowDefinitions="24,*">
@@ -38,13 +39,13 @@
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><Canvas /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                 <ItemsControl.DataTemplates>
                   <!-- 步骤卡 132×185（第二列 140，绿渐变） -->
-                  <DataTemplate DataType="vm:StepCardVm">
+                  <DataTemplate DataType="vm:StepCardVm" x:DataType="vm:StepCardVm">
                     <Border Classes="step-card" Classes.green="{Binding IsGreen}" Classes.editing="{Binding IsEditing}" Classes.current="{Binding IsCurrent}" Width="{Binding Width}">
                       <StackPanel>
                         <Border Classes="step-title"><TextBlock Text="{Binding Title}" /></Border>
                         <ItemsControl ItemsSource="{Binding Sections}">
                           <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="vm:StepSectionVm">
+                            <DataTemplate DataType="vm:StepSectionVm" x:DataType="vm:StepSectionVm">
                               <Border Classes="step-section">
                                 <StackPanel>
                                   <TextBlock Classes="device-label" Text="{Binding DeviceLabel}" />
@@ -66,7 +67,7 @@
                     </Border>
                   </DataTemplate>
                   <!-- 时长块 125×29，上方 1×12 竖线 -->
-                  <DataTemplate DataType="vm:DurationVm">
+                  <DataTemplate DataType="vm:DurationVm" x:DataType="vm:DurationVm">
                     <Panel Width="{Binding Width}">
                       <Rectangle Classes="duration-tick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,-13,0,0" />
                       <Border Classes="duration">
@@ -78,17 +79,17 @@
                     </Panel>
                   </DataTemplate>
                   <!-- 连线 66×1 + 右端 4px 三角 -->
-                  <DataTemplate DataType="vm:FlowLinkVm">
+                  <DataTemplate DataType="vm:FlowLinkVm" x:DataType="vm:FlowLinkVm">
                     <Panel Width="{Binding Width}" Height="4">
                       <Rectangle Classes="flow-link" VerticalAlignment="Top" Margin="0,0,3,0" />
                       <Path Classes="flow-arrow" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1.5,0,0" />
                     </Panel>
                   </DataTemplate>
-                  <DataTemplate DataType="vm:DividerVm">
+                  <DataTemplate DataType="vm:DividerVm" x:DataType="vm:DividerVm">
                     <Rectangle Classes="canvas-divider" Width="{Binding Width}" />
                   </DataTemplate>
                   <!-- 硬件自检 125×40 + 右下 L 形连线 -->
-                  <DataTemplate DataType="vm:HardwareCheckVm">
+                  <DataTemplate DataType="vm:HardwareCheckVm" x:DataType="vm:HardwareCheckVm">
                     <Panel Width="{Binding Width}" Height="40">
                       <Border Classes="hardware-check">
                         <StackPanel>
@@ -102,7 +103,7 @@
                       <Border Classes="hardware-elbow" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-14,-12" />
                     </Panel>
                   </DataTemplate>
-                  <DataTemplate DataType="vm:HardwareNoteVm">
+                  <DataTemplate DataType="vm:HardwareNoteVm" x:DataType="vm:HardwareNoteVm">
                     <Border Classes="hardware-note" Width="{Binding Width}"><TextBlock Text="{Binding Text}" TextWrapping="Wrap" /></Border>
                   </DataTemplate>
                 </ItemsControl.DataTemplates>

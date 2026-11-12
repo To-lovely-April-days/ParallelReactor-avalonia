@@ -1,0 +1,130 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 对话框外壳（样稿 shell.css .pr-modal*）：白底、8 px 圆角、line-2 边、ShadowDlg；中性，只有急停对话框的确认按钮是红色。
+       遮罩（.pr-layer）用 OverlayBrush，由 M3 的对话框宿主画；全局急停格压在遮罩之上（ZIndex 201 / 200）。 -->
+  <ControlTheme x:Key="{x:Type pr:DialogFrame}" TargetType="pr:DialogFrame">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusDlg}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Padding" Value="20" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                BoxShadow="{StaticResource ShadowDlg}">
+          <DockPanel>
+            <!-- 标题区：最小高 66；38 px 图标块 + 标题 18/600 + 说明 14 t-3 + 关闭 -->
+            <Border DockPanel.Dock="Top" MinHeight="66" Padding="20,12,12,12"
+                    BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+              <DockPanel>
+                <Border Name="PART_IconBox" DockPanel.Dock="Left" Width="38" Height="38" Margin="0,0,14,0"
+                        CornerRadius="{StaticResource Radius}" Background="{StaticResource BgSunkenBrush}" VerticalAlignment="Center">
+                  <c:IconView Name="PART_Icon" Icon="{TemplateBinding Icon}" Size="20" Foreground="{StaticResource T2Brush}"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <Button Name="PART_Close" DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="x"
+                        ToolTip.Tip="关闭" AutomationProperties.Name="关闭" VerticalAlignment="Center" />
+                <StackPanel Spacing="3" VerticalAlignment="Center">
+                  <!-- 行高同样稿（正文行高 1.45：18 px → 26、14 px → 20；标题区因此是 73 高，不是最小高 66） -->
+                  <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsHead}" FontWeight="SemiBold" LineHeight="{StaticResource LhHead}"
+                             Foreground="{StaticResource T1Brush}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Title}" />
+                  <TextBlock Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" LineHeight="{StaticResource Lh2}"
+                             TextWrapping="Wrap"
+                             IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+            <!-- 底栏：bg-head + 上边 line-faint，左侧说明，右侧按钮（间距 10 由使用处的 StackPanel 给） -->
+            <Border DockPanel.Dock="Bottom" Padding="20,14" Background="{StaticResource BgHeadBrush}"
+                    BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,1,0,0" CornerRadius="0,0,7,7"
+                    IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <DockPanel>
+                <ContentPresenter DockPanel.Dock="Left" Content="{TemplateBinding FooterLeft}" FontSize="{StaticResource Fs2}"
+                                  Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                <ContentPresenter Content="{TemplateBinding Footer}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+              </DockPanel>
+            </Border>
+            <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                                ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}" />
+            </ScrollViewer>
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:danger /template/ Border#PART_IconBox">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="^:danger /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 对话框里的设备勾选行（样稿 dialogs.css .dlg-pick，急停 / 全部停止）：最小高 58、内边距 8 14、line-2 边、圆角 6、白底；
+       悬停 / 勾上（类 on）a-line 边 + a-tint 底，按下 a-soft；不能选（类 dis，同时带 b:Pr.Reason）bg-head 底 + line-faint 边、光标「禁止」。
+       行里的复选框画在内容里（Views/Shell/Dialogs/PickDialogView：Border.pbox，类 on / dis 由这里的伪类换色）。 -->
+  <ControlTheme x:Key="PrPickRow" TargetType="Button">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="14,8" />
+    <Setter Property="MinHeight" Value="58" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-3" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="9"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover, ^.on">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 不能选（最后写） -->
+    <Style Selector="^.dis, ^:reason, ^.dis:pointerover, ^.dis:pressed">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

@@ -1,0 +1,269 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cp="using:ParallelReactor.Control.Controls.Steps"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:core="using:ParallelReactor.Control.Core.Programs"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.ReactorProgramPanel"
+             x:DataType="pg:ReactorProgramVm">
+  <!-- 「程序」面板（样稿 js/pages/reactor.js progPanel + css/reactor.css .reactor-prog / .reactor-crumb / .reactor-canvas / .reactor-cbar / .reactor-noprog / .reactor-lib*）：
+       标题 = 面包屑（ReactorCrumb）；内容 = 画布（bg-side 上左侧 24 % 的白色渐隐）：
+       顶部一条 40（左 16 右 6、间距 8、下边 line-soft）：状态（点 + 15 px，宽画布「运行中 · 第 3/4 步 · 预计 11:09 结束」/ 窄画布「预计 11:09 结束」）+ 工具（放大档 13 t-3 · 定位当前步 · 放大 · 缩小 · 适应）；
+       下面是滚动区（8 px 滚动条，轨道 bg-app + 左边 line-soft）：步骤卡片画布（StepFlowPanel，居中）+ 安全联锁框；没有程序时是程序库 + 预览。 -->
+  <UserControl.Resources>
+    <LinearGradientBrush x:Key="CanvasGlowBrush" StartPoint="0%,0%" EndPoint="100%,0%" Opacity="0.55">
+      <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
+      <GradientStop Offset="0.24" Color="Transparent" />
+    </LinearGradientBrush>
+    <!-- 程序库一行左边的选择按钮（.reactor-lib-pick：铺满「下发」左边的整行、整行高，内边距 8 0 8 16、透明，行本身管悬停 / 选中的底色）。
+         键盘焦点（M6）：按钮里面 2 px a-d 环（样稿 outline-offset −2，直角），不用 Fluent 的黑框 -->
+    <ControlTheme x:Key="LibPick" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="16,8,0,8" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <ContentPresenter Name="PART_ContentPresenter" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"
+                              Content="{TemplateBinding Content}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+            <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <!-- 状态行（.reactor-ps：15 px t-2；状态字 600 t-1；分隔「 · 」t-3） -->
+    <Style Selector="TextBlock.ps">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.ps.word">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.ps.sep">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.zoomv">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <!-- 样稿 margin-right 4 + .reactor-ctools 的 gap 2（这里它不在工具那一组里，见画布顶部一条） -->
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+
+    <!-- 没有程序：标题 16/600 t-1、说明 14 t-3；程序库（白卡 1 px line-2、圆角 6、阴影）：行 ≥ 58、下边 line-faint，名称 15/600 t-1，说明 14 t-3 -->
+    <Style Selector="TextBlock.nph">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhTitle}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.nps">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.lib">
+      <Setter Property="Margin" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.librow">
+      <Setter Property="MinHeight" Value="58" />
+      <Setter Property="Padding" Value="0,0,12,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="ContentPresenter:nth-last-child(1) > Border.librow">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.librow:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Border.librow.sel">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <Style Selector="Border.librow > Panel > Border.selbar">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.librow.sel > Panel > Border.selbar">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="TextBlock.libname">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="cp|ChemLine.libnote">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+    </Style>
+    <!-- 预览标题（.reactor-prev-h：上 14 左右 16、上内边距 16 + 上边 line-2；眼睛 17 t-3；15/600 t-1；右边 14 t-3，面板 ≤ 440 时换到下一行、左缩进 25） -->
+    <Style Selector="TextBlock.prevt">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhBody}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.prevs">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <pr:PrPanel Name="Frame" TitleTip="{Binding CrumbTip}">
+    <pr:PrPanel.Title>
+      <rv:ReactorCrumb Name="Crumb" Alias="{Binding Alias}" Rv="{Binding Rv}" ProgName="{Binding ProgName}" />
+    </pr:PrPanel.Title>
+
+    <Panel Name="Canvas" Background="{StaticResource BgSideBrush}">
+      <Border Background="{StaticResource CanvasGlowBrush}" IsHitTestVisible="False" />
+      <DockPanel>
+        <!-- 画布顶部一条：状态 + 工具（有程序时才有）。样稿 .reactor-cbar gap 8 ·（.reactor-ctools gap 2：放大倍数 margin-right 4 + 四个按钮）：
+             这里间距写在外边距上（状态右 8、倍数右 6），放大倍数是「放得下才显示」（FitOpt）—— 状态行是画布上最常看的一行、里面有时刻（不省略读数），
+             字宽比样稿宽（R1，例如 1600 放大 115 % 时差 1.5 px）放不下时先让出「115 %」（放大按钮的状态照样看得出），状态行再按权重省略 -->
+        <Border Name="Cbar" DockPanel.Dock="Top" Height="40" Padding="16,0,6,0" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,0,1"
+                IsVisible="{Binding HasProgram}">
+          <pr:FlexRow Spacing="0">
+            <pr:FlexRow Name="Status" Spacing="7" Margin="0,0,8,0" Background="Transparent" ToolTip.Tip="{Binding StatusTitle}" IsVisible="{Binding HasStatus}" pr:FlexRow.Shrink="1">
+              <!-- 样稿 .reactor-ps > .pr-dot { margin: 0 1px }：9 px 点 + 左右各 1 = 11 px 槽位；已结束的 ✓ 是 13 px（.pr-dot-done 没有外边距），见 SyncStatus -->
+              <pr:KeyDot Name="SDot" Key="{Binding StatusKey}" Slot="11" />
+              <pr:FlexRow Spacing="0" pr:FlexRow.Shrink="1">
+                <pr:PrText Name="SWord" Classes="ps word" />
+                <pr:PrText Name="SSep" Classes="ps sep" />
+                <pr:PrText Name="SText" Classes="ps num" TextTrimming="CharacterEllipsis" pr:FlexRow.Shrink="1" />
+              </pr:FlexRow>
+            </pr:FlexRow>
+            <pr:PrText Name="ZoomV" Classes="zoomv num" Text="{Binding ZoomShown}" IsVisible="{Binding ZoomShown, Converter={x:Static ObjectConverters.IsNotNull}}"
+                       pr:FlexRow.FitOpt="True" pr:FlexRow.PushRight="True" />
+            <!-- 工具只在有步骤卡片时（对不上台账的降级显示没有卡片可放大 / 定位，复核） -->
+            <StackPanel Name="Tools" Orientation="Horizontal" Spacing="2" pr:FlexRow.PushRight="True" IsVisible="{Binding ShowFlow}">
+              <Button Name="Locate" Theme="{StaticResource PrIconButton}" b:Pr.Icon="target" ToolTip.Tip="定位当前步" AutomationProperties.Name="定位当前步"
+                      Command="{Binding LocateCommand}" IsVisible="{Binding CanLocate}" />
+              <Button Name="ZoomIn" Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomin" ToolTip.Tip="放大画布" AutomationProperties.Name="放大画布"
+                      Command="{Binding ZoomInCommand}" b:Pr.Reason="{Binding ZoomInReason}" />
+              <Button Name="ZoomOut" Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomout" ToolTip.Tip="缩小画布" AutomationProperties.Name="缩小画布"
+                      Command="{Binding ZoomOutCommand}" b:Pr.Reason="{Binding ZoomOutReason}" />
+              <Button Name="Fit" Theme="{StaticResource PrIconButton}" b:Pr.Icon="fit" ToolTip.Tip="适应：按画布宽度重排并定位当前步"
+                      AutomationProperties.Name="适应：按画布宽度重排并定位当前步" Command="{Binding FitCommand}" />
+            </StackPanel>
+          </pr:FlexRow>
+        </Border>
+
+        <rv:WidthProbe Name="Probe">
+          <ScrollViewer Name="Scroll" Theme="{StaticResource PrScrollViewerCanvas}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+            <Panel>
+              <!-- 有程序：步骤卡片画布（居中）+ 安全联锁框 -->
+              <rv:StepFlowPanel Name="Flow" HorizontalAlignment="Center" VerticalAlignment="Top" Items="{Binding Steps}" Zoom="{Binding Zoom}" IsVisible="{Binding ShowFlow}">
+                <rv:StepFlowPanel.Tail>
+                  <rv:SafetyView />
+                </rv:StepFlowPanel.Tail>
+              </rv:StepFlowPanel>
+
+              <!-- 真机：程序对不上台账（R5）—— 只写设备报告的进度。说明按断行保护（「接口」这类词不从中间断开）；
+                   安全联锁框照样是卡宽，上方的分隔线横跨整行（同画布最后的那一个，复核） -->
+              <StackPanel Name="DegradedBody" Margin="16,20,16,28" Spacing="30" IsVisible="{Binding Degraded}">
+                <pr:Note>
+                  <TextBlock TextWrapping="Wrap">
+                    <Run Text="{x:Static core:ReactorPageText.DegradedTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><LineBreak />
+                    <Run Text="{Binding DegradedText, Converter={x:Static th:TextConverters.Keep}}" />
+                  </TextBlock>
+                </pr:Note>
+                <rv:SafetyView Name="DegradedSafety" HorizontalAlignment="Stretch" />
+              </StackPanel>
+
+              <!-- 没有程序：程序库 + 预览（样稿 noProgHTML；.reactor-noprog：上 18 下 8，间距 10） -->
+              <StackPanel Name="NoProg" Margin="0,18,0,8" Spacing="10" IsVisible="{Binding HasNoProgram}">
+                <pr:FlexRow Spacing="12" Margin="16,0,16,2">
+                  <c:IconView Icon="program" Size="28" Foreground="{StaticResource T3Brush}" />
+                  <StackPanel Spacing="2" pr:FlexRow.Shrink="1">
+                    <pr:PrText Classes="nph" Text="{Binding NoProgTitle}" ToolTip.Tip="{Binding NoProgTitle}" />
+                    <pr:PrText Classes="nps" Text="{Binding NoProgLead}" />
+                  </StackPanel>
+                </pr:FlexRow>
+                <Border Classes="lib" IsVisible="{Binding HasLibrary}">
+                  <ItemsControl Name="Lib" ItemsSource="{Binding Library}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="pg:LibRowVm">
+                        <Border Classes="librow" Classes.sel="{Binding IsSelected}">
+                          <Panel>
+                            <Border Classes="selbar" Width="3" Margin="0,0,0,0" HorizontalAlignment="Left" Background="{StaticResource ATabBrush}" />
+                            <!-- 选择按钮占满「下发」左边的整行（.reactor-lib-pick flex: 1 1 auto; align-self: stretch）：行里哪儿都能点、都是手形
+                                 （复核 v4-program-2：以前在 FlexRow 里只有文字那么宽）；没有「下发」时占满整行。「下发」与它间距 10、纵向居中 -->
+                            <Grid ColumnDefinitions="*,Auto">
+                              <Button Theme="{StaticResource LibPick}" Command="{Binding PickCommand}" MinHeight="57"
+                                      AutomationProperties.Name="{Binding Name}">
+                                <StackPanel Spacing="2">
+                                  <pr:PrText Classes="libname" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" />
+                                  <cp:ChemLine Classes="libnote" Text="{Binding Note}" />
+                                </StackPanel>
+                              </Button>
+                              <Button Grid.Column="1" Classes="sm" Margin="10,0,0,0" VerticalAlignment="Center" b:Pr.Icon="send" Content="下发"
+                                      Command="{Binding LoadCommand}" b:Pr.Reason="{Binding LoadReason}" IsVisible="{Binding ShowLoad}" />
+                            </Grid>
+                          </Panel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </Border>
+                <pr:ReasonLine Text="{Binding LibReason}" Margin="16,2,16,0" IsVisible="{Binding LibReason, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <!-- 预览：眼睛 + 「预览：筛选-80 ℃」+ 右边「只读 · 下发后在这里运行」（窄面板换到下一行） -->
+                <Border Name="PrevHead" Margin="16,14,16,0" Padding="0,16,0,0" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,1,0,0"
+                        IsVisible="{Binding HasPreview}">
+                  <Panel>
+                    <pr:FlexRow Name="PrevWide" Spacing="8">
+                      <c:IconView Icon="eye" Size="17" Foreground="{StaticResource T3Brush}" />
+                      <pr:PrText Classes="prevt" Text="{Binding PreviewTitle}" ToolTip.Tip="{Binding PreviewTitle}" pr:FlexRow.Shrink="1" />
+                      <pr:PrText Classes="prevs" Text="只读 · 下发后在这里运行" pr:FlexRow.PushRight="True" />
+                    </pr:FlexRow>
+                    <StackPanel Name="PrevNarrow" Spacing="2" IsVisible="False">
+                      <pr:FlexRow Spacing="8">
+                        <c:IconView Icon="eye" Size="17" Foreground="{StaticResource T3Brush}" />
+                        <pr:PrText Classes="prevt" Text="{Binding PreviewTitle}" ToolTip.Tip="{Binding PreviewTitle}" pr:FlexRow.Shrink="1" />
+                      </pr:FlexRow>
+                      <pr:PrText Classes="prevs" Text="只读 · 下发后在这里运行" Margin="25,0,0,0" />
+                    </StackPanel>
+                  </Panel>
+                </Border>
+                <rv:StepFlowPanel Name="PreviewFlow" HorizontalAlignment="Center" Preview="True" Items="{Binding Preview}" IsVisible="{Binding HasPreview}" />
+              </StackPanel>
+            </Panel>
+          </ScrollViewer>
+        </rv:WidthProbe>
+      </DockPanel>
+    </Panel>
+  </pr:PrPanel>
+</UserControl>

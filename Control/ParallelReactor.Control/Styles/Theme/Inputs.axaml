@@ -1,0 +1,454 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 输入（PORT-PLAN §4.6；样稿 base.css .pr-input / .pr-numbox / .pr-select / .pr-check / .pr-toggle）。
+       控件高 36、圆角 6、line 边框；悬停 line-strong；聚焦 a-line 边框 + 外侧 1 px a-line（合起来 2 px，样稿 box-shadow 0 0 0 1px）。
+       只读 / 禁用：bg-sunken 底、t-3 字（禁用 t-dis）。选中文字用 a-soft 底（不用系统蓝）。 -->
+
+  <!-- 文本输入：b:Pr.Unit 给单位后缀（右侧 14 px t-3） -->
+  <ControlTheme x:Key="PrInput" TargetType="TextBox">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Height" Value="{StaticResource CtlH}" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="SelectionBrush" Value="{StaticResource ASoftBrush}" />
+    <Setter Property="SelectionForegroundBrush" Value="{StaticResource T1Brush}" />
+    <Setter Property="CaretBrush" Value="{StaticResource T1Brush}" />
+    <Setter Property="Cursor" Value="Ibeam" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_BorderElement"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" />
+          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+                  IsVisible="False" IsHitTestVisible="False" />
+          <Grid ColumnDefinitions="*,Auto" Margin="{TemplateBinding BorderThickness}">
+            <ScrollViewer Name="PART_ScrollViewer" Theme="{StaticResource PrScrollViewer}"
+                          Margin="{TemplateBinding Padding}"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Disabled">
+              <Panel>
+                <TextBlock Name="PART_Watermark"
+                           Text="{TemplateBinding Watermark}"
+                           Foreground="{StaticResource TDisBrush}"
+                           TextAlignment="{TemplateBinding TextAlignment}"
+                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                           IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}" />
+                <TextPresenter Name="PART_TextPresenter"
+                               Text="{TemplateBinding Text, Mode=TwoWay}"
+                               CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                               CaretIndex="{TemplateBinding CaretIndex}"
+                               SelectionStart="{TemplateBinding SelectionStart}"
+                               SelectionEnd="{TemplateBinding SelectionEnd}"
+                               TextAlignment="{TemplateBinding TextAlignment}"
+                               TextWrapping="{TemplateBinding TextWrapping}"
+                               LineHeight="{TemplateBinding LineHeight}"
+                               LetterSpacing="{TemplateBinding LetterSpacing}"
+                               PasswordChar="{TemplateBinding PasswordChar}"
+                               RevealPassword="{TemplateBinding RevealPassword}"
+                               SelectionBrush="{TemplateBinding SelectionBrush}"
+                               SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                               CaretBrush="{TemplateBinding CaretBrush}"
+                               HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+              </Panel>
+            </ScrollViewer>
+            <TextBlock Name="PART_Unit" Grid.Column="1" Text="{TemplateBinding (b:Pr.Unit)}"
+                       FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                       Margin="0,0,12,0" VerticalAlignment="Center"
+                       IsVisible="{TemplateBinding (b:Pr.Unit), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </Grid>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+    </Style>
+    <Style Selector="^:focus-within">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:focus-within /template/ Border#PART_Ring">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^[IsReadOnly=True], ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="^[IsReadOnly=True]:focus-within, ^:reason:focus-within">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    </Style>
+    <Style Selector="^[IsReadOnly=True]:focus-within /template/ Border#PART_Ring, ^:reason:focus-within /template/ Border#PART_Ring">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 数值框里的输入（无边框、右对齐、15 px 600） -->
+  <ControlTheme x:Key="PrNumInput" TargetType="TextBox">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextAlignment" Value="Right" />
+    <Setter Property="Padding" Value="4,0,2,0" />
+    <Setter Property="MinWidth" Value="40" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="SelectionBrush" Value="{StaticResource ASoftBrush}" />
+    <Setter Property="SelectionForegroundBrush" Value="{StaticResource T1Brush}" />
+    <Setter Property="CaretBrush" Value="{StaticResource T1Brush}" />
+    <Setter Property="Cursor" Value="Ibeam" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+          <ScrollViewer Name="PART_ScrollViewer" Theme="{StaticResource PrScrollViewer}"
+                        HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <TextPresenter Name="PART_TextPresenter"
+                           Text="{TemplateBinding Text, Mode=TwoWay}"
+                           CaretBlinkInterval="{TemplateBinding CaretBlinkInterval}"
+                           CaretIndex="{TemplateBinding CaretIndex}"
+                           SelectionStart="{TemplateBinding SelectionStart}"
+                           SelectionEnd="{TemplateBinding SelectionEnd}"
+                           TextAlignment="{TemplateBinding TextAlignment}"
+                           SelectionBrush="{TemplateBinding SelectionBrush}"
+                           SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}"
+                           CaretBrush="{TemplateBinding CaretBrush}"
+                           HorizontalAlignment="Stretch"
+                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^[IsReadOnly=True]">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 数值框的 −/+：32 宽、bg-head、t-3 图标 16；悬停 a-tint / a-d，按下 a-soft；禁用 t-dis -->
+  <ControlTheme x:Key="PrNumStep" TargetType="Button">
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+          <c:IconView Icon="{TemplateBinding (b:Pr.Icon)}" Size="16" Foreground="{TemplateBinding Foreground}"
+                      HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 数值框（Controls/Pr/NumBox） -->
+  <ControlTheme x:Key="{x:Type pr:NumBox}" TargetType="pr:NumBox">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Height" Value="{StaticResource CtlH}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <Button Name="PART_Minus" Theme="{StaticResource PrNumStep}" b:Pr.Icon="minus" BorderThickness="0,0,1,0" CornerRadius="5,0,0,5"
+                      IsVisible="{TemplateBinding ShowSteppers}" AutomationProperties.Name="减少" />
+              <TextBox Name="PART_Input" Grid.Column="1" Theme="{StaticResource PrNumInput}" Classes="num" />
+              <TextBlock Name="PART_Unit" Grid.Column="2" Text="{TemplateBinding Unit}" FontSize="{StaticResource Fs2}"
+                         Foreground="{StaticResource T3Brush}" Margin="4,0,10,0" VerticalAlignment="Center"
+                         IsVisible="{TemplateBinding Unit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <Button Name="PART_Plus" Grid.Column="3" Theme="{StaticResource PrNumStep}" b:Pr.Icon="plus" BorderThickness="1,0,0,0" CornerRadius="0,5,5,0"
+                      IsVisible="{TemplateBinding ShowSteppers}" AutomationProperties.Name="增加" />
+            </Grid>
+          </Border>
+          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+    </Style>
+    <Style Selector="^:focus-within /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:focus-within /template/ Border#PART_Ring">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:reason /template/ Border#PART_Body, ^:disabled /template/ Border#PART_Body">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+    </Style>
+    <Style Selector="^:reason /template/ Border#PART_Ring, ^:disabled /template/ Border#PART_Ring">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 下拉：高 36，右侧 16 px 的 ⌄（t-3）；弹层白底 line 边、圆角 6、ShadowPop，选项同菜单项（36 高、15 px） -->
+  <ControlTheme x:Key="PrSelectItem" TargetType="ComboBoxItem">
+    <Setter Property="Height" Value="{StaticResource RowH}" />
+    <Setter Property="Padding" Value="12,0,16,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Background="{TemplateBinding Background}"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrSelect" TargetType="ComboBox">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Height" Value="{StaticResource CtlH}" />
+    <Setter Property="Padding" Value="12,0,34,0" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="MaxDropDownHeight" Value="320" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource PrSelectItem}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body"
+                  Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" />
+          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+                  IsVisible="False" IsHitTestVisible="False" />
+          <TextBlock Name="PART_Placeholder"
+                     Text="{TemplateBinding PlaceholderText}"
+                     Foreground="{StaticResource TDisBrush}"
+                     Margin="{TemplateBinding Padding}"
+                     VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis"
+                     IsVisible="{TemplateBinding SelectionBoxItem, Converter={x:Static ObjectConverters.IsNull}}" />
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding SelectionBoxItem}"
+                            ContentTemplate="{TemplateBinding ItemTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            Margin="{TemplateBinding Padding}"
+                            HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+          <c:IconView Name="PART_Caret" Icon="down" Size="16" Foreground="{StaticResource T3Brush}"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,10,0" />
+          <Popup Name="PART_Popup"
+                 WindowManagerAddShadowHint="False"
+                 IsOpen="{TemplateBinding IsDropDownOpen, Mode=TwoWay}"
+                 MinWidth="{Binding Bounds.Width, RelativeSource={RelativeSource TemplatedParent}}"
+                 MaxHeight="{TemplateBinding MaxDropDownHeight}"
+                 PlacementTarget="PART_Body"
+                 Placement="BottomEdgeAlignedLeft"
+                 VerticalOffset="4"
+                 IsLightDismissEnabled="True"
+                 InheritsTransform="True">
+            <Border Name="PART_PopupBorder"
+                    Background="{StaticResource BgCardBrush}"
+                    BorderBrush="{StaticResource LineBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource Radius}"
+                    Padding="0,6"
+                    BoxShadow="{StaticResource ShadowPop}"
+                    TextElement.FontFamily="{DynamicResource UiFont}">
+              <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible, ^:dropdownopen">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Ring, ^:dropdownopen /template/ Border#PART_Ring">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 复选框 / 开关（样稿 .pr-check 与 .pr-toggle 同一种外观：brief §5.8 不再用彩色拨动开关）：
+       18 px 方框、1.5 px line-strong 边、圆角 4；勾选时填 a + 白色 ✓（14 px，描边 2.2）；悬停边框 a-line；按下 a-tint / a 边（已勾选按下 a-d）；
+       文字 15 px t-2、间距 10、最小高 32；禁用 / 原因：t-dis 字、bg-sunken 方框。目标类型 ToggleButton：CheckBox 与普通开关都能用。 -->
+  <ControlTheme x:Key="PrCheck" TargetType="ToggleButton">
+    <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="MinHeight" Value="32" />
+    <!-- 复选框 0；开关（样稿 .pr-toggle）左右 2：使用处设 Padding="2,0" -->
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}" Margin="{TemplateBinding Padding}">
+          <Panel Width="{StaticResource CheckBoxSize}" Height="{StaticResource CheckBoxSize}" VerticalAlignment="Center">
+            <Border Name="PART_Box" BorderThickness="1.5" CornerRadius="{StaticResource RadiusS}"
+                    BorderBrush="{StaticResource LineStrongBrush}" Background="{StaticResource BgCardBrush}" />
+            <c:IconView Name="PART_Check" Icon="check" Size="14" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}"
+                        HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
+            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
+                    IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1" Margin="10,0,0,0"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            RecognizesAccessKey="True"
+                            IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Box">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+    <Style Selector="^:disabled /template/ Border#PART_Box, ^:reason /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+    </Style>
+    <!-- 勾选（写在禁用之后：同样稿，已勾选的禁用项仍是紫色方框） -->
+    <Style Selector="^:checked /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ c|IconView#PART_Check">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:checked:pressed /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource ADBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ADBrush}" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

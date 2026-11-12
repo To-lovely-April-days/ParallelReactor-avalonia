@@ -1,0 +1,39 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.GlobalStopCell"
+             x:DataType="sh:ShellVm">
+  <!-- 全局停止格（样稿 .pr-estopcell，页签栏右端、检查器上方）：bg-head、左边 line-soft、下边 line-strong，左右 12，按钮靠右、间距 8。
+       「■ 全部停止」（停止类：深灰实心方块，不需要控制权）+ 整个界面唯一的实心红「急停」（最小宽 112、字距 0.5 px、图标 18）。
+       有设备急停中时「急停」外加 2 px r-line 环。ZIndex 201：压在对话框遮罩（200）之上，对话框开着也能直接点。 -->
+  <UserControl.Styles>
+    <Style Selector="Button.estop">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="Border.estop-ring">
+      <Setter Property="Margin" Value="-2" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,0,0,1">
+    <Border BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1,0,0,0" Padding="12,0">
+      <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+        <Button Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="全部停止"
+                b:Pr.Reason="{Binding StopCell.Reason}" ToolTip.Tip="{x:Static sh:StopCellVm.StopAllTip}"
+                Command="{Binding StopCell.StopAllCommand}" />
+        <Panel>
+          <Border Classes="estop-ring" IsVisible="{Binding StopCell.AnyEstop}" />
+          <Button Theme="{StaticResource PrDanger}" Classes="estop" b:Pr.Icon="estop"
+                  b:Pr.Reason="{Binding StopCell.Reason}" ToolTip.Tip="{x:Static sh:StopCellVm.EstopTip}"
+                  AutomationProperties.Name="急停" Command="{Binding StopCell.EstopCommand}">
+            <TextBlock Text="急停" LetterSpacing="0.5" />
+          </Button>
+        </Panel>
+      </StackPanel>
+    </Border>
+  </Border>
+</UserControl>

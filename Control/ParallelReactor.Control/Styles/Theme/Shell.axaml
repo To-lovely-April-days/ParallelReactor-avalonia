@@ -1,0 +1,131 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 外框专用的画刷与按钮（样稿 css/shell.css）：页签栏右端的「+」「›」、状态栏的报警项。其余外框部件用 Buttons / Tabs / Menus 里的通用主题。 -->
+
+  <!-- 图标栏：渐变上再盖 20 % side-line（让 14 px 白字 ≥ 4.5:1） -->
+  <SolidColorBrush x:Key="SideVeilBrush" Color="{StaticResource SideLineColor}" Opacity="0.2" />
+  <!-- 资源管理器浮层下面的浅遮罩：rgba(30, 30, 38, .08) = 遮罩色（.25）× 0.32 -->
+  <SolidColorBrush x:Key="XScrimBrush" Color="{StaticResource OverlayColor}" Opacity="0.32" />
+
+  <!-- 页签栏的「+」（新页签弹出框）/「›」（全部页签菜单）：宽 44、高 = 页签栏内高、透明、图标 t-3（+ 22 px，› 18 px）；
+       悬停 / 弹出中 bg-hover + t-1，按下 bg-press；焦点环画在内侧 1–3 px（样稿 outline-offset −3）。
+       计数（b:Pr.Count，「›」上未显示的页签数）：箭头左边一块 bg-press 底的 13 px 600 t-2 数字（高 20、圆角 10），这时按钮最小宽 52、左右 10 -->
+  <ControlTheme x:Key="PrTabBarButton" TargetType="Button">
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <Border Name="PART_Count" MinWidth="20" Height="20" Padding="6,0" CornerRadius="10" Background="{StaticResource BgPressBrush}"
+                      VerticalAlignment="Center"
+                      IsVisible="{TemplateBinding (b:Pr.Count), Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                <!-- pr:PrText（按前进宽度量、不加墨迹外伸）+ 等宽数字：哪个数字「›」都一样宽（以前 TextBlock 的「3」「4」多 1–2 px，页签区跟着变） -->
+                <pr:PrText Text="{TemplateBinding (b:Pr.Count)}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold"
+                           Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+              <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Foreground="{TemplateBinding Foreground}"
+                          VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Name="PART_Focus" Margin="1" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="18" />
+    </Style>
+    <Style Selector="^.add /template/ c|IconView#PART_Icon">
+      <Setter Property="Size" Value="22" />
+    </Style>
+    <Style Selector="^.more">
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="1,0,0,0" />
+    </Style>
+    <Style Selector="^.more.has-more">
+      <Setter Property="Width" Value="NaN" />
+      <Setter Property="MinWidth" Value="52" />
+      <Setter Property="Padding" Value="10,0" />
+    </Style>
+    <Style Selector="^:pointerover, ^:flyout-open">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 状态栏的报警项（样稿 .pr-st-alarm）：高 26、左右 6（使用处外边距 −6，文字与相邻项对齐）、圆角 4、透明、14 px t-2；
+       可点时（有报警）悬停 bg-hover、按下 bg-press；没有可选的报警对象时（类 idle）不悬停、不按下，也不是 Tab 停靠点（IsTabStop 由使用处给）。
+       焦点环同样稿默认的 outline：外侧 2–4 px（圆角 8），上下两边被状态栏裁掉（StatusBarView 裁到上边框以内，同样稿 .pr-status overflow: hidden），只剩左右两段弧 -->
+  <ControlTheme x:Key="PrStatusButton" TargetType="Button">
+    <!-- 不裁剪：焦点环画在按钮外面（模板控件默认裁剪到自己的框）；裁掉上下两边的是状态栏 -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="Padding" Value="6,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
+                  Padding="{TemplateBinding Padding}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" Foreground="{TemplateBinding Foreground}"
+                              VerticalAlignment="Center" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.idle">
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="^.idle:pointerover, ^.idle:pressed">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+  </ControlTheme>
+</ResourceDictionary>

@@ -1,0 +1,126 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:pr="using:ParallelReactor.Control.Controls.Pr">
+  <!-- 其它共用组件（样稿 base.css .pr-note / .pr-reason / .pr-empty / .pr-ring / 读数）。
+       KeyDot、ProgressPr、StepBar 自绘，Kv、Crumb、FlexRow、BarFitPanel 是面板，都不需要模板。 -->
+
+  <!-- 提示条：内边距 10 14、圆角 6、line-soft 边、bg-head 底；图标 17（上移 2）、14 px t-2、行高 1.55（同 WebKit 取整 21 px） -->
+  <ControlTheme x:Key="{x:Type pr:Note}" TargetType="pr:Note">
+    <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+          <DockPanel>
+            <c:IconView Name="PART_Icon" DockPanel.Dock="Left" Icon="{TemplateBinding ToneIcon}" Size="17"
+                        Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,2,10,0" />
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}" TextWrapping="Wrap" LineHeight="21" />
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:warn">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    </Style>
+    <Style Selector="^:warn /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:err">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="^:err /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^:ok /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+    </Style>
+    <Style Selector="^:info">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:info /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 禁用原因行：上边距 8、锁图标 15（上移 2）、间距 6、14 px t-3、行高 1.45（取整 20 px） -->
+  <ControlTheme x:Key="{x:Type pr:ReasonLine}" TargetType="pr:ReasonLine">
+    <Setter Property="Margin" Value="0,8,0,0" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <c:IconView DockPanel.Dock="Left" Icon="lock" Size="15" Foreground="{StaticResource T3Brush}"
+                      VerticalAlignment="Top" Margin="0,2,6,0" />
+          <TextBlock Text="{TemplateBinding Text}" Foreground="{TemplateBinding Foreground}" TextWrapping="Wrap" LineHeight="20" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 空状态：居中一列，图标 32 t-dis、标题 15/600 t-2（行高 21）、说明 14 t-3（行高 20，同样稿 line-height 1.45 取整），间距 8，内边距 32 16。
+       文字铺满整列宽、靠 TextAlignment 居中（不是「自动宽度 + 居中放」）：Avalonia 11.1 的 TextBlock 按测量时的宽度排居中偏移，
+       容器宽度变了（例如窗口跨过 1920，检查器 300 → 330）而文字框本身没变时，不会按排版宽度重排，居中的文字整段偏出自己的框、被裁掉。
+       铺满时测量宽度 = 排版宽度，不会出这个问题；看起来一样（一行居中，折行时每行居中）。 -->
+  <ControlTheme x:Key="{x:Type pr:Empty}" TargetType="pr:Empty">
+    <Setter Property="Padding" Value="16,32" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel Spacing="8" Margin="{TemplateBinding Padding}" HorizontalAlignment="Stretch" VerticalAlignment="Center">
+          <c:IconView Icon="{TemplateBinding Icon}" Size="32" Foreground="{StaticResource TDisBrush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{TemplateBinding Title}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" LineHeight="{StaticResource LhBody}"
+                     Foreground="{StaticResource T2Brush}" HorizontalAlignment="Stretch" TextAlignment="Center" TextWrapping="Wrap" />
+          <TextBlock Text="{TemplateBinding Text}" FontSize="{StaticResource Fs2}" LineHeight="{StaticResource Lh2}" Foreground="{StaticResource T3Brush}"
+                     HorizontalAlignment="Stretch" TextAlignment="Center" TextWrapping="Wrap"
+                     IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 倒计时环：中心 数值 30/600 t-1 + 单位 15/500 t-3（间隔 2），下面 标签 14 t-3（上边距 4）；环自绘 -->
+  <ControlTheme x:Key="{x:Type pr:Ring}" TargetType="pr:Ring">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+          <c:BaselineStack Spacing="2" HorizontalAlignment="Center">
+            <TextBlock Name="PART_Value" Classes="num" Text="{TemplateBinding ShownText}" FontSize="{StaticResource FsRead30}"
+                       FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="33" />
+            <TextBlock Name="PART_Unit" Text="{TemplateBinding Unit}" FontSize="{StaticResource FsBody}" FontWeight="Medium"
+                       Foreground="{StaticResource T3Brush}"
+                       IsVisible="{TemplateBinding Unit, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </c:BaselineStack>
+          <TextBlock Name="PART_Label" Text="{TemplateBinding Label}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                     Margin="0,4,0,0" LineHeight="15" HorizontalAlignment="Center"
+                     IsVisible="{TemplateBinding Label, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        </StackPanel>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 自适应读数：一个 TextBlock，字号 / 文字由 FitText 在测量时按宽度选 -->
+  <ControlTheme x:Key="{x:Type pr:FitText}" TargetType="pr:FitText">
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <TextBlock Name="PART_Text" Margin="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                   TextAlignment="{TemplateBinding TextAlignment}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

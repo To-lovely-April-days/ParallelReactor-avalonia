@@ -1,0 +1,184 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             xmlns:vd="using:ParallelReactor.Control.Views.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.DialogHost"
+             x:DataType="sh:ShellVm"
+             Classes="audit-layer"
+             IsVisible="{Binding Dialogs.IsOpen}">
+  <!-- 对话框宿主（样稿 .pr-layer / .pr-modal）：遮罩铺满外框（OverlayBrush，ZIndex 200，点遮罩关闭）+ 居中的 DialogFrame
+       （宽 = DialogVm.Width，四周至少留 24）。全局停止格 ZIndex 201，在遮罩之上（对话框开着也能直接点「急停」，它换掉当前对话框）。
+       对话框（M3，Shell/Dialogs）：内容按视图模型类型选模板（下面）；底栏右侧 = FootBar（一排 FootButton，间距 10），左侧 = 文字 / FootNote /
+       「测试连接」/ 一个次要按钮。类 audit-layer：截图审计把对话框当作盖在上面的一层（遮罩下面的页面不和它比重叠）。 -->
+  <UserControl.DataTemplates>
+    <!-- 内容 -->
+    <DataTemplate DataType="dlg:PickDialogVm" x:DataType="dlg:PickDialogVm">
+      <vd:PickDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="dlg:LeaseDialogVm" x:DataType="dlg:LeaseDialogVm">
+      <vd:LeaseDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="dlg:DeviceFormVm" x:DataType="dlg:DeviceFormVm">
+      <vd:DeviceFormView />
+    </DataTemplate>
+    <DataTemplate DataType="dlg:DevicesDialogVm" x:DataType="dlg:DevicesDialogVm">
+      <vd:DevicesDialogView />
+    </DataTemplate>
+    <DataTemplate DataType="dlg:AliasFieldVm" x:DataType="dlg:AliasFieldVm">
+      <vd:AliasFieldView />
+    </DataTemplate>
+    <!-- 移除确认（样稿 .dlg-p：15 px、行高 1.6、t-2、下边距 14；本机持有 / 申请控制权时 warn 说明） -->
+    <DataTemplate DataType="dlg:RemoveDialogVm" x:DataType="dlg:RemoveDialogVm">
+      <StackPanel>
+        <TextBlock Classes="dlgp" Text="{Binding Text}" />
+        <pr:Note Tone="Warn" Content="{Binding Warn}" IsVisible="{Binding HasWarn}" />
+      </StackPanel>
+    </DataTemplate>
+    <!-- 断开确认 -->
+    <DataTemplate DataType="dlg:DisconnectDialogVm" x:DataType="dlg:DisconnectDialogVm">
+      <StackPanel>
+        <TextBlock Classes="dlgp" Text="{Binding Text}" />
+        <pr:Note Tone="Warn" Content="{Binding Warn}" />
+      </StackPanel>
+    </DataTemplate>
+    <!-- 本机客户端名（真机，M3 复核新加：样稿没有这个对话框，外观照别名一栏） -->
+    <DataTemplate DataType="dlg:ClientNameDialogVm" x:DataType="dlg:ClientNameDialogVm">
+      <vd:ClientNameView />
+    </DataTemplate>
+    <!-- 退出确认（真机，M3 复核新加：控制权申请还在触屏上时；外观照断开确认：说明 + warn 说明） -->
+    <DataTemplate DataType="dlg:ExitDialogVm" x:DataType="dlg:ExitDialogVm">
+      <StackPanel>
+        <TextBlock Classes="dlgp" Text="{Binding Text}" />
+        <pr:Note Tone="Warn">
+          <pr:SegText Segments="{Binding WarnSegs}" TextWrapping="Wrap" LineHeight="21" />
+        </pr:Note>
+      </StackPanel>
+    </DataTemplate>
+    <!-- 「全部运行」的清单（真机，D6）：行同急停 / 全部停止的设备行（不能勾） -->
+    <DataTemplate DataType="dlg:RunAllDialogVm" x:DataType="dlg:RunAllDialogVm">
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="dlg:RunAllRowVm">
+            <Border MinHeight="58" Padding="14,8" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                    Background="{StaticResource BgCardBrush}">
+              <DockPanel>
+                <pr:PrText DockPanel.Dock="Right" Text="{Binding Status}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}"
+                           VerticalAlignment="Center" Margin="14,0,0,0" />
+                <StackPanel Spacing="2" VerticalAlignment="Center">
+                  <pr:PrText Text="{Binding Name}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}" />
+                  <pr:PrText Text="{Binding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Sub}" />
+                </StackPanel>
+              </DockPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </DataTemplate>
+
+    <!-- 底栏：一排按钮（样稿 .pr-modal-foot：靠右、间距 10） -->
+    <DataTemplate DataType="dlg:FootBar" x:DataType="dlg:FootBar">
+      <ItemsControl ItemsSource="{Binding Buttons}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+      </ItemsControl>
+    </DataTemplate>
+    <!-- 一个按钮（样稿 ui.btn）：次要 / 主要（stop 类 = 白色实心方块）/ 红色实心（只有急停确认）；lg = 40 高；带原因时显示为禁用并说明 -->
+    <DataTemplate DataType="dlg:FootButton" x:DataType="dlg:FootButton">
+      <Panel IsVisible="{Binding IsVisible}">
+        <Button Content="{Binding Label}" b:Pr.Icon="{Binding Icon}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}"
+                ToolTip.Tip="{Binding Tip}" Classes.lg="{Binding Large}" IsVisible="{Binding IsSecondary}" />
+        <Button Theme="{StaticResource PrPrimary}" Content="{Binding Label}" b:Pr.Icon="{Binding Icon}" Command="{Binding Command}"
+                b:Pr.Reason="{Binding Reason}" ToolTip.Tip="{Binding Tip}" Classes.lg="{Binding Large}" Classes.stop="{Binding IsPrimaryStop}"
+                IsVisible="{Binding IsPrimary}" />
+        <Button Theme="{StaticResource PrDanger}" Content="{Binding Label}" b:Pr.Icon="{Binding Icon}" Command="{Binding Command}"
+                b:Pr.Reason="{Binding Reason}" ToolTip.Tip="{Binding Tip}" Classes.lg="{Binding Large}" IsVisible="{Binding IsDanger}" />
+      </Panel>
+    </DataTemplate>
+    <!-- 底栏左侧：图标 + 文字（「⏱ 倒计时结束自动取消」：间距 8，图标 16 t-3） -->
+    <DataTemplate DataType="dlg:FootNote" x:DataType="dlg:FootNote">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <c:IconView Icon="{Binding Icon}" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        <pr:PrText Text="{Binding Text}" VerticalAlignment="Center" />
+      </StackPanel>
+    </DataTemplate>
+    <!-- 底栏左侧：「测试连接」+ 结果（样稿 .dlg-test：14 px t-3、间距 6、图标 16；成功 g-ink ✓；失败 ⚠ r-ink 600） -->
+    <DataTemplate DataType="dlg:TestFootVm" x:DataType="dlg:TestFootVm">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <ContentControl Content="{Binding Button}" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding HasText}">
+          <c:IconView Icon="check" Size="16" Foreground="{StaticResource GInkBrush}" VerticalAlignment="Center" IsVisible="{Binding IsOk}" />
+          <c:IconView Icon="alert" Size="16" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Center" IsVisible="{Binding IsErr}" />
+          <pr:PrText Classes="dlgtest" Classes.ok="{Binding IsOk}" Classes.err="{Binding IsErr}" Text="{Binding Text}" VerticalAlignment="Center"
+                     TextTrimming="CharacterEllipsis" MaxWidth="320" ToolTip.Tip="{Binding Text}" />
+        </StackPanel>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <UserControl.Styles>
+    <!-- 对话框的阴影（ShadowDlg：0 10 45，样稿 .pr-modal）画在框外：居中放它的 ContentControl 和模板里的 ContentPresenter 不裁剪
+         （Avalonia 11.1 的模板控件默认 ClipToBounds=true，框多大就裁多大 —— 阴影整个被裁掉） -->
+    <Style Selector="ContentControl#Holder">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="ContentControl#Holder /template/ ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <!-- 对话框内容共用的字（样稿 base.css .pr-field-label / .pr-field-hint、dialogs.css .dlg-p / .dlg-test）。
+         只按类名匹配（不用后代 TextBlock 选择器：按钮里的字也是 TextBlock，见 doc §8 第 16 条） -->
+    <Style Selector="TextBlock.flabel">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.fhint">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.dlgp">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,0,0,14" />
+    </Style>
+    <Style Selector="TextBlock.dlgtest">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.dlgtest.ok">
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.dlgtest.err">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </UserControl.Styles>
+  <Panel>
+    <Border Name="Scrim" Background="{StaticResource OverlayBrush}" />
+    <ContentControl Name="Holder" Content="{Binding Dialogs.Current}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+      <ContentControl.ContentTemplate>
+        <DataTemplate x:DataType="sh:DialogVm">
+          <!-- 键盘（M3 复核）：打开时焦点移到框里第一个位置上一个看不见的锚点（0 × 0、不在 Tab 顺序里、没有焦点外观）；
+               Tab 从它进到对话框的第一个控件，只在这一组里循环（TabNavigation = Cycle），到不了下面的页面（见 DialogHost.axaml.cs）。
+               读屏（M6，样稿 role="dialog" + 标题）：对话框框的无障碍名 = 标题 -->
+          <Panel KeyboardNavigation.TabNavigation="Cycle">
+            <Border Name="FocusAnchor" Width="0" Height="0" HorizontalAlignment="Left" VerticalAlignment="Top" Focusable="True" IsTabStop="False" />
+            <pr:DialogFrame Width="{Binding Width}" Title="{Binding Title}" Sub="{Binding Sub}" Icon="{Binding Icon}" IsDanger="{Binding IsDanger}"
+                            Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}"
+                            AutomationProperties.Name="{Binding Title}" />
+          </Panel>
+        </DataTemplate>
+      </ContentControl.ContentTemplate>
+    </ContentControl>
+  </Panel>
+</UserControl>

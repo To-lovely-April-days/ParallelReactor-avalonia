@@ -1,0 +1,11 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.VesselSection">
+  <!-- 釜体（MOCK #/gallery「釜体」，placeholder.js 的 vs）：.gallery-vs 横排换行、靠下对齐（align-items: flex-end）、间距 18；
+       每项（.gallery-v）= 釜体框 + 下面 8 px 的说明（14 px t-3，不换行），横向居中。
+       七个 card 釜体（框 104 × 150）：1号机 RV1 反应中 · 1号机 RV3 升温中 · 2号机 RV3 降温中 · 3号机 RV11 超压报警 · 2号机 RV4 已结束 ·
+       3号机 RV15 停用 · 1号机 RV5 未安装；一个 large（框 180 × 270，1号机 RV1）；vesselGlyph 一行（26 px × 7：反应中 · 升温中 · 超压报警 · 已启用 ·
+       已结束 · 离线 · 未安装，间距 10，上下 8）。数据 = 样稿冻结时的演示数据（Core 的 DemoFleet，经 ReactorVm 投影），见 VesselSection.axaml.cs。 -->
+  <g:GalleryRow Name="Row" ColumnGap="18" RowGap="18" ItemsAlignment="Bottom" />
+</UserControl>

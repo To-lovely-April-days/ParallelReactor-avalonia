@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.ProgressSection">
+  <!-- 进度（MOCK #/gallery「进度」）：3 列 —— 进度条三种（已完成 / 运行中 / 报警），步骤条三种（运行中第 3/4 步 / 报警暂停 / 已结束）；
+       每格上面一行 14 px 说明（下边距 8）。演示数据同样稿冻结时：1号机 RV1、3号机 RV11、2号机 RV4。 -->
+  <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="16">
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="progress · 已完成 62 %" />
+      <pr:ProgressPr Value="0.62" />
+    </StackPanel>
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="progress · 运行中 { run }" />
+      <pr:ProgressPr Value="0.4" IsRunning="True" />
+    </StackPanel>
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="progress · err" />
+      <pr:ProgressPr Value="0.8" Tone="Err" />
+    </StackPanel>
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="stepBar · 第 3/4 步 · 剩 42 min" />
+      <pr:StepBar ShowLabels="True" IsRunning="True">
+        <pr:StepSeg Label="升温" State="Done" />
+        <pr:StepSeg Label="充压" State="Done" />
+        <pr:StepSeg Label="反应" State="Current" Fraction="0.4" />
+        <pr:StepSeg Label="结束" />
+      </pr:StepBar>
+    </StackPanel>
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="stepBar · 报警暂停 · 2/4 · 暂停" />
+      <pr:StepBar ShowLabels="True">
+        <pr:StepSeg Label="升温" State="Done" />
+        <pr:StepSeg Label="充压" State="Held" Fraction="0.85" />
+        <pr:StepSeg Label="反应" />
+        <pr:StepSeg Label="结束" />
+      </pr:StepBar>
+    </StackPanel>
+    <StackPanel>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="0,0,0,8" Text="stepBar · 已结束 · 共 5 步" />
+      <pr:StepBar ShowLabels="True">
+        <pr:StepSeg Label="升温" State="Done" />
+        <pr:StepSeg Label="充压" State="Done" />
+        <pr:StepSeg Label="反应" State="Done" />
+        <pr:StepSeg Label="降温" State="Done" />
+        <pr:StepSeg Label="结束" State="Done" />
+      </pr:StepBar>
+    </StackPanel>
+  </g:GalleryGrid>
+</UserControl>

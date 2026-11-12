@@ -1,0 +1,94 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="using:System"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.ShellView"
+             x:DataType="sh:ShellVm">
+  <!-- 外框里所有显示字符串内容的地方（按钮、菜单项、菜单栏、图标栏项、页签栏按钮、状态栏按钮、弹出菜单、提示…：ContentPresenter 的字符串）
+       都用 PrText —— 按 WebKit 的方式量宽（不加 11.1 的墨迹外伸，中文标签不再每个宽 2 px，见 Controls/Pr/PrText.cs）。
+       旧样式的页面（Views/Legacy/LegacyHost）在宿主里换回普通 TextBlock，外观不变。 -->
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="sys:String" x:DataType="sys:String">
+      <pr:PrText Text="{Binding}" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <!-- 页签栏里的 Tab 顺序同样稿（.pr-tabbar：页签 → 「+」→「›」，M6）：TabBarView 的 Grid 已按这个顺序摆子元素；这里再把页签栏设成本地分组
+       （下面 TabBarView 的 TabNavigation = Local），按 TabIndex：页签 0（照先后）、「+」1、「›」2 —— 子元素的先后以后再变也不乱。
+       页签条本身不做分组：ItemsControl 记着里面上次有焦点的页签，分组的话 Tab 再进来会落在那一个（关掉的页签还会让它整个被跳过），样稿总是从第一个页签开始。
+       页签条按名字认（DocTabStrip / NavToggle 的样式键是 ItemsControl / ToggleButton）。
+       图标栏同理（样稿 renderSidebar：设备 … 设置，最后是「收起 / 展开」）：栏里的 DockPanel 为了靠底先写了「收起」；图标栏也是本地分组
+       （下面 SidebarView 的 TabNavigation = Local），各项 0、「收起」1 -->
+  <UserControl.Styles>
+    <Style Selector="vs|TabBarView ItemsControl#Strip ToggleButton">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="0" />
+    </Style>
+    <Style Selector="vs|TabBarView Button.add">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="1" />
+    </Style>
+    <Style Selector="vs|TabBarView Button.more">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="2" />
+    </Style>
+    <Style Selector="vs|SidebarView ToggleButton">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="0" />
+    </Style>
+    <Style Selector="vs|SidebarView ToggleButton.bottom">
+      <Setter Property="KeyboardNavigation.TabIndex" Value="1" />
+    </Style>
+  </UserControl.Styles>
+  <!-- 新外壳（PORT-PLAN §5 M2「视图」、§2.1；样稿 css/shell.css 的 .pr-app 网格）：
+         列 64（图标栏）/ 资源管理器（停靠 300，否则 0）/ 工作区 / 检查器（330；窄于 1920 时 300）
+         行 34（菜单）/ 44（页签）/ 工作区 / 时间轴（220；矮于 1000 时 200；收起 40）/ 30（状态栏）
+       区域：menu 横跨四列；brand · 资源管理器（从页签行开始，跨两行）· 页签 · 全局停止格；图标栏（跨工作区和时间轴两行）· 工作区 · 检查器（跨两行）；
+       时间轴横跨资源管理器列和工作区列；状态栏横跨四列。列宽 / 行高由 ShellLayout 按窗口尺寸给（代码里设，不在子元素尺寸上做判断）。
+       浮层：资源管理器浮层（窄于 1600，320 宽，ZIndex 40，下面一层浅遮罩 39）、对话框宿主（遮罩 200）、全局停止格（201，压在遮罩之上）、toast（400）。 -->
+  <Grid Name="Root" Background="{StaticResource BgPanelBrush}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="64" />
+      <ColumnDefinition Width="0" />
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="330" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="34" />
+      <RowDefinition Height="44" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="220" />
+      <RowDefinition Height="30" />
+    </Grid.RowDefinitions>
+
+    <vs:MenuBarView Grid.ColumnSpan="4" ZIndex="5" />
+
+    <!-- 资源管理器：停靠时在第 2 列（页签行 + 工作区行），浮层时盖在左侧（ShellView.axaml.cs 按布局搬位置，同一个实例）。
+         子元素的先后 = Tab 的先后（Avalonia 按子元素顺序，不按网格位置）：同样稿的 DOM 顺序，菜单栏 → 资源管理器 → 页签栏 → 急停格 → 图标栏 → 工作区 → 检查器 → 时间轴 → 状态栏；
+         画在谁上面只看 ZIndex（停靠 2、浮层 40，在遮罩 39 之上） -->
+    <vs:ExplorerView Name="Explorer" Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" ZIndex="2" />
+
+    <!-- 品牌格 64 × 44：bg-head，右边 line-soft、下边 line-strong；logo 22 × 26、描边 1.8、a 色 -->
+    <Border Grid.Row="1" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="0,0,0,1"
+            ToolTip.Tip="{x:Static sh:ShellVm.AppTitle}">
+      <Border BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0">
+        <c:IconView Icon="logo" Size="22" StrokeWidth="1.8" Foreground="{StaticResource ABrush}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+    </Border>
+
+    <vs:TabBarView Grid.Row="1" Grid.Column="2" KeyboardNavigation.TabNavigation="Local" />
+    <vs:GlobalStopCell Grid.Row="1" Grid.Column="3" ZIndex="201" />
+
+    <vs:SidebarView Grid.Row="2" Grid.RowSpan="2" KeyboardNavigation.TabNavigation="Local" />
+    <vs:PageHost Name="Pages" Grid.Row="2" Grid.Column="2" />
+    <vs:InspectorView Grid.Row="2" Grid.RowSpan="2" Grid.Column="3" />
+    <vs:TimelineView Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="2" />
+    <vs:StatusBarView Grid.Row="4" Grid.ColumnSpan="4" />
+
+    <!-- 浮层资源管理器下面的浅遮罩（资源管理器本身在菜单栏后面，见上） -->
+    <Border Name="XScrim" Grid.RowSpan="5" Grid.ColumnSpan="4" ZIndex="39" Background="{StaticResource XScrimBrush}"
+            IsVisible="{Binding Layout.ExplorerFloat}" />
+
+    <vs:DialogHost Grid.RowSpan="5" Grid.ColumnSpan="4" ZIndex="200" />
+    <vs:ToastHost Grid.RowSpan="5" Grid.ColumnSpan="4" ZIndex="400" />
+  </Grid>
+</UserControl>

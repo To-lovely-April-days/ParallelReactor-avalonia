@@ -49,6 +49,14 @@ public sealed class TelemetryWsClient : IAsyncDisposable
     private Task? _runTask;
     private int _attempt;
 
+    // —— M3 增补 ——
+    private Exception? _lastError;
+    private DateTime? _lastErrorAt, _nextRetryAt;
+    /// <summary>退避等待期间非空：<see cref="ReconnectNow"/> 完成它，与退避的 IClock.Delay 竞争（不新增 Delay）。</summary>
+    private TaskCompletionSource<bool>? _backoffWake;
+    private TimeSpan? _serverOffset;
+    private int _failedAttempts;
+
     public TelemetryWsClient(ClientOptions options, ReactorApiClient rest, IClock? clock = null, Func<IWsTransport>? transportFactory = null)
     {
         _opt = options ?? throw new ArgumentNullException(nameof(options));
@@ -82,6 +90,55 @@ public sealed class TelemetryWsClient : IAsyncDisposable
     /// <summary>每条消息的 (type, json) 原文（录制 / 调试）。</summary>
     public event Action<string, string>? RawReceived;
     public event Action<Exception>? Error;
+
+    // ======================================================================
+    // M3 增补：连接事实（只读）与立即重连
+    // ======================================================================
+
+    /// <summary>这个客户端收到过 hello（连上过至少一次）。断开后仍为 true（样稿 conn.everOnline）。</summary>
+    public bool EverConnected { get { lock (_lock) return _everConnected; } }
+
+    /// <summary>退避等待中：下一次连接尝试的时刻（本机时钟，<see cref="IClock.UtcNow"/>）；不在等待时为 null。倒计时 = NextRetryAt − UtcNow。</summary>
+    public DateTime? NextRetryAt { get { lock (_lock) return _nextRetryAt; } }
+
+    /// <summary>
+    /// 最近一次连接层错误（收到 hello 时清空）：连接失败为 <see cref="WsConnectException"/>（503 TOO_MANY_CLIENTS / 401 / 网络… 原始异常在 InnerException），
+    /// 收发循环里的异常原样保存。<see cref="Error"/> 事件仍收到原始异常（行为不变）。
+    /// </summary>
+    public Exception? LastError { get { lock (_lock) return _lastError; } }
+    /// <summary><see cref="LastError"/> 的时刻（本机时钟）。</summary>
+    public DateTime? LastErrorAt { get { lock (_lock) return _lastErrorAt; } }
+
+    /// <summary>自上次收到 hello 以来连续失败的连接尝试次数（样稿「已试 N 次」；收到 hello 清零）。</summary>
+    public int FailedAttempts { get { lock (_lock) return _failedAttempts; } }
+
+    /// <summary>服务端时钟 − 本机时钟（最近一次 hello 的 serverTime − 收到时的本机 UtcNow；没收到过 hello 为 null）。把服务端 UTC 时刻换成本机时刻：本机 = 服务端 − 偏差。</summary>
+    public TimeSpan? ServerClockOffset { get { lock (_lock) return _serverOffset; } }
+
+    /// <summary><see cref="NextRetryAt"/> 变了（开始退避等待：下一次尝试的时刻；等待结束：null）。在重连循环的线程上触发。</summary>
+    public event Action<DateTime?>? NextRetryChanged;
+
+    /// <summary>
+    /// 立即重连：正在退避等待（连接失败 / 断线后）时，立刻结束等待、发起下一次连接（退避时长照常翻倍）。
+    /// 返回 true = 截断了一次等待；false = 没有在等待（已连接 / 正在连接 / 未启动 / 已停止 / 这次等待已被截断）。
+    /// 实现：一个 TaskCompletionSource 与现有的退避 <see cref="IClock.Delay"/> 竞争，不新增 Delay。
+    /// </summary>
+    public bool ReconnectNow()
+    {
+        TaskCompletionSource<bool>? wake;
+        lock (_lock) wake = _backoffWake;
+        return wake != null && wake.TrySetResult(true);
+    }
+
+    private void RecordError(Exception ex, bool connectFailure)
+    {
+        lock (_lock)
+        {
+            _lastError = ex;
+            _lastErrorAt = _clock.UtcNow;
+            if (connectFailure) _failedAttempts++;
+        }
+    }
 
     // ======================================================================
     // 生命周期
@@ -134,6 +191,7 @@ public sealed class TelemetryWsClient : IAsyncDisposable
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { await ws.DisposeAsync().ConfigureAwait(false); break; }
             catch (Exception ex)
             {
+                RecordError(WsConnectException.From(ex, SafeHandshakeStatus(ws)), connectFailure: true);   // M3：释放传输之前读握手状态码
                 Error?.Invoke(ex);
                 await ws.DisposeAsync().ConfigureAwait(false);
                 _attempt++;
@@ -158,7 +216,7 @@ public sealed class TelemetryWsClient : IAsyncDisposable
                 }
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
-            catch (Exception ex) { Error?.Invoke(ex); }
+            catch (Exception ex) { RecordError(ex, connectFailure: false); Error?.Invoke(ex); }
             finally
             {
                 connCts.Cancel();
@@ -181,8 +239,41 @@ public sealed class TelemetryWsClient : IAsyncDisposable
     private async Task<bool> BackoffAsync(TimeSpan backoff, CancellationToken ct)
     {
         var jitter = 1 + (Random.Shared.NextDouble() * 0.4 - 0.2);
-        try { await _clock.Delay(TimeSpan.FromTicks((long)(backoff.Ticks * jitter)), ct).ConfigureAwait(false); return true; }
+        var wait = TimeSpan.FromTicks((long)(backoff.Ticks * jitter));
+        // M3：「立即重连」（ReconnectNow）的 TaskCompletionSource 与这一个退避 Delay 竞争（不新增 IClock.Delay：WsClientTests 断言退避期间 FakeClock.Pending == 1）；
+        // 被截断时撤掉还挂着的 Delay（链接的取消源），假时钟随即移除它
+        var wake = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var waitCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        DateTime due;
+        lock (_lock) { _backoffWake = wake; due = _clock.UtcNow + wait; _nextRetryAt = due; }
+        RaiseNextRetry(due);
+        try
+        {
+            var delay = _clock.Delay(wait, waitCts.Token);
+            if (await Task.WhenAny(delay, wake.Task).ConfigureAwait(false) == delay)
+            {
+                await delay.ConfigureAwait(false);   // 被 ct 取消时抛 OperationCanceledException
+                return true;
+            }
+            waitCts.Cancel();
+            return !ct.IsCancellationRequested;
+        }
         catch (OperationCanceledException) { return false; }
+        finally
+        {
+            lock (_lock) { if (_backoffWake == wake) _backoffWake = null; _nextRetryAt = null; }
+            RaiseNextRetry(null);
+        }
+    }
+
+    private void RaiseNextRetry(DateTime? at)
+    {
+        try { NextRetryChanged?.Invoke(at); } catch { }
+    }
+
+    private static int? SafeHandshakeStatus(IWsTransport ws)
+    {
+        try { return ws.HandshakeStatusCode; } catch { return null; }
     }
 
     private TimeSpan Next(TimeSpan b) => b * 2 > _opt.ReconnectMax ? _opt.ReconnectMax : b * 2;
@@ -207,7 +298,7 @@ public sealed class TelemetryWsClient : IAsyncDisposable
             }
         }
         catch (OperationCanceledException) { }
-        catch (Exception ex) { Error?.Invoke(ex); }
+        catch (Exception ex) { RecordError(ex, connectFailure: false); Error?.Invoke(ex); }
     }
 
     // ======================================================================
@@ -277,6 +368,11 @@ public sealed class TelemetryWsClient : IAsyncDisposable
                                 resume = true;
                             }
                             _resyncPending = false;
+                            // M3：连上了——清掉上次的连接错误与失败计数；记下与服务端的时钟偏差
+                            _lastError = null;
+                            _lastErrorAt = null;
+                            _failedAttempts = 0;
+                            _serverOffset = h.ServerTime - _clock.UtcNow;
                         }
                         try { HelloReceived?.Invoke(h); } catch { }
                         await SendSubscribeAsync(ws, resume, ct).ConfigureAwait(false);

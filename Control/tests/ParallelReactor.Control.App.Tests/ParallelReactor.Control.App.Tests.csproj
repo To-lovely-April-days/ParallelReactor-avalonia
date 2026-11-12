@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- App（Avalonia 桌面程序）的回归测试（R13）：视图模型（Fleet/、Shell/：投影、页签、检查器、时间轴）、操作守卫的接线（Fleet/DeviceActions、对话框）、
+       实时数据源 Services/LiveDeviceSource（假连接 + 脚本化的 REST）。只用视图模型与数据源：不创建窗口、不启动 Avalonia ——
+       例外是 M5 复核的无头界面测试（只在 Debug 构建里：App 只在 Debug 里引用 Avalonia.Headless / Skia）：M5ReviewStepFlowUiTests、M5ReviewLibraryPickTests
+       （步骤卡片画布与程序库）与 M5ReviewHeadlessTests（反应釜页的主窗口；另两条只建单个控件：舞台、曲线）在无头 Avalonia + Skia 里建真的控件核对，
+       共用 M5ReviewHeadless 起的一个无头会话。Avalonia 的平台与 UI 线程是进程级的，所以它们在同一个不并行的集合里：xunit 等并行的集合都跑完再跑
+       （与另一个不并行的集合 Env 先后随机）。
+       Contracts / Client / PerfTest / Core 的测试与色板 / 字号检查在 ../ParallelReactor.Control.Tests（不引用 App，PORT-PLAN §1.1 / §4.7）。
+       命名空间沿用 ParallelReactor.Control.Tests（与那边共用的测试工具也在这个命名空间里）：不用工程名 ParallelReactor.Control.App.Tests ——
+       App 里有类型 ParallelReactor.Control.App，同名的命名空间会与它冲突（CS0435）。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Control.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control.Core/ParallelReactor.Control.Core.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control/ParallelReactor.Control.csproj" />
+  </ItemGroup>
+
+  <!-- 与 ParallelReactor.Control.Tests 共用的测试工具（源文件只有那边一份）：脚本化的 HTTP 假服务端、假时钟、脚本化的 WS 传输、
+       从真 HMI（PR_SIM）抓取的响应样本 Samples/*.json(l) 与读取它们的 Samples 类（样本随测试输出复制）。改这些文件时两个测试工程都要跑。 -->
+  <ItemGroup>
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/ScriptedHttpHandler.cs" Link="Fakes/ScriptedHttpHandler.cs" />
+    <!-- M3 重连监督：两台假 HMI 经真 ReactorConnection（LiveDeviceSourceTests.Live.cs）—— 手动推进的时钟、脚本化的 WS 传输 -->
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeClock.cs" Link="Fakes/FakeClock.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/Fakes/FakeWsTransport.cs" Link="Fakes/FakeWsTransport.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/Samples.cs" Link="Samples.cs" />
+    <!-- M4 设备页（DeviceTests）：视图模型从演示数据得出的版面 / 页签 / 报警与事件文字，与样稿在 WebKit 里实际渲染、探针量出来的结果对照
+         （MockVectors/PageMockVectors.cs 的 dv-* / dx-* / td-* / tt-*；Core 那边用同一份数据直接测计算器） -->
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageVectorData.cs" Link="MockVectors/PageVectorData.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageMockVectors.cs" Link="MockVectors/PageMockVectors.cs" />
+    <!-- M5 反应釜页「程序」面板（ReactorProgramTests）：样稿在 WebKit 里量的画布、状态行、工具、卡片标记、安全联锁（Core 的 StepFlowLayoutTests 用同一份数据测版面）；
+         程序台账的实时接线（LiveLedgerTests）用手造的遥测帧（LiveFrames，同 Core 的 LedgerMatchTests / StepTrackerTests） -->
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/ReactorMockVectors.cs" Link="MockVectors/ReactorMockVectors.cs" />
+    <Compile Include="../ParallelReactor.Control.Tests/LiveFrames.cs" Link="LiveFrames.cs" />
+    <Content Include="../ParallelReactor.Control.Tests/Samples/**" Link="Samples/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+</Project>

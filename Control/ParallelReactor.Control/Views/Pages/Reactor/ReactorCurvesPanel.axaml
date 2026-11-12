@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ch="using:ParallelReactor.Control.Controls.Chart"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.ReactorCurvesPanel"
+             x:DataType="pg:ReactorCurvesVm">
+  <!-- 「曲线」面板（样稿 js/pages/reactor.js curvesPanel + css/reactor.css .reactor-curves / .reactor-legend / .reactor-range / .reactor-chart）：
+       标题栏 = 图标 + 「曲线」（不缩）+ 图例（温度 / 设定 / 压力 / 目标 / 标记，间距 14、右 10；面板 ≤ 720 去掉标记、≤ 640 去掉设定和目标、≤ 500 整个不显示）
+       + 分段 10 / 30 / 60（段最窄 38、左右 8）「min」（13 px t-3，间距 6、右 4）+ 放大 / 关闭（操作之间 6）；
+       内容 = ch-bg 底，曲线离边 上 4、右 12、下 0、左 6（.reactor-chart inset: 4px 12px 0 6px）。 -->
+  <UserControl.Styles>
+    <Style Selector="pr|PrPanel.rvcurves /template/ StackPanel#PART_Actions">
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="pr|PrPanel.rvcurves /template/ Border#PART_TitleHost">
+      <Setter Property="pr:FlexRow.Shrink" Value="0" />
+    </Style>
+    <!-- .reactor-lg：14 px t-3、不换行；小样与文字间距 6 -->
+    <Style Selector="StackPanel.rvlg">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="6" />
+    </Style>
+    <Style Selector="StackPanel.rvlg > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.rvlg > ch|LegendSwatch">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="10" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.rvlg > ch|LegendSwatch.mk">
+      <Setter Property="Width" Value="10" />
+      <Setter Property="Height" Value="16" />
+    </Style>
+    <!-- .reactor-range-seg .pr-seg-b：最窄 38、左右 8 -->
+    <Style Selector="pr|SegControl.rvrange ToggleButton">
+      <Setter Property="MinWidth" Value="38" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="TextBlock.rvunit">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhNum}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <pr:PrPanel Name="Frame" Classes="rvcurves" Icon="curves" Title="曲线" AutomationProperties.Name="曲线">
+    <pr:PrPanel.Actions>
+      <StackPanel Orientation="Horizontal" Spacing="6">
+        <!-- 图例（与曲线同一套令牌和虚线；小样的虚线 5 3 / 3 2，同样稿） -->
+        <StackPanel Name="Legend" Orientation="Horizontal" Spacing="14" Margin="0,0,10,0" VerticalAlignment="Center">
+          <StackPanel Name="LgT" Classes="rvlg">
+            <ch:LegendSwatch Token="--ch-t" StrokeWidth="2.5" RoundCap="True" />
+            <pr:PrText Text="温度" />
+          </StackPanel>
+          <StackPanel Name="LgTsp" Classes="rvlg">
+            <ch:LegendSwatch Token="--ch-t-sp" StrokeWidth="1.5" Dash="5 3" />
+            <pr:PrText Text="设定" />
+          </StackPanel>
+          <StackPanel Name="LgP" Classes="rvlg">
+            <ch:LegendSwatch Token="--ch-p" StrokeWidth="2.5" RoundCap="True" />
+            <pr:PrText Text="压力" />
+          </StackPanel>
+          <StackPanel Name="LgPsp" Classes="rvlg">
+            <ch:LegendSwatch Token="--ch-p-sp" StrokeWidth="1.5" Dash="5 3" />
+            <pr:PrText Text="目标" />
+          </StackPanel>
+          <StackPanel Name="LgMk" Classes="rvlg">
+            <ch:LegendSwatch Classes="mk" Token="--ch-mark" StrokeWidth="1.4" Dash="3 2" Vertical="True" />
+            <pr:PrText Text="标记" />
+          </StackPanel>
+        </StackPanel>
+        <!-- 窗口：10 / 30 / 60 min -->
+        <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,4,0" VerticalAlignment="Center">
+          <pr:SegControl Name="RangeSeg" Classes="rvrange" OptionsSource="{Binding RangeOptions}" Value="{Binding Range, Mode=TwoWay}"
+                         AutomationProperties.Name="曲线时间范围" />
+          <pr:PrText Classes="rvunit" Text="min" />
+        </StackPanel>
+      </StackPanel>
+    </pr:PrPanel.Actions>
+
+    <Border Background="{StaticResource ChBgBrush}" ClipToBounds="True">
+      <ch:TimeSeriesChart Name="Chart" Margin="6,4,12,0" Options="{Binding Options}" />
+    </Border>
+  </pr:PrPanel>
+</UserControl>

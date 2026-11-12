@@ -36,7 +36,7 @@
           <Border Classes="step-list">
             <ItemsControl ItemsSource="{Binding Rows}">
               <ItemsControl.ItemTemplate>
-                <DataTemplate DataType="vm:PerfStepRowVm">
+                <DataTemplate DataType="vm:PerfStepRowVm" x:DataType="vm:PerfStepRowVm">
                   <Border Classes="step-row" Classes.done="{Binding IsDone}" Classes.current="{Binding IsCurrent}" Classes.waiting="{Binding IsWaiting}" Classes.sub="{Binding IsSub}">
                     <Grid ColumnDefinitions="Auto,*,Auto">
                       <Ellipse Classes="step-dot" />
@@ -89,7 +89,7 @@
                     <ItemsControl Grid.Column="2" ItemsSource="{Binding EntryFields}" IsVisible="{Binding HasEntryBoxes}" VerticalAlignment="Center">
                       <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Classes="entry-wrap" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                       <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="vm:PerfEntryFieldVm">
+                        <DataTemplate DataType="vm:PerfEntryFieldVm" x:DataType="vm:PerfEntryFieldVm">
                           <StackPanel IsVisible="{Binding !IsText}" ToolTip.Tip="{Binding Label}">
                             <TextBox Classes="flat reading" Classes.error="{Binding HasError}" Watermark="读数" Text="{Binding Text}" />
                             <TextBlock Classes="property-unit" Text="{Binding ShortLabel}" />
@@ -148,7 +148,7 @@
               <TextBlock Classes="path" Text="{Binding ManualPath, StringFormat='{}{0} · 文字记录'}" />
               <ItemsControl ItemsSource="{Binding ExtraEntryFields}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="vm:PerfEntryFieldVm">
+                  <DataTemplate DataType="vm:PerfEntryFieldVm" x:DataType="vm:PerfEntryFieldVm">
                     <Grid Classes="entry-row" ColumnDefinitions="Auto,*">
                       <TextBlock Text="{Binding Label}" Margin="0,0,6,0" />
                       <TextBox Grid.Column="1" Classes="flat" Classes.error="{Binding HasError}" Text="{Binding Text}" Watermark="现象 / 状态" Height="15" />
@@ -167,7 +167,7 @@
               <TextBlock Text="{Binding ConfirmText}" IsVisible="{Binding ConfirmText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <ItemsControl ItemsSource="{Binding ChecklistItems}" IsVisible="{Binding HasChecklist}">
                 <ItemsControl.ItemTemplate>
-                  <DataTemplate DataType="vm:PerfCheckVm">
+                  <DataTemplate DataType="vm:PerfCheckVm" x:DataType="vm:PerfCheckVm">
                     <CheckBox Classes="check-item" IsChecked="{Binding IsChecked}"><TextBlock Classes="check-text" Text="{Binding Text}" TextWrapping="NoWrap" /></CheckBox>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
@@ -195,7 +195,7 @@
           <!-- 事件行 -->
           <Border Classes="step-list" Margin="0,6,0,0" IsVisible="{Binding IsRunning}">
             <ItemsControl ItemsSource="{Binding EventLines}" Margin="4,3,0,0" MaxHeight="66">
-              <ItemsControl.ItemTemplate><DataTemplate DataType="x:String"><TextBlock Classes="event-line" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate>
+              <ItemsControl.ItemTemplate><DataTemplate DataType="x:String" x:DataType="x:String"><TextBlock Classes="event-line" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate>
             </ItemsControl>
           </Border>
         </StackPanel>
@@ -216,7 +216,7 @@
           </Border>
           <ItemsControl ItemsSource="{Binding ReportRows}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:PerfReportRowVm">
+              <DataTemplate DataType="vm:PerfReportRowVm" x:DataType="vm:PerfReportRowVm">
                 <Border Classes="report-row">
                   <Grid ColumnDefinitions="2.2*,0.9*,1.4*,1.1*,0.9*,0.9*">
                     <TextBlock Text="{Binding Item}" Classes.item="{Binding IsItem}" />

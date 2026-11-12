@@ -18,6 +18,14 @@ internal static class Program
         bool headless = false;
 #if DEBUG
         headless = (Environment.GetEnvironmentVariable("PR_CONTROL_HEADLESS") ?? "") is "1" or "true";
+        // 截图计划（tools/shots.sh 用：每个尺寸开拍前删掉这些名字上一次留下的截图；tools/snap-refs.sh 用：现拍样稿参照图）：
+        // 一行一张「名字 路由 尺寸,尺寸 [参数]」，不启动界面
+        if ((Environment.GetEnvironmentVariable("PR_CONTROL_SHOT_PLAN") ?? "") is "1" or "true")
+        {
+            foreach (var s in Shot.ShotPlan.All)
+                Console.WriteLine((s.Name + " " + s.Route + " " + string.Join(",", System.Linq.Enumerable.Select(s.Sizes, z => z.Width + "x" + z.Height)) + " " + s.Query).TrimEnd());
+            return;
+        }
 #endif
         // PC 端 1:1 渲染，不设全局缩放；PR_CONTROL_UI_SCALE 可选覆盖（默认 1.0）
         var scale = Environment.GetEnvironmentVariable("PR_CONTROL_UI_SCALE");

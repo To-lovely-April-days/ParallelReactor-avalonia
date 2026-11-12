@@ -25,6 +25,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelReactor.PerfTest", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelReactor.Control", "Control\ParallelReactor.Control\ParallelReactor.Control.csproj", "{9589F917-B3F3-4ECA-B247-EC82FC1DE4E3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelReactor.Control.Core", "Control\ParallelReactor.Control.Core\ParallelReactor.Control.Core.csproj", "{10406DAD-7DF1-44B7-AAC9-F6804094341D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ParallelReactor.Control.App.Tests", "Control\tests\ParallelReactor.Control.App.Tests\ParallelReactor.Control.App.Tests.csproj", "{14092C1E-2042-4511-895A-42C2927BBF27}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -59,6 +63,14 @@ Global
 		{9589F917-B3F3-4ECA-B247-EC82FC1DE4E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9589F917-B3F3-4ECA-B247-EC82FC1DE4E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9589F917-B3F3-4ECA-B247-EC82FC1DE4E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{10406DAD-7DF1-44B7-AAC9-F6804094341D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{10406DAD-7DF1-44B7-AAC9-F6804094341D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{10406DAD-7DF1-44B7-AAC9-F6804094341D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{10406DAD-7DF1-44B7-AAC9-F6804094341D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14092C1E-2042-4511-895A-42C2927BBF27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14092C1E-2042-4511-895A-42C2927BBF27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14092C1E-2042-4511-895A-42C2927BBF27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14092C1E-2042-4511-895A-42C2927BBF27}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,5 +87,7 @@ Global
 		{6E8053EB-A5EE-4236-9375-AD8B6F8524F6} = {17C9F1E7-B7AE-40D4-9EAD-86A21B557905}
 		{863EAC75-83F4-497F-9DB3-7E5F134ECBA5} = {6C4BF4C2-9F09-4867-9D8F-B9258B0DDF89}
 		{9589F917-B3F3-4ECA-B247-EC82FC1DE4E3} = {6C4BF4C2-9F09-4867-9D8F-B9258B0DDF89}
+		{10406DAD-7DF1-44B7-AAC9-F6804094341D} = {6C4BF4C2-9F09-4867-9D8F-B9258B0DDF89}
+		{14092C1E-2042-4511-895A-42C2927BBF27} = {1F339980-2ECC-46FC-910F-5662CE966152}
 	EndGlobalSection
 EndGlobal

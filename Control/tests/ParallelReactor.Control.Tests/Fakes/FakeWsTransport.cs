@@ -27,10 +27,28 @@ public sealed class FakeWsTransport : IWsTransport
 
     public Task ConnectAsync(Uri uri, IReadOnlyDictionary<string, string> headers, CancellationToken ct)
     {
-        if (FailConnect) throw new WebSocketException("连接被拒（脚本）");
+        if (ConnectGate is { } gate) return ConnectAfterAsync(gate, uri, headers, ct);
+        if (FailConnect)
+            throw new WebSocketException(FailStatus is int s ? $"The server returned status code '{s}' when status code '101' was expected." : "连接被拒（脚本）");
         Uri = uri; Headers = headers; IsOpen = true; Connected = true;
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// M3 复核（只加）：非空时握手先等这个任务（可被取消）—— 模拟拔线 / 主机不回包时 ConnectAsync 一直挂着（系统的 TCP 连接超时）；为 null 时同旧行为。
+    /// </summary>
+    public Task? ConnectGate { get; set; }
+
+    private async Task ConnectAfterAsync(Task gate, Uri uri, IReadOnlyDictionary<string, string> headers, CancellationToken ct)
+    {
+        await gate.WaitAsync(ct).ConfigureAwait(false);
+        ConnectGate = null;
+        await ConnectAsync(uri, headers, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>M3：<see cref="FailConnect"/> 时模拟握手被拒的 HTTP 状态码（如 503 TOO_MANY_CLIENTS）：异常文字与真 ClientWebSocket 相同，<see cref="HandshakeStatusCode"/> 返回它。为 null 时同旧行为（网络层失败）。</summary>
+    public int? FailStatus { get; set; }
+    public int? HandshakeStatusCode => FailConnect ? FailStatus : null;
 
     public Task SendAsync(string text, CancellationToken ct)
     {

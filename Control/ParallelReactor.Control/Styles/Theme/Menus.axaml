@@ -1,0 +1,335 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:c="using:ParallelReactor.Control.Controls"
+                    xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 菜单（PORT-PLAN §4.6；样稿 shell.css .pr-menuitem / .pr-menu / .pr-menu-item）。
+       菜单栏项高 28、15 px、圆角 4（悬停 / 展开 bg-hover，按下 bg-press）；下拉面板白底 line 边、圆角 6、ShadowPop、上下 6、最小宽 220、最宽 480；
+       菜单项高 36、15 px t-2、左 12 右 16、图标列 20（图标 17 t-3）+ 间距 10；悬停 bg-hover + t-1，按下 bg-press；
+       提示（b:Pr.Hint，14 px t-3）跟在标签后面；勾选项在最右侧画 17 px ✓（a-d，描边 2），图标照常（同样稿 .pr-menu-check）；
+       红点（b:Pr.Dot，8 px r）压在图标右上角（溢出菜单里有错误报警的页签）；分隔 1 px line-faint（上下 6）；标题项（类 head）14 px 600 t-3、行高 20
+       （样稿 .pr-menu-head 上 8 下 4 + 14 px × 1.45 = 32 高）；
+       类 danger = r-ink 字 + r 图标、悬停 r-bg；类 stop = 深灰实心方块；禁用项 t-dis，原因写在 ToolTip 里（b:Pr.Reason，ToolTip.ShowOnDisabled）。
+       键盘移到的项（:focus-visible，Views/Shell/PopupMenus 用 Directional 聚焦）：内侧 2 px a-d 环，不画悬停底色、字不变深（样稿 outline-offset -2，背景只跟 :hover）。
+       标题不认访问键（样稿没有助记符；别名里的「_」照原样显示）。
+       右键菜单 PrContextMenu、菜单弹出 PrMenuFlyout、自定义内容的弹出框 PrPopover 与下拉面板同一外观。 -->
+
+  <!-- 分隔线（菜单里的 Separator，或 Header="-" 的菜单项） -->
+  <ControlTheme x:Key="PrMenuSeparator" TargetType="Separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="0,6" />
+    <Setter Property="Background" Value="{StaticResource LineFaintBrush}" />
+    <Setter Property="Focusable" Value="False" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" />
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrMenuItem" TargetType="MenuItem">
+    <Setter Property="Height" Value="{StaticResource RowH}" />
+    <Setter Property="Padding" Value="12,0,16,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontWeight" Value="Normal" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="ItemContainerTheme" Value="{DynamicResource PrMenuItem}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+            <Grid ColumnDefinitions="20,*,Auto,Auto,Auto">
+              <Panel Width="20" VerticalAlignment="Center" ClipToBounds="False">
+                <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Size="17" Foreground="{StaticResource T3Brush}"
+                            HorizontalAlignment="Center"
+                            IsVisible="{TemplateBinding (b:Pr.Icon), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource RBrush}" HorizontalAlignment="Right" VerticalAlignment="Top"
+                         Margin="0,-3,-2,0" IsVisible="{TemplateBinding (b:Pr.Dot)}" />
+              </Panel>
+              <ContentPresenter Name="PART_HeaderPresenter" Grid.Column="1" Margin="10,0,0,0"
+                                Content="{TemplateBinding Header}"
+                                ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                Foreground="{TemplateBinding Foreground}"
+                                VerticalAlignment="Center" RecognizesAccessKey="False" />
+              <TextBlock Name="PART_Hint" Grid.Column="2" Margin="10,0,0,0" Text="{TemplateBinding (b:Pr.Hint)}"
+                         FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
+                         IsVisible="{TemplateBinding (b:Pr.Hint), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              <c:IconView Name="PART_Check" Grid.Column="3" Icon="check" Size="17" StrokeWidth="2" Foreground="{StaticResource ADBrush}"
+                          Margin="10,0,0,0" VerticalAlignment="Center" IsVisible="False" />
+              <c:IconView Name="PART_Chevron" Grid.Column="4" Icon="right" Size="16" Margin="12,0,0,0"
+                          Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+          <Popup Name="PART_Popup"
+                 WindowManagerAddShadowHint="False"
+                 Placement="RightEdgeAlignedTop"
+                 HorizontalOffset="-4"
+                 IsLightDismissEnabled="False"
+                 IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
+            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                    CornerRadius="{StaticResource Radius}" Padding="0,6" MinWidth="220" MaxWidth="480"
+                    BoxShadow="{StaticResource ShadowPop}" TextElement.FontFamily="{DynamicResource UiFont}">
+              <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Grid.IsSharedSizeScope="True" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_LayoutRoot, ^:selected /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="^:pointerover, ^:selected">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <!-- 键盘焦点（聚焦的项同时是 :selected）：只画内侧的环（PART_Focus），不画悬停底色、字仍是 t-2；指针也在它上面时照常悬停 -->
+    <Style Selector="^:focus-visible:not(:pointerover) /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="^:focus-visible:not(:pointerover)">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:empty /template/ c|IconView#PART_Chevron">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^:checked /template/ c|IconView#PART_Check">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 危险项 / 停止项 -->
+    <Style Selector="^.danger">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="^.danger /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^.danger:pointerover /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="^.stop /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="Size" Value="15" />
+      <Setter Property="Fill" Value="True" />
+      <Setter Property="StrokeWidth" Value="1" />
+    </Style>
+    <!-- 标题项：不可点；行高 20（14 px × 1.45）→ 上 8 + 20 + 下 4 = 32 高，同样稿 -->
+    <Style Selector="^.head">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="Padding" Value="16,8,16,4" />
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Cursor" Value="Arrow" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Content="{TemplateBinding Header}" Padding="{TemplateBinding Padding}" Foreground="{TemplateBinding Foreground}"
+                            LineHeight="{StaticResource Lh2}" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <!-- Header="-" 的分隔项 -->
+    <Style Selector="^:separator">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Height="1" Margin="0,6" Background="{StaticResource LineFaintBrush}" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+    <Style Selector="^:disabled /template/ Border#PART_LayoutRoot, ^:reason /template/ Border#PART_LayoutRoot">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="^:disabled /template/ c|IconView#PART_Icon, ^:reason /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 菜单栏项（顶层）：高 28、左右 12、圆角 4、15 px t-2；悬停 / 展开 bg-hover + t-1，按下 bg-press；下拉面板在下方。
+       键盘焦点（Tab 到它）：外侧 2 px 处 2 px a-d 环（样稿 .pr-menuitem 用默认的 outline-offset 2px），不画悬停底色 -->
+  <ControlTheme x:Key="PrMenuBarItem" TargetType="MenuItem">
+    <!-- 不裁剪：焦点环画在控件外面 -->
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource PrMenuItem}" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.12" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_LayoutRoot" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+            <!-- 行高 21（样稿 15 px × 1.45，WebKit 取整）：28 px 高的项里文字的基线与参照图一致 -->
+            <ContentPresenter Name="PART_HeaderPresenter"
+                              Content="{TemplateBinding Header}"
+                              ContentTemplate="{TemplateBinding HeaderTemplate}"
+                              Foreground="{TemplateBinding Foreground}"
+                              Margin="{TemplateBinding Padding}" LineHeight="{StaticResource LhBody}"
+                              VerticalAlignment="Center" RecognizesAccessKey="False" />
+          </Border>
+          <!-- 外侧 2..4 px 的环：圆角 = 项的 4 + 4 -->
+          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
+                  IsVisible="False" IsHitTestVisible="False" />
+          <!-- 点在菜单栏外面：关掉，这一下照常落到下面（样稿一下就点到急停 / 别的按钮，Views/Shell/PopupMenus）；菜单栏上的点击直接给菜单栏（换菜单） -->
+          <Popup Name="PART_Popup"
+                 WindowManagerAddShadowHint="False"
+                 Placement="BottomEdgeAlignedLeft"
+                 VerticalOffset="3"
+                 IsLightDismissEnabled="True"
+                 OverlayDismissEventPassThrough="True"
+                 OverlayInputPassThroughElement="{Binding $parent[Menu]}"
+                 IsOpen="{TemplateBinding IsSubMenuOpen, Mode=TwoWay}">
+            <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                    CornerRadius="{StaticResource Radius}" Padding="0,6" MinWidth="220" MaxWidth="480"
+                    BoxShadow="{StaticResource ShadowPop}" TextElement.FontFamily="{DynamicResource UiFont}">
+              <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" Grid.IsSharedSizeScope="True" />
+              </ScrollViewer>
+            </Border>
+          </Popup>
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <!-- 选中（11.1 的菜单模式：Alt、换菜单）也是 bg-hover；Tab 来的键盘焦点只画环（同样稿 :focus-visible） -->
+    <Style Selector="^:pointerover, ^:open, ^:selected:not(:focus-visible)">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 菜单栏：透明、横排；不裁剪（菜单栏项的焦点环画在项外面 2..4 px，下边压到菜单栏的底线上，同样稿） -->
+  <ControlTheme x:Key="PrMenu" TargetType="Menu">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource PrMenuBarItem}" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" />
+      </ItemsPanelTemplate>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+          <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" VerticalAlignment="Center"
+                          KeyboardNavigation.TabNavigation="Continue" ClipToBounds="False" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 右键菜单 / 菜单弹出（MenuFlyout）：与下拉面板相同 -->
+  <ControlTheme x:Key="PrContextMenu" TargetType="ContextMenu">
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="0,6" />
+    <Setter Property="MinWidth" Value="220" />
+    <Setter Property="MaxWidth" Value="480" />
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource PrMenuItem}" />
+    <Setter Property="WindowManagerAddShadowHint" Value="False" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}" BoxShadow="{StaticResource ShadowPop}">
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                            KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="PrMenuFlyout" TargetType="MenuFlyoutPresenter">
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="0,6" />
+    <Setter Property="MinWidth" Value="220" />
+    <Setter Property="MaxWidth" Value="480" />
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="ItemContainerTheme" Value="{StaticResource PrMenuItem}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}" BoxShadow="{StaticResource ShadowPop}">
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}"
+                            KeyboardNavigation.TabNavigation="Continue" Grid.IsSharedSizeScope="True" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 自定义内容的弹出框（新页签、图例等，样稿 .pr-menu.is-pop）：内边距 0，宽度由内容决定 -->
+  <ControlTheme x:Key="PrPopover" TargetType="FlyoutPresenter">
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
+                BoxShadow="{StaticResource ShadowPop}">
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
+                              ContentTemplate="{TemplateBinding ContentTemplate}" Padding="{TemplateBinding Padding}" />
+          </ScrollViewer>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

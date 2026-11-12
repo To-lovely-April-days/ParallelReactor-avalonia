@@ -43,9 +43,18 @@ public sealed class ProgramDraftStore
 
     public void Set(int rv, ProgramDoc doc) { _drafts[rv] = doc; Save(); }
 
+    private static int _version;
+
+    /// <summary>
+    /// 本进程里保存过几次草稿（每次 <see cref="Save"/> 加一）：缓存草稿的地方（实时数据源的程序库，见 LiveDeviceSource.Library）按它判断要不要重读 drafts.json。
+    /// </summary>
+    public static int Version => System.Threading.Volatile.Read(ref _version);
+
     public void Save()
     {
-        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PR_CONTROL_SHOT"))) return;
+        System.Threading.Interlocked.Increment(ref _version);
+        // 截图 / 演示（PR_CONTROL_SHOT 或 PR_CONTROL_DEMO）不写任何文件：同 devices.json 的规则（M3 复核：以前只看 PR_CONTROL_SHOT，交互演示会写 drafts.json）
+        if (ControlConfig.WritesDisabledByEnvironment) return;
         try
         {
             Directory.CreateDirectory(ControlConfig.Directory);

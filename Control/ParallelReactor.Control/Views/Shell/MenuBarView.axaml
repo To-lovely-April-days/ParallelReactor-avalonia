@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.MenuBarView"
+             x:DataType="sh:ShellVm">
+  <!-- 菜单栏 34 px（样稿 .pr-menubar）：白底 + 下方 1 px line-menu 深线，左右 8；菜单栏项（PrMenuBarItem：高 28、左右 12、15 px）；
+       右端「本机：PC-测试工位1」（monitor 图标 17 + 14 px t-3，间距 8，右 8）。菜单项由 Shell/MenuModel 在每次打开时生成（MenuBarView.axaml.cs）。
+       每个菜单是一个 Tab 停靠点（样稿七个 button；11.1 的 Menu 默认整条只停一次）。键盘、刷新见 Views/Shell/PopupMenus。 -->
+  <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="0,0,8,0" VerticalAlignment="Center">
+        <c:IconView Icon="monitor" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        <pr:PrText Text="{Binding ClientText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+      </StackPanel>
+      <Menu Name="Bar" VerticalAlignment="Center" HorizontalAlignment="Left" KeyboardNavigation.TabNavigation="Continue" />
+    </DockPanel>
+  </Border>
+</UserControl>

@@ -1,0 +1,102 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.StatusBarView"
+             x:DataType="sh:ShellVm">
+  <!-- 状态栏 30 px（样稿 .pr-status）：bg-side + 上边 line-2，左右 14，14 px t-2，不换行；项 = 灰色图标 15 + 文字（间距 6），
+       项之间 1 × 14 px line 竖线（左右 14）。字一律中性：断线时连接项的图标为红色，错误报警 / 急停前一个红点，红色的事实加粗。
+       文字用 pr:PrText（按 WebKit 量宽：一排并排的中文标签不会每个多 2 px、越排越偏）。 -->
+  <UserControl.Styles>
+    <Style Selector="StackPanel.st-item">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.st-item > c|IconView">
+      <Setter Property="Size" Value="15" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.st-item.off > c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+    </Style>
+    <!-- 报警项的各段：红色的事实（急停、报警）t-1 600；「·」t-3 -->
+    <Style Selector="TextBlock.b">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.mid">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.st-sep">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="14" />
+      <Setter Property="Margin" Value="14,0" />
+      <Setter Property="Background" Value="{StaticResource LineBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BgSideBrush}" BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,1,0,0" Padding="14,0"
+          TextElement.FontSize="{StaticResource Fs2}" TextElement.Foreground="{StaticResource T2Brush}">
+    <!-- 裁剪在上边框以内（样稿 .pr-status overflow: hidden 裁到边框里面）：报警项的焦点环画在按钮外 2–4 px，上下两边被裁掉，不压到上边框那条线上 -->
+    <DockPanel ClipToBounds="True">
+      <!-- 右：示例型号 · 参数为假设（演示时前面加「演示数据」）| 日期 周几 时间 -->
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+        <StackPanel Classes="st-item" IsVisible="{Binding Status.NoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <c:IconView Icon="info" />
+          <pr:PrText Text="{Binding Status.NoteText}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        </StackPanel>
+        <Border Classes="st-sep" IsVisible="{Binding Status.NoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <pr:PrText Classes="num" Text="{Binding Status.ClockText}" VerticalAlignment="Center" />
+      </StackPanel>
+      <!-- 左：连接 | 控制权 | 报警（可点）| 会话（太长时省略） -->
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+          <StackPanel Classes="st-item" Classes.off="{Binding !Status.AllOnline}">
+            <c:IconView Icon="{Binding Status.ConnIcon}" />
+            <pr:PrText Text="{Binding Status.ConnText}" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Classes="st-sep" />
+          <StackPanel Classes="st-item">
+            <c:IconView Icon="key" />
+            <pr:PrText Text="{Binding Status.RemoteText}" VerticalAlignment="Center" />
+            <pr:PrText Text="·" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
+                       IsVisible="{Binding Status.GraceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <pr:PrText Text="{Binding Status.GraceText}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center"
+                       IsVisible="{Binding Status.GraceText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          </StackPanel>
+          <Border Classes="st-sep" />
+          <!-- 没有可选的报警对象时不在 Tab 顺序里（样稿 tabindex -1；仍可点，只是不做事） -->
+          <Button Theme="{StaticResource PrStatusButton}" Margin="-6,0" Classes.idle="{Binding !Status.AlarmClickable}" IsTabStop="{Binding Status.AlarmClickable}"
+                  Command="{Binding Status.SelectAlarmCommand}" ToolTip.Tip="{Binding Status.AlarmTip}" AutomationProperties.Name="{Binding Status.AlarmTip}">
+            <StackPanel Classes="st-item">
+              <c:IconView Icon="bell" />
+              <Ellipse Width="8" Height="8" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding Status.AlarmDot}" />
+              <ItemsControl ItemsSource="{Binding Status.AlarmParts}" VerticalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sh:StatusPart">
+                    <pr:PrText Text="{Binding Text}" Classes.b="{Binding Bold}" Classes.mid="{Binding Mid}" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Button>
+          <Border Classes="st-sep" />
+        </StackPanel>
+        <!-- 会话：放不下时省略（悬停看全文） -->
+        <DockPanel VerticalAlignment="Center">
+          <c:IconView DockPanel.Dock="Left" Icon="rec" Size="15" Foreground="{StaticResource T3Brush}" Margin="0,0,6,0" VerticalAlignment="Center" />
+          <pr:PrText Text="{Binding Status.SessionText}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Status.SessionText}"
+                     VerticalAlignment="Center" />
+        </DockPanel>
+      </DockPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

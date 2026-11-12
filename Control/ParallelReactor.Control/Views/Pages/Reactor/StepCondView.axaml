@@ -1,0 +1,76 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cp="using:ParallelReactor.Control.Controls.Steps"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:rv="using:ParallelReactor.Control.Views.Pages.Reactor"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.StepCondView"
+             x:DataType="pg:StepCardVm"
+             Height="44"
+             Classes.cur="{Binding CondCur}" Classes.held="{Binding CondHeld}" Classes.abort="{Binding CondAbort}" Classes.stale="{Binding Stale}">
+  <!-- 步骤下方的条件框（样稿 base.css .pr-step-cond + reactor.css .reactor-cond）：高 44、内边距 0 14、bg-head、1 px line-soft；
+       标签 14 t-3（省略）+ 值 18/600 t-1（窄卡 16 px，标签为空时值靠右），两端对齐、间距 10。
+       当前步：bg-card + g-line 边 + 底部 3 px 进度线（CondFillBar：g-3 → g-dot，运行中呼吸）；报警暂停：bg-card + line-soft、进度线灰色停住；
+       中止：line 虚线；断线：去色（g-line → line-faint）。组件陈列（ui.stepCond）只有普通的框（CondCur / CondHeld / CondAbort 在陈列里都是 false）。
+       上方的竖线（.pr-step-cond::before）由 StepFlowPanel 画。 -->
+  <UserControl.Styles>
+    <Style Selector="Border#Box">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="14,0" />
+    </Style>
+    <Style Selector="rv|StepCondView.cur Border#Box">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+    </Style>
+    <Style Selector="rv|StepCondView.cur.stale Border#Box">
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+    <Style Selector="rv|StepCondView.held Border#Box">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+    </Style>
+    <Style Selector="rv|StepCondView.abort Border#Box">
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="cp|DashFrame#Dash">
+      <Setter Property="IsVisible" Value="False" />
+      <Setter Property="Color" Value="{StaticResource LineColor}" />
+    </Style>
+    <Style Selector="rv|StepCondView.abort cp|DashFrame#Dash">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="TextBlock#Label">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock#Value">
+      <Setter Property="FontSize" Value="{StaticResource FsHead}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhHead}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock#Value.sm">
+      <Setter Property="FontSize" Value="{StaticResource FsTitle}" />
+      <Setter Property="LineHeight" Value="{StaticResource LhTitle}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel>
+    <Border Name="Box" ToolTip.Tip="{Binding CondTip}">
+      <Grid ColumnDefinitions="*,Auto">
+        <pr:PrText Name="Label" />
+        <pr:PrText Name="Value" Grid.Column="1" Classes="num" Margin="10,0,0,0" />
+      </Grid>
+    </Border>
+    <!-- 进度线在边框里面（样稿 position: absolute 以内边距盒为准：左 1、下 1） -->
+    <cp:CondFillBar Name="Fill" Margin="1,0,1,1" VerticalAlignment="Bottom" Value="{Binding CondFill}" IsRunning="{Binding CondRun}"
+                    IsHeld="{Binding Held}" IsGray="{Binding Stale}" />
+    <cp:DashFrame Name="Dash" />
+  </Panel>
+</UserControl>

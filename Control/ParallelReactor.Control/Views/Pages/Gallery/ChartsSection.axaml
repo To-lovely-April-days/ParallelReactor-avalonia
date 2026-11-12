@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ch="using:ParallelReactor.Control.Controls.Chart"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.ChartsSection">
+  <!-- 曲线（MOCK #/gallery「曲线」，placeholder.js 的 charts / syncCharts）：.gallery-charts 三列等宽、间距 16；每张 .gallery-chart 高 300、ch-bg 底、1 px line-soft 边，
+       曲线铺满边框里面（298 高）。三张：1号机 RV1 近 30 min（反应中：温度 / 压力分带、设定值虚线、标记「RV1 开始反应」）；
+       3号机 RV11 近 30 min（超压报警：红虚线「上限 3.000 MPa」，文字避开曲线）；1号机 RV1–RV3 近 60 min 的温度（ch-s1/2/3 自动取色，实线 / 7 4 / 2 3）。
+       数据 = 样稿冻结时的演示数据（Core 的 DemoFleet + ReactorChartOptions / OverviewTrendOptions），见 ChartsSection.axaml.cs。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.gchart">
+      <Setter Property="Height" Value="300" />
+      <Setter Property="Background" Value="{StaticResource ChBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="*,16,*,16,*">
+    <Border Grid.Column="0" Classes="gchart">
+      <ch:TimeSeriesChart Name="Chart1" />
+    </Border>
+    <Border Grid.Column="2" Classes="gchart">
+      <ch:TimeSeriesChart Name="Chart2" />
+    </Border>
+    <Border Grid.Column="4" Classes="gchart">
+      <ch:TimeSeriesChart Name="Chart3" />
+    </Border>
+  </Grid>
+</UserControl>

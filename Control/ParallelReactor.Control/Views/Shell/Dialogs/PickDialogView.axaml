@@ -1,0 +1,86 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.PickDialogView"
+             x:DataType="dlg:PickDialogVm">
+  <!-- 急停 / 全部停止的内容（样稿 dialogs.js pickBar + devPick + ui.note，css/dialogs.css .dlg-pickbar / .dlg-picks / .dlg-pick）：
+       勾选条（说明 14 t-3 + 幽灵小按钮「全选」「全不选」，间距 6，下边距 10）· 设备行（间距 8，下边距 16）· 中性说明（粗体段 600 t-1）。 -->
+  <UserControl.Styles>
+    <!-- 行里的复选框（样稿 .pr-check-box：18 px、1.5 px line-strong 边、圆角 4、白底；勾上 a 实心 + 白色 ✓；不能选 bg-sunken + line-soft） -->
+    <Style Selector="Border.pbox">
+      <Setter Property="Width" Value="{StaticResource CheckBoxSize}" />
+      <Setter Property="Height" Value="{StaticResource CheckBoxSize}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.on Border.pbox">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Button.dis Border.pbox">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    </Style>
+    <Style Selector="TextBlock.prun">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Button.dis TextBlock.prun">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <DockPanel Margin="0,0,0,10">
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+        <Button Theme="{StaticResource PrGhost}" Classes="sm" b:Pr.Icon="check" Content="全选" Command="{Binding AllCommand}" />
+        <Button Theme="{StaticResource PrGhost}" Classes="sm" b:Pr.Icon="x" Content="全不选" Command="{Binding NoneCommand}" />
+      </StackPanel>
+      <pr:PrText Text="{Binding Caption}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
+                 TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Caption}" Margin="0,0,6,0" />
+    </DockPanel>
+    <ItemsControl ItemsSource="{Binding Rows}" Margin="0,0,0,16">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="dlg:PickRowVm">
+          <Button Theme="{StaticResource PrPickRow}" Classes.on="{Binding IsOn}"
+                  Classes.dis="{Binding Reason, Converter={x:Static ObjectConverters.IsNotNull}}"
+                  b:Pr.Reason="{Binding Reason}" Command="{Binding ToggleCommand}"
+                  AutomationProperties.Name="{Binding Alias}">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+              <Panel Margin="0,0,14,0" VerticalAlignment="Center">
+                <Border Classes="pbox" />
+                <c:IconView Icon="check" Size="14" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsOn}" />
+              </Panel>
+              <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                <!-- 行高同样稿（正文行高 1.45：15 px → 22、14 px → 20），两行加上下 8 正好 60 + 边框 -->
+                <pr:PrText Text="{Binding Alias}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                           LineHeight="22" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Alias}" />
+                <pr:PrText Text="{Binding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+                           LineHeight="{StaticResource Lh2}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sub}" />
+              </StackPanel>
+              <pr:PrText Grid.Column="2" Classes="prun" Text="{Binding RunText}" FontSize="{StaticResource Fs2}"
+                         VerticalAlignment="Center" Margin="14,0,14,0" />
+              <Panel Grid.Column="3" VerticalAlignment="Center">
+                <pr:LeaseBadge State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}"
+                               IsVisible="{Binding Badge.ShowLease}" />
+                <pr:ConnBadge State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}"
+                              IsVisible="{Binding !Badge.ShowLease}" />
+              </Panel>
+            </Grid>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <pr:Note>
+      <pr:SegText Segments="{Binding Note}" TextWrapping="Wrap" LineHeight="21" />
+    </pr:Note>
+  </StackPanel>
+</UserControl>

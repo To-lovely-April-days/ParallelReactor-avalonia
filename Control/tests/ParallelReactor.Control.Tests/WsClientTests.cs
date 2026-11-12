@@ -300,9 +300,14 @@ public class WsClientTests
         server[0].Push(Rig.Hello());
         await FakeClock.WaitUntil(() => conn.Ws.State == ConnectionState.Connected);
         Assert.True(await conn.Lease.AcquireAsync(CancellationToken.None));
-        // 持租约时心跳走 WS
-        await FakeClock.WaitUntil(() => clock.Pending >= 1);
-        clock.Advance(TimeSpan.FromSeconds(4));
+        // 持租约时心跳走 WS。假时钟上同时挂着别的等待（WS 客户端自己的定时），心跳循环的第一个 Delay 什么时候登记上不确定：
+        // 以前「等到有任意一个等待就推进 4 s」—— 推进时心跳的 Delay 若还没登记，它就按推进后的时刻再等一整个间隔，hb 永远等不到（偶发失败，
+        // 单独跑时必失败）。改成小步推进、每步让续体跑一下，直到 WS 上出现 hb（上限 20 × 0.5 s，远大于心跳间隔）。
+        for (int i = 0; i < 20 && server[0].CountSent("hb") == 0; i++)
+        {
+            clock.Advance(TimeSpan.FromMilliseconds(500));
+            await Task.Delay(20);
+        }
         await FakeClock.WaitUntil(() => server[0].CountSent("hb") == 1, what: "WS hb");
         Assert.Equal("LZ", server[0].LastSent("hb")!.Value.GetProperty("lease").GetString());
         // WS control: expired → 租约 None；消息入队

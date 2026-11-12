@@ -1,0 +1,37 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:v="using:ParallelReactor.Control.Views"
+             xmlns:lg="using:ParallelReactor.Control.Views.Legacy"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.LegacyProgramPage"
+             x:DataType="pg:LegacyProgramPageVm">
+  <!-- 程序页（旧样式，D5：M2 起挂在新外壳的「新建程序」页签里，M7 与反应釜页共用步骤卡片重做）。
+       左：旧的程序编辑器（PlanEditorView：面包屑 + 步骤卡片画布）；上：旧界面那一排 RV 选择（新建程序、RV1–RV8，旧的通道芯片样式）；
+       右 200：旧检查器的程序工具（编辑程序 / 保存程序、下发程序、运行程序、中止程序、导出）。
+       旧视图的字号 9 / 旧配色在 LegacyHost 里（Styles/Panels.axaml 的 ContentControl.legacy）；整棵子树 audit-skip：
+       这是有意保留的旧样子（审计规则针对新界面），外框其余部分照常审计。 -->
+  <lg:LegacyHost Classes="audit-skip">
+    <Grid ColumnDefinitions="*,200" RowDefinitions="Auto,*">
+      <ItemsControl ItemsSource="{Binding Rvs}" Margin="10,6,10,2" IsVisible="{Binding !IsPlanExpanded}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><WrapPanel Classes="channel-picker" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate DataType="pg:LegacyRvVm" x:DataType="pg:LegacyRvVm">
+            <ToggleButton Classes="flat channel-chip" Content="{Binding Title}" IsChecked="{Binding IsActive, Mode=OneWay}" Command="{Binding SelectCommand}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <v:PlanEditorView Grid.Row="1" Grid.ColumnSpan="{Binding PlanSpan}" />
+      <Border Grid.Column="1" Grid.RowSpan="2" Classes="inspector" IsVisible="{Binding !IsPlanExpanded}">
+        <StackPanel>
+          <Button Classes="flat edit-plan" Content="{Binding EditButtonText}" Command="{Binding ToggleEditCommand}" />
+          <Button Classes="flat edit-plan" Content="下发程序" Command="{Binding UploadProgramCommand}" />
+          <Button Classes="flat edit-plan" Content="运行程序" Command="{Binding RunProgramCommand}" />
+          <Button Classes="flat edit-plan" Content="中止程序" Command="{Binding AbortProgramCommand}" />
+          <Button Classes="flat edit-plan" Content="导出" Command="{Binding ExportCommand}" />
+        </StackPanel>
+      </Border>
+    </Grid>
+  </lg:LegacyHost>
+</UserControl>

@@ -1,0 +1,239 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cp="using:ParallelReactor.Control.Controls.Steps"
+             xmlns:v="using:ParallelReactor.Control.Controls.Vessel"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:t="using:ParallelReactor.Control.Theme"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             x:Class="ParallelReactor.Control.Views.Pages.Reactor.ReactorUnPanel"
+             x:DataType="pg:ReactorUnVm">
+  <!-- 反应釜页 · 未安装的位置（样稿 reactor.js unPanel + css .reactor-un*）：面板标题「1号机 › RV5」+ 副标题「未安装」，不能放大 / 关闭；
+       内容（bg-side 上左侧 30 % 的白色渐隐，可纵向滚动）居中一行，间距 64、内边距 32 40：
+       左 = 虚线空位（大号釜体的未安装画法，170 × 260）+「RV5 · 空位」14 t-4；右（最宽 560，间距 14）= 标题 20/600、说明 15（行高 1.65）t-3、
+       键值表（上下 line-soft、内边距 12 0）、「1号机 的位置 · 8 路」14/600 t-3 + 位置按钮（44 × 58）、「去已安装的反应釜」+ 芯片（36 高）、「打开1号机设备页」。
+       页面窄于等于 900：间距 36、内边距 24、空位 120 × 184；矮于等于 600：内边距 18 32、空位 132 × 202、右列间距 10、键值表内边距 8；矮于等于 540：键值表不显示。 -->
+  <UserControl.Resources>
+    <LinearGradientBrush x:Key="UnGlowBrush" StartPoint="0%,0%" EndPoint="100%,0%" Opacity="0.55">
+      <GradientStop Offset="0" Color="{StaticResource BgCardColor}" />
+      <GradientStop Offset="0.3" Color="Transparent" />
+    </LinearGradientBrush>
+    <!-- 位置按钮（.reactor-slot）：44 × 58、1 px line-2、圆角 6、bg-card；悬停 a-line 边 + a-tint；未安装透明 + 虚线；当前 2 px a-line + a-tint。
+         键盘焦点（M6）：外侧 2 px 处 2 px a-d 环（样稿默认的 outline-offset 2，圆角 10），不用 Fluent 的黑框；未安装的不是 Tab 停靠点（样稿 tabindex -1） -->
+    <ControlTheme x:Key="UnSlot" TargetType="Button">
+      <!-- 不裁剪：焦点环画在按钮外面（模板控件默认裁剪到自己的框） -->
+      <Setter Property="ClipToBounds" Value="False" />
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="58" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}">
+              <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <cp:DashFrame Name="PART_Dash" IsVisible="False" Color="{StaticResource Line2Color}" Radius="6" />
+            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                    IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^.un">
+        <Setter Property="IsTabStop" Value="False" />
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      </Style>
+      <Style Selector="^.un /template/ cp|DashFrame#PART_Dash">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^.un.cur /template/ cp|DashFrame#PART_Dash">
+        <Setter Property="StrokeWidth" Value="2" />
+        <Setter Property="Color" Value="{StaticResource ALineColor}" />
+      </Style>
+      <Style Selector="^.un, ^.un:pointerover, ^.un:pressed">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="Cursor" Value="Arrow" />
+      </Style>
+      <Style Selector="^.cur, ^.cur:pointerover">
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      </Style>
+      <Style Selector="^.un.cur, ^.un.cur:pointerover">
+        <Setter Property="BorderBrush" Value="Transparent" />
+      </Style>
+    </ControlTheme>
+    <!-- 芯片（.reactor-unchip）：高 36、内边距 0 14 0 10、1 px line-2、圆角 6、bg-card、阴影；悬停 a-line + a-tint；键盘焦点同位置按钮（外侧 2 px 的 a-d 环） -->
+    <ControlTheme x:Key="UnChip" TargetType="Button">
+      <Setter Property="ClipToBounds" Value="False" />
+      <Setter Property="Height" Value="36" />
+      <Setter Property="Padding" Value="10,0,14,0" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" BoxShadow="{StaticResource ShadowCard}">
+              <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+            </Border>
+            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="10"
+                    IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      </Style>
+      <Style Selector="^:pressed">
+        <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <!-- 位置按钮 / 芯片的列表不裁剪：焦点环画在按钮外 4 px（第一列、第一行的环在列表的框外） -->
+    <Style Selector="ItemsControl.unlist, ItemsControl.unlist ContentPresenter">
+      <Setter Property="ClipToBounds" Value="False" />
+    </Style>
+    <Style Selector="TextBlock.untitle">
+      <Setter Property="FontSize" Value="{StaticResource FsReadS}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="29" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.unp">
+      <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.unsec">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="{StaticResource Lh2}" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style Selector="TextBlock.slotn">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.un TextBlock.slotn">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+    </Style>
+    <!-- 当前位置 600 a-ink：未安装的当前位置也是 600（样稿 .is-cur span 写在 .is-un span 之后、同级，盖过它的 400） -->
+    <Style Selector="Button.cur TextBlock.slotn">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <pr:PrPanel Name="Frame" CanClose="False" CanMaximize="False" Sub="未安装" TitleTip="{Binding Crumb}">
+    <pr:PrPanel.Title>
+      <pr:Crumb Text="{Binding Crumb}" />
+    </pr:PrPanel.Title>
+    <Panel Background="{StaticResource BgSideBrush}">
+      <Border Background="{StaticResource UnGlowBrush}" IsHitTestVisible="False" />
+      <ScrollViewer Name="Scroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <StackPanel Name="Row" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="64" Margin="40,32">
+          <!-- 虚线空位 + 说明 -->
+          <StackPanel Name="Fig" Spacing="14" VerticalAlignment="Center">
+            <Panel Name="VesselBox" Width="170" Height="260">
+              <v:ReactorVessel Size="Large" Key="Uninstalled" />
+            </Panel>
+            <pr:PrText Text="{Binding Caption}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Center" />
+          </StackPanel>
+          <!-- 说明与去处 -->
+          <StackPanel Name="TextCol" Spacing="14" MaxWidth="560" VerticalAlignment="Center">
+            <pr:PrText Classes="untitle" Text="{Binding Title}" />
+            <pr:PrText Classes="unp" Text="{Binding Text, Converter={x:Static t:TextConverters.Keep}}" />
+            <Border Name="KvBox" Padding="0,12" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,1">
+              <pr:Kv Name="KvGrid">
+                <pr:PrText Text="型号" />
+                <pr:PrText Text="{Binding KvModel}" TextWrapping="Wrap" />
+                <pr:PrText Text="通道" />
+                <pr:PrText Text="{Binding KvChannels, Converter={x:Static t:TextConverters.KeepRange}}" TextWrapping="Wrap" />
+                <pr:PrText Text="釜" />
+                <pr:PrText Text="{Binding KvVessel, Converter={x:Static t:TextConverters.Keep}}" TextWrapping="Wrap" />
+                <pr:PrText Text="说明" />
+                <pr:PrText Text="{Binding KvNote}" TextWrapping="Wrap" />
+              </pr:Kv>
+            </Border>
+            <pr:PrText Classes="unsec" Text="{Binding SlotsTitle}" />
+            <ItemsControl Classes="unlist" ItemsSource="{Binding Slots}" Margin="0,-6,-8,-8">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:UnSlotVm">
+                  <Button Theme="{StaticResource UnSlot}" Classes.un="{Binding !Installed}" Classes.cur="{Binding IsCur}" Margin="0,0,8,8"
+                          Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                    <Panel>
+                      <StackPanel Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <v:VesselGlyph Key="{Binding Key}" Size="22" HorizontalAlignment="Center" />
+                        <pr:PrText Classes="slotn num" Text="{Binding Number}" />
+                      </StackPanel>
+                    </Panel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <pr:PrText Classes="unsec" Text="{Binding ChipsTitle}" />
+            <ItemsControl Classes="unlist" ItemsSource="{Binding Chips}" Margin="0,-6,-8,-8">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:UnChipVm">
+                  <Button Theme="{StaticResource UnChip}" Margin="0,0,8,8" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Tip}">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <pr:KeyDot Key="{Binding Key}" VerticalAlignment="Center" />
+                      <pr:PrText Text="{Binding Rv}" FontSize="{StaticResource FsBody}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                      <pr:PrText Classes="stword" Text="{Binding Word}" FontSize="{StaticResource Fs2}" VerticalAlignment="Center"
+                                 Foreground="{Binding Key, Converter={x:Static t:StateConverters.WordBrush}}"
+                                 FontWeight="{Binding Key, Converter={x:Static t:StateConverters.WordWeight}}" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Button Name="OpenBtn" b:Pr.Icon="open" Content="{Binding OpenText}" Command="{Binding OpenCommand}" Margin="0,6,0,0" HorizontalAlignment="Left" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Panel>
+  </pr:PrPanel>
+</UserControl>

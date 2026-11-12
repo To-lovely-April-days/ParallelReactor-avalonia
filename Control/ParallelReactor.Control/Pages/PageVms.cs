@@ -1,0 +1,76 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Windows.Input;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Control.Shell;
+
+namespace ParallelReactor.Control.Pages;
+
+/// <summary>
+/// 页面视图模型的基类：一个页签一个实例（PageHost 给每个页签一份视图，切换页签时滚动位置和输入不丢）。
+/// 总览（M4）见 Pages/Overview，设备页（M4）见 Pages/Device，反应釜页（M5）见 Pages/Reactor；第二阶段视图是占位页；
+/// 程序编辑与性能测试是旧样式的页面（Pages/LegacyPages.cs，D5）。
+/// </summary>
+public abstract partial class PageVm : ObservableObject, IDisposable
+{
+    protected PageVm(Route route) => Route = route;
+
+    public Route Route { get; }
+
+    /// <summary>没有页面自己的「确认」。</summary>
+    public static readonly IReadOnlyDictionary<string, string> NoOwnedAlarms = new Dictionary<string, string>();
+
+    /// <summary>
+    /// 页面上已经有「确认」按钮的报警（样稿 page.ownsAlarms()：键「k:报警 id」→ 位置「顶部报警条」/「「报警与事件」」）。同一条报警屏幕上只有一个「确认」：
+    /// 检查器里的这条报警不再放第二个按钮，写「确认在 …」。M2 的页面是骨架、没有报警条：都返回空表（M4 的总览报警条 / 设备页「报警与事件」、
+    /// M5 的反应釜页报警条接上）。
+    /// </summary>
+    public virtual IReadOnlyDictionary<string, string> OwnedAlarms => NoOwnedAlarms;
+
+    /// <summary>页面上有这台设备的「报警与事件」（设备页，M4）：检查器的设备正文不再列报警 / 最近事件（样稿 inspDevice 的 o.page === 'device'）。M2 为 false。</summary>
+    public virtual bool ShowsAlarmLog => false;
+
+    /// <summary>
+    /// 页面上有这台设备的断线说明条（带「立即重连」，样稿设备页 / 反应釜页的 .device-off / 反应釜页离线条，M4 / M5）：检查器的控制权卡不再放第二个「立即重连」
+    /// （样稿 leaseBox：打开的页签就是这台设备时按钮在页面上）。M2 的页面是骨架：为 false，按钮留在检查器里。
+    /// </summary>
+    public virtual bool ShowsReconnect => false;
+
+    /// <summary>设备数据变了（就地刷新标题等）。</summary>
+    public virtual void Refresh(IFleetView fleet) { }
+
+    /// <summary>
+    /// 藏在别的页签后面时也跟着数据刷新（默认）。总览与设备页（M4，最重的两种页面）为 false：藏着时不刷新，切回这个页签时
+    /// （<see cref="Shell.ShellVm.Navigate"/>）先刷新一次再显示（PORT-PLAN R10：每秒的刷新只花在看得见的页面上）。
+    /// </summary>
+    public virtual bool RefreshWhenHidden => true;
+
+    /// <summary>页签关掉、页面被释放（退订事件等）。</summary>
+    public virtual void Dispose() { }
+}
+
+/// <summary>第二阶段视图的占位页（样稿 pages/placeholder.js：标题 + 一句「第二阶段设计：……」，不做半成品）。</summary>
+public sealed class PlaceholderPageVm : PageVm
+{
+    public PlaceholderPageVm(Route route) : base(route)
+    {
+        var p = Placeholders.Get(route.Key);
+        Title = p?.Title ?? "未知视图";
+        Icon = p?.Icon ?? "alert";
+        Text = p?.Text ?? "没有名为「" + route.Key + "」的视图。";
+    }
+
+    public string Title { get; }
+    public string Icon { get; }
+    public string Text { get; }
+    public string Hint => Placeholders.Hint;
+}
+
+/// <summary>组件陈列（#/gallery，设计 / 自检用，不在菜单里）。</summary>
+public sealed class GalleryPageVm : PageVm
+{
+    public GalleryPageVm() : base(Route.Gallery) { }
+}

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PC 控制软件的界面无关核心库（PORT-PLAN §0 / §3.2）：格式化与单位、断行保护、型号表、状态映射；
+       后续里程碑再加守卫、程序台账、演示数据等。纯 BCL：不引用 Avalonia、不加 NuGet 包，全部可单元测试。 -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>ParallelReactor.Control.Core</RootNamespace>
+    <AssemblyName>ParallelReactor.Control.Core</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
+    <ProjectReference Include="../ParallelReactor.Client/ParallelReactor.Client.csproj" />
+  </ItemGroup>
+
+  <!-- 内置型号表（可被 <配置目录>/models.json 覆盖，见 Models/ModelProfiles.cs） -->
+  <ItemGroup>
+    <EmbeddedResource Include="Models/models.json" LogicalName="ParallelReactor.Control.Core.Models.models.json" />
+  </ItemGroup>
+
+</Project>

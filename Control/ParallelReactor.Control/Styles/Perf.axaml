@@ -3,6 +3,31 @@
   <!-- 性能测试视图（pc-control.html data-view="perf"）：.perf-list / .check-group-title / .check-item / .channel-picker / .channel-chip /
        .progress-body / .progress-bar / .progress-meta / .step-list / .step-row / .manual-grid / .report-table -->
 
+  <!-- 通道芯片（从旧的 Styles/Dialogs.axaml 搬来：M2 删除旧对话框后性能测试清单与程序页的 RV 选择还在用） -->
+  <Style Selector="ToggleButton.channel-chip">
+    <Setter Property="Height" Value="16" />
+    <Setter Property="Padding" Value="7,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource BtnLine}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Background" Value="{DynamicResource White}" />
+    <Setter Property="FontSize" Value="8" />
+  </Style>
+  <Style Selector="ToggleButton.channel-chip:checked">
+    <Setter Property="Foreground" Value="{DynamicResource ChipActiveText}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ChipActiveLine}" />
+  </Style>
+  <Style Selector="ToggleButton.channel-chip:checked /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource ChipActiveBg}" />
+  </Style>
+  <Style Selector="ToggleButton.channel-chip:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource Disabled}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector="ToggleButton.channel-chip:disabled /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource DisabledBg}" />
+  </Style>
+
   <!-- .perf-list：padding 5 10 8 -->
   <Style Selector="ScrollViewer.perf-list">
     <Setter Property="Padding" Value="10,5,0,8" />

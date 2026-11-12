@@ -20,6 +20,13 @@ public interface IWsTransport : IAsyncDisposable
     Task CloseAsync(CancellationToken ct);
     /// <summary>立刻撕掉连接（不等对端 close 帧）：pong 超时 / 对端半死时用它，<see cref="ReceiveAsync"/> 随即返回 null。</summary>
     void Abort();
+
+    /// <summary>
+    /// M3 增补：<see cref="ConnectAsync"/> 失败时服务端回的 HTTP 状态码（握手被拒，如 503 TOO_MANY_CLIENTS、401）；
+    /// 没有 HTTP 响应（拒绝连接 / 超时）或没有失败为 null。默认实现返回 null（旧的传输实现不用改）。
+    /// <see cref="TelemetryWsClient"/> 在释放这条传输之前读它，归类成 <see cref="WsConnectException"/>。
+    /// </summary>
+    int? HandshakeStatusCode => null;
 }
 
 public sealed class ClientWebSocketTransport : IWsTransport
@@ -35,7 +42,19 @@ public sealed class ClientWebSocketTransport : IWsTransport
     {
         foreach (var (k, v) in headers) _ws.Options.SetRequestHeader(k, v);
         _ws.Options.KeepAliveInterval = TimeSpan.Zero;   // 应用层 ping / pong
+        _ws.Options.CollectHttpResponseDetails = true;   // M3：握手被拒时保留状态码（503 TOO_MANY_CLIENTS 等，见 HandshakeStatusCode）
         return _ws.ConnectAsync(uri, ct);
+    }
+
+    /// <summary>握手被拒时的 HTTP 状态码（<see cref="ClientWebSocket.HttpStatusCode"/>；0 / 101 → null）。</summary>
+    public int? HandshakeStatusCode
+    {
+        get
+        {
+            int s;
+            try { s = (int)_ws.HttpStatusCode; } catch { return null; }
+            return s is 0 or 101 ? null : s;
+        }
     }
 
     public async Task SendAsync(string text, CancellationToken ct)

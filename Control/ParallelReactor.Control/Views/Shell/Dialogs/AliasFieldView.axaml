@@ -1,0 +1,52 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.AliasFieldView"
+             x:DataType="dlg:AliasFieldVm">
+  <!-- 别名一栏（样稿 aliasField，添加 / 编辑 / 重命名共用）：标签「别名」· 输入框 + 计数「5/16」（13 px t-3，最小宽 46，右对齐；超出时 r-ink 600）·
+       说明「最多 8 个汉字或 16 个字母 · …」或错误（⚠ 15 + r-ink 600，间距 6）；出错时输入框 r 边 + 外侧 1 px r-line。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBox.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBox.err:pointerover, TextBox.err:focus-within">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBlock.count">
+      <Setter Property="FontSize" Value="{StaticResource FsNum}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.count.over">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.hint.err">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Spacing="6">
+    <TextBlock Classes="flabel" Text="别名" />
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Right" Classes="count" Classes.over="{Binding CountOver}" Text="{Binding Count}" MinWidth="46" Margin="8,0,0,0"
+                 TextAlignment="Right" VerticalAlignment="Center" />
+      <Panel>
+        <!-- 出错时外侧 1 px r-line（样稿 box-shadow 0 0 0 1px var(r-line)） -->
+        <Border Margin="-1" BorderThickness="1" BorderBrush="{StaticResource RLineBrush}" CornerRadius="7" IsHitTestVisible="False"
+                IsVisible="{Binding HasError}" />
+        <TextBox Text="{Binding Alias}" Classes.err="{Binding HasError}" MaxLength="24" AutomationProperties.Name="别名" />
+      </Panel>
+    </DockPanel>
+    <DockPanel>
+      <c:IconView DockPanel.Dock="Left" Icon="alert" Size="15" Foreground="{StaticResource RInkBrush}" Margin="0,0,6,0" VerticalAlignment="Center"
+                  IsVisible="{Binding HasError}" />
+      <TextBlock Classes="hint" Classes.err="{Binding HasError}" Text="{Binding Hint}" TextWrapping="Wrap" />
+    </DockPanel>
+  </StackPanel>
+</UserControl>

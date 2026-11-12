@@ -1,13 +1,22 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:vm="using:ParallelReactor.Control.ViewModels"
-        xmlns:v="using:ParallelReactor.Control.Views"
+        xmlns:sh="using:ParallelReactor.Control.Shell"
+        xmlns:vs="using:ParallelReactor.Control.Views.Shell"
+        xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
         x:Class="ParallelReactor.Control.Views.MainWindow"
-        x:DataType="vm:MainViewModel"
-        Title="ParallelReactor 控制软件"
-        Width="1440" Height="900" MinWidth="1080" MinHeight="600"
-        Background="{DynamicResource AppBg}"
-        FontFamily="{DynamicResource UiFont}" FontSize="9" Foreground="{DynamicResource Ink}"
+        Title="HT 平行反应仪 · 控制软件"
+        Width="1440" Height="900"
+        Background="{StaticResource BgAppBrush}"
+        FontFamily="{DynamicResource UiFont}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}"
         UseLayoutRounding="True">
-  <v:MainView />
+  <!-- 主窗口（PORT-PLAN §5 M2）：正文 15 px、UiFont；不设最小尺寸 —— 窄于 1366 或矮于 768 时外框按 1366×768 以上排版再等比缩小（FrameScaler）。
+       内容 = 新外壳（ShellVm → ShellView；演示数据与实时设备都一样）。窗口标题由 ShellVm.WindowTitle 给（演示时带「演示数据」）。 -->
+  <Window.DataTemplates>
+    <DataTemplate DataType="sh:ShellVm" x:DataType="sh:ShellVm">
+      <vs:ShellView />
+    </DataTemplate>
+  </Window.DataTemplates>
+  <cs:FrameScaler>
+    <ContentControl Name="Host" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+  </cs:FrameScaler>
 </Window>

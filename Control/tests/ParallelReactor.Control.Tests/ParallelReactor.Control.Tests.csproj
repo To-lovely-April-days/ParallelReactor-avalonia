@@ -1,7 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <!-- PC 控制软件的单元测试：Contracts 线上类型（对照实测抓取的 JSON 样本）、Client 的 REST / 租约状态机 / WS 重同步（进程内假服务端）。
-       后续阶段再加 PerfTest 引擎 / 报告与 ViewModel 测试。 -->
+  <!-- PC 控制软件的单元测试：Contracts 线上类型（对照实测抓取的 JSON 样本）、Client 的 REST / 租约状态机 / WS 重同步（进程内假服务端）、
+       PerfTest 引擎与报告、Core（格式化、型号、状态映射、守卫、演示数据）、封闭色板 / 字号检查（Lint/）。
+       不引用 App（PORT-PLAN §1.1 / §4.7），所以不带 Avalonia / Headless / Skia；Lint/ 只扫 App 的源码（PR_LINT_APP_DIR）。
+       App 的视图模型与数据源的测试在 ../ParallelReactor.Control.App.Tests（引用 App）；它链接这里的 Fakes/ScriptedHttpHandler.cs、Samples.cs 与 Samples/，
+       改这几个文件时两个工程都要跑。 -->
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -15,6 +18,7 @@
     <ProjectReference Include="../../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />
     <ProjectReference Include="../../ParallelReactor.Client/ParallelReactor.Client.csproj" />
     <ProjectReference Include="../../ParallelReactor.PerfTest/ParallelReactor.PerfTest.csproj" />
+    <ProjectReference Include="../../ParallelReactor.Control.Core/ParallelReactor.Control.Core.csproj" />
   </ItemGroup>
 
   <!-- 从真 HMI（PR_SIM）抓取的响应样本：Samples/*.json(l)，随测试输出复制 -->

@@ -1,0 +1,74 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.InputsSection">
+  <!-- 输入（MOCK #/gallery「输入」）：3 列表单项（标签 14/500 t-3、间距 6、提示 14 t-3）+ 复选 / 开关 / 分段 / 芯片一行 + 面板页签一行 -->
+  <StackPanel>
+    <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="16">
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="地址" />
+        <TextBox Theme="{StaticResource PrInput}" Text="192.168.1.20" />
+      </StackPanel>
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="设定温度" />
+        <pr:NumBox Value="120" Unit="℃" Minimum="0" Maximum="200" Step="1" Decimals="1" Label="设定温度" />
+        <TextBlock Theme="{DynamicResource GalleryCap}" Text="量程 ≤ 200 ℃" />
+      </StackPanel>
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="转速（禁用）" />
+        <pr:NumBox Value="300" Unit="rpm" Label="转速" b:Pr.Reason="先申请控制权" />
+      </StackPanel>
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="程序" />
+        <ComboBox Theme="{StaticResource PrSelect}" SelectedIndex="0" HorizontalAlignment="Stretch">
+          <ComboBoxItem Theme="{StaticResource PrSelectItem}" Content="加氢-标准" />
+          <ComboBoxItem Theme="{StaticResource PrSelectItem}" Content="高压加氢-150" />
+        </ComboBox>
+      </StackPanel>
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="带单位" />
+        <TextBox Theme="{StaticResource PrInput}" Text="8080" b:Pr.Unit="端口" />
+      </StackPanel>
+      <StackPanel Spacing="6">
+        <TextBlock Theme="{DynamicResource GalleryFieldLabel}" Text="只读" />
+        <TextBox Theme="{StaticResource PrInput}" Text="PT-20261108-0930" IsReadOnly="True" b:Pr.Reason="只读" />
+      </StackPanel>
+    </g:GalleryGrid>
+
+    <g:GalleryRow Margin="0,14,0,0">
+      <CheckBox Theme="{StaticResource PrCheck}" Content="自动连接" IsChecked="True" />
+      <CheckBox Theme="{StaticResource PrCheck}" Content="启动时自动连接" />
+      <!-- 带原因的复选框用 pr:PrCheckBox（Toggle() 里检查原因，UI 自动化 / HotKey 也翻不动） -->
+      <pr:PrCheckBox Theme="{StaticResource PrCheck}" Content="禁用" b:Pr.Reason="不可用" />
+      <ToggleButton Theme="{StaticResource PrCheck}" Padding="2,0" Content="显示设定值" IsChecked="True" />
+      <ToggleButton Theme="{StaticResource PrCheck}" Padding="2,0" Content="显示标记" />
+      <pr:SegControl Value="30">
+        <pr:SegOption Value="10" Label="10" />
+        <pr:SegOption Value="30" Label="30" />
+        <pr:SegOption Value="60" Label="60 min" />
+      </pr:SegControl>
+      <pr:SegControl Value="all">
+        <pr:SegOption Value="all" Label="全部" />
+        <pr:SegOption Value="al" Label="报警" Dot="True" />
+      </pr:SegControl>
+      <pr:Chip Content="RV1" IsChecked="True" />
+      <pr:Chip Content="RV2" />
+      <pr:Chip Content="RV5" b:Pr.Reason="未安装" />
+    </g:GalleryRow>
+
+    <g:GalleryRow Margin="0,14,0,0">
+      <pr:PTabs Value="a">
+        <pr:SegOption Value="a" Label="设备信息" />
+        <pr:SegOption Value="b" Label="报警与事件" Dot="True" />
+      </pr:PTabs>
+      <pr:PTabs Value="a">
+        <pr:SegOption Value="a" Label="设备信息" />
+        <pr:SegOption Value="b" Label="报警与事件" Count="1" />
+      </pr:PTabs>
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="6,0,0,0"
+                 Text="ptabs · 面板标题位置的文字页签（红点 = 未确认的错误报警；灰色数字 = 未确认的提醒；← → 切换页签）" />
+    </g:GalleryRow>
+  </StackPanel>
+</UserControl>

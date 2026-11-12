@@ -1,0 +1,42 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.PaletteSection">
+  <!-- 色板（MOCK #/gallery「色板」）：9 组 × 3 列，每个色块 22 px + 令牌名 14 px + 十六进制 13 px，最小宽 150、间距 6 / 10 -->
+  <ItemsControl ItemsSource="{x:Static g:PaletteSection.Groups}">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="14" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="g:PaletteGroup">
+        <StackPanel>
+          <TextBlock Text="{Binding Title}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}"
+                     LineHeight="{StaticResource GalleryLh14}" Margin="0,0,0,6" />
+          <!-- 负外边距抵消最后一行 / 最后一列的间距（CSS gap 不在末尾留空） -->
+          <ItemsControl ItemsSource="{Binding Swatches}" Margin="0,0,-10,-6">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="g:PaletteSwatch">
+                <StackPanel Orientation="Horizontal" Spacing="6" MinWidth="150" Margin="0,0,10,6" Background="Transparent"
+                            ToolTip.Tip="{Binding Tip}">
+                  <Border Width="22" Height="22" CornerRadius="{StaticResource RadiusS}" Background="{Binding Brush}"
+                          BorderBrush="{StaticResource SwatchEdgeBrush}" BorderThickness="1" />
+                  <TextBlock Text="{Binding Name}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T1Brush}"
+                             VerticalAlignment="Center" />
+                  <TextBlock Classes="num" Text="{Binding Hex}" FontSize="{StaticResource FsNum}" Foreground="{StaticResource T3Brush}"
+                             VerticalAlignment="Center" />
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

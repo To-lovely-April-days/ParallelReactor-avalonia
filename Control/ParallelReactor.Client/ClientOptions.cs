@@ -62,6 +62,18 @@ public sealed class ClientOptions
     /// <summary>非空时 <see cref="ReactorConnection"/> 的全部事件经它 Post 到 UI 线程；为 null 直接在线程池回调（引擎 / 单测）。</summary>
     public SynchronizationContext? UiContext { get; init; }
 
+    private readonly int _messageQueueCapacity = 2000;
+    /// <summary>
+    /// <see cref="ReactorConnection.Messages"/> 队列的容量（M3 增补）：默认 2000，满了丢最旧；<b>0 = 不入队</b>（<see cref="ReactorConnection.Messages"/> 一直是空的，
+    /// 直到连接停止时完成）。目前没有代码读这个队列（界面与性能测试引擎都订阅事件，见 PerfTest 的 TelemetryFeedAdapter），
+    /// 多台设备同时连接时设 0 省掉每台最多 2000 条消息的内存；以后要按顺序消费队列的连接必须 &gt; 0。不能为负。
+    /// </summary>
+    public int MessageQueueCapacity
+    {
+        get => _messageQueueCapacity;
+        init => _messageQueueCapacity = value >= 0 ? value : throw new ArgumentOutOfRangeException(nameof(MessageQueueCapacity), value, "队列容量不能为负（0 = 不入队）");
+    }
+
     /// <summary>REST 根（以 / 结尾，便于相对路径拼接）。</summary>
     public Uri ApiBase => new(BaseUrl, ApiHeaders.Prefix.TrimStart('/') + "/");
 

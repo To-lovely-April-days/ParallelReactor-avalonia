@@ -29,7 +29,7 @@
           <ItemsControl ItemsSource="{Binding Channels}">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Classes="channel-picker" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:PerfChannelVm">
+              <DataTemplate DataType="vm:PerfChannelVm" x:DataType="vm:PerfChannelVm">
                 <ToggleButton Classes="flat channel-chip" Content="{Binding Name}" IsChecked="{Binding IsSelected}" IsEnabled="{Binding IsEnabled}" />
               </DataTemplate>
             </ItemsControl.ItemTemplate>
@@ -37,14 +37,14 @@
 
           <ItemsControl ItemsSource="{Binding Groups}">
             <ItemsControl.ItemTemplate>
-              <DataTemplate DataType="vm:PerfGroupVm">
+              <DataTemplate DataType="vm:PerfGroupVm" x:DataType="vm:PerfGroupVm">
                 <StackPanel>
                   <Border Classes="check-group-title">
                     <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Title}" /><TextBlock Grid.Column="1" Classes="right" Text="{Binding Right}" /></Grid>
                   </Border>
                   <ItemsControl ItemsSource="{Binding Items}">
                     <ItemsControl.ItemTemplate>
-                      <DataTemplate DataType="vm:PerfItemVm">
+                      <DataTemplate DataType="vm:PerfItemVm" x:DataType="vm:PerfItemVm">
                         <CheckBox Classes="check-item" IsChecked="{Binding IsChecked}" IsEnabled="{Binding IsEnabled}" ToolTip.Tip="{Binding Tooltip}">
                           <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Classes="check-text" Classes.disabled="{Binding !IsEnabled}" Text="{Binding Title}" />
