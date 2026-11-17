@@ -66,8 +66,17 @@ public partial class Reactor : ObservableObject
     [ObservableProperty] private bool _tOnline;
     [ObservableProperty] private bool _pOnline;
 
-    /// <summary>气体消耗是否为实测值（反应步骤按 ΔP 计算后才置 true；之前一律显示「—」）。</summary>
+    /// <summary>气体消耗是否为实测值（升压完成开始计量后才置 true；之前一律显示「—」）。</summary>
     [ObservableProperty] private bool _gasValid;
+
+    /// <summary>最近 1 分钟的平均吸气速率 mmol/min（计量中且数据足够时才有值）。</summary>
+    [ObservableProperty] private double? _gasRate;
+
+    /// <summary>吸气量计量器（压降 → mmol，见 <see cref="GasUptakeMeter"/>）。由 MainViewModel 的 Tick 与程序引擎驱动，不是绑定属性。</summary>
+    public GasUptakeMeter Uptake { get; } = new();
+
+    public string GasRateText => GasRate is double r ? $"{r:0.000}" : "—";
+    partial void OnGasRateChanged(double? value) => OnPropertyChanged(nameof(GasRateText));
 
     public string TText => TOnline ? $"{T:0.0}" : "—";
     public string GasText => GasValid ? $"{Gas:0.00}" : "—";

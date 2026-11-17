@@ -20,6 +20,8 @@ public enum SettingKey
     StirCurrent, StirStandbyPct, StirRampMs, StirMicrostep,
     // 压力变送器（改 8AI 换算）
     PressFullScaleMPa,
+    // 气体消耗（吸气量）计算
+    VesselVolume, GasLineVolume,
 }
 
 /// <summary>
@@ -92,6 +94,11 @@ public static class SettingSpecs
 
         S(SettingKey.PressFullScaleMPa, "变送器满量程", "MPa", 0.1, 60, 0.1, s => s.PressFullScaleMPa, (s, v) => s.PressFullScaleMPa = v,
             "必须与变送器铭牌量程一致（如 0–10MPa 填 10），否则压力读数按比例偏", device: true),
+
+        S(SettingKey.VesselVolume, "釜容积", "mL", 5, 500, 1, s => s.VesselVolume, (s, v) => s.VesselVolume = v,
+            "反应釜内腔容积。气相体积 = 釜容积 − 溶液体积 + 管路死体积，用于把压降折算成吸气量 mmol"),
+        S(SettingKey.GasLineVolume, "管路死体积", "mL", 0, 50, 0.1, s => s.GasLineVolume, (s, v) => s.GasLineVolume = v,
+            "进气阀 SV 到釜之间的管路与接头容积（标定后填入；未标定填 0，吸气量会略偏小）。换釜、换管路后要重新标定"),
     };
 
     private static readonly Dictionary<SettingKey, SettingSpec> ByKey = All.ToDictionary(s => s.Key);

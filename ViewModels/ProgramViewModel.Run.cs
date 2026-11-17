@@ -173,6 +173,7 @@ public partial class ProgramViewModel
         bool aborted = false;
         int currentIndex = -1;
         _runs[rv] = run;
+        _main.ResetUptake(c);   // 新程序：吸气量回到「—」，升压完成后重新开始计量
         run.SetPhase(ProgramRunPhase.Running);
         ChannelOf(rv)?.SetProgramRunning(true);
         RaiseRunProjection();
@@ -245,6 +246,7 @@ public partial class ProgramViewModel
             run.AbortOutputsTask = null;
             run.HeatTouchedAfterAbort = false;
             if (run.StirHeld) ReleaseStir(run, c);   // 搅拌步骤之外被中止时引用已在 AbortProgram 释放；这里兜底
+            _main.StopUptake(c, fail != null ? "程序中止" : aborted ? "程序手动停止" : "程序结束");   // 没到结束步骤就收尾时停止计量（保留读数）
             if (c.State != ReactorState.Idle) c.State = ReactorState.Done;
             c.Rpm = 0;
             run.Status = "";
@@ -534,6 +536,8 @@ public partial class ProgramViewModel
             _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 升压完成", $"{gas} 到 {StepDef.N(target)} psi");
         }
         finally { await _main.CloseAllValvesAsync(); _main.EndGas(GasOwner.Program, gen); }
+        // 吸气量：第一次升压完成时开始计量；之后的升压只是补气（SV 打开计数变化，补进去的气不计入）
+        _main.StartUptake(c, $"第 {s.Ordinal:00} 步升压完成");
         // 升压的租约已释放：稳压回路自己按脉冲排队取短租约（其他程序的气路步骤可以在脉冲间隙取用气路）
         if (regulate) StartRegulation(run, c, gi, target, ct);
     }
@@ -607,23 +611,39 @@ public partial class ProgramViewModel
         _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 等待完成", $"{mode} · 用时 {sw.Elapsed.TotalMinutes:0.#} min");
     }
 
-    /// <summary>反应：倒计时。气体消耗结束条件 v1 未实现（ΔP→mmol 需釜容标定），退化为按最长时间并明确提示。</summary>
+    /// <summary>
+    /// 反应：按结束条件结束。「时间」= 到最长时间；「气体消耗」= 吸气量达到目标 mmol（最长时间仍是上限，防止计量异常时一直反应）；
+    /// 「两者先到」= 时间到或吸气量到。吸气量由 Tick 按压降累计（<see cref="GasUptakeMeter"/>，升压完成后开始计量）；
+    /// 本程序在反应前没有升压步骤（没有开始计量）时，按最长时间执行并明确提示。
+    /// </summary>
     private async Task StepReactAsync(ProgramRun run, Reactor c, StepSnapshot s, string head, CancellationToken ct)
     {
         string endBy = s.Str("endBy", "两者先到");
         double timeMin = s.Num("time", 120), mmol = s.Num("mmol", 5);
-        if (endBy != "时间")
+        bool byGas = endBy != "时间";
+        if (byGas && !c.Uptake.Counting)
         {
-            _main.Toast("warn", $"RV{c.Id} 气体计量待标定（需釜容参数），「{endBy} · {StepDef.N(mmol)} mmol」按最长时间执行");
-            _main.Alarm.Log("warn", "系统", $"RV{c.Id} 程序 · 反应", $"气体计量未标定，按最长时间 {StepDef.N(timeMin)} min 执行");
+            byGas = false;
+            _main.Toast("warn", $"RV{c.Id} 反应前没有升压步骤，吸气量未计量 ·「{endBy} · {StepDef.N(mmol)} mmol」按最长时间执行");
+            _main.Alarm.Log("warn", "系统", $"RV{c.Id} 程序 · 反应", $"吸气量未计量（反应前没有升压步骤），按最长时间 {StepDef.N(timeMin)} min 执行");
         }
         SetState(c, ReactorState.React);
         var sw = Stopwatch.StartNew();
         while (sw.Elapsed.TotalMinutes < timeMin)
         {
-            run.Status = $"{head} · 反应中 · 剩 {LeftMin(sw, timeMin)}";
+            if (byGas && c.Uptake.Valid && c.Uptake.Mmol >= mmol)
+            {
+                _main.Alarm.Log("info", "系统", $"RV{c.Id} 程序 · 吸气量到达",
+                    $"{c.Uptake.Mmol:0.00} mmol ≥ 目标 {StepDef.N(mmol)} mmol · 反应 {sw.Elapsed.TotalMinutes:0.#} min");
+                return;
+            }
+            string gas = c.Uptake.Valid ? $" · 吸气 {c.Uptake.Mmol:0.00}{(byGas ? $" / {StepDef.N(mmol)}" : "")} mmol" : "";
+            run.Status = $"{head} · 反应中 · 剩 {LeftMin(sw, timeMin)}{gas}";
             await WaitSliceAsync(c, 2, ct);
         }
+        if (byGas)
+            _main.Alarm.Log(endBy == "气体消耗" ? "warn" : "info", "系统", $"RV{c.Id} 程序 · 反应到最长时间",
+                $"吸气 {c.Uptake.Mmol:0.00} mmol，未到目标 {StepDef.N(mmol)} mmol · 已到最长时间 {StepDef.N(timeMin)} min");
     }
 
     /// <summary>结束：先停加热降温至 cool，再按方式收尾（密封/排空/淬灭/吹扫）。收尾的气路步骤排队取租约。</summary>
@@ -631,6 +651,7 @@ public partial class ProgramViewModel
     {
         string mode = s.Str("mode", "密封 (推荐)");
         double cool = s.Num("cool", 40);
+        _main.StopUptake(c, $"第 {s.Ordinal:00} 步结束");   // 降温、排空 / 吹扫会改变釜内气量：结束步骤开始即停止计量
         await StopRegulationAsync(run);
         ct.ThrowIfCancellationRequested();
 

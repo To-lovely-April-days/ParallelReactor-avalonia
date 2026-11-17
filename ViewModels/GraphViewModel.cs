@@ -186,8 +186,9 @@ public partial class GraphViewModel : ViewModelBase
     {
         var running = _main.Reactors.Where(r => r.IsRunning).ToList();
 
-        // 平均反应速率要按反应计时计算，随「反应」步骤（实测气体消耗）一起实现；此前一律显示「—」
-        AvgRate = "—";
+        // 平均反应速率：计量中各通道最近 1 分钟吸气速率的平均（GasUptakeMeter.RateMmolPerMin）
+        var rates = running.Where(r => r.GasRate.HasValue).Select(r => r.GasRate!.Value).ToList();
+        AvgRate = rates.Count > 0 ? $"{rates.Average():0.000} mmol/min" : "—";
 
         var gas = running.Where(r => r.GasValid).Select(r => r.Gas).ToList();
         if (gas.Count >= 2 && gas.Average() > 0)

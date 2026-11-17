@@ -176,6 +176,7 @@ public partial class MainViewModel : ViewModelBase
     public AlarmViewModel Alarm { get; }
     public SettingViewModel Setting { get; }
     public LeakViewModel Leak { get; }
+    public CalibViewModel Calib { get; }
     public RecipeViewModel RecipePicker { get; }
 
     // 气路图重绘信号（View 订阅后调用 InvalidateVisual）
@@ -271,6 +272,7 @@ public partial class MainViewModel : ViewModelBase
         Alarm = new AlarmViewModel(Logger) { Main = this };
         Setting = new SettingViewModel(this);
         Leak = new LeakViewModel(this);
+        Calib = new CalibViewModel(this);
         RecipePicker = new RecipeViewModel(this);
         Ops = new OperatorCommands(this, Arbiter);
         Keyboard.ResultSink = Local;   // 键盘确认回调返回 OpResult → 统一转 Toast
@@ -884,6 +886,7 @@ public partial class MainViewModel : ViewModelBase
             c.POnline = realP;
             if (realT) c.T = Temp.Channels[c.Id - 1].Pv;
             if (realP) c.P = _press.Pressures[c.Id - 1];
+            UpdateUptake(c, realT, realP);   // 吸气量：按本 Tick 的压力 / 温度累加（计量中才动）
 
             // 超温切断对所有通道生效（含停用 / 已结束 / 自整定中）：加热器可能仍在出力，不能只看运行中的通道
             CheckOverTemp(c, realT);

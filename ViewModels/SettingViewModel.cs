@@ -407,6 +407,12 @@ public partial class SettingViewModel : ViewModelBase
                     Num(SettingKey.StirMicrostep)),
                 SetSection.Card("压力变送器（8AI）",
                     Num(SettingKey.PressFullScaleMPa)),
+                SetSection.Card("气体消耗计算（吸气量 = 压降 × 气相体积 ÷ RT）",
+                    Num(SettingKey.VesselVolume),
+                    Num(SettingKey.GasLineVolume)),
+                SetSection.Note("做过「容积标定」（工具栏）的通道改用标定出的有效容积，不再用上面两项。"
+                    + "吸气量从程序「升压」完成后开始计量，到「结束」步骤停止；稳压补气、手动开阀补进去的气不计入。"
+                    + "溶液体积在通道抽屉里设置。建议先升温到位再升压：温度没稳定、溶剂蒸气压变化都会带来偏差。"),
             },
         });
 

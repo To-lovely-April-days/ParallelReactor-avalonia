@@ -115,6 +115,7 @@ public class ArchitectureTests
         ["ProgramViewModel.Run.cs:RunStepAsync"] = "程序引擎：执行一步（TryRunProgram 启动的后台流程）",
         ["MainViewModel.Logging.cs:SendOverPressureValvesAsync"] = "Tick 的超压联锁：关该通道 SV 与全部气源",
         ["LeakViewModel.cs:Finish"] = "泄漏测试流程收尾（TryStartLeakTest 启动的后台流程）",
+        ["CalibViewModel.cs:RunAsync"] = "容积标定流程主体（TryStartVolumeCalib 启动的后台流程：总管充气 → 放进釜里，收尾全关阀）",
         ["ProgramViewModel.Run.cs:AbortProgram"] = "程序引擎中止（按通道）：停曲线 / 逼近、释放搅拌引用、停加热、中止自己的气路租约（TryAbortProgram、TryStopHeat、停止通道共用）",
         ["ProgramViewModel.Run.cs:AbortAllPrograms"] = "程序引擎：中止全部并行程序（全部停止、急停共用，逐通道调 AbortProgram）",
         ["ProgramViewModel.Run.cs:AcquireGasAsync"] = "程序引擎：排队取气路租约（吹扫 / 升压 / 收尾 / 稳压脉冲共用，多程序并行按 GasQueue 先到先得）",
@@ -589,6 +590,8 @@ public class ArchitectureTests
         ["TryCopyProgram"] = "Control", ["TryRunProgram"] = "Control", ["TryAbortProgram"] = "Stop",
         // 泄漏测试
         ["TryStartLeakTest"] = "Control", ["TryAbortLeakTest"] = "Stop",
+        // 容积标定（要在设备旁加水、开釜：只允许本地）
+        ["TryStartVolumeCalib"] = "Control·本地", ["TryAbortVolumeCalib"] = "Stop·本地",
         // 记录类与配方
         ["TryApplyRecipe"] = "Control·本地", ["TryAckAlarm"] = "Record", ["TryBeginSession"] = "Record",
         ["TryEndSession"] = "Record", ["TryAddMarker"] = "Record",

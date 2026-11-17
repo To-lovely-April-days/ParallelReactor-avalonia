@@ -12,6 +12,7 @@ public sealed record SchemaOption(string Code, string Label, bool Available = tr
 /// </summary>
 public static class ProgramSchemaCodes
 {
+    /// <summary>历史原因：v0.5 之前耗气量没有实现时的说明文字。耗气量已由 HMI 按压降计算（Models/GasUptake.cs），目前没有不可用的选项；保留常量供旧客户端引用。</summary>
     public const string GasUnavailableReason = "耗气量计算未实现";
 
     /// <summary>键 "stepType.fieldKey"（stepType 为小写：purge / heat / press / stir / wait / react / end）。</summary>
@@ -24,16 +25,16 @@ public static class ProgramSchemaCodes
         ["react.endBy"] = new[]
         {
             new SchemaOption("time", "时间"),
-            new SchemaOption("gasConsumed", "气体消耗", false, GasUnavailableReason),
-            new SchemaOption("either", "两者先到", false, GasUnavailableReason),
+            new SchemaOption("gasConsumed", "气体消耗"),
+            new SchemaOption("either", "两者先到"),
         },
         ["end.mode"] = new[] { new SchemaOption("seal", "密封 (推荐)"), new SchemaOption("purge", "吹扫"), new SchemaOption("quench", "淬灭"), new SchemaOption("vent", "排空") },
         // 不在 StepDef.Fields 里、由程序页单独编辑的字段（schema 手工补上）
         ["heat.mode"] = new[] { new SchemaOption("fixed", "定值"), new SchemaOption("curve", "曲线") },
     };
 
-    /// <summary>不可用的数值字段（依赖 GasValid，见设计稿附录 C）。</summary>
-    public static readonly IReadOnlySet<string> UnavailableFields = new HashSet<string>(StringComparer.Ordinal) { "react.mmol" };
+    /// <summary>不可用的数值字段（依赖 GasValid，见设计稿附录 C）。耗气量已实现（升压完成后按压降计量），目前为空。</summary>
+    public static readonly IReadOnlySet<string> UnavailableFields = new HashSet<string>(StringComparer.Ordinal);
 
     /// <summary>曲线段数范围（Models/TempProfile.cs MaxSegments = 16；ProgramView CanAddSeg）。</summary>
     public const int SegmentsMin = 1, SegmentsMax = 16;

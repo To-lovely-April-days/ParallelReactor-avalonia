@@ -193,6 +193,16 @@
                 <TextBlock Text="泄漏测试" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <Button Classes="tbtn" Command="{Binding Calib.OpenCommand}" ToolTip.Tip="吸气量用的釜容积标定（惰性气体膨胀法）">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="16" Height="16" VerticalAlignment="Center">
+                  <Canvas Width="24" Height="24">
+                    <Path Classes="tico" Data="M9 3h6 M10 3v6.5L5 19a1.5 1.5 0 0 0 1.3 2h11.4a1.5 1.5 0 0 0 1.3-2L14 9.5V3 M8 15h8" />
+                  </Canvas>
+                </Viewbox>
+                <TextBlock Text="容积标定" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
             <!-- 手动阀控开关已移到气路图 RV1 左侧（SchematicControl.DrawManualSwitch）-->
           </StackPanel>
 
@@ -853,6 +863,104 @@
                 <StackPanel>
                   <TextBlock Text="{Binding Leak.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Leak.ResultBrush}" />
                   <TextBlock Text="{Binding Leak.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
+                             TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
+                </StackPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Panel>
+
+    <!-- ============ 容积标定（吸气量用，气体膨胀法）============ -->
+    <Panel IsVisible="{Binding Calib.IsOpen}">
+      <Border Background="#99060609" />
+      <Border Classes="pmodal" Width="660" MaxHeight="690" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <DockPanel>
+          <!-- 头 -->
+          <StackPanel DockPanel.Dock="Top" Margin="24,20,24,14">
+            <TextBlock Text="容积标定（吸气量计算用）" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource OnDark}" />
+            <TextBlock Text="{Binding Calib.ModeText}" FontSize="11.5" Foreground="{DynamicResource Body}" TextWrapping="Wrap" Margin="0,3,0,0" />
+          </StackPanel>
+          <!-- 底 -->
+          <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="10" HorizontalAlignment="Right" Margin="22,6,22,20">
+            <Button Classes="mfbtn danger" Command="{Binding Calib.AbortCommand}" Content="中止标定" IsVisible="{Binding Calib.Running}" />
+            <Button Classes="mfbtn" Command="{Binding Calib.DiscardFirstCommand}" Content="放弃重来" IsVisible="{Binding Calib.ShowContinue}" />
+            <Button Classes="mfbtn" Command="{Binding Calib.CloseCommand}" Content="{Binding Calib.CloseText}" />
+            <Button Classes="mfbtn go" Command="{Binding Calib.StartCommand}" Content="开始标定" IsVisible="{Binding Calib.ShowStart}" />
+            <Button Classes="mfbtn go" Command="{Binding Calib.ContinueCommand}" Content="继续第二遍" IsVisible="{Binding Calib.ShowContinue}" />
+          </StackPanel>
+          <!-- 主体 -->
+          <ScrollViewer MaxHeight="480" Margin="22,0,22,4" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+              <!-- 说明（未开始） -->
+              <StackPanel IsVisible="{Binding Calib.ShowStart}">
+                <TextBlock Text="{Binding Calib.IntroText}" FontSize="12" Foreground="{DynamicResource Body}"
+                           TextWrapping="Wrap" LineHeight="21" Margin="2,0,0,10" />
+                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+                  <TextBlock Grid.Column="0" Text="第二遍加入的水（移液管准确量取）" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                  <Button Grid.Column="1" Classes="mfbtn" Command="{Binding Calib.EditWaterCommand}" Content="{Binding Calib.WaterText}" />
+                </Grid>
+                <Button Classes="mfbtn" Command="{Binding Calib.ToggleRedoCommand}" IsVisible="{Binding Calib.ShowRedoToggle}"
+                        HorizontalAlignment="Left" Margin="0,0,0,8">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <CheckBox IsChecked="{Binding Calib.RedoManifold}" IsHitTestVisible="False" MinWidth="0" Padding="0" />
+                    <TextBlock Text="重新标定总管体积（换过管路 / 减压阀后）" VerticalAlignment="Center" FontSize="12" />
+                  </StackPanel>
+                </Button>
+                <TextBlock Text="标定通道（点击选择；运行中的通道不可选）：" FontSize="12" Foreground="{DynamicResource Body}" Margin="0,6,0,0" />
+              </StackPanel>
+
+              <!-- 进度 -->
+              <StackPanel IsVisible="{Binding Calib.Running}">
+                <ProgressBar Minimum="0" Maximum="100" Value="{Binding Calib.Progress}" Height="6" MinHeight="6"
+                             ShowProgressText="False" Foreground="{DynamicResource GreenBright}" Background="{DynamicResource GlassSoft}" Margin="0,0,0,8" />
+                <TextBlock Text="{Binding Calib.PhaseText}" FontSize="11.5" Foreground="{DynamicResource Body}" Margin="0,0,0,4" />
+              </StackPanel>
+
+              <!-- 等待加水 -->
+              <Border IsVisible="{Binding Calib.ShowContinue}" Background="{DynamicResource Glass}" BorderBrush="{DynamicResource GlassLine}"
+                      BorderThickness="1" CornerRadius="9" Padding="13,11" Margin="0,0,0,8">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding Calib.WaterHint}" FontSize="12" Foreground="{DynamicResource OnDark}" TextWrapping="Wrap" LineHeight="19" />
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="实际加入的水" FontSize="12" Foreground="{DynamicResource Body}" VerticalAlignment="Center" />
+                    <Button Grid.Column="1" Classes="mfbtn" Command="{Binding Calib.EditWaterCommand}" Content="{Binding Calib.WaterText}" />
+                  </Grid>
+                </StackPanel>
+              </Border>
+
+              <!-- 8 路通道：当前有效容积 / 标定日期 -->
+              <ItemsControl ItemsSource="{Binding Calib.Cells}" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:CalibCell">
+                    <Button Command="{Binding PickCommand}" Padding="0" Margin="3" Background="Transparent" BorderThickness="0"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Cursor="Hand">
+                      <Border Opacity="{Binding CellOpacity}" Background="{Binding CellBg}" BorderBrush="{Binding CellBorder}"
+                              BorderThickness="1" CornerRadius="9" Padding="4,8">
+                        <StackPanel>
+                          <TextBlock Text="{Binding RvName}" FontSize="10" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource Mute}" HorizontalAlignment="Center" />
+                          <TextBlock Text="{Binding VolumeText}" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                     Foreground="{DynamicResource OnDark}" Margin="0,2,0,0" />
+                          <TextBlock Text="{Binding DateText}" FontSize="9" Foreground="{DynamicResource Mute}"
+                                     HorizontalAlignment="Center" Margin="0,1,0,0" />
+                        </StackPanel>
+                      </Border>
+                    </Button>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <!-- 结果 -->
+              <Border IsVisible="{Binding Calib.HasResult}" Background="{Binding Calib.ResultBg}" BorderBrush="{Binding Calib.ResultBorder}"
+                      BorderThickness="1" CornerRadius="11" Padding="14,12" Margin="0,12,0,0">
+                <StackPanel>
+                  <TextBlock Text="{Binding Calib.ResultTitle}" FontSize="13" FontWeight="Bold" Foreground="{Binding Calib.ResultBrush}" />
+                  <TextBlock Text="{Binding Calib.ResultText}" FontSize="11.5" Foreground="{DynamicResource Body}"
                              TextWrapping="Wrap" LineHeight="17" Margin="0,6,0,0" />
                 </StackPanel>
               </Border>

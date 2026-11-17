@@ -544,6 +544,7 @@ public partial class MainViewModel
             t.OverTemp = _otGuard.IsTripped(i);
             t.Valve = c.Valve;
             t.ProgramStep = runInfos.TryGetValue(c.Id, out var ri) ? $"{ri.Index + 1}/{ProgramRunSet.PhaseName(ri.Phase)}" : null;
+            t.GasMmol = c.GasValid ? c.Gas : null;
         }
         if (realT)
         {

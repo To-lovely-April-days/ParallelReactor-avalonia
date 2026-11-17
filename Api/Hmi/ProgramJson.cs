@@ -10,7 +10,7 @@ namespace ParallelReactor.Api.Hmi;
 /// <summary>
 /// §6.9 程序 JSON（<c>steps[{ type, params{…} }]</c>，sel 字段用英文枚举码）→ 下发快照 <see cref="StepSnapshot"/>。
 /// 放在 Api/Hmi 下：要用 <see cref="StepDef.Registry"/>（Models/ProgramStep.cs 含 Avalonia 类型，测试工程不链接）。
-/// 规则：枚举码经 <see cref="ProgramSchemaCodes"/> 转成界面 label 存入参数（程序引擎按 label 判定）；不可用选项（react.endBy 的 gasConsumed / either、react.mmol）
+/// 规则：枚举码经 <see cref="ProgramSchemaCodes"/> 转成界面 label 存入参数（程序引擎按 label 判定）；不可用选项（<see cref="ProgramSchemaCodes.UnavailableFields"/> / Available = false；耗气量实现后目前没有）
 /// → PROGRAM_INVALID；数值按 FieldDef 的声明范围 → PARAM_OUT_OF_RANGE（全局限值由 TryReplaceProgram 的 ProgramLimits.Validate 再查一遍）；
 /// heat.mode = curve 时取 params.segments[{temp, rate, hold}]（1..16 段，段字段范围同曲线编辑器）。缺省字段取 FieldDef.Default。
 /// </summary>

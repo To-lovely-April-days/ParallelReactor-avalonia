@@ -111,6 +111,9 @@
                   <TextBlock FontSize="24" FontWeight="Light" Margin="0,6,0,0" Foreground="{DynamicResource OnDark}">
                     <Run Text="{Binding Reactor.GasText}" /><Run Text=" mmol" FontSize="12.5" Foreground="{DynamicResource Body}" />
                   </TextBlock>
+                  <TextBlock FontSize="12" Margin="0,4,0,0" Foreground="{DynamicResource Mute}">
+                    <Run Text="{Binding Reactor.GasRateText}" /><Run Text=" mmol/min" />
+                  </TextBlock>
                 </StackPanel>
               </Border>
             </Grid>
@@ -322,7 +325,7 @@
           <!-- 操作 -->
           <StackPanel Margin="0,0,0,8">
             <TextBlock Classes="sect" Text="操作" />
-            <Button Classes="dbtn pri" Command="{Binding CountResetCommand}" Content="启动计数 · 进样清零" />
+            <Button Classes="dbtn pri" Command="{Binding CountResetCommand}" Content="吸气量清零 · 重新计量" />
             <Button Classes="dbtn go" Content="启动该通道" Command="{Binding StartCommand}"
                     IsVisible="{Binding Reactor.IsRunning, Converter={x:Static conv:InverseBoolConverter.Instance}}" />
             <Button Classes="dbtn" Content="停止该通道" Command="{Binding StopCommand}"

@@ -7,7 +7,7 @@ namespace ParallelReactor.Models;
 /// <summary>
 /// 气路占用者（C8）。超压联锁与急停不是占用者：它们无条件中止任何占用者（MainViewModel.AbortAllGas）。
 /// </summary>
-public enum GasOwner { None, Program, Leak }
+public enum GasOwner { None, Program, Leak, Calib }
 
 /// <summary>
 /// 最近一次「无条件中止气路」（MainViewModel.AbortAllGas）的来由：程序引擎据此区分租约被取消的原因——

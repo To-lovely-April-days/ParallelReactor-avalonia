@@ -95,7 +95,7 @@ public static class SnapshotBuilder
             Enumerable.Range(0, Math.Min(3, vm.GasInlets.Count)).Select(g => new GasInletSnap(gasIds[g], vm.GasInlets[g].On)).ToArray(),
             vm.VentOn, vm.ManualValve,
             vm.GasBusy ? vm.GasTask : null,
-            vm.GasOwnedBy(GasOwner.Program) ? "program" : vm.GasOwnedBy(GasOwner.Leak) ? "leak" : null);
+            vm.GasOwnedBy(GasOwner.Program) ? "program" : vm.GasOwnedBy(GasOwner.Leak) ? "leak" : vm.GasOwnedBy(GasOwner.Calib) ? "calib" : null);
         // 旧字段 program（已废弃，过渡一个版本）：首个正在执行的程序；没有在执行的则是最近结束的那次（与 v0.4 一样保留终态文字 / 最后步序）；
         // 新字段 channels[i].program + programs
         var first = ProgramRunSet.FirstRunning(runInfos) ?? vm.Program.LastEndedRunInfo;

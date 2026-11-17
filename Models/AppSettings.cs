@@ -49,4 +49,14 @@ public class AppSettings
     public double LeakSettleMin { get; set; } = 10;   // 平衡时间 分钟
     public double LeakMeasureMin { get; set; } = 30;  // 测量时间 分钟
     public System.DateTime? LastLeakTestUtc { get; set; }   // 上次完成泄漏测试的时间（提醒用）
+
+    // 气体消耗（吸气量）计算：气相体积 = 釜容积 − 溶液体积 + 管路死体积（见 GasUptakeMeter）
+    public double VesselVolume { get; set; } = 50;    // 釜容积 mL
+    public double GasLineVolume { get; set; } = 0;    // 管路死体积 mL（SV 到釜之间的管路与接头；标定后填入，未标定为 0）
+
+    // 容积标定（气体膨胀法，见 VolumeCalib / CalibViewModel）：标定过的通道用「有效容积」（釜 + 该路 SV 以下管路），
+    // 气相体积 = 有效容积 − 溶液体积，不再用上面的「釜容积 + 管路死体积」
+    public double? ManifoldVolume { get; set; }                                  // 总管体积 mL（空釜 + 加水两遍标定得出）
+    public double?[] EffectiveVolume { get; set; } = new double?[8];             // 各通道有效容积 mL（null = 未标定）
+    public System.DateTime?[] VolumeCalibUtc { get; set; } = new System.DateTime?[8];   // 各通道标定时间
 }

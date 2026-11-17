@@ -117,7 +117,9 @@ public class ApiArchitectureTests
         Assert.Equal("seal", ProgramSchemaCodes.CodeOf("end", "mode", "密封 (推荐)"));
         Assert.Equal("气体 A", ProgramSchemaCodes.LabelOf("press", "gas", "A"));
         Assert.Null(ProgramSchemaCodes.CodeOf("end", "mode", "不存在"));
-        Assert.False(ProgramSchemaCodes.Options["react.endBy"].Single(o => o.Code == "gasConsumed").Available);
+        // 耗气量已实现：react.endBy 的三个选项和 react.mmol 都可用
+        Assert.All(ProgramSchemaCodes.Options["react.endBy"], o => Assert.True(o.Available));
+        Assert.Empty(ProgramSchemaCodes.UnavailableFields);
     }
 
     [Fact]

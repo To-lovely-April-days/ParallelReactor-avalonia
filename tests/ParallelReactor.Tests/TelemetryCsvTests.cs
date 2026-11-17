@@ -59,14 +59,17 @@ public class TelemetryCsvTests
     public void Header_IsStable()
     {
         var h = TelemetryCsv.HeaderFields().ToList();
-        // 3 通用列 + 8 通道 × 15 列 + 12 全局列 + 4 模块 × 5 列 + 模拟标志 + 8 通道程序步（v0.5 末尾追加）。改动列必须同步改这里（且只能在末尾追加）。
-        Assert.Equal(3 + 8 * 15 + 12 + 4 * 5 + 1 + 8, h.Count);
+        // 3 通用列 + 8 通道 × 15 列 + 12 全局列 + 4 模块 × 5 列 + 模拟标志 + 8 通道程序步（v0.5 末尾追加）+ 8 通道吸气量（v0.6 末尾追加）。
+        // 改动列必须同步改这里（且只能在末尾追加）。
+        Assert.Equal(3 + 8 * 15 + 12 + 4 * 5 + 1 + 8 + 8, h.Count);
         Assert.Equal(new[] { "时间", "标记", "会话", "RV1_PV(℃)", "RV1_PV原码" }, h.Take(5));
         Assert.Equal("RV8_进气阀", h[3 + 8 * 15 - 1]);
-        Assert.Equal("搅拌_最近响应", h[^10]);
-        Assert.Equal("模拟", h[^9]);
-        Assert.Equal("RV1_程序步", h[^8]);
-        Assert.Equal("RV8_程序步", h[^1]);
+        Assert.Equal("搅拌_最近响应", h[^18]);
+        Assert.Equal("模拟", h[^17]);
+        Assert.Equal("RV1_程序步", h[^16]);
+        Assert.Equal("RV8_程序步", h[^9]);
+        Assert.Equal("RV1_吸气量(mmol)", h[^8]);
+        Assert.Equal("RV8_吸气量(mmol)", h[^1]);
         Assert.Equal(h.Count, h.Distinct().Count());   // 列名不重复
         Assert.Same(TelemetryCsv.Header, TelemetryCsv.Header);   // 缓存，每行不重建
         Assert.Equal(Csv.Line(h), TelemetryCsv.Header);
@@ -110,10 +113,24 @@ public class TelemetryCsvTests
         row.Ch[2].ProgramStep = "1/waitingGas";
         var cells = row.Format().Split(',');
         Assert.Equal(TelemetryCsv.HeaderFields().Count(), cells.Length);
-        Assert.Equal("3/running", cells[^8]);
+        Assert.Equal("3/running", cells[^16]);
+        Assert.Equal("", cells[^15]);
+        Assert.Equal("1/waitingGas", cells[^14]);
+        Assert.Equal("", cells[^9]);
+    }
+
+    [Fact]
+    public void Format_GasColumns_AtTail_EmptyWhenNotMetered()
+    {
+        // 吸气量：末尾 8 列 RVx_吸气量(mmol)，三位小数；未计量（null）为空，不写 0
+        var row = new TelemetryRow { Time = new DateTimeOffset(2026, 1, 2, 3, 4, 5, 6, TimeSpan.Zero) };
+        row.Ch[0].GasMmol = 12.34567;
+        row.Ch[7].GasMmol = 0;
+        var cells = row.Format().Split(',');
+        Assert.Equal(TelemetryCsv.HeaderFields().Count(), cells.Length);
+        Assert.Equal("12.346", cells[^8]);
         Assert.Equal("", cells[^7]);
-        Assert.Equal("1/waitingGas", cells[^6]);
-        Assert.Equal("", cells[^1]);
+        Assert.Equal("0.000", cells[^1]);
     }
 
     [Fact]

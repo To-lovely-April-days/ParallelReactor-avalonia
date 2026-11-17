@@ -313,15 +313,24 @@ public sealed partial class OperatorCommands
 
     // ==================== 其他 ====================
 
-    /// <summary>进样计数清零。</summary>
+    /// <summary>
+    /// 吸气量清零：从当前时刻重新开始计量（手动实验：手动充压、关阀后点清零）。
+    /// 程序执行中的通道不允许（程序在升压完成时自己开始计量，反应步骤可能按吸气量结束）。
+    /// </summary>
     public Task<OpResult> TryResetGasCounter(CommandSource src, int id)
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (ChannelOr(id, out var c) is { } nf) return nf.AsTask();
-        c.Gas = 0;
+        if (ProgramOwned(c) is { } owned) return owned.AsTask();
+        _m.ResetUptake(c);
+        bool started = _m.StartUptake(c, "清零后重新计量");
         _m.RefreshSchematic();
         _m.Drawer.RaiseAll();
-        return OpResult.Done($"RV{id} 进样计数已清零，开始累计进气").AsTask();
+        if (!started)
+            return OpResult.Fail(OpCodes.ParamCrossCheck,
+                $"RV{id} 气相体积不合理（{_m.GasVolumeMl(c):0.#} mL）· 请检查溶液体积与设置页「气体消耗计算」", "warn").AsTask();
+        return (OpResult.Done($"RV{id} 吸气量已清零，开始计量 · 关阀状态下的压降计入，开阀补气不计入")
+            with { Data = new { gasVolumeMl = _m.GasVolumeMl(c) } }).AsTask();
     }
 
     /// <summary>清除通道上的配方标签（只允许在设备触屏上进行：配方不对外，附录 B）。</summary>

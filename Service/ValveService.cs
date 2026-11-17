@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using ParallelReactor.Hardware;
 
@@ -32,6 +33,17 @@ public sealed class ValveService
     public CommStats Stats { get; } = new();
 
     private volatile bool _locked;
+
+    private readonly long[] _svOpenGen = new long[8];
+
+    /// <summary>
+    /// RV 进气阀 SV（reactorId 1..8）被打开的累计次数：任何打开该 SV 的写入（单路 / 整帧）在写总线之前加一。
+    /// 吸气量计量（<see cref="Models.GasUptakeMeter"/>）据此识别「这段时间里补过气 / 开过阀」，补进去的气不算消耗。
+    /// 写入失败也照样计数（宁可多断开一次基准，不能漏掉一次真实开阀）。
+    /// </summary>
+    public long GetSvOpenGen(int reactorId) => reactorId is >= 1 and <= 8 ? Interlocked.Read(ref _svOpenGen[reactorId - 1]) : 0;
+
+    private void BumpSv(int reactorId) { if (reactorId is >= 1 and <= 8) Interlocked.Increment(ref _svOpenGen[reactorId - 1]); }
 
     /// <summary>
     /// 急停锁定：为 true 时拒绝任何会<b>打开</b>阀门的写入（抛 <see cref="ValveLockedException"/>，不计通讯失败），
@@ -69,6 +81,7 @@ public sealed class ValveService
     public Task SetReactorValveAsync(int reactorId, bool open)
     {
         ThrowIfLockedOpen(open);
+        if (open) BumpSv(reactorId);
         return Track(() => _io.SetCoilAsync(RvBase + reactorId - 1, Level(open)));
     }
 
@@ -96,6 +109,7 @@ public sealed class ValveService
         bool any = false;
         foreach (var o in open12) any |= o;
         ThrowIfLockedOpen(any);
+        for (int i = 0; i < 8 && i < open12.Length; i++) if (open12[i]) BumpSv(i + 1);
         var levels = new bool[12];
         for (int i = 0; i < levels.Length && i < open12.Length; i++) levels[i] = Level(open12[i]);
         var io = urgent ? _urgentIo : _io;
