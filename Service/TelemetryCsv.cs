@@ -102,7 +102,8 @@ public sealed class TelemetryRow
     public int? Srun;            // AI-8 全局运行状态（0x0845，全局寄存器，非每通道）
     public int? Ctn;             // AI-8 启用回路数
     public bool StirOn;          // 搅拌开（命令态）
-    public int? StirRpmSet;      // 设定转速 rpm（命令态，无转速反馈）
+    public int? StirRpmSet;      // 设定转速 rpm（釜里的转速，命令态，无转速反馈）
+    public int? StirMotorRpm;    // 下发给电机的转速 rpm（= 釜转速 × 传动比；末尾追加列 搅拌电机(rpm)）
     public int? StirRampMs;      // 加减速时间 ms/1000rpm（加速与减速共用一个值，命令态）
     public int? StirAlarm;       // DM2C 报警码（0=无）
     public double? BusVoltage;   // DM2C 母线电压 V（未知时 null）
@@ -184,6 +185,7 @@ public static class TelemetryCsv
         for (int i = 1; i <= TelemetryRow.ChannelCount; i++) yield return $"RV{i}_程序步";
         // 吸气量（v0.6）：按压降计算的累计 mmol，同样追加在末尾
         for (int i = 1; i <= TelemetryRow.ChannelCount; i++) yield return $"RV{i}_吸气量(mmol)";
+        yield return "搅拌电机(rpm)";   // v0.6：一台电机经齿轮带 8 个釜，上面的「搅拌设定」是釜里的转速
     }
 
     /// <summary>psi → MPa（与 Models.Units 一致：1 MPa = 145.037738 psi）。</summary>
@@ -238,6 +240,7 @@ public static class TelemetryCsv
         f.Add(Csv.Bool(r.Sim));
         for (int i = 0; i < TelemetryRow.ChannelCount; i++) f.Add(i < r.Ch.Length ? r.Ch[i].ProgramStep ?? "" : "");
         for (int i = 0; i < TelemetryRow.ChannelCount; i++) f.Add(i < r.Ch.Length ? Csv.Num(r.Ch[i].GasMmol, "0.000") : "");
+        f.Add(Csv.Int(r.StirMotorRpm));
         return Csv.Line(f);
     }
 

@@ -20,6 +20,7 @@
     <Compile Include="../../Models/GasSequence.cs" Link="Src/GasSequence.cs" />
     <Compile Include="../../Models/GasUptake.cs" Link="Src/GasUptake.cs" />
     <Compile Include="../../Models/VolumeCalib.cs" Link="Src/VolumeCalib.cs" />
+    <Compile Include="../../Models/StirGear.cs" Link="Src/StirGear.cs" />
     <Compile Include="../../Models/OverPressureGuard.cs" Link="Src/OverPressureGuard.cs" />
     <Compile Include="../../Models/ReactorState.cs" Link="Src/ReactorState.cs" />
     <Compile Include="../../Models/RunSelection.cs" Link="Src/RunSelection.cs" />

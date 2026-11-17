@@ -405,6 +405,8 @@ public partial class SettingViewModel : ViewModelBase
                     Num(SettingKey.StirStandbyPct),
                     Num(SettingKey.StirRampMs),
                     Num(SettingKey.StirMicrostep)),
+                SetSection.Card("搅拌传动（一台电机经齿轮带 8 个釜）",
+                    Num(SettingKey.StirGearRatio)),
                 SetSection.Card("压力变送器（8AI）",
                     Num(SettingKey.PressFullScaleMPa)),
                 SetSection.Card("气体消耗计算（吸气量 = 压降 × 气相体积 ÷ RT）",

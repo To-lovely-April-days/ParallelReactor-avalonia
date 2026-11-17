@@ -22,6 +22,8 @@ public enum SettingKey
     PressFullScaleMPa,
     // 气体消耗（吸气量）计算
     VesselVolume, GasLineVolume,
+    // 搅拌传动（一台电机经齿轮带 8 个釜）
+    StirGearRatio,
 }
 
 /// <summary>
@@ -45,7 +47,8 @@ public static class SettingSpecs
     {
         S(SettingKey.TMaxSp, "温度 SP 上限", "°C", 50, 300, 5, s => s.TMaxSp, (s, v) => s.TMaxSp = v),
         S(SettingKey.PMaxSp, "压力 SP 上限", "psi", 100, 1000, 10, s => s.PMaxSp, (s, v) => s.PMaxSp = v),
-        S(SettingKey.RpmMax, "搅拌转速上限", "rpm", 500, 3000, 100, s => s.RpmMax, (s, v) => s.RpmMax = v),
+        S(SettingKey.RpmMax, "搅拌转速上限", "rpm", 50, 3000, 10, s => s.RpmMax, (s, v) => s.RpmMax = v,
+            "釜里搅拌子的转速上限（电机转速 = 釜转速 × 传动比）"),
         S(SettingKey.VolMax, "溶液体积上限", "mL", 5, 200, 5, s => s.VolMax, (s, v) => s.VolMax = v),
 
         S(SettingKey.OverPressure, "超压报警", "psi", 100, 1000, 5, s => s.OverPressure, (s, v) => s.OverPressure = v,
@@ -99,6 +102,9 @@ public static class SettingSpecs
             "反应釜内腔容积。气相体积 = 釜容积 − 溶液体积 + 管路死体积，用于把压降折算成吸气量 mmol"),
         S(SettingKey.GasLineVolume, "管路死体积", "mL", 0, 50, 0.1, s => s.GasLineVolume, (s, v) => s.GasLineVolume = v,
             "进气阀 SV 到釜之间的管路与接头容积（标定后填入；未标定填 0，吸气量会略偏小）。换釜、换管路后要重新标定"),
+
+        S(SettingKey.StirGearRatio, "搅拌传动比", "电机÷釜", 0.1, 20, 0.001, s => s.StirGearRatio, (s, v) => s.StirGearRatio = v,
+            "一台电机经齿轮带 8 个釜：电机 38 齿带釜上 85 齿 → 85 ÷ 38 = 2.237。界面上填的都是釜里的转速，下发电机时乘以此值", device: true),
     };
 
     private static readonly Dictionary<SettingKey, SettingSpec> ByKey = All.ToDictionary(s => s.Key);

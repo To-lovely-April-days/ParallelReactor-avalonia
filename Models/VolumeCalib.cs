@@ -24,15 +24,15 @@ namespace ParallelReactor.Models;
 /// </summary>
 public static class VolumeCalib
 {
-    /// <summary>每次标定的充放次数。</summary>
+    /// <summary>每次标定最多的充放次数（压力已接近减压阀压力、每步升不到 <see cref="MinRisePsi"/> 时提前结束）。</summary>
     public const int Steps = 6;
-    /// <summary>拟合至少要这么多组数据。</summary>
-    public const int MinSteps = 4;
+    /// <summary>拟合至少要这么多组有效数据。10 mL 小釜每步进气比例大，几步就接近减压阀压力，所以 3 组即可。</summary>
+    public const int MinSteps = 3;
     /// <summary>合理的 f = Vm / (Vm + Vg) 范围：太小说明几乎没进气（气源没开 / 减压阀没压力 / 单向阀卡住），太大说明釜几乎没有容积。</summary>
     public const double MinFraction = 0.01, MaxFraction = 0.9;
     /// <summary>拟合优度下限：读数跳动太大时不给结果。</summary>
     public const double MinR2 = 0.995;
-    /// <summary>每步压力至少上升这么多 psi，否则压差相对噪声太小。</summary>
+    /// <summary>每步压力至少上升这么多 psi 才用于拟合（压差太小，相对噪声没有意义）。</summary>
     public const double MinRisePsi = 0.5;
     /// <summary>有效容积的合理范围 mL（超出说明加水体积填错或测量有问题）。</summary>
     public const double MinVolumeMl = 2, MaxVolumeMl = 2000;
@@ -53,11 +53,17 @@ public static class VolumeCalib
     /// </summary>
     public static (Fit? Fit, string? Why) FitSteps(IReadOnlyList<(double Before, double After)> steps)
     {
-        if (steps.Count < MinSteps) return (null, $"有效数据只有 {steps.Count} 组（至少 {MinSteps} 组）");
         if (steps.Any(s => !double.IsFinite(s.Before) || !double.IsFinite(s.After))) return (null, "压力读数无效");
-        double minRise = steps.Min(s => s.After - s.Before);
-        if (minRise < MinRisePsi)
-            return (null, $"有一步压力只升了 {minRise:0.##} psi · 惰性气体减压阀压力太低、气源没开，或已接近减压阀压力");
+        // 只用压力明显上升的步骤：接近减压阀压力后的步骤压差太小，不参与拟合
+        var used = steps.Where(s => s.After - s.Before >= MinRisePsi).ToList();
+        if (used.Count < MinSteps)
+        {
+            double maxRise = steps.Count > 0 ? steps.Max(s => s.After - s.Before) : 0;
+            return (null, maxRise < MinRisePsi
+                ? $"每步压力只升了 {maxRise:0.##} psi · 惰性气体减压阀压力太低或气源没开"
+                : $"有效数据只有 {used.Count} 组（至少 {MinSteps} 组）· 把惰性气体减压阀调高一些再试");
+        }
+        steps = used;
         int n = steps.Count;
         double mx = steps.Average(s => s.Before), my = steps.Average(s => s.After);
         double sxx = steps.Sum(s => (s.Before - mx) * (s.Before - mx));

@@ -227,6 +227,7 @@ public partial class MainViewModel : ViewModelBase
             new Hardware.StepperDriver(Hardware.ModbusMasterExtensions.AsUrgent(_bus), Services.HardwareOptions.StirSlave));
         _stir.CommError += msg => Toast("err", $"搅拌通讯失败 · {msg}");
         _stir.RampMs = (int)Settings.StirRampMs;    // 起停平缓度（加减速时间）
+        _stir.GearRatio = Settings.StirGearRatio;   // 搅拌传动比：界面转速 = 釜转速，下发电机时乘以它
         _ = RefreshStirCurrentAsync();             // 电流只显示从驱动器读回的值，读到之前为「—」
         _ = RefreshStirFaultAsync();
         _ = InitStirMicrostepAsync();

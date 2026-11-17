@@ -6,8 +6,8 @@ public class AppSettings
     // 可设置参数范围（上限）
     public double TMaxSp { get; set; } = 200;     // 温度 SP 上限 °C
     public double PMaxSp { get; set; } = 500;     // 压力 SP 上限 psi
-    public double RpmMax { get; set; } = 1000;    // 搅拌转速上限 rpm
-    public double VolMax { get; set; } = 50;      // 溶液体积上限 mL
+    public double RpmMax { get; set; } = 450;     // 搅拌转速上限 rpm（釜里的转速；× 传动比 2.237 ≈ 电机 1000 rpm）
+    public double VolMax { get; set; } = 8;       // 溶液体积上限 mL（10 mL 釜，要给气相留空间）
 
     // 搅拌电机（雷赛 DM2C）电流 —— 写入驱动器 Pr5.00 / Pr5.33 并存 EEPROM
     public double StirCurrent { get; set; } = 1.0;     // 峰值电流 A（DM2C-RS432 硬限 0.3–3.2）
@@ -18,6 +18,9 @@ public class AppSettings
 
     // 细分（指令脉冲数/转，Pr0.00）：越高低速越平顺、越不易共振。200–51200
     public double StirMicrostep { get; set; } = 10000;   // 启动后由 MainViewModel 从驱动器回填
+
+    // 搅拌传动比 = 电机转速 ÷ 釜搅拌转速（一台电机经齿轮带 8 个釜：电机 38 齿带釜上 85 齿 → 85/38）。界面上的转速都是釜里的转速
+    public double StirGearRatio { get; set; } = StirGear.DefaultRatio;
 
     // 压力变送器满量程（MPa）—— 必须与实际变送器量程一致，否则压力读数按比例偏。运行时可在设置页改
     public double PressFullScaleMPa { get; set; } = 4.137;   // 启动后由 MainViewModel 从内部 psi 满程回填
@@ -51,7 +54,7 @@ public class AppSettings
     public System.DateTime? LastLeakTestUtc { get; set; }   // 上次完成泄漏测试的时间（提醒用）
 
     // 气体消耗（吸气量）计算：气相体积 = 釜容积 − 溶液体积 + 管路死体积（见 GasUptakeMeter）
-    public double VesselVolume { get; set; } = 50;    // 釜容积 mL
+    public double VesselVolume { get; set; } = 10;    // 釜容积 mL（现有釜均为 10 mL）
     public double GasLineVolume { get; set; } = 0;    // 管路死体积 mL（SV 到釜之间的管路与接头；标定后填入，未标定为 0）
 
     // 容积标定（气体膨胀法，见 VolumeCalib / CalibViewModel）：标定过的通道用「有效容积」（釜 + 该路 SV 以下管路），

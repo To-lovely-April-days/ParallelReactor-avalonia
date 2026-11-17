@@ -59,17 +59,18 @@ public class TelemetryCsvTests
     public void Header_IsStable()
     {
         var h = TelemetryCsv.HeaderFields().ToList();
-        // 3 通用列 + 8 通道 × 15 列 + 12 全局列 + 4 模块 × 5 列 + 模拟标志 + 8 通道程序步（v0.5 末尾追加）+ 8 通道吸气量（v0.6 末尾追加）。
+        // 3 通用列 + 8 通道 × 15 列 + 12 全局列 + 4 模块 × 5 列 + 模拟标志 + 8 通道程序步（v0.5 末尾追加）+ 8 通道吸气量 + 搅拌电机转速（v0.6 末尾追加）。
         // 改动列必须同步改这里（且只能在末尾追加）。
-        Assert.Equal(3 + 8 * 15 + 12 + 4 * 5 + 1 + 8 + 8, h.Count);
+        Assert.Equal(3 + 8 * 15 + 12 + 4 * 5 + 1 + 8 + 8 + 1, h.Count);
         Assert.Equal(new[] { "时间", "标记", "会话", "RV1_PV(℃)", "RV1_PV原码" }, h.Take(5));
         Assert.Equal("RV8_进气阀", h[3 + 8 * 15 - 1]);
-        Assert.Equal("搅拌_最近响应", h[^18]);
-        Assert.Equal("模拟", h[^17]);
-        Assert.Equal("RV1_程序步", h[^16]);
-        Assert.Equal("RV8_程序步", h[^9]);
-        Assert.Equal("RV1_吸气量(mmol)", h[^8]);
-        Assert.Equal("RV8_吸气量(mmol)", h[^1]);
+        Assert.Equal("搅拌_最近响应", h[^19]);
+        Assert.Equal("模拟", h[^18]);
+        Assert.Equal("RV1_程序步", h[^17]);
+        Assert.Equal("RV8_程序步", h[^10]);
+        Assert.Equal("RV1_吸气量(mmol)", h[^9]);
+        Assert.Equal("RV8_吸气量(mmol)", h[^2]);
+        Assert.Equal("搅拌电机(rpm)", h[^1]);
         Assert.Equal(h.Count, h.Distinct().Count());   // 列名不重复
         Assert.Same(TelemetryCsv.Header, TelemetryCsv.Header);   // 缓存，每行不重建
         Assert.Equal(Csv.Line(h), TelemetryCsv.Header);
@@ -113,10 +114,10 @@ public class TelemetryCsvTests
         row.Ch[2].ProgramStep = "1/waitingGas";
         var cells = row.Format().Split(',');
         Assert.Equal(TelemetryCsv.HeaderFields().Count(), cells.Length);
-        Assert.Equal("3/running", cells[^16]);
-        Assert.Equal("", cells[^15]);
-        Assert.Equal("1/waitingGas", cells[^14]);
-        Assert.Equal("", cells[^9]);
+        Assert.Equal("3/running", cells[^17]);
+        Assert.Equal("", cells[^16]);
+        Assert.Equal("1/waitingGas", cells[^15]);
+        Assert.Equal("", cells[^10]);
     }
 
     [Fact]
@@ -128,9 +129,18 @@ public class TelemetryCsvTests
         row.Ch[7].GasMmol = 0;
         var cells = row.Format().Split(',');
         Assert.Equal(TelemetryCsv.HeaderFields().Count(), cells.Length);
-        Assert.Equal("12.346", cells[^8]);
-        Assert.Equal("", cells[^7]);
-        Assert.Equal("0.000", cells[^1]);
+        Assert.Equal("12.346", cells[^9]);
+        Assert.Equal("", cells[^8]);
+        Assert.Equal("0.000", cells[^2]);
+        Assert.Equal("", cells[^1]);   // 搅拌电机转速未知 → 空
+    }
+
+    [Fact]
+    public void Format_StirMotorRpm_IsLastColumn()
+    {
+        var row = new TelemetryRow { Time = DateTimeOffset.Now, StirRpmSet = 447, StirMotorRpm = 1000 };
+        var cells = row.Format().Split(',');
+        Assert.Equal("1000", cells[^1]);
     }
 
     [Fact]

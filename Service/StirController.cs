@@ -24,7 +24,23 @@ public sealed class StirController
     private int _fails = 3;   // 连续通讯失败次数（初值=离线，首次通讯成功才算在线）
 
     public bool On => _on;
+    /// <summary>釜里搅拌子的转速 rpm（界面、程序、接口用的都是它）。</summary>
     public int Rpm => _rpm;
+
+    /// <summary>
+    /// 传动比 = 电机转速 ÷ 釜搅拌转速（一台电机经齿轮带 8 个釜：电机 38 齿带釜上 85 齿 → 85 ÷ 38 ≈ 2.237，釜转得比电机慢）。
+    /// 下发驱动器时按 釜转速 × 传动比 换算成电机转速。由设置「搅拌传动比」写入。
+    /// </summary>
+    public double GearRatio { get; set; } = 1;
+
+    /// <summary>电机转速上限 rpm（Pr9.03 下发前的硬限幅）。</summary>
+    public const int MaxMotorRpm = 3000;
+
+    /// <summary>当前下发给电机的转速 rpm（= 釜转速 × 传动比，限幅到 <see cref="MaxMotorRpm"/>）。</summary>
+    public int MotorRpm => ToMotor(_rpm);
+
+    /// <summary>釜搅拌转速 → 电机转速。</summary>
+    public int ToMotor(int vesselRpm) => Models.StirGear.ToMotor(vesselRpm, GearRatio, MaxMotorRpm);
 
     /// <summary>驱动器是否在线：连续 3 次通讯失败视为离线（未配置串口时恒为离线）。</summary>
     public bool Online => _fails < 3;
@@ -49,7 +65,7 @@ public sealed class StirController
         _urgentDrive = urgentDrive;
     }
 
-    /// <summary>启动搅拌：复位报警 → 速度模式一次触发，电机持续匀速运转。返回是否下发成功（急停锁定时返回 false）。</summary>
+    /// <summary>启动搅拌（rpm = 釜搅拌转速，按传动比换算成电机转速下发）：复位报警 → 速度模式一次触发，电机持续匀速运转。返回是否下发成功（急停锁定时返回 false）。</summary>
     public async Task<bool> StartAsync(int rpm)
     {
         _rpm = rpm;
@@ -59,7 +75,7 @@ public sealed class StirController
         {
             await _drive.ResetAlarmAsync();
             if (Locked) { _on = false; return false; }
-            await _drive.RunVelocityAsync(rpm, RampMs, RampMs);
+            await _drive.RunVelocityAsync(ToMotor(rpm), RampMs, RampMs);
             Ok();
         }
         catch (Exception ex) { _on = false; ReportComm(ex); return false; }
@@ -87,12 +103,12 @@ public sealed class StirController
         catch (Exception ex) { ReportComm(ex); return false; }
     }
 
-    /// <summary>运行中变更转速：重新触发速度路径，驱动器平滑过渡到新转速。</summary>
+    /// <summary>运行中变更转速（rpm = 釜搅拌转速，按传动比换算）：重新触发速度路径，驱动器平滑过渡到新转速。</summary>
     public async Task SetRpmAsync(int rpm)
     {
         _rpm = rpm;
         if (!_on || Locked) return;
-        try { await _drive.RunVelocityAsync(rpm, RampMs, RampMs); Ok(); }
+        try { await _drive.RunVelocityAsync(ToMotor(rpm), RampMs, RampMs); Ok(); }
         catch (Exception ex) { ReportComm(ex); }
     }
 

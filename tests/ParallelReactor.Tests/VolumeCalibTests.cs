@@ -56,12 +56,35 @@ public class VolumeCalibTests
     [Fact]
     public void Fit_RejectsBadData()
     {
-        Assert.NotNull(VolumeCalib.FitSteps(Run(8, 52, 80, n: 3)).Why);                       // 数据太少
+        Assert.NotNull(VolumeCalib.FitSteps(Run(8, 52, 80, n: 2)).Why);                       // 数据太少
         Assert.Contains("只升了", VolumeCalib.FitSteps(Run(8, 52, 0.5)).Why);                 // 减压阀几乎没压力
         Assert.NotNull(VolumeCalib.FitSteps(Run(8, 52, 80, noise: new Random(1), noisePsi: 3)).Why);   // 跳动太大
         var bad = Run(8, 52, 80);
         bad[2] = (bad[2].Item1, double.NaN);
         Assert.Equal("压力读数无效", VolumeCalib.FitSteps(bad).Why);
+    }
+
+    [Fact]
+    public void SmallVessel_LateStepsNearSupply_AreDropped()
+    {
+        // 10 mL 小釜、总管比釜大：前几步就接近减压阀压力，后面每步只升零点几 psi —— 只用压差明显的步骤拟合
+        var steps = Run(vm: 20, vg: 9.6, preg: 70);
+        Assert.True(steps[^1].Item2 - steps[^1].Item1 < VolumeCalib.MinRisePsi);
+        var (fit, why) = VolumeCalib.FitSteps(steps);
+        Assert.Null(why);
+        Assert.Equal(9.6 / 20, fit!.Ratio, 9);
+    }
+
+    [Fact]
+    public void TwoRuns_TenMlVessel()
+    {
+        // 10 mL 釜 + 0.8 mL 管路，总管 6 mL，加 5 mL 水
+        const double vm = 6, veff = 10.8, water = 5;
+        var (m, e, why) = VolumeCalib.SolveTwoRuns(VolumeCalib.FitSteps(Run(vm, veff, 70)).Fit!.Ratio,
+            VolumeCalib.FitSteps(Run(vm, veff - water, 70)).Fit!.Ratio, water);
+        Assert.Null(why);
+        Assert.Equal(vm, m!.Value, 6);
+        Assert.Equal(veff, e!.Value, 6);
     }
 
     [Fact]

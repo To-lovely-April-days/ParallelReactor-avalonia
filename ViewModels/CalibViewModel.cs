@@ -33,7 +33,7 @@ public partial class CalibViewModel : ViewModelBase
     [ObservableProperty] private bool _awaitWater;       // 第一遍做完，等操作员加水后做第二遍
     [ObservableProperty] private bool _redoManifold;     // 总管体积已知时也重新做两遍
     [ObservableProperty] private int _channel;
-    [ObservableProperty] private double _waterMl = 20;
+    [ObservableProperty] private double _waterMl = 5;     // 10 mL 釜：加 5 mL 水
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _phaseText = "";
     [ObservableProperty] private string _resultTitle = "";
@@ -68,7 +68,7 @@ public partial class CalibViewModel : ViewModelBase
         "① 先做泄漏测试，确认密封良好。\n" +
         "② 所选通道：釜内清空、擦干，密封；釜盖打开过一次让釜内为常压；常温，不加热、不搅拌。\n" +
         "③ 惰性气体减压阀调到 50–100 psi（0.35–0.7 MPa）左右，与泄漏测试相同即可。\n" +
-        $"④ 系统自动做 {VolumeCalib.Steps} 次「总管充气 → 放进釜里 → 等稳定读数」，每遍约 {VolumeCalib.Steps * (ChargeSec + EqualizeSec + 2) / 60:0.#} 分钟。";
+        $"④ 系统自动做最多 {VolumeCalib.Steps} 次「总管充气 → 放进釜里 → 等稳定读数」（压力接近减压阀压力后提前结束），每遍约 {VolumeCalib.Steps * (ChargeSec + EqualizeSec + 2) / 60:0.#} 分钟。";
     public string WaterHint => $"第一遍完成。请：① 打开该路排空或釜盖，把釜内泄到常压；② 用移液管准确加入 {WaterMl:0.##} mL 水（也可以用已知体积的金属块）；③ 重新密封，然后点「继续第二遍」。";
 
     public IBrush ResultBrush => Failed ? B("#e0394c") : B("#5fae14");
@@ -149,7 +149,7 @@ public partial class CalibViewModel : ViewModelBase
     private void EditWater()
     {
         if (Running) return;
-        _main.Keyboard.OpenNumeric("加水体积", WaterMl, "mL", 1, _main.Settings.VolMax, v =>
+        _main.Keyboard.OpenNumeric("加水体积", WaterMl, "mL", 0.5, Math.Max(1, Math.Min(_main.Settings.VolMax, _main.Settings.VesselVolume * 0.9)), v =>
         {
             WaterMl = Math.Round(v, 2);
             return OpResult.Silent.AsTask();
@@ -228,8 +228,12 @@ public partial class CalibViewModel : ViewModelBase
                 _main.Alarm.Log("info", "系统", $"RV{ch} 容积标定 · 第 {k} 次", $"{Units.FormatP(p)} → {Units.FormatP(after)} · 釜温 {c.TText} °C");
                 if (after >= cap)
                     throw new GasFaultException($"压力已到 {Units.FormatP(after)}，接近超压上限 · 请把惰性气体减压阀调低到 100 psi 左右");
+                double rise = after - p;
                 p = after;
                 Progress = 100.0 * k / VolumeCalib.Steps;
+                // 已接近减压阀压力（再充也升不了多少）且有效数据够了：提前结束（10 mL 小釜常见）
+                if (rise < VolumeCalib.MinRisePsi && steps.Count(s => s.After - s.Before >= VolumeCalib.MinRisePsi) >= VolumeCalib.MinSteps)
+                { Progress = 100; break; }
             }
             if (c.TOnline && double.IsFinite(t0) && Math.Abs(c.T - t0) > MaxTempDrift)
                 throw new GasFaultException($"釜温变化 {Math.Abs(c.T - t0):0.0} °C（> {MaxTempDrift} °C）· 请在常温、不加热时标定");

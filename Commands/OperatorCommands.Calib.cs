@@ -25,7 +25,7 @@ public sealed partial class OperatorCommands
         {
             if (_m.Calib.FirstPassChannel != id)
                 return OpResult.Fail(OpCodes.BadRequest, $"RV{id} 还没有做空釜一遍 · 请先开始标定", "warn").AsTask();
-            if (Invalid(ValueRules.Range("加水体积", waterMl, 1, _m.Settings.VolMax, "mL")) is { } bad) return bad.AsTask();
+            if (Invalid(ValueRules.Range("加水体积", waterMl, 0.5, _m.Settings.VolMax, "mL")) is { } bad) return bad.AsTask();
         }
         if (GasBlocked(needPressure: true) is { } gb) return gb.AsTask();
 

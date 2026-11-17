@@ -162,6 +162,7 @@ public class ArchitectureTests
         ["TempService.LiveBand"] = "只读：仪表当前生效的 PID 档",
         ["TempService.ExportBandPids"] = "只读：导出档位 PID 供持久化",
         ["TempService.SelectBand"] = "只换界面显示档（存回 / 载入工作副本），不写仪表",
+        ["StirController.ToMotor"] = "纯计算：釜搅拌转速 × 传动比 → 电机转速（运行记录用）",
     };
 
     /// <summary>服务类的写 API（公开方法 + 公开 setter，排除 Read* / Poll* / Get* 与 <see cref="ServiceReadOnly"/>）。</summary>

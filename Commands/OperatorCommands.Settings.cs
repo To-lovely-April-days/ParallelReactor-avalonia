@@ -40,6 +40,11 @@ public sealed partial class OperatorCommands
                 _m._stir.RampMs = (int)value;
                 if (_m.StirOn) _ = _m._stir.SetRpmAsync(_m.StirRpm);   // 重新触发速度路径，让新加减速立即生效
                 return OpResult.Done($"搅拌加减速时间已设为 {value:0} ms/1000rpm", "ok", data).AsTask();
+            case SettingKey.StirGearRatio:
+                _m.Settings.StirGearRatio = value;
+                _m._stir.GearRatio = value;
+                if (_m.StirOn) _ = _m._stir.SetRpmAsync(_m.StirRpm);   // 釜转速不变，按新传动比重新下发电机转速
+                return OpResult.Done($"搅拌传动比已设为 {value:0.###}（釜 {_m.StirRpm} rpm = 电机 {_m._stir.ToMotor(_m.StirRpm)} rpm）", "ok", data).AsTask();
             case SettingKey.PressFullScaleMPa:
                 _m.Settings.PressFullScaleMPa = value;
                 _m._press.FullScalePsi = Units.MpaToPsi(value);   // 即时生效到 8AI 换算，压力读数随之修正

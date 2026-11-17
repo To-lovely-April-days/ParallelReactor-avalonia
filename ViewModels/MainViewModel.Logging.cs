@@ -553,6 +553,7 @@ public partial class MainViewModel
         }
         row.StirOn = StirOn;
         row.StirRpmSet = StirRpm;
+        row.StirMotorRpm = _stir.ToMotor(StirRpm);
         row.StirRampMs = _stir.RampMs;
         if (HardwareOptions.UseRealStir && _stir.Online)
         {
