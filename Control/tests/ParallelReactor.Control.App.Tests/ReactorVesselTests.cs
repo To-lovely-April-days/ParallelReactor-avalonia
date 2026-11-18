@@ -351,7 +351,7 @@ public class ReactorVesselTests
     [Fact]
     public void Callouts_NeverConnected_Dashes()
     {
-        var s = new ShellVm(FleetVm.CreateDemo(DemoParams.Parse("freeze=1")));
+        var s = new ShellVm(FleetVm.CreateDemo(DemoParams.Parse("freeze=1"), models: PcV3Models.Table));
         s.Toasts.Frozen = true;
         s.Fleet.DemoData!.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
         s.Fleet.RefreshNow();

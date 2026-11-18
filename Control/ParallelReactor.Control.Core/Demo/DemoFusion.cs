@@ -142,7 +142,7 @@ internal static class DemoFusion
     public static readonly IReadOnlyList<Marker> Markers = new[]
     {
         new Marker(1, At(13, 41, 30), "RV3 加料", 3),
-        new Marker(1, At(13, 52, 0), "换气源 · H₂", null),
+        new Marker(1, At(13, 52, 0), "换气源 · 气体 A", null),
         new Marker(1, At(14, 3, 18), "RV4 超压", 4),
     };
 
@@ -162,8 +162,8 @@ internal static class DemoFusion
     // ———————————————————— 程序库（样稿 LIB + progPlan） ————————————————————
 
     /// <summary>
-    /// 样稿的气路名 → 型号表里的键：HT-PR8 = inert / a / b；HT-PR4 只有 h2 / n2（气体 A = H₂ → h2，惰性气体 → n2）；
-    /// HT-PR16 只有 n2（全部用它）。
+    /// 样稿的气路名 → 型号表里的键：内置表全部型号都是 inert / a / b（惰性气体 / 气体 A / 气体 B，接什么气由工艺决定）。
+    /// 覆盖表（配置目录的 models.json）没有这几个键时按名称里的化学式找（惰性气体 → N₂，其余 → H₂），再找不到用第一路。
     /// </summary>
     public static string GasKey(ModelProfile m, string mockName)
     {

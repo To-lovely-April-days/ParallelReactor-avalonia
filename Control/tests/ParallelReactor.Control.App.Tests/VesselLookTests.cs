@@ -222,14 +222,14 @@ public class VesselLookTests
     [Fact]
     public void ReactorVm_LiveInputs_NoVolume_HalfOfMaxFill()
     {
-        // 真机没有体积和冷却：液位 = 溶液上限的一半 / 釜容积（PR8：10 / 50）；搅拌看共用搅拌的设定值
+        // 真机没有体积和冷却：液位 = 溶液上限的一半 / 釜容积（HT-PR8 是 10 mL 釜、溶液 ≤ 8 mL：4 / 10）；搅拌看共用搅拌的设定值
         var pr8 = ModelProfiles.Embedded.Get("PR8")!;
         var r = new ReactorVm(null, 1);
         var rd = ChannelProjection.FromFrame(null, 1, online: true, everOnline: true);
         r.Apply(rd, pr8, true, true, "1号机", "");
         Assert.False(r.Cooling);
         Assert.False(r.Stirring);
-        Assert.Equal(0.2, r.VesselLevel, 9);
-        Assert.Equal(156, VesselAnchors.LevelY(r.VesselLevel));
+        Assert.Equal(0.4, r.VesselLevel, 9);
+        Assert.Equal(134, VesselAnchors.LevelY(r.VesselLevel));
     }
 }

@@ -38,7 +38,7 @@ internal static class PageVectorData
     /// </summary>
     public static DemoFleet Fleet(JsonElement v)
     {
-        var f = new DemoFleet(DemoParams.Parse(Query(v)));
+        var f = new DemoFleet(DemoParams.Parse(Query(v)), PcV3Models.Table);   // 探针是对 pc-v3 样稿量的：用样稿当时的型号表
         string pre = v.GetProperty("pre").GetString() ?? "";
         if (pre.Length > 0)
         {
@@ -51,10 +51,10 @@ internal static class PageVectorData
         return f;
     }
 
-    /// <summary>探针记下的设备（型号键、已安装、通道数、在线、连上过、急停）→ 内置型号表里的型号（核对装机与样稿一致）。</summary>
+    /// <summary>探针记下的设备（型号键、已安装、通道数、在线、连上过、急停）→ pc-v3 样稿型号表里的型号（核对装机与样稿一致）。</summary>
     public static (ModelProfile Model, bool Online, bool Ever, bool Estop) Device(JsonElement dev)
     {
-        var m = ModelProfiles.Embedded.Get(dev.GetProperty("model").GetString())!;
+        var m = PcV3Models.Get(dev.GetProperty("model").GetString()!);
         var inst = dev.GetProperty("inst").EnumerateArray().Select(x => x.GetInt32()).ToArray();
         if (!m.Installed.SequenceEqual(inst) || m.ChannelCount != dev.GetProperty("ch").GetInt32())
             throw new InvalidOperationException("型号表与样稿不一致：" + m.Key);

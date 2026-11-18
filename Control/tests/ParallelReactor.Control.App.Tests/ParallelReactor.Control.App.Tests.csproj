@@ -45,6 +45,9 @@
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/ReactorMockVectors.cs" Link="MockVectors/ReactorMockVectors.cs" />
     <Compile Include="../ParallelReactor.Control.Tests/LiveFrames.cs" Link="LiveFrames.cs" />
     <Content Include="../ParallelReactor.Control.Tests/Samples/**" Link="Samples/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- pc-v3 样稿的旧型号表：对照 pc-v3 样稿的测试（舞台版面、文字宽度等）用它，内置表已是 2026-11-18 确认的真实规格 -->
+    <Compile Include="../ParallelReactor.Control.Tests/Fixtures/PcV3Models.cs" Link="Fixtures/PcV3Models.cs" />
+    <Content Include="../ParallelReactor.Control.Tests/Fixtures/*.json" Link="Fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

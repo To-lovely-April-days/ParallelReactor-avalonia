@@ -279,10 +279,11 @@ public sealed partial class AlarmPopVm : ObservableObject
         Show();
     }
 
+    /// <summary>「停止 RVn」：和检查器的「停止该通道」一样先弹确认框（2026-11-18 用户：停止一律先确认）。确认框开着时报警弹窗自动让开，关掉后再回来。</summary>
     private void StopCh()
     {
-        if (_q.Current is not { Ch: int n } c || _shell.Fleet.Device(c.K) is not { } d) return;
-        _ = d.Actions.RunAsync(DeviceAction.Stop, ActionPayload.Ch(n));
+        if (_q.Current is not { Ch: int n } c || _shell.Fleet.Device(c.K) is null) return;
+        _shell.OpenDialog("stopch", c.K.ToString(System.Globalization.CultureInfo.InvariantCulture) + ":" + n.ToString(System.Globalization.CultureInfo.InvariantCulture));
     }
 
     private void Ack()

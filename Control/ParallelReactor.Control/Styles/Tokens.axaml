@@ -235,7 +235,7 @@
   <SolidColorBrush x:Key="Ch5Brush" Color="{StaticResource Ch5Color}" />
   <Color x:Key="Ch6Color">#008300</Color>
   <SolidColorBrush x:Key="Ch6Brush" Color="{StaticResource Ch6Color}" />
-  <Color x:Key="Ch7Color">#6250d6</Color>
+  <Color x:Key="Ch7Color">#264653</Color>
   <SolidColorBrush x:Key="Ch7Brush" Color="{StaticResource Ch7Color}" />
   <Color x:Key="Ch8Color">#a0612b</Color>
   <SolidColorBrush x:Key="Ch8Brush" Color="{StaticResource Ch8Color}" />

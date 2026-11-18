@@ -16,8 +16,8 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class ReactorPageTextTests
 {
-    private static readonly ModelProfile Pr84 = ModelProfiles.Embedded.Get("PR8-4")!;
-    private static readonly ModelProfile Pr16 = ModelProfiles.Embedded.Get("PR16")!;
+    private static readonly ModelProfile Pr84 = PcV3Models.Get("PR8-4");
+    private static readonly ModelProfile Pr16 = PcV3Models.Get("PR16");
 
     [Fact]
     public void NoProgram_Texts()
@@ -27,7 +27,7 @@ public class ReactorPageTextTests
         Assert.Equal("5号机尚未连接 · 连上后这里显示程序库", ReactorPageText.NeverConnectedLead("5号机"));
         Assert.Equal("预览：筛选-80 ℃", ReactorPageText.PreviewTitle("筛选-80 ℃"));
         Assert.Equal("只读 · 下发后在这里运行", ReactorPageText.PreviewSub);
-        var fleet = new DemoFleet(DemoParams.Default with { Freeze = true });
+        var fleet = new DemoFleet(DemoParams.Default with { Freeze = true }, PcV3Models.Table);
         var lib = fleet.Device(3)!.Programs;
         Assert.Equal("80 ℃ · 1.2 MPa N₂ · 反应 90 min · 4 步", ReactorPageText.LibraryNote(lib[0]));
         // 真机的草稿没有说明：只写步数

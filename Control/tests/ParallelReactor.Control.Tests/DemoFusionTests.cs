@@ -99,7 +99,7 @@ public class DemoFusionTests
         Assert.Equal(("PT-20261115-1305", At(13, 5), true), (d1.Session!.Id, d1.Session.StartAt, d1.Session.Active));
         Assert.Equal(("PT-20261115-1250", At(12, 50), true), (d2.Session!.Id, d2.Session.StartAt, d2.Session.Active));
         Assert.Null(d3.Session);
-        Assert.Equal(new[] { "RV3 加料", "换气源 · H₂", "RV4 超压" }, d1.Session.Markers.Select(m => m.Text));
+        Assert.Equal(new[] { "RV3 加料", "换气源 · 气体 A", "RV4 超压" }, d1.Session.Markers.Select(m => m.Text));
         Assert.Equal((6, 8, 7), (d1.Counts.Running, d1.Counts.Installed, d1.Counts.Enabled));
         Assert.Equal(3, d2.Counts.Running);
         Assert.Equal((11, 16), (d3.Counts.Running, d3.Counts.Installed));
@@ -112,13 +112,19 @@ public class DemoFusionTests
         var (d1, d2, d3) = (f.Device(1)!, f.Device(2)!, f.Device(3)!);
         Assert.Equal((true, 400.0), (d1.Stir!.On, d1.Stir.Rpm));
         Assert.Equal((true, 300.0), (d3.Stir!.On, d3.Stir.Rpm));
-        Assert.Null(d2.Stir);                                                           // HT-PR4 各釜独立搅拌：每釜 400
+        // 每台一台电机经齿轮带动全部釜（2026-11-18 用户确认）：HT-PR4 也是整台共用，不再各釜独立
+        Assert.Equal((true, 400.0), (d2.Stir!.On, d2.Stir.Rpm));
         Assert.All(d2.Channels, c => Assert.Equal(400, d2.RpmOf(c)));
+        Assert.All(d2.Channels, c => Assert.False(c.StirOn));
         Assert.Equal(400, d1.Reading(d1.Channel(1), DemoReading.Rpm));
         Assert.Equal(300, d3.Reading(d3.Channel(1), DemoReading.Rpm));
-        Assert.Equal(new[] { ("inert", false), ("a", true), ("b", false), ("vent", false) }, d1.Gas.Select(g => (g.Key, g.Value)));
-        Assert.Equal(new[] { ("h2", true), ("n2", false), ("vent", false) }, d2.Gas.Select(g => (g.Key, g.Value)));
-        Assert.Equal(new[] { ("n2", true), ("vent", false) }, d3.Gas.Select(g => (g.Key, g.Value)));
+        // 气路只写 惰性气体 / 气体 A / 气体 B（接什么气由工艺决定）：三台都是气体 A 开（样稿 inlets）
+        var want = new[] { ("inert", false), ("a", true), ("b", false), ("vent", false) };
+        foreach (var d in new[] { d1, d2, d3 })
+        {
+            Assert.Equal(want, d.Gas.Select(g => (g.Key, g.Value)));
+            Assert.Equal(new[] { "惰性气体", "气体 A", "气体 B" }, d.Model.GasInlets.Select(g => g.Name));
+        }
     }
 
     // ———————————————————— 反应釜 ————————————————————
@@ -217,12 +223,13 @@ public class DemoFusionTests
         Assert.Equal(new[] { "A", "H1", "LK", "OX" }, f.Device(1)!.Programs.Select(p => p.Id));
 
         var b = f.Device(2)!.ProgramById("B")!;
-        Assert.Equal(("高压加氢-150", "h2"), (b.Name, b.Steps[1].Gas));
+        Assert.Equal(("高压加氢-150", "a"), (b.Name, b.Steps[1].Gas));
+        Assert.Equal("150 ℃ · 5.20 MPa 气体 A · 反应 120 min", f.Device(2)!.Programs[0].Note);
         Assert.Equal(new[] { (150 - 25) / 3.5 + 10, 3, 120, 22 }, b.Steps.Select(s => s.EstMin));
         Assert.Equal(new[] { "升温", "升压", "反应", "降温" }, b.Steps.Select(s => s.Name));
 
         var c = f.Device(3)!.ProgramById("C")!;
-        Assert.Equal(("筛选-80 ℃", "n2"), (c.Name, c.Steps[1].Gas));
+        Assert.Equal(("筛选-80 ℃", "a"), (c.Name, c.Steps[1].Gas));
         Assert.Equal(new[] { 55 / 3.5 + 5, 3, 60, 11 }, c.Steps.Select(s => s.EstMin));
     }
 

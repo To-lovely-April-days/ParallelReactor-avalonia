@@ -363,7 +363,7 @@ public class ChartTicksTests
         lock (Fleets)
         {
             if (Fleets.TryGetValue(key, out var f)) return f;
-            f = new DemoFleet(DemoParams.Parse(q));
+            f = new DemoFleet(DemoParams.Parse(q), PcV3Models.Table);
             for (int i = 0; i < ticks; i++) f.Tick();
             Fleets[key] = f;
             return f;
@@ -457,7 +457,7 @@ public class ChartTicksTests
     [Fact]
     public void ReactorChart_NearLimit_AddsLimitLine_AndBandsIncludeIt()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         var d3 = f.Device(3)!;
         var o = ReactorChartOptions.FromDemo(d3, d3.Channel(11)!, 30);
         var lim = Assert.Single(o.RefLines);
@@ -474,7 +474,7 @@ public class ChartTicksTests
     [Fact]
     public void ReactorChart_EmptyText_OfflineVariant_AndLegendByWidth()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         var d = f.Device(1)!;
         Assert.Equal("暂无数据", ReactorChartOptions.FromDemo(d, d.Channel(1)!).EmptyText);
         Assert.Equal("离线 · 暂无数据", ReactorChartOptions.FromDemo(d, d.Channel(1)!, offline: true).EmptyText);

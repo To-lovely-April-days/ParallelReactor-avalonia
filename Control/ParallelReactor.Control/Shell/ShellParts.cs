@@ -462,8 +462,11 @@ public sealed record RibbonGroupView(RibbonGroup Group, bool First)
     public bool Compact => Group.CompactWhenNarrow;
 }
 
-/// <summary>设备信息（设备面板底部，样稿 devInfo）的一行。</summary>
-public sealed record InfoRow(string Key, string Value, bool Dot = false);
+/// <summary>设备信息（设备面板底部，样稿 devInfo）的一行。<see cref="Sub"/> = 值下面一行灰字（样稿气源下的「接什么气由工艺决定」）。</summary>
+public sealed record InfoRow(string Key, string Value, bool Dot = false, string? Sub = null)
+{
+    public bool HasSub => !string.IsNullOrEmpty(Sub);
+}
 
 /// <summary>
 /// 设备面板的一行（样稿 .dv）：左侧 5 px 状态色条（报警 / 急停红、运行绿、其余灰）、别名（20 px 细体，选中时品牌蓝常规字重）+ 型号 + 控制权（远程 = a-soft 小块，否则锁），
@@ -595,6 +598,9 @@ public sealed partial class DevicePaneVm : ObservableObject
         }
     }
 
+    /// <summary>气源一行下面的说明（样稿 devInfo、阀门小块的悬停）。</summary>
+    public const string GasSourceNote = "接什么气由工艺决定";
+
     /// <summary>设备信息（样稿 devInfo：地址、主机名、量程、压力报警、气源、搅拌、通讯、会话）。没有的项（主机名、压力报警线）F3 接口补上后再加；先写 SN。</summary>
     public static IReadOnlyList<InfoRow> InfoRows(DeviceVm d)
     {
@@ -604,7 +610,8 @@ public sealed partial class DevicePaneVm : ObservableObject
             new("地址", d.Host + ":" + d.Port.ToString(CultureInfo.InvariantCulture)),
             new("SN", d.Sn.Length > 0 ? d.Sn : Fmt.Dash),
             new("量程", RibbonVm.RangeText(m)),
-            new("气源", m.GasInlets.Count > 0 ? string.Join("\n", m.GasInlets.Select(g => g.Name)) : Fmt.Dash),
+            // 只写气路名，接什么气由工艺决定（2026-11-18 用户确认；样稿 devInfo：名称用「、」连成一行，下面一行灰字）
+            m.GasInlets.Count > 0 ? new("气源", string.Join("、", m.GasInlets.Select(g => g.Name)), Sub: GasSourceNote) : new("气源", Fmt.Dash),
             new("搅拌", m.StirMode == StirMode.Shared
                 ? (d.Stir is { On: true } s ? JsNumber.ToString(Math.Round(s.Rpm)) + " rpm · 全部釜共用" : "停止 · 全部釜共用")
                 : "各釜独立"),

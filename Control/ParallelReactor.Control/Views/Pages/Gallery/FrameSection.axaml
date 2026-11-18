@@ -164,8 +164,10 @@
         <pr:PrPanel Title="共用资源" Sub="气路空闲 · 无排队" ShowGrip="False" CanMaximize="False" CanClose="False">
           <StackPanel Margin="14,10" Spacing="8">
             <StackPanel Orientation="Horizontal" Spacing="6">
-              <pr:Chip Content="惰性气 N₂" />
-              <pr:Chip Content="气体 A H₂" IsChecked="True" />
+              <!-- 只写气路名：接什么气由工艺决定（2026-11-18） -->
+              <pr:Chip Content="惰性气" />
+              <pr:Chip Content="气体 A" IsChecked="True" />
+              <pr:Chip Content="气体 B" />
               <pr:Chip Content="排空" b:Pr.Reason="维护模式下才能开阀" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10">

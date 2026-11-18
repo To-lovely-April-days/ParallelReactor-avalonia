@@ -72,9 +72,10 @@ public sealed partial class DemoFleet
         dev.Lease.State = LeaseStatus.Local;
         dev.Lease.Holder = DeviceTexts.TouchScreen;
         dev.Lease.Since = since;
-        // 搅拌：全釜共用的型号 = 设备搅拌（样稿 d.stir）；HT-PR4 各釜独立 → 每釜同一转速（样稿把非停用通道的 rpm 都设成 d.stir.rpm）
+        // 搅拌：每台一台电机经齿轮带动全部釜（2026-11-18 用户确认，内置表全部型号 shared）= 设备搅拌（样稿 d.stir）；
+        // 覆盖表里若有各釜独立搅拌的型号 → 每釜同一转速（样稿把非停用通道的 rpm 都设成 d.stir.rpm）
         if (m.StirMode == StirMode.Shared) dev.Stir = new DemoStir { On = true, Rpm = f.StirRpm };
-        // 气路：气体 A（H₂）开，其余与排空关（样稿 inlets / vent；型号表的键见 DemoFusion.GasKey）
+        // 气路：三台都是气体 A 开，其余与排空关（样稿 inlets / vent；接什么气由工艺决定，界面只写气路名；型号表的键见 DemoFusion.GasKey）
         string open = DemoFusion.GasKey(m, "气体 A");
         foreach (var key in m.GasKeys) dev.GasList.Add(new KeyValuePair<string, bool>(key, key == open));
         dev.ProgramList.AddRange(lib);

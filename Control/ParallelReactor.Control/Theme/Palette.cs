@@ -142,7 +142,7 @@ public static class Palette
     public static readonly Color Ch4Color = Rgb(0xeda100);   // --ch-4
     public static readonly Color Ch5Color = Rgb(0xe87ba4);   // --ch-5
     public static readonly Color Ch6Color = Rgb(0x008300);   // --ch-6
-    public static readonly Color Ch7Color = Rgb(0x6250d6);   // --ch-7
+    public static readonly Color Ch7Color = Rgb(0x264653);   // --ch-7
     public static readonly Color Ch8Color = Rgb(0xa0612b);   // --ch-8
     // 釜体 · 气路
     public static readonly Color VLineColor = Rgb(0xaab4c2);   // --v-line

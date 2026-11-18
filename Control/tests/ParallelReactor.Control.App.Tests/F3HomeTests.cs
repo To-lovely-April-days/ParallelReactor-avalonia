@@ -155,8 +155,14 @@ public class F3HomeTests
         Assert.Equal("空闲 · 无排队", r.GasState);
         Assert.Equal(new[] { "惰性气", "气体 A", "气体 B", "排空" }, r.Valves.Select(v => v.Name));
         Assert.Equal(new[] { false, true, false, false }, r.Valves.Select(v => v.IsOn));
-        Assert.True(r.Valves[2].IsNa);
+        // 只写气路名，不猜接的是什么气、也不写「未接」（接什么气由工艺决定，2026-11-18 用户确认）
+        Assert.All(r.Valves, v => Assert.False(v.IsNa));
+        Assert.All(r.Valves, v => Assert.Equal("", v.Gas));
+        Assert.Equal("气体 A · 接什么气由工艺决定 · 开 · 阀门在设备触屏上操作", r.Valves[1].Tip);
         Assert.Equal(("400", "1.2 A", true), (r.RpmText, r.AmpText, r.StirOn));
+        var gasRow = s.Devices.Info.Single(x => x.Key == "气源");
+        Assert.Equal(("惰性气体、气体 A、气体 B", "接什么气由工艺决定"), (gasRow.Value, gasRow.Sub));
+        Assert.Equal("400 rpm · 全部釜共用", s.Devices.Info.Single(x => x.Key == "搅拌").Value);
         Assert.Equal("记录中 · PT-20261115-1305", r.SessText);
         Assert.Equal(("14:05", "控制权", "PC-测试工位1 获得远程控制"), (r.Events[0].Time, r.Events[0].Src, r.Events[0].Title));
         Assert.Equal(("RV4", "压力超上限", true), (r.Events[1].Src, r.Events[1].Title, r.Events[1].IsErr));
@@ -324,6 +330,24 @@ public class F3HomeTests
         Assert.Equal("三种停止都不会自动放空。要泄压：程序最后一步「结束方式」选「放空」，或降温后在触屏上手动放空。", string.Concat(StopTexts.Note.Select(x => x.Text)));
         Assert.Equal("不会自动放空", StopTexts.Note.Single(x => x.Bold).Text);
         Assert.Equal("这是经网络发出的软件停机请求，不能代替设备上的急停按钮。", StopTexts.LeadEstop.Single(x => x.Bold).Text);
+    }
+
+    /// <summary>报警弹窗的「停止 RVn」先弹停止确认框（2026-11-18 用户：停止一律先确认）；确认框开着时弹窗让开，确认后才停。</summary>
+    [Fact]
+    public void AlarmPop_Stop_OpensConfirm_NotStoppedYet()
+    {
+        var s = Shell();
+        s.AlarmPop.Reset(false);
+        var before = s.Fleet.Device(1)!.Reactor(4)!.Own;
+        s.AlarmPop.StopCommand.Execute(null);
+        var d = Assert.IsType<StopChannelDialogVm>(s.Dialogs.Current);
+        Assert.Equal((1, 4, "停止 1号机 RV4"), (d.K, d.N, d.Title));
+        Assert.False(s.AlarmPop.IsOpen);
+        Assert.Equal(before, s.Fleet.Device(1)!.Reactor(4)!.Own);   // 还没停
+        d.GoButton.Command.Execute(null);
+        Assert.Null(s.Dialogs.Current);
+        Assert.Equal(StateKey.Stopped, s.Fleet.Device(1)!.Reactor(4)!.Own);
+        s.Dispose();
     }
 
     [Fact]

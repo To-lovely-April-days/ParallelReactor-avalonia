@@ -132,7 +132,10 @@
                   <pr:PrText DockPanel.Dock="Left" Width="72" Text="{Binding Key}" Foreground="{StaticResource T3Brush}" LineHeight="18" Padding="0,0,8,0" />
                   <StackPanel Orientation="Horizontal" Spacing="6">
                     <Ellipse Width="8" Height="8" Fill="{StaticResource GDotBrush}" VerticalAlignment="Center" IsVisible="{Binding Dot}" />
-                    <TextBlock Text="{Binding Value}" Foreground="{StaticResource T1Brush}" LineHeight="18" TextWrapping="Wrap" />
+                    <StackPanel>
+                      <TextBlock Text="{Binding Value}" Foreground="{StaticResource T1Brush}" LineHeight="18" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Sub}" Foreground="{StaticResource T3Brush}" LineHeight="18" TextWrapping="Wrap" IsVisible="{Binding HasSub}" />
+                    </StackPanel>
                   </StackPanel>
                 </DockPanel>
               </DataTemplate>

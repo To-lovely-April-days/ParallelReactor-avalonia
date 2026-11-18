@@ -19,6 +19,8 @@ public class GuardTests
     private static readonly ModelProfile Pr8 = ModelProfiles.Embedded.Get("PR8")!;
     private static readonly ModelProfile Pr84 = ModelProfiles.Embedded.Get("PR8-4")!;
     private static readonly ModelProfile Pr4 = ModelProfiles.Embedded.Get("PR4")!;
+    /// <summary>独立搅拌的型号：内置表里已经没有（2026-11-18 起全部型号一台电机齿轮传动），代码路径仍支持，用 pc-v3 样稿旧表的 HT-PR4（0–1500 rpm）测。</summary>
+    private static readonly ModelProfile Pr4Independent = PcV3Models.Get("PR4");
 
     /// <summary>1号机 · HT-PR8 · 现场：在线、远程控制中；RV1 反应中（程序运行中）、RV2 已启用、RV3 停用、RV4 已结束（程序已结束），RV5–8 未安装。</summary>
     private static GuardFacts F(LeaseStatus lease = LeaseStatus.Remote, ConnStatus conn = ConnStatus.Online, bool estop = false, ModelProfile? model = null,
@@ -274,9 +276,10 @@ public class GuardTests
     {
         Assert.Equal("超出量程 · HT-PR4 ≤ 250 ℃", ActionGuard.Why(F(model: Pr4), DeviceAction.SetSp, new ActionPayload(N: 2, Sp: 251)));
         Assert.Equal("", ActionGuard.Why(F(model: Pr4), DeviceAction.SetSp, new ActionPayload(N: 2, Sp: 250)));
-        Assert.Equal("超出量程 · 0–1500 rpm", ActionGuard.Why(F(), DeviceAction.StirSet, new ActionPayload(Rpm: 1501)));
+        // 转速是釜里的转速：一台电机经齿轮带动全部釜，上限 450 rpm（2026-11-18 用户确认）
+        Assert.Equal("超出量程 · 0–450 rpm", ActionGuard.Why(F(), DeviceAction.StirSet, new ActionPayload(Rpm: 451)));
         Assert.Equal("请输入转速", ActionGuard.Why(F(), DeviceAction.StirSet));
-        Assert.Equal("", ActionGuard.Why(F(), DeviceAction.StirSet, new ActionPayload(Rpm: 1500)));
+        Assert.Equal("", ActionGuard.Why(F(), DeviceAction.StirSet, new ActionPayload(Rpm: 450)));
         // 启动加热不给设定值：用反应釜当前的设定值（没有 → 请输入设定温度）
         Assert.Equal("请输入设定温度", ActionGuard.Why(F(), DeviceAction.HeatStart, ActionPayload.Ch(2)));
         var withSp = F() with { Channels = F().Channels.Select(c => c.N == 2 ? c with { Sp = 999 } : c).ToArray() };
@@ -286,7 +289,7 @@ public class GuardTests
     [Fact]
     public void SharedStir_OnIndependentModel()
     {
-        var f = F(model: Pr4);   // HT-PR4：每釜独立搅拌
+        var f = F(model: Pr4Independent);   // pc-v3 的 HT-PR4：每釜独立搅拌
         Assert.False(f.SharedStir);
         Assert.Equal("各釜独立搅拌 · 在反应釜上设置", ActionGuard.Why(f, DeviceAction.StirOn));
         Assert.Equal("各釜独立搅拌 · 在反应釜上设置", ActionGuard.Why(f, DeviceAction.StirOff));   // 停止类也查型号

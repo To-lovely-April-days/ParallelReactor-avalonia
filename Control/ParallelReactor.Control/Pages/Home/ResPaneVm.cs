@@ -92,12 +92,13 @@ public sealed partial class ResPaneVm : ObservableObject
         return "RV" + h.ToString(CultureInfo.InvariantCulture) + " " + (holderWord is { Length: > 0 } w ? w + " · " : "") + "占用" + (queue is { Count: > 0 } ? " · " + q : "");
     }
 
-    /// <summary>阀门小块上的气体（样稿 inlets：惰性气体 N₂ / 气体 A H₂ / 气体 B 未接）：型号表只有气路名时按键猜气体；名字本身就是气体（H₂ / N₂）时不另写。</summary>
+    /// <summary>
+    /// 阀门小块的文字：只写气路名（惰性气 / 气体 A / 气体 B），不写气体种类——接什么气由工艺决定，
+    /// HMI 也不报告实际接的气（2026-11-18 用户确认）。不再猜「未接」。
+    /// </summary>
     public static (string Name, string Gas, bool Na) InletText(string key, string name) => key switch
     {
-        "inert" => ("惰性气", "N₂", false),
-        "a" => (name, "H₂", false),
-        "b" => (name, "未接", true),
+        "inert" => ("惰性气", "", false),
         _ => (name, "", false),
     };
 
@@ -119,7 +120,8 @@ public sealed partial class ResPaneVm : ObservableObject
             var v = i < Valves.Count && Valves[i].Key == g.Key ? Valves[i] : null;
             if (v == null) { v = new ValvePillVm(g.Key); if (i < Valves.Count) Valves[i] = v; else Valves.Add(v); }
             v.Name = nm; v.Gas = gas; v.IsNa = na; v.IsOn = src.GasOpen(g.Key);
-            v.Tip = g.Name + (gas.Length > 0 ? " · " + gas : "") + " · " + (v.IsOn ? "开" : "关") + " · 阀门在设备触屏上操作";
+            // 悬停同样稿：气路名 · 接什么气由工艺决定 · 开 / 关（再说明阀门在触屏上操作）
+            v.Tip = g.Name + (gas.Length > 0 ? " · " + gas : "") + " · " + DevicePaneVm.GasSourceNote + " · " + (v.IsOn ? "开" : "关") + " · 阀门在设备触屏上操作";
             i++;
         }
         {

@@ -236,8 +236,8 @@ internal static class DemoDump
     {
         var l = new List<string>();
         // 向量是样稿 JS 算出来的，样稿的「全部停止」连搅拌一起停（用户 2026-11-09 确认）：这里固定 true，不跟 ControlOptions.StopAllStopsStirring 走
-        // （以后有人把开关改回 false，向量照样对得上样稿，改开关仍然只改那一行）
-        var f = new DemoFleet(DemoParams.FromPairs(Pairs(scenario.GetProperty("params")))) { StopAllStopsStirring = true };
+        // （以后有人把开关改回 false，向量照样对得上样稿，改开关仍然只改那一行）；型号表也用样稿当时的（PcV3Models）
+        var f = new DemoFleet(DemoParams.FromPairs(Pairs(scenario.GetProperty("params"))), PcV3Models.Table) { StopAllStopsStirring = true };
         f.Toast += (_, e) => l.Add("toast " + KindCode(e.Kind) + " " + e.Text);
         foreach (var step in scenario.GetProperty("script").EnumerateArray())
         {

@@ -48,7 +48,8 @@ public sealed class ReactorParts
     {
         var p = DemoParams.Parse(query);
         if (!p.Freeze) p = p with { Freeze = true };
-        var s = new ShellVm(FleetVm.CreateDemo(p));
+        // pc-v3 样稿的演示数据与文字：用样稿当时的型号表（内置表 2026-11-18 起是真实规格）
+        var s = new ShellVm(FleetVm.CreateDemo(p, models: PcV3Models.Table));
         s.Toasts.Frozen = true;
         s.Layout.Update(new Avalonia.Size(width, height));
         s.ApplyDemoParams(p);

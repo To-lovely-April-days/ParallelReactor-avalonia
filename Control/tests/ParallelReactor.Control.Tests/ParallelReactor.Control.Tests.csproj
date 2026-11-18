@@ -24,6 +24,8 @@
   <!-- 从真 HMI（PR_SIM）抓取的响应样本：Samples/*.json(l)，随测试输出复制 -->
   <ItemGroup>
     <Content Include="Samples/**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- pc-v3 样稿的旧型号表（Fixtures/PcV3Models.cs）：内置表 2026-11-18 换成真实规格后，对照 pc-v3 样稿的测试仍用它 -->
+    <Content Include="Fixtures/*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

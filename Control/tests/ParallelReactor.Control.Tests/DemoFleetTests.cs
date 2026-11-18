@@ -15,7 +15,7 @@ namespace ParallelReactor.Control.Tests;
 /// <summary>
 /// Core.Demo.DemoFleet 对照样稿 js/sim.js：MockVectors/DemoMockVectors.cs 里每个场景（devs=1 / 3 / 4、型号列表、stress=1 / 2、各种覆盖参数、
 /// 每秒推进、操作脚本）都用同样的参数和脚本在 C# 里跑一遍，整段规范文字逐行相同（摘要 = 样稿 JS 的 FNV）。另有 DESIGN-BRIEF §8 的读数、
-/// 多设备读取接口、变化通知、冻结、集合实例稳定等直接检查。
+/// 多设备读取接口、变化通知、冻结、集合实例稳定等直接检查。全部用样稿当时的型号表（PcV3Models，内置表 2026-11-18 起是真实规格）。
 /// </summary>
 public class DemoFleetTests
 {
@@ -69,7 +69,7 @@ public class DemoFleetTests
     [Fact]
     public void Device1_ReadingsMatchDesignBrief()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         Assert.Equal(DemoFleet.T0, f.Now);
         Assert.Equal(new DateTime(2026, 11, 8, 10, 12, 0), f.Now);
         Assert.True(f.Frozen);
@@ -134,7 +134,7 @@ public class DemoFleetTests
     [Fact]
     public void Devices2And3_MatchDesignBrief()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         Assert.Equal(3, f.Devices.Count);
         var d2 = f.Device(2)!;
         Assert.Equal(("2号机", "HT-PR4", "192.168.1.24", "PR4-2026-0003"), (d2.Alias, d2.Model.Label, d2.Host, d2.Sn));
@@ -169,7 +169,7 @@ public class DemoFleetTests
     [Fact]
     public void Devs4_AddsOfflineDevice4()
     {
-        var f = new DemoFleet(DemoParams.Parse("devs=4&freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("devs=4&freeze=1"), PcV3Models.Table);
         Assert.Equal(new[] { "PR8-4", "PR4", "PR16", "PR8" }, f.Devices.Select(d => d.ModelKey));
         var d4 = f.Device(4)!;
         Assert.False(d4.Online);
@@ -191,10 +191,10 @@ public class DemoFleetTests
     [Fact]
     public void Stress_AliasesAndWorstValues()
     {
-        var f1 = new DemoFleet(DemoParams.Parse("stress=1&freeze=1"));
+        var f1 = new DemoFleet(DemoParams.Parse("stress=1&freeze=1"), PcV3Models.Table);
         Assert.Equal(new[] { "高压加氢测试一号", "高压加氢测试二号", "高压加氢测试三号" }, f1.Devices.Select(d => d.Alias));
         Assert.All(f1.Devices, d => Assert.Equal(ActionGuard.AliasMax, ActionGuard.AliasUnits(d.Alias)));
-        var f2 = new DemoFleet(DemoParams.Parse("devs=4&stress=2&freeze=1"));
+        var f2 = new DemoFleet(DemoParams.Parse("devs=4&stress=2&freeze=1"), PcV3Models.Table);
         Assert.Equal(new[] { "ReactorLab-PR8-A", "ReactorLab-PR4-B", "ReactorLab-P16-C", "ReactorLab-PR8-D" }, f2.Devices.Select(d => d.Alias));
         var pr4 = f2.Device(2)!;
         var v = StressValues.Of(pr4.Model);
@@ -213,7 +213,7 @@ public class DemoFleetTests
     [Fact]
     public void Tick_AdvancesClock_RaisesChanged_AndSamplesHistoryEvery10s()
     {
-        var f = new DemoFleet(DemoParams.Parse("devs=4&offline=none"));
+        var f = new DemoFleet(DemoParams.Parse("devs=4&offline=none"), PcV3Models.Table);
         Assert.False(f.Frozen);
         var d = f.Device(1)!;
         var hist = d.Channel(1)!.History;
@@ -235,7 +235,7 @@ public class DemoFleetTests
     [Fact]
     public void Frozen_TickDoesNothing()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         int raised = 0;
         f.Changed += (_, _) => raised++;
         Assert.False(f.Tick());
@@ -251,7 +251,7 @@ public class DemoFleetTests
     [Fact]
     public void Apply_ChangingDevsRebuilds_OtherwiseDiff()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         var d1 = f.Device(1)!;
         var kinds = new List<DemoChangeKind>();
         f.Changed += (_, e) => kinds.Add(e.Kind);
@@ -270,7 +270,7 @@ public class DemoFleetTests
     [Fact]
     public void LeaseRequest_AutoConfirmsAfter5s_WithToast()
     {
-        var f = new DemoFleet(DemoParams.Parse(""));
+        var f = new DemoFleet(DemoParams.Parse(""), PcV3Models.Table);
         var toasts = new List<string>();
         f.Toast += (_, e) => toasts.Add(e.Text);
         var d2 = f.Device(2)!;
@@ -287,7 +287,7 @@ public class DemoFleetTests
     [Fact]
     public void Act_BlockedReturnsReason_StopClassAlwaysSends()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         var d3 = f.Device(3)!;   // 本地只读
         var r = f.Act(d3, DeviceAction.HeatStart, new ActionPayload(N: 13, Sp: 80), quiet: true);
         Assert.False(r.Ok);
@@ -306,7 +306,7 @@ public class DemoFleetTests
     [Fact]
     public void AddDevice_NeverConnected_ThenOnline()
     {
-        var f = new DemoFleet(DemoParams.Parse(""));
+        var f = new DemoFleet(DemoParams.Parse(""), PcV3Models.Table);
         var d = f.AddDevice(new DemoNewDevice(Host: "192.168.1.99", ModelKey: "PR16"));
         Assert.Equal((4, "4号机"), (d.K, d.Alias));
         Assert.False(d.Conn.EverOnline);
@@ -328,7 +328,7 @@ public class DemoFleetTests
     [Fact]
     public void Facts_ReflectDevice()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1&estop=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1&estop=1"), PcV3Models.Table);
         var facts = f.Device(1)!.Facts();
         Assert.True(facts.EstopActive);
         Assert.True(facts.SharedStir);
@@ -347,7 +347,7 @@ public class DemoFleetTests
     [Fact]
     public void SetVolume_RoundsToTenth_LogsAndToasts()
     {
-        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"), PcV3Models.Table);
         var toasts = new List<string>();
         f.Toast += (_, e) => toasts.Add(e.Text);
         var d = f.Device(1)!;

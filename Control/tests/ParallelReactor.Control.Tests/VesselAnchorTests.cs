@@ -13,7 +13,8 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class VesselAnchorTests
 {
-    private static ModelProfile Model(string key) => ModelProfiles.Embedded.Get(key)!;
+    // 期望值是对 pc-v3 样稿的型号（釜容积 / 溶液上限）算的：用样稿当时的型号表
+    private static ModelProfile Model(string key) => PcV3Models.Get(key);
 
     [Fact]
     public void ViewBox_Is150By230()

@@ -259,8 +259,8 @@ public class TokenParityTests
         return h >= 245 && h <= 330;
     }
 
-    /// <summary>8 路曲线的识别色按样稿 CH_COL 保留（RV7 #6250d6 偏蓝紫、色相 248°，待用户确认），不算界面紫色。</summary>
-    private static readonly HashSet<string> SeriesExempt = new() { "ch-1", "ch-2", "ch-3", "ch-4", "ch-5", "ch-6", "ch-7", "ch-8" };
+    /// <summary>曲线识别色也不例外：2026-11-18 用户确认 RV7 不用紫色，改为深青 #264653，8 路识别色都要过「无紫色」检查。</summary>
+    private static readonly HashSet<string> SeriesExempt = new();
 
     [Fact]
     public void NoPurple_InPalette()

@@ -51,12 +51,12 @@ public sealed partial class FleetVm : ObservableObject, IFleetView, IAsyncDispos
 
     /// <summary>
     /// 演示数据（样稿的地址参数，见 Core.Demo.DemoParams）。<paramref name="post"/> = 把一次刷新排到 UI 线程（App：Dispatcher.UIThread.Post；
-    /// 测试 / 不给：立即执行）。
+    /// 测试 / 不给：立即执行）。<paramref name="models"/> = 型号表（不给 = 内置表；对照 pc-v3 样稿的测试传样稿当时的旧表）。
     /// </summary>
-    public static FleetVm CreateDemo(DemoParams? p = null, Action<Action>? post = null)
+    public static FleetVm CreateDemo(DemoParams? p = null, Action<Action>? post = null, ModelProfiles? models = null)
     {
         var f = new FleetVm(true, DemoFleet.Client, post, null, null);
-        f._demo = new DemoFleet(p ?? DemoParams.Default) { StopAllStopsStirring = f._stopAllStopsStirring };
+        f._demo = new DemoFleet(p ?? DemoParams.Default, models) { StopAllStopsStirring = f._stopAllStopsStirring };
         f.Params = f._demo.Params;
         f._demo.Changed += f.OnDemoChanged;
         f._demo.Toast += f.OnDemoToast;

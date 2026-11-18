@@ -1,5 +1,6 @@
 {
   "_comment": [
+    "2026-11-18 用户确认：所有型号都只有一台搅拌电机（经齿轮带动全部釜，界面转速 = 釜里的转速，上限 450）；接什么气由工艺决定，气路只写 惰性气体 / 气体 A / 气体 B；现有釜 10 mL（HT-PR8）。",
     "型号表：样稿 research/pc-v3/js/models.js 的移植（PORT-PLAN §3.2 第 1 条、决定 D2）。",
     "注意：HT-PR4 / HT-PR8 / HT-PR8 · 现场 / HT-PR16 的全部参数都是样稿里的假设值（hypothetical = true，界面显示「示例型号 · 参数为假设」），",
     "不是真实规格。用户提供真实规格（通道数、釜容积与溶液上限、量程、搅拌方式、气路名称、有无冷却、各模块数量）后只改这个文件，并把 hypothetical 改成 false。",
@@ -17,15 +18,15 @@
       "hypothetical": true,
       "channelCount": 4, "installed": [1, 2, 3, 4],
       "vessel": { "volumeMl": 100, "maxFillMl": 60, "kind": "{volumeMl} mL 高压釜", "note": "溶液 ≤ {maxFillMl} mL" },
-      "limits": { "tempMaxC": 250, "pressureMaxMPa": 10, "rpmMin": 0, "rpmMax": 1500 },
-      "stirMode": "independent", "stirKind": "顶置机械搅拌", "stirNote": "每釜独立顶置搅拌 {rpmMin}–{rpmMax} rpm",
-      "gasInlets": [ { "key": "h2", "name": "H₂" }, { "key": "n2", "name": "N₂" } ],
+      "limits": { "tempMaxC": 250, "pressureMaxMPa": 10, "rpmMin": 0, "rpmMax": 450 },
+      "stirMode": "shared", "stirKind": "齿轮传动搅拌", "stirNote": "一台电机经齿轮带动全部釜 {rpmMin}–{rpmMax} rpm（釜里的转速）",
+      "gasInlets": [ { "key": "inert", "name": "惰性气体", "hmi": "inert" }, { "key": "a", "name": "气体 A", "hmi": "A" }, { "key": "b", "name": "气体 B", "hmi": "B" } ],
       "vent": { "key": "vent", "name": "排空" },
       "hasCooling": true,
       "layout": "wide4",
       "comm": [
         { "key": "temp", "name": "温控 AI-8", "count": 1 }, { "key": "press", "name": "压力 8AI", "count": 1 },
-        { "key": "stir", "name": "搅拌 DM2C", "count": 2 }, { "key": "valve", "name": "阀门 IO16R", "count": 1 }
+        { "key": "stir", "name": "搅拌 DM2C", "count": 1 }, { "key": "valve", "name": "阀门 IO16R", "count": 1 }
       ],
       "note": "有冷却水夹套（可「降温中」）"
     },
@@ -33,9 +34,9 @@
       "key": "PR8", "name": "HT-PR8", "label": "HT-PR8", "variant": "",
       "hypothetical": true,
       "channelCount": 8, "installed": [1, 2, 3, 4, 5, 6, 7, 8],
-      "vessel": { "volumeMl": 50, "maxFillMl": 20, "kind": "{volumeMl} mL 釜", "note": "溶液 ≤ {maxFillMl} mL" },
-      "limits": { "tempMaxC": 200, "pressureMaxMPa": 4.14, "rpmMin": 0, "rpmMax": 1500 },
-      "stirMode": "shared", "stirKind": "磁力搅拌", "stirNote": "全釜共用磁力搅拌 {rpmMin}–{rpmMax} rpm",
+      "vessel": { "volumeMl": 10, "maxFillMl": 8, "kind": "{volumeMl} mL 釜", "note": "溶液 ≤ {maxFillMl} mL" },
+      "limits": { "tempMaxC": 200, "pressureMaxMPa": 4.14, "rpmMin": 0, "rpmMax": 450 },
+      "stirMode": "shared", "stirKind": "齿轮传动搅拌", "stirNote": "一台电机经齿轮带动全部釜 {rpmMin}–{rpmMax} rpm（釜里的转速）",
       "gasInlets": [ { "key": "inert", "name": "惰性气体", "hmi": "inert" }, { "key": "a", "name": "气体 A", "hmi": "A" }, { "key": "b", "name": "气体 B", "hmi": "B" } ],
       "vent": { "key": "vent", "name": "排空 / 泄压" },
       "hasCooling": false,
@@ -56,9 +57,9 @@
       "hypothetical": true,
       "channelCount": 16, "installed": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
       "vessel": { "volumeMl": 10, "maxFillMl": 6, "kind": "{volumeMl} mL 小釜", "note": "溶液 ≤ {maxFillMl} mL" },
-      "limits": { "tempMaxC": 200, "pressureMaxMPa": 3, "rpmMin": 0, "rpmMax": 1500 },
-      "stirMode": "shared", "stirKind": "磁力搅拌", "stirNote": "全釜共用磁力搅拌 {rpmMin}–{rpmMax} rpm",
-      "gasInlets": [ { "key": "n2", "name": "N₂" } ],
+      "limits": { "tempMaxC": 200, "pressureMaxMPa": 3, "rpmMin": 0, "rpmMax": 450 },
+      "stirMode": "shared", "stirKind": "齿轮传动搅拌", "stirNote": "一台电机经齿轮带动全部釜 {rpmMin}–{rpmMax} rpm（釜里的转速）",
+      "gasInlets": [ { "key": "inert", "name": "惰性气体", "hmi": "inert" }, { "key": "a", "name": "气体 A", "hmi": "A" }, { "key": "b", "name": "气体 B", "hmi": "B" } ],
       "vent": { "key": "vent", "name": "排空" },
       "hasCooling": false,
       "layout": "grid16",

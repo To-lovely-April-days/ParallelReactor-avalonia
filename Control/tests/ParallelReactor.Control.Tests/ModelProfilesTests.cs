@@ -10,7 +10,8 @@ using Xunit;
 namespace ParallelReactor.Control.Tests;
 
 /// <summary>
-/// Core.Models：内置型号表与样稿 js/models.js 逐字段一致（期望值来自样稿 PR.models.* 在 JavaScriptCore 里的结果）；
+/// Core.Models：型号表的解析与帮助函数与样稿 js/models.js 逐字段一致（期望值来自样稿 PR.models.* 在 JavaScriptCore 里的结果，
+/// 对照的是样稿当时的表 = Fixtures/models-pcv3.json）；内置表是 2026-11-18 用户确认的真实规格（Embedded_ConfirmedFacts）；
 /// 用实测样本 live-device.json / live-settings.json 推出真机型号；覆盖文件的合并与容错。
 /// </summary>
 public class ModelProfilesTests
@@ -31,14 +32,41 @@ public class ModelProfilesTests
         Assert.Null(T.Get(null));
     }
 
-    /// <summary>每个型号的每个字段、每个帮助函数都与样稿相同。</summary>
+    /// <summary>
+    /// 内置表 = 2026-11-18 用户确认的规格：每个型号只有一台搅拌电机（经齿轮带动全部釜，界面转速 = 釜里的转速，上限 450 rpm）；
+    /// 接什么气由工艺决定，气路只写 惰性气体 / 气体 A / 气体 B；HT-PR8 是 10 mL 釜（溶液 ≤ 8 mL）。
+    /// </summary>
     [Fact]
-    public void Embedded_MatchesMockProfiles()
+    public void Embedded_ConfirmedFacts()
+    {
+        Assert.All(T.All, p =>
+        {
+            Assert.Equal(StirMode.Shared, p.StirMode);
+            Assert.Equal("齿轮传动搅拌", p.StirKind);
+            Assert.Equal(0, p.Limits.RpmMin);
+            Assert.Equal(450, p.Limits.RpmMax);
+            Assert.Equal("一台电机经齿轮带动全部釜 0–450 rpm（釜里的转速）", p.StirNote);
+            Assert.Equal(new[] { "inert=惰性气体=inert", "a=气体 A=A", "b=气体 B=B" }, p.GasInlets.Select(g => g.Key + "=" + g.Name + "=" + g.HmiCode));
+            Assert.Equal(1, p.Comm.Single(c => c.Key == "stir").Count);
+            Assert.DoesNotContain(p.GasInlets, g => g.Name.Contains("H₂") || g.Name.Contains("N₂"));
+        });
+        var pr8 = T.Get("PR8")!;
+        Assert.Equal(10, pr8.Vessel.VolumeMl);
+        Assert.Equal(8, pr8.Vessel.MaxFillMl);
+        Assert.Equal("10 mL 釜", pr8.Vessel.Kind);
+        Assert.Equal("溶液 ≤ 8 mL", pr8.Vessel.Note);
+        Assert.Equal(pr8.Vessel, T.Get("PR8-4")!.Vessel);
+        Assert.Equal("搅拌电机（全局 RV1–RV4 共用）", T.Get("PR4")!.StirLabel);
+    }
+
+    /// <summary>每个型号的每个字段、每个帮助函数都与样稿相同（样稿当时的表：Fixtures/models-pcv3.json）。</summary>
+    [Fact]
+    public void PcV3Table_MatchesMockProfiles()
     {
         foreach (var m in MockVectorData.Get("models").EnumerateArray())
         {
             string key = m.GetProperty("key").GetString()!;
-            var p = T.Get(key)!;
+            var p = PcV3Models.Get(key);
             var j = m.GetProperty("profile");
             string at = key + "：";
             Assert.True(j.GetProperty("key").GetString() == p.Key, at + "key");
@@ -130,15 +158,15 @@ public class ModelProfilesTests
         Assert.Equal(Enumerable.Range(1, 8), p.Installed);
         Assert.Empty(p.UninstalledRuns);
         Assert.Equal(LayoutKind.Row8, p.Layout);
-        // 量程取设备：温度上限 200（与表内相同）、搅拌上限 1000、溶液上限 50、压力满量程 4.137
+        // 量程取设备：温度上限 200（与表内相同）、搅拌上限 1000、溶液上限 50、压力满量程 4.137（样本是旧 HMI 抓的，表内是 450 rpm / 溶液 ≤ 8 mL）
         Assert.Equal(200, p.Limits.TempMaxC);
         Assert.Equal(1000, p.Limits.RpmMax);
         Assert.Equal(4.137, p.Limits.PressureMaxMPa);
         Assert.Equal(3, p.PressureDecimals);
         Assert.Equal(50, p.Vessel.MaxFillMl);
-        Assert.Equal(50, p.Vessel.VolumeMl);                // 接口没有釜容积：仍是表内假设值
+        Assert.Equal(10, p.Vessel.VolumeMl);                // 接口没有釜容积：仍是表内值（HT-PR8 10 mL 釜）
         Assert.Equal("溶液 ≤ 50 mL", p.Vessel.Note);
-        Assert.Equal("全釜共用磁力搅拌 0–1000 rpm", p.StirNote);
+        Assert.Equal("一台电机经齿轮带动全部釜 0–1000 rpm（釜里的转速）", p.StirNote);
         Assert.Equal("≤ 200 ℃ · ≤ 4.137 MPa", p.RangeNote);
         Assert.Equal(new[] { "pressureMaxMPa", "rpmMax", "maxFillMl" }, p.LiveOverrides);
         Assert.True(p.Hypothetical);                         // 气路名称、搅拌方式、模块仍来自表
@@ -154,8 +182,8 @@ public class ModelProfilesTests
         var p = T.Resolve(dev);
         Assert.Equal(4.137, p.Limits.PressureMaxMPa);       // hardware.pressure.fullScaleMPa
         Assert.Equal(200, p.Limits.TempMaxC);
-        Assert.Equal(1500, p.Limits.RpmMax);                // 表内假设值
-        Assert.Equal("全釜共用磁力搅拌 0–1500 rpm", p.StirNote);
+        Assert.Equal(450, p.Limits.RpmMax);                 // 表内值（釜里的转速上限）
+        Assert.Equal("一台电机经齿轮带动全部釜 0–450 rpm（釜里的转速）", p.StirNote);
         Assert.Equal(new[] { "pressureMaxMPa" }, p.LiveOverrides);
     }
 
@@ -280,7 +308,7 @@ public class ModelProfilesTests
             Assert.NotNull(t.LoadError);
             Assert.Contains("layout", t.LoadError);
             Assert.Equal(ModelProfiles.Embedded.Keys, t.Keys);
-            Assert.Equal(1500, t.Get("PR8")!.Limits.RpmMax);
+            Assert.Equal(450, t.Get("PR8")!.Limits.RpmMax);
             File.WriteAllText(path, "{ not json");
             Assert.Contains("无效", ModelProfiles.Load(path).LoadError);
         }

@@ -17,10 +17,10 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class StepTextTests
 {
-    private static readonly ModelProfile Pr84 = ModelProfiles.Embedded.Get("PR8-4")!;
-    private static readonly ModelProfile Pr8 = ModelProfiles.Embedded.Get("PR8")!;
-    private static readonly ModelProfile Pr4 = ModelProfiles.Embedded.Get("PR4")!;
-    private static readonly ModelProfile Pr16 = ModelProfiles.Embedded.Get("PR16")!;
+    private static readonly ModelProfile Pr84 = PcV3Models.Get("PR8-4");
+    private static readonly ModelProfile Pr8 = PcV3Models.Get("PR8");
+    private static readonly ModelProfile Pr4 = PcV3Models.Get("PR4");
+    private static readonly ModelProfile Pr16 = PcV3Models.Get("PR16");
 
     [Fact]
     public void ProgramLibraries_MatchMock()
@@ -30,7 +30,7 @@ public class StepTextTests
         var actual = new List<string>();
         foreach (var stress in new[] { "", "&stress=1" })
         {
-            var f = new DemoFleet(DemoParams.Parse("devs=PR8-4,PR4,PR16,PR8&freeze=1" + stress));
+            var f = new DemoFleet(DemoParams.Parse("devs=PR8-4,PR4,PR16,PR8&freeze=1" + stress), PcV3Models.Table);
             foreach (var d in f.Devices) DemoDump.Steps(d, actual);
         }
         Assert.True(expected.Count > 80);
