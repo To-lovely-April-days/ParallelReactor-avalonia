@@ -86,6 +86,11 @@ public static partial class Endpoints
                 : ApiErrors.Ok(new ProgramRunDto(b.Frame.Seq, b.Frame.Ts, run));
         });
 
+        // —— §7.6 档位 PID（v0.6）：档位定义 + 各通道各档 P/I/D 与来历（整定温度 / 时刻 / 手改）、自整定状态；取自快照，不进 UI 线程 ——
+        g.MapGet("/pid", () => Snap() is { Pid: { } p } b
+            ? ApiErrors.Ok(new PidDto(b.Frame.Seq, b.Frame.Ts, p.Bands, p.Channels))
+            : Starting());
+
         // —— §7.10 事件 / 报警 ——
         g.MapGet("/events", (long? afterSeq, int? limit) =>
         {

@@ -47,6 +47,8 @@
     <Compile Include="../../Service/TickGate.cs" Link="Src/TickGate.cs" />
     <Compile Include="../../Models/Units.cs" Link="Src/Units.cs" />
     <Compile Include="../../Models/ValueRules.cs" Link="Src/ValueRules.cs" />
+    <!-- v0.6 档位 PID 来历：自整定进行状态 + 整定温度 / 完成时刻 / 手改（从 TempService 抽出的纯逻辑） -->
+    <Compile Include="../../Service/AutotuneBook.cs" Link="Src/AutotuneBook.cs" />
     <Compile Include="../../Models/HeatGuard.cs" Link="Src/HeatGuard.cs" />
     <Compile Include="../../Models/GasGuard.cs" Link="Src/GasGuard.cs" />
     <!-- 第 4 组 · 批 C -->

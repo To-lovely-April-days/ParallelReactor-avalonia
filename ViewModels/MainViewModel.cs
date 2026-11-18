@@ -248,7 +248,7 @@ public partial class MainViewModel : ViewModelBase
                 Temp.Bands[0].Hi = bb[0]; Temp.Bands[1].Lo = bb[0];
                 Temp.Bands[1].Hi = bb[1]; Temp.Bands[2].Lo = bb[1];
             }
-            Temp.ImportBandPids(persisted.BandPids);
+            Temp.ImportBandPids(persisted.BandPids, persisted.BandTune);
         }
         Temp.PidsChanged += PersistSoon;
         _ = Temp.InitAsync(seedFromInstrument: persisted?.BandPids == null);
@@ -688,12 +688,13 @@ public partial class MainViewModel : ViewModelBase
     [ViewEntry("关闭退出确认框")]
     private void CancelExit() => IsExitConfirmOpen = false;
 
-    /// <summary>持久化快照：全局设置 + 档位边界 + 8×3 档 PID。</summary>
+    /// <summary>持久化快照：全局设置 + 档位边界 + 8×3 档 PID + 各档整定来历。</summary>
     internal Services.SettingsStore.PersistedState BuildPersistState() => new()
     {
         Settings = Settings,
         BandBounds = new[] { Temp.Bands[0].Hi, Temp.Bands[1].Hi },
         BandPids = Temp.ExportBandPids(),
+        BandTune = Temp.ExportBandTune(),
     };
 
     /// <summary>防抖持久化（整定完成/手改 PID/切档/改档位边界时调用）。</summary>

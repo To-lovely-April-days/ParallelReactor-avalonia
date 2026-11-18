@@ -30,6 +30,7 @@ namespace ParallelReactor.Api;
 [JsonSerializable(typeof(PreflightDto))]
 [JsonSerializable(typeof(ProgramSchemaDto))]
 [JsonSerializable(typeof(ProgramRunDto))]
+[JsonSerializable(typeof(PidDto))]
 [JsonSerializable(typeof(CommDto))]
 [JsonSerializable(typeof(FilesDto))]
 [JsonSerializable(typeof(LeakTestsDto))]

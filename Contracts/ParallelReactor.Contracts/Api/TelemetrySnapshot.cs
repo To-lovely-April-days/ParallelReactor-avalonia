@@ -106,6 +106,28 @@ public sealed record ModuleCommSnap(bool Configured, bool Online, long Polls, lo
 /// <summary>§6.7 的 tempBands 一项。</summary>
 public sealed record TempBandSnap(int Index, double LoC, double HiC);
 
+/// <summary>
+/// GET /pid 的温度档位一项（v0.6）：下标（= PUT /channels/{id}/pid/{band} 与自整定 band 的取值）、中文名、温区 [loC, hiC)。
+/// 最高档另外包含 ≥ hiC 的温度（HMI 按目标温度选档时超出上限归最高档）。分界只能在触屏上改。
+/// </summary>
+public sealed record PidBandSnap(int Index, string Name, double LoC, double HiC);
+
+/// <summary>
+/// GET /pid 的某通道某档 PID（v0.6）：P（比例带）/ I（积分时间 s）/ D（微分时间 s）+ 来历。
+/// tunedSpC / tunedAt = 最近一次完成并存档的自整定的目标温度（℃）与完成时刻（UTC；被取消 / 急停打断的不算）；
+/// manualEditedAt = 整定之后又被手改的最近时刻（UTC）。都为 null = 出厂默认 / 首次开机从仪表读来的种子值。
+/// </summary>
+public sealed record PidBandValueSnap(int Index, double P, double I, double D, double? TunedSpC, DateTime? TunedAt, DateTime? ManualEditedAt);
+
+/// <summary>
+/// GET /pid 的一个通道（v0.6）：是否正在自整定（与遥测 channels[i].autotuning 同源）；整定中时结果将存入的档位与整定目标温度
+/// （软件发起的整定才有；仪表面板发起的为 null）；各档 PID。
+/// </summary>
+public sealed record PidChannelSnap(int Id, bool Autotuning, int? TuneBand, double? TuneSpC, PidBandValueSnap[] Bands);
+
+/// <summary>PID 快照（每 Tick 随 SnapshotBundle 生成；GET /pid 取它，不进 WS 帧、不进 UI 线程）。</summary>
+public sealed record PidSnap(PidBandSnap[] Bands, PidChannelSnap[] Channels);
+
 /// <summary>设置快照（/settings 与 /program-schema 的限值来源；不进 WS 帧）。</summary>
 public sealed record SettingsSnap(
     double TMaxSp, double PMaxSp, double RpmMax, double VolMax,
@@ -143,7 +165,7 @@ public sealed record TelemetrySnapshot(
     SessionSnap Session);
 
 /// <summary>
-/// 一个 Tick 生成的全部只读数据：对外帧 + 通道全量（含曲线）+ 设置 + 门闸 / 通讯统计。
+/// 一个 Tick 生成的全部只读数据：对外帧 + 通道全量（含曲线）+ 设置 + 门闸 / 通讯统计 + 运行中的程序 + 档位 PID（v0.6）。
 /// SnapshotStore 存的是它；各端点按需取子集。
 /// </summary>
 public sealed record SnapshotBundle(
@@ -156,7 +178,8 @@ public sealed record SnapshotBundle(
     ModuleCommSnap StirComm,
     ModuleCommSnap IoComm,
     long LoggerDroppedLines,
-    ProgramRunSnap?[]? ProgramRuns = null)
+    ProgramRunSnap?[]? ProgramRuns = null,
+    PidSnap? Pid = null)
 {
     /// <summary>通道号 1..8 → 全量通道快照；越界为 null。</summary>
     public ChannelSnap? Channel(int id) => id >= 1 && id <= FullChannels.Length ? FullChannels[id - 1] : null;

@@ -33,13 +33,14 @@ public sealed partial class TempService : ObservableObject
 
     /// <summary>当前 Channels 里这组值（PV / 输出 / 模式）所属那一轮轮询的响应时刻（UI 线程写，尚无为 null）。</summary>
     public DateTimeOffset? ValuesAt { get; private set; }
-    // 每通道整定发起时所在的档位（-1=无进行中的整定）。整定期间用户可能切档，
-    // 完成回读必须存回"发起时"的档，而不是"完成时"正显示的档。
-    private readonly int[] _tuneBand = { -1, -1, -1, -1, -1, -1, -1, -1 };
 
-    // 整定被取消 / 急停打断：仪表 At 从 1 变成 4 时轮询会看到「整定结束」，但仪表里并没有新整定结果，
-    // 不能回读存档（否则会把旧 PID 当成整定结果存进档位）。
-    private readonly bool[] _tuneAborted = new bool[8];
+    /// <summary>
+    /// 每通道整定的进行状态 + 每通道每档 PID 的来历（整定目标温度 / 完成时刻 / 手改时刻，见 <see cref="BandTuneMeta"/>）。
+    /// 进行状态：整定发起时所在的档位（整定期间用户可能切档，完成回读必须存回"发起时"的档，而不是"完成时"正显示的档）；
+    /// 被取消 / 急停打断标记（仪表 At 从 1 变成 4 时轮询会看到「整定结束」，但仪表里并没有新整定结果，
+    /// 不能回读存档，否则会把旧 PID 当成整定结果存进档位）。
+    /// </summary>
+    public AutotuneBook Tune { get; }
 
     private volatile bool _locked;
 
@@ -67,6 +68,7 @@ public sealed partial class TempService : ObservableObject
         _ctrl = new TempController(bus, slave, 8, dpt);   // 1 拖 8
         _urgentCtrl = new TempController(bus.AsUrgent(), slave, 8, dpt);
         for (int i = 1; i <= 8; i++) Channels.Add(new TempChannel(i, Bands.Count));
+        Tune = new AutotuneBook(8, Bands.Count);
     }
 
     /// <summary>通道号(1..8) → (温控器, 回路号 1..8)。一台 AI-8 直接对应。</summary>
@@ -217,9 +219,14 @@ public sealed partial class TempService : ObservableObject
         return all;
     }
 
-    /// <summary>从持久化数据恢复 8 通道 × 3 档 PID（开机调用，早于/替代仪表种子）。</summary>
-    public void ImportBandPids(double[][][]? data)
+    /// <summary>导出 8 通道 × 3 档 PID 的来历（整定目标温度 / 完成时刻 / 手改时刻；持久化快照用，与 <see cref="ExportBandPids"/> 并列）。</summary>
+    public BandTuneMeta?[][] ExportBandTune() => Tune.Export();
+
+    /// <summary>从持久化数据恢复 8 通道 × 3 档 PID（开机调用，早于/替代仪表种子）。
+    /// tune = 各档来历（v0.6 起；旧存档没有这一项为 null，来历保持为空）。</summary>
+    public void ImportBandPids(double[][][]? data, BandTuneMeta?[][]? tune = null)
     {
+        Tune.Import(tune);
         if (data == null) return;
         for (int ch = 0; ch < 8 && ch < data.Length; ch++)
             for (int b = 0; b < Bands.Count && b < (data[ch]?.Length ?? 0); b++)
@@ -274,11 +281,8 @@ public sealed partial class TempService : ObservableObject
                     bool finished = m.Autotuning && !tuning;
                     m.PvRaw = raw[i]; m.Mode = modes[i];
                     m.Pv = _ctrl.PvFromRaw(raw[i]); m.OutputPct = op[i]; m.Autotuning = tuning; m.Online = true;
-                    if (finished)
-                    {
-                        if (_tuneAborted[i]) _tuneAborted[i] = false;   // 取消 / 急停打断：没有新结果
-                        else _ = ReloadPidAsync(i + 1);                 // 整定刚结束：回读新 PID
-                    }
+                    // 整定刚结束：正常完成则回读新 PID（存档并记来历）；取消 / 急停打断则没有新结果，什么都不记
+                    if (finished && Tune.OnFinished(i)) _ = ReloadPidAsync(i + 1);
                 }
             });
         }
@@ -296,6 +300,7 @@ public sealed partial class TempService : ObservableObject
     /// 写某通道某档的 PID（C11 显式档位）。始终存入该档；只有当该档正是仪表当前生效的档（_lastBand[ch-1] == band）
     /// 时才写仪表——否则会把别档的 PID 写进正在加热的回路，等下一次 <see cref="ApplyPidForBandAsync"/> 切到该档时再写。
     /// band 为界面显示档时同步界面的 P/I/D。返回是否写入了仪表；写仪表失败抛出（调用方记录「未生效」，存档回滚到原值）。
+    /// 保存成功且数值确有变化时给该档来历打「手改」时刻（<see cref="AutotuneBook.MarkManual"/>：整定记录保留）。
     /// <para>先存档、再等仪表：等待期间 Tick 的套档写入读到的已是新值；正在途中的套档写入（读的是旧值）
     /// 写完时看到 <see cref="TempChannel.PidGen"/> 变了，不会把 _lastBand 记成该档，下一 Tick 用新值重写。</para>
     /// </summary>
@@ -327,6 +332,8 @@ public sealed partial class TempService : ObservableObject
             }
             if (m.PidGen == gen) _lastBand[ch - 1] = band;   // 等待期间又被改过：保持 -1，下一 Tick 用最新值重写
         }
+        // 手改：数值确有变化才打「手改」标记（保留整定记录）；写仪表失败已在上面抛出、不会走到这里
+        if (old != (p, i, d)) Tune.MarkManual(ch - 1, band, DateTime.UtcNow);
         PidsChanged?.Invoke();
         return live;
     }
@@ -345,7 +352,8 @@ public sealed partial class TempService : ObservableObject
     public const string NoSetpoint = "SP_NOT_SET";
 
     /// <summary>
-    /// 对该通道启动自整定（At=1）。整定结束后轮询会自动回读并存入当前档位。
+    /// 对该通道启动自整定（At=1）。整定结束后轮询会自动回读并存入整定档位，同时记下该档来历（目标温度 + 完成时刻 UTC）。
+    /// band = 结果要存入的档位（命令层按整定目标温度推导或由调用方显式给出并校验过）；null 时按回读的 SP 推导。
     /// <para>
     /// AI-8 整定原理 = 在 SP 附近做 ON/OFF 振荡后写出 PID。若 SP 未设（≈0℃，低于室温），
     /// 加热输出永远不开、振荡不起来，仪表会停在 At=1 出不来——界面表现为「整定中」但温度不动。
@@ -354,7 +362,7 @@ public sealed partial class TempService : ObservableObject
     /// </para>
     /// 返回 null=已启动；<see cref="NoSetpoint"/>=需先设 SP；其他=错误文本。
     /// </summary>
-    public async Task<string?> AutotuneAsync(int ch)
+    public async Task<string?> AutotuneAsync(int ch, int? band = null)
     {
         var (c, loop) = Map(ch);
         if (Locked) return "急停状态下不可自整定";
@@ -363,12 +371,12 @@ public sealed partial class TempService : ObservableObject
             double sp = await c.ReadSetpointAsync(loop).ConfigureAwait(false);
             if (sp < 35) return NoSetpoint;   // 必须明显高于室温，加热振荡才可能发生
             if (Locked) return "急停状态下不可自整定";
-            _tuneAborted[ch - 1] = false;
+            Tune.ClearAbort(ch - 1);
             await c.RunAllAsync();
             if (Locked) return "急停状态下不可自整定";
             await c.AutotuneAsync(loop);
             // 整定出的 PID 属于整定 SP 所在的温区，而不是界面当前选中的档
-            _tuneBand[ch - 1] = BandIndexForTemp(sp);
+            Tune.Begin(ch - 1, band is { } b && b >= 0 && b < Bands.Count ? b : BandIndexForTemp(sp), sp);
             _lastBand[ch - 1] = -1;   // 整定会改写仪表 PID，完成回读后再确定
             await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = true);
             return null;
@@ -388,11 +396,7 @@ public sealed partial class TempService : ObservableObject
     }
 
     /// <summary>标记整定被打断：之后轮询看到「整定结束」时不回读、不存档。</summary>
-    private void AbortTune(int i)
-    {
-        _tuneAborted[i] = true;
-        _tuneBand[i] = -1;
-    }
+    private void AbortTune(int i) => Tune.Abort(i);
 
     /// <summary>停止该通道的温控输出（At=4，停止控制、关闭输出）。返回是否写入成功。
     /// 停止/停用反应釜时必须调用——否则仪表带着旧 SP 继续加热，界面上看着停了、加热器还在全力工作。</summary>
@@ -412,13 +416,14 @@ public sealed partial class TempService : ObservableObject
     {
         var (c, loop) = Map(ch);
         // 先标记整定被打断，写失败再撤销：写入失败时仪表上的整定仍在进行，完成后的新 PID 不能丢
-        bool wasTuning = Channels[ch - 1].Autotuning && !_tuneAborted[ch - 1];
-        int band = _tuneBand[ch - 1];
+        bool wasTuning = Channels[ch - 1].Autotuning && !Tune.IsAborted(ch - 1);
+        int band = Tune.TuneBand(ch - 1);
+        double? tuneSp = Tune.TuneSp(ch - 1);
         if (wasTuning) AbortTune(ch - 1);
         try { await c.StopAsync(loop); }
         catch
         {
-            if (wasTuning && Channels[ch - 1].Autotuning) { _tuneAborted[ch - 1] = false; _tuneBand[ch - 1] = band; }
+            if (wasTuning && Channels[ch - 1].Autotuning) Tune.Restore(ch - 1, band, tuneSp);
             return false;
         }
         await Dispatcher.UIThread.InvokeAsync(() => Channels[ch - 1].Autotuning = false);
@@ -536,8 +541,8 @@ public sealed partial class TempService : ObservableObject
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 var m = Channels[ch - 1];
-                int band = _tuneBand[ch - 1] >= 0 ? _tuneBand[ch - 1] : _curBand;
-                _tuneBand[ch - 1] = -1;
+                // 存回发起时的档（没有则界面显示档），并记该档来历：整定目标温度 + 完成时刻（UTC）
+                int band = Tune.Complete(ch - 1, _curBand, DateTime.UtcNow);
                 m.SetBand(band, pid.P, pid.I, pid.D);
                 _lastBand[ch - 1] = band;   // 仪表里现在就是该档刚整定出的 PID
                 if (band == _curBand) m.LoadBand(band);   // 正显示该档才刷新界面 P/I/D

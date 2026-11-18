@@ -76,7 +76,8 @@ public interface IRemoteCommands
     Task<CommandOutcome> StopProfileAsync(RemoteCaller c, int id, CancellationToken ct);
     // —— §7.6 PID / 自整定 ——
     Task<CommandOutcome> SetPidAsync(RemoteCaller c, int id, int band, double p, double i, double d, CancellationToken ct);
-    Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, CancellationToken ct);
+    /// <summary>POST /channels/{id}/autotune {tempC, band?}：band = 结果存入的档位（可选；给出时 tempC 须落在该档温区内，否则 422）。</summary>
+    Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, int? band, CancellationToken ct);
     Task<CommandOutcome> CancelAutotuneAsync(RemoteCaller c, int id, CancellationToken ct);
     // —— §7.7 搅拌 ——
     /// <summary>PUT /stir：rpm 先于 on 应用；两个都可选（至少一个由端点保证）。</summary>

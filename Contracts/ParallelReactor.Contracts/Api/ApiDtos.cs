@@ -92,6 +92,11 @@ public sealed record ProgramStepDto(string Type, JsonElement Params, string Name
 /// <summary>GET /channels/{id}/program/run（v0.6）：快照序号 / 时间 + 该通道的运行记录。</summary>
 public sealed record ProgramRunDto(long Seq, DateTime Ts, ProgramRunSnap Run);
 
+/// <summary>
+/// GET /pid（v0.6，§7.6）：快照序号 / 时间 + 温度档位定义 + 8 个通道各档 PID 与来历、自整定状态。只读，取自每 Tick 的快照，不进 UI 线程。
+/// </summary>
+public sealed record PidDto(long Seq, DateTime Ts, PidBandSnap[] Bands, PidChannelSnap[] Channels);
+
 // —— §7.2 /device/comm ——
 public sealed record ApiStatsDto(int Clients, int MaxClients, long DroppedTelemetryFrames, long DroppedEvents, long FramesSent, long EventsSent, long AuthFailures,
     long Requests, DateTime? StartedAt, string Bind, int Port);

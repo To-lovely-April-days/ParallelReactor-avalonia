@@ -67,14 +67,21 @@ public sealed partial class OperatorCommands
     /// <summary>
     /// 先把 SP 写成整定目标温度，再启动 AI-8 自整定（仪表在 SP 附近全功率振荡）。
     /// 确认时重新判断启动加热公共检查（K3）；目标温度 40..TMaxSp。严格守卫：通道须为 已停用 / 已启用 / 已结束，且不在整定中。
+    /// band（v0.6，远程可选）= 结果存入的档位：给出时目标温度须落在该档温区内（<see cref="ValueRules.AutotuneBand"/>，否则 PARAM_OUT_OF_RANGE）；
+    /// 缺省按目标温度所在档（触屏走这条）。整定结果回读后存入该档并记来历（目标温度 + 完成时刻）。
+    /// 不同通道可以同时整定（没有跨通道的互斥；每通道各自守卫）。
     /// 成功「RVn 已设目标 x℃ 并启动自整定」ok；SP 下发失败「SP 下发失败，未启动整定」err；仪表拒绝时原样提示 err。
     /// </summary>
-    public Task<OpResult> TryStartAutotune(CommandSource src, int ch, double tempC)
+    public Task<OpResult> TryStartAutotune(CommandSource src, int ch, double tempC, int? band = null)
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (ChannelOr(ch, out var c) is { } nf) return nf.AsTask();
         if (HeatBlocked(ch) is { } hb) return hb.AsTask();
         if (Invalid(ValueRules.AutotuneSp(tempC, _m.Settings.TMaxSp)) is { } bad) return bad.AsTask();
+        var bands = _m.Temp.Bands;
+        if (band is { } bi && Invalid(ValueRules.AutotuneBand(bi, tempC, bands.ConvertAll(x => (x.Lo, x.Hi)), _m.Settings.TMaxSp)) is { } badBand)
+            return badBand.AsTask();
+        int tuneBand = band ?? _m.Temp.BandIndexForTemp(tempC);   // 同步头定档：结果存入的档由目标温度决定（不受回读 SP 的小数舍入影响）
         if (CommandPolicy.Strict(src))
         {
             if (_m.Temp.Channels[ch - 1].Autotuning)
@@ -82,10 +89,10 @@ public sealed partial class OperatorCommands
             if (c.State is not (ReactorState.Idle or ReactorState.Ready or ReactorState.Done))
                 return OpResult.Fail(OpCodes.ChannelStateInvalid, $"RV{ch} 正在运行，不能自整定").AsTask();
         }
-        return StartAutotuneTailAsync(ch, tempC);
+        return StartAutotuneTailAsync(ch, tempC, tuneBand);
     }
 
-    private async Task<OpResult> StartAutotuneTailAsync(int ch, double sp)
+    private async Task<OpResult> StartAutotuneTailAsync(int ch, double sp, int band)
     {
         string name = _m.Temp.Channels[ch - 1].Name;
         try { await _m.Temp.SetSetpointAsync(ch, sp); }
@@ -94,11 +101,12 @@ public sealed partial class OperatorCommands
             return OpResult.Fail(OpCodes.HardwareWriteFailed, "SP 下发失败，未启动整定", "err",
                 new { device = "temp", channel = ch, error = ex.Message });
         }
-        var err = await _m.Temp.AutotuneAsync(ch);
+        var err = await _m.Temp.AutotuneAsync(ch, band);
+        string bandName = band >= 0 && band < _m.Temp.Bands.Count ? _m.Temp.Bands[band].Name : $"档位 {band}";
         _m.Alarm.Log(err == null ? "info" : "warn", name, err == null ? "启动自整定" : "自整定未启动",
-            err == null ? $"整定目标 {Fmt(sp, "℃")}" : err);
+            err == null ? $"整定目标 {Fmt(sp, "℃")} · 结果存入{bandName}" : err);
         return err == null
-            ? OpResult.Done($"{name} 已设目标 {sp:0}℃ 并启动自整定", "ok", new { channel = ch, sp })
+            ? OpResult.Done($"{name} 已设目标 {sp:0}℃ 并启动自整定", "ok", new { channel = ch, sp, band })
             : OpResult.Fail(OpCodes.HardwareWriteFailed, err, "err", new { device = "temp", channel = ch });
     }
 

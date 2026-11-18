@@ -107,7 +107,7 @@ public class StepDef
                 Fields = new()
                 {
                     new FieldDef{ Key="gas", Label="反应气", Kind="sel", Options=new[]{"气体 A","气体 B"} },
-                    new FieldDef{ Key="pres", Label="目标压力", Kind="num", Unit="psi", Default=50.0, Min=0, Max=200 },
+                    new FieldDef{ Key="pres", Label="目标压力", Kind="num", Unit="psi", Default=50.0, Min=0, Max=493.1 },   // 34 bar（用户确认的升压目标上限）；实际上限还受 PMaxSp 与超压报警 × 0.9 约束（ProgramLimits.PressMax）
                     new FieldDef{ Key="regulate", Label="压力稳压", Kind="sel", Options=new[]{"开启","关闭"} },
                 },
                 DetailFn = s => $"{s.Str("gas","气体 A")} 到 {N(s.Num("pres",50))} psi · 稳压{s.Str("regulate","开启")}",

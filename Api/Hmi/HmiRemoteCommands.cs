@@ -69,7 +69,7 @@ public sealed class HmiRemoteCommands : IRemoteCommands
 
     // —— PID / 自整定 ——
     public Task<CommandOutcome> SetPidAsync(RemoteCaller c, int id, int band, double p, double i, double d, CancellationToken ct) => Control((o, s) => o.TrySetPid(s, id, band, p, i, d), c, ct);
-    public Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, CancellationToken ct) => Control((o, s) => o.TryStartAutotune(s, id, tempC), c, ct);
+    public Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, int? band, CancellationToken ct) => Control((o, s) => o.TryStartAutotune(s, id, tempC, band), c, ct);
     public Task<CommandOutcome> CancelAutotuneAsync(RemoteCaller c, int id, CancellationToken ct) => Stop((o, s) => o.TryCancelAutotune(s, id), c, ct);
 
     // —— 搅拌 ——

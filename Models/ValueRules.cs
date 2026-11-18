@@ -74,6 +74,23 @@ public static class ValueRules
     public static RuleViolation? AutotuneSp(double v, double tMaxSp) => Range("整定目标温度", v, AutotuneSpMin, tMaxSp, "°C");
 
     /// <summary>
+    /// 自整定显式档位（v0.6，POST /channels/{id}/autotune 的 band）：档位须为 0..档数−1，且整定目标温度须落在该档温区内——
+    /// 非最高档 [lo, hi)，最高档 [lo, tMaxSp]（与 TempService.BandIndexForTemp 一致：超出上限归最高档）。
+    /// bands = 各档 (Lo, Hi)，按下标排列。40..TMaxSp 由 <see cref="AutotuneSp"/> 先查。
+    /// </summary>
+    public static RuleViolation? AutotuneBand(int band, double tempC, System.Collections.Generic.IReadOnlyList<(double Lo, double Hi)> bands, double tMaxSp)
+    {
+        if (Range("PID 档位", band, 0, bands.Count - 1) is { } bad) return bad;
+        var (lo, hi) = bands[band];
+        bool last = band == bands.Count - 1;
+        bool inside = double.IsFinite(tempC) && tempC >= lo && (last ? tempC <= tMaxSp : tempC < hi);
+        if (inside) return null;
+        double max = last ? tMaxSp : hi;
+        string range = last ? $"≥ {N(lo)} °C" : $"{N(lo)}–{N(hi)} °C（不含 {N(hi)}）";
+        return new RuleViolation(OpCodes.ParamOutOfRange, $"整定目标温度 {N(tempC)} °C 不在档位 {band} 的温区内（{range}）", lo, max, tempC);
+    }
+
+    /// <summary>
     /// 档位分界：which = 1 为「低温 / 中温」分界（10..中温上限−10），which = 2 为「中温 / 高温」分界（低温上限+10..390）。
     /// lowHi = 当前低温档上限（分界 1），midHi = 当前中温档上限（分界 2）。
     /// </summary>

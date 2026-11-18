@@ -74,13 +74,13 @@ public static partial class Endpoints
         w.MapPost("/channels/{id}/profile/stop", (HttpContext ctx, string id) => CommandAsync(ctx, host, new WriteSpec("profile.stop", ActionClass.Stop),
             (b, c) => cmd.StopProfileAsync(c, Channel(id), ctx.RequestAborted)));
 
-        // —— §7.6 PID / 自整定（PID 需 admin）——
+        // —— §7.6 PID / 自整定（PID 需 admin）。自整定 {tempC, band?}：结果存入 band（缺省按 tempC 所在档）；各通道可并行整定 ——
         w.MapPut("/channels/{id}/pid/{band}", (HttpContext ctx, string id, string band) => CommandAsync(ctx, host, new WriteSpec("pid.set", ActionClass.Control, Role: "admin"),
             (b, c) => cmd.SetPidAsync(c, Channel(id), Int(band, "band", 0, 2),
                 Num(b, "p") ?? throw new ApiBadRequestException("缺少 p"), Num(b, "i") ?? throw new ApiBadRequestException("缺少 i"),
                 Num(b, "d") ?? throw new ApiBadRequestException("缺少 d"), ctx.RequestAborted)));
         w.MapPost("/channels/{id}/autotune", (HttpContext ctx, string id) => CommandAsync(ctx, host, new WriteSpec("autotune.start", ActionClass.Control),
-            (b, c) => cmd.StartAutotuneAsync(c, Channel(id), Num(b, "tempC") ?? throw new ApiBadRequestException("缺少 tempC"), ctx.RequestAborted)));
+            (b, c) => cmd.StartAutotuneAsync(c, Channel(id), Num(b, "tempC") ?? throw new ApiBadRequestException("缺少 tempC"), OptInt(b, "band"), ctx.RequestAborted)));
         w.MapDelete("/channels/{id}/autotune", (HttpContext ctx, string id) => CommandAsync(ctx, host, new WriteSpec("autotune.cancel", ActionClass.Stop),
             (b, c) => cmd.CancelAutotuneAsync(c, Channel(id), ctx.RequestAborted)));
 
@@ -370,6 +370,14 @@ public static partial class Endpoints
         if (Prop(b, name) is not { } v) return null;
         if (v.ValueKind != JsonValueKind.Number || !v.TryGetDouble(out var d) || !double.IsFinite(d)) throw new ApiBadRequestException($"{name} 须为数值");
         return d;
+    }
+
+    /// <summary>可选整数字段：缺省 / null → null；不是整数 → 400（取值范围由命令层校验，越界 422）。</summary>
+    private static int? OptInt(JsonElement? b, string name)
+    {
+        if (Prop(b, name) is not { } v) return null;
+        if (v.ValueKind != JsonValueKind.Number || !v.TryGetInt32(out var n)) throw new ApiBadRequestException($"{name} 须为整数");
+        return n;
     }
 
     private static bool? Bool(JsonElement? b, string name)

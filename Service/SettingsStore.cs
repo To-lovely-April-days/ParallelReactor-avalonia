@@ -5,7 +5,7 @@ using System.Text.Json;
 namespace ParallelReactor.Services;
 
 /// <summary>
-/// 本地持久化：全局设置 + 温度档位边界 + 8 通道 × 3 档 PID。
+/// 本地持久化：全局设置 + 温度档位边界 + 8 通道 × 3 档 PID（+ 各档整定来历）。
 /// <para>
 /// JSON 存于用户配置目录（Linux: ~/.config/ParallelReactor/settings.json）。
 /// 之前这些数据全在内存：重启后档位 PID 回默认，且 InitAsync 会把仪表里残留的
@@ -20,6 +20,11 @@ public static class SettingsStore
         public Models.AppSettings? Settings { get; set; }
         public double[]? BandBounds { get; set; }     // [低/中分界, 中/高分界]
         public double[][][]? BandPids { get; set; }   // [通道8][档3][P,I,D]
+        /// <summary>
+        /// [通道8][档3] 各档 PID 的来历（v0.6 起）：整定目标温度 TunedSpC（℃）、整定完成时刻 TunedAt（UTC）、
+        /// 整定后手改时刻 ManualEditedAt（UTC），见 <see cref="BandTuneMeta"/>。旧存档没有这一项 → null（来历为空，PID 照常恢复）。
+        /// </summary>
+        public BandTuneMeta?[][]? BandTune { get; set; }
     }
 
     /// <summary>配置目录：环境变量 PR_CONFIG_DIR 优先（开发 / 验收时不污染用户配置目录，与 PR_DATA_DIR 同理）；默认用户配置目录下的 ParallelReactor。</summary>

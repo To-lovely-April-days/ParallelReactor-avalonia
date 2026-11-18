@@ -156,7 +156,33 @@ public static class SnapshotBuilder
             Module(HardwareOptions.UseRealStir, vm._stir.Online, vm._stir.Stats),
             Module(HardwareOptions.UseRealIo, vm._valves.Online, vm._valves.Stats),
             vm.Logger.DroppedLines,
-            runs);
+            runs,
+            Pid(vm.Temp));
+    }
+
+    /// <summary>
+    /// GET /pid 的快照（v0.6）：档位定义 + 每通道各档 PID 与来历、自整定状态。显示档取界面工作副本（<see cref="TempService.GetPid"/>），
+    /// 来历是不可变 record。每 Tick 8 × 3 项，开销可忽略；PID 不进 WS 帧。
+    /// </summary>
+    private static PidSnap Pid(TempService t)
+    {
+        var bands = t.Bands.Select((b, i) => new PidBandSnap(i, b.Name, b.Lo, b.Hi)).ToArray();
+        var chs = new PidChannelSnap[t.Channels.Count];
+        for (int i = 0; i < chs.Length; i++)
+        {
+            int id = i + 1;
+            var vals = new PidBandValueSnap[bands.Length];
+            for (int b = 0; b < vals.Length; b++)
+            {
+                var (p, ii, d) = t.GetPid(id, b);
+                var m = t.Tune.Meta(i, b);
+                vals[b] = new PidBandValueSnap(b, p, ii, d, m?.TunedSpC, m?.TunedAt, m?.ManualEditedAt);
+            }
+            int tb = t.Tune.TuneBand(i);
+            bool tuning = t.Channels[i].Autotuning;
+            chs[i] = new PidChannelSnap(id, tuning, tuning && tb >= 0 ? tb : null, tuning && tb >= 0 ? t.Tune.TuneSp(i) : null, vals);
+        }
+        return new PidSnap(bands, chs);
     }
 
     /// <summary>设置里的按通道数组 → 恰好 8 项的副本（设置文件里缺项 / 多项都按 8 通道对齐；快照不共享可变数组）。</summary>

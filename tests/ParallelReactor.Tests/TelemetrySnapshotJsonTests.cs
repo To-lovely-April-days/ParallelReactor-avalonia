@@ -46,7 +46,21 @@ public class TelemetrySnapshotJsonTests
         var mod = new ModuleCommSnap(true, true, 100, 2, ts, ts);
         var runs = new ProgramRunSnap?[8];
         runs[1] = SampleRun(ts);
-        return new SnapshotBundle(frame, full, settings, tick, mod, mod, mod, mod, 0, runs);
+        return new SnapshotBundle(frame, full, settings, tick, mod, mod, mod, mod, 0, runs, SamplePid(ts));
+    }
+
+    /// <summary>
+    /// GET /pid 的假快照：RV1 中温档 2026-11-17 在 150 °C 整定完成、之后手改过；RV3 正在整定（结果存高温档，目标 250 °C）；其余为默认值、无来历。
+    /// </summary>
+    public static PidSnap SamplePid(DateTime ts)
+    {
+        var bands = new[] { new PidBandSnap(0, "低温档", 0, 100), new PidBandSnap(1, "中温档", 100, 200), new PidBandSnap(2, "高温档", 200, 400) };
+        var tunedAt = new DateTime(2026, 11, 17, 6, 30, 0, DateTimeKind.Utc);
+        PidChannelSnap Ch(int id) => new(id, id == 3, id == 3 ? 2 : null, id == 3 ? 250 : null,
+            Enumerable.Range(0, 3).Select(b => id == 1 && b == 1
+                ? new PidBandValueSnap(b, 62.5, 118, 21.4, 150, tunedAt, ts.AddMinutes(-3))
+                : new PidBandValueSnap(b, 40 + 20 * b, 100 + 25 * b, 15 + 5 * b, null, null, null)).ToArray());
+        return new PidSnap(bands, Enumerable.Range(1, 8).Select(Ch).ToArray());
     }
 
     /// <summary>RV2 正在执行的程序（GET /channels/2/program/run）：两步，第 2 步升温中。</summary>

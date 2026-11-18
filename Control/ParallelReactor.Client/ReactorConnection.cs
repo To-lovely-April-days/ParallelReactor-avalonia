@@ -212,6 +212,7 @@ public sealed class ControlledWrites
     public Task<CommandResult<JsonElement>> StartProfileAsync(int id, CancellationToken ct) => Run(l => _c.Rest.StartProfileAsync(l, id, ct));
     public Task<CommandResult<JsonElement>> SetPidAsync(int id, int band, double p, double i, double d, CancellationToken ct) => Run(l => _c.Rest.SetPidAsync(l, id, band, p, i, d, ct));
     public Task<CommandResult<JsonElement>> StartAutotuneAsync(int id, double tempC, CancellationToken ct) => Run(l => _c.Rest.StartAutotuneAsync(l, id, tempC, ct));
+    public Task<CommandResult<JsonElement>> StartAutotuneAsync(int id, double tempC, int? band, CancellationToken ct) => Run(l => _c.Rest.StartAutotuneAsync(l, id, tempC, band, ct));
     public Task<CommandResult<JsonElement>> SetStirAsync(bool? on, int? rpm, CancellationToken ct) => Run(l => _c.Rest.SetStirAsync(l, on, rpm, ct));
     public Task<CommandResult<LeakTestStartResult>> StartLeakTestAsync(int[] channels, double? testPsi, string? idem, CancellationToken ct) => Run(l => _c.Rest.StartLeakTestAsync(l, channels, testPsi, idem, ct));
     public Task<CommandResult<JsonElement>> ReplaceProgramAsync(int id, ProgramDoc program, CancellationToken ct) => Run(l => _c.Rest.ReplaceProgramAsync(l, id, program, ct));

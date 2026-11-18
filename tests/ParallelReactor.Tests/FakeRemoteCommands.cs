@@ -44,7 +44,7 @@ public sealed class FakeRemoteCommands : IRemoteCommands
     public Task<CommandOutcome> StartProfileAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("StartProfile", id.ToString(), c);
     public Task<CommandOutcome> StopProfileAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("StopProfile", id.ToString(), c);
     public Task<CommandOutcome> SetPidAsync(RemoteCaller c, int id, int band, double p, double i, double d, CancellationToken ct) => Rec("SetPid", $"{id},{band},{p},{i},{d}", c);
-    public Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, CancellationToken ct) => Rec("StartAutotune", $"{id},{tempC}", c);
+    public Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, int? band, CancellationToken ct) => Rec("StartAutotune", band is { } b ? $"{id},{tempC},{b}" : $"{id},{tempC}", c);
     public Task<CommandOutcome> CancelAutotuneAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("CancelAutotune", id.ToString(), c);
     public Task<CommandOutcome> SetStirAsync(RemoteCaller c, bool? on, int? rpm, CancellationToken ct) => Rec("SetStir", $"{on},{rpm}", c);
     public Task<CommandOutcome> StartLeakTestAsync(RemoteCaller c, IReadOnlyList<int> channels, double? testPsi, CancellationToken ct) => Rec("StartLeakTest", $"{string.Join("/", channels)},{testPsi}", c);

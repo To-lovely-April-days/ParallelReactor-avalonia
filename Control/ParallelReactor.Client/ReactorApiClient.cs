@@ -92,6 +92,11 @@ public sealed class ReactorApiClient : IDisposable
     public Task<SessionsDto> SessionsAsync(CancellationToken ct) => GetAsync<SessionsDto>("sessions", ct);
     public Task<SessionDetailDto> SessionAsync(string id, CancellationToken ct) => GetAsync<SessionDetailDto>($"sessions/{Uri.EscapeDataString(id)}", ct);
     public Task<ControlStateDto> ControlAsync(CancellationToken ct) => GetAsync<ControlStateDto>("control", ct);
+    /// <summary>
+    /// GET /pid（v0.6，§7.6）：温度档位定义 + 8 个通道各档 P/I/D 与来历（tunedSpC / tunedAt / manualEditedAt）、
+    /// 是否正在自整定（autotuning；整定中带 tuneBand / tuneSpC）。只读，任何角色可调。
+    /// </summary>
+    public Task<PidDto> PidAsync(CancellationToken ct) => GetAsync<PidDto>("pid", ct);
 
     /// <summary>
     /// GET /channels/{id}/program/run（v0.6，§7.9）：该通道正在执行 / 本次开机以来最近一次执行的程序（下发时冻结的步骤 + 当前步序 / 阶段 / 发起者）。
@@ -203,7 +208,13 @@ public sealed class ReactorApiClient : IDisposable
     public Task<CommandResult<JsonElement>> SetPidAsync(string lease, int id, int band, double p, double i, double d, CancellationToken ct)
         => CommandAsync<JsonElement>(HttpMethod.Put, $"channels/{id}/pid/{band}", new { p, i, d }, lease, NewKey(), ct);
     public Task<CommandResult<JsonElement>> StartAutotuneAsync(string lease, int id, double tempC, CancellationToken ct)
-        => CommandAsync<JsonElement>(HttpMethod.Post, $"channels/{id}/autotune", new { tempC }, lease, NewKey(), ct);
+        => StartAutotuneAsync(lease, id, tempC, null, ct);
+    /// <summary>
+    /// POST /channels/{id}/autotune {tempC, band?}（控制类）：先把 SP 设为 tempC 再启动 AI-8 自整定，结果存入 band
+    /// （缺省 = tempC 所在档；给出时 tempC 须落在该档温区内，否则 422 PARAM_OUT_OF_RANGE）。不同通道可以同时整定。
+    /// </summary>
+    public Task<CommandResult<JsonElement>> StartAutotuneAsync(string lease, int id, double tempC, int? band, CancellationToken ct)
+        => CommandAsync<JsonElement>(HttpMethod.Post, $"channels/{id}/autotune", band is { } b ? (object)new { tempC, band = b } : new { tempC }, lease, NewKey(), ct);
     /// <summary>PUT /stir {on?, rpm?}（带 rpm 或 on=true 为控制类）。</summary>
     public Task<CommandResult<JsonElement>> SetStirAsync(string lease, bool? on, int? rpm, CancellationToken ct)
     {
