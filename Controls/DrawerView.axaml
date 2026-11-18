@@ -261,7 +261,7 @@
                   <Button Classes="step" Content="−" Command="{Binding StepCommand}" CommandParameter="Vol:-1" />
                   <Button Classes="numval" Command="{Binding EditFieldCommand}" CommandParameter="Vol">
                     <TextBlock VerticalAlignment="Center" MinWidth="72" TextAlignment="Center" FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource OnDark}">
-                      <Run Text="{Binding Reactor.Vol}" /><Run Text=" mL" FontSize="11.5" Foreground="{DynamicResource Body}" />
+                      <Run Text="{Binding Reactor.Vol, StringFormat='{}{0:0.##}'}" /><Run Text=" mL" FontSize="11.5" Foreground="{DynamicResource Body}" />
                     </TextBlock>
                   </Button>
                   <Button Classes="step" Content="+" Command="{Binding StepCommand}" CommandParameter="Vol:1" />

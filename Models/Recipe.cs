@@ -10,7 +10,7 @@ public class Recipe
     public double TSp { get; init; }
     public double PSp { get; init; }
     public int RpmSp { get; init; }
-    public int Vol { get; init; }
+    public double Vol { get; init; }
     public string Blade { get; init; } = "桨式";
     public string End { get; init; } = "密封";
     public string Run { get; init; } = "02:00:00";

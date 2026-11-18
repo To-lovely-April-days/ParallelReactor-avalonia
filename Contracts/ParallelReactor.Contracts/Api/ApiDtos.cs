@@ -44,11 +44,18 @@ public sealed record LimitsDto(double TempSpMaxC, double PressureSpMaxPsi, doubl
 public sealed record AlarmSettingsDto(double OverPressurePsi, double OverTempC, bool StopHeatOnOverPressure, double HeatTimeoutMin, double PressDeviationPsi);
 public sealed record LeakTestSettingsDto(double TestPsi, double SettleMin, double MeasureMin, double RateLimitPsiPerHr, double ReminderDays, DateTime? LastTestUtc);
 public sealed record ApproachSettingsDto(double DeltaC, double RateCPerMin, double FastRateCPerMin, double FinalZoneC, double SettleBandC, double SettleSec);
-public sealed record StirSettingsDto(double PeakCurrentA, double StandbyPct, double RampMsPer1000Rpm, double Microstep);
+/// <summary>stirGearRatio（v0.6）：搅拌传动比 = 电机转速 ÷ 釜转速；接口里的转速一律是釜转速。</summary>
+public sealed record StirSettingsDto(double PeakCurrentA, double StandbyPct, double RampMsPer1000Rpm, double Microstep, double StirGearRatio = 1);
 public sealed record PressureSettingsDto(double FullScaleMPa);
 public sealed record SettingsNotesDto(string[] Unused);
+/// <summary>
+/// volume（v0.6，只读）：吸气量计算用的容积。vesselVolume = 釜容积 mL；gasLineVolume = 管路死体积 mL（未标定通道用）；manifoldVolume = 总管体积 mL（标定得出，未标定 null）；
+/// effectiveVolume[8] = 各通道标定的有效容积 mL（未标定 null，标定过的通道气相体积 = 有效容积 − 溶液体积）；volumeCalibratedAt[8] = 各通道标定时间 UTC（未标定 null）。
+/// </summary>
+public sealed record VolumeSettingsDto(double VesselVolume, double GasLineVolume, double? ManifoldVolume, double?[] EffectiveVolume, DateTime?[] VolumeCalibratedAt);
 public sealed record SettingsDto(LimitsDto Limits, AlarmSettingsDto Alarms, LeakTestSettingsDto LeakTest, ApproachSettingsDto Approach,
-    StirSettingsDto Stir, PressureSettingsDto Pressure, TempBandSnap[] TempBands, SettingsNotesDto Notes, long Revision)
+    StirSettingsDto Stir, PressureSettingsDto Pressure, TempBandSnap[] TempBands, SettingsNotesDto Notes, long Revision,
+    VolumeSettingsDto? Volume = null)
 {
     public static readonly string[] UnusedKeys = { "heatTimeoutMin", "pressDeviationPsi", "reminderDays", "pressureSpMaxPsi" };
 
@@ -57,11 +64,12 @@ public sealed record SettingsDto(LimitsDto Limits, AlarmSettingsDto Alarms, Leak
         new AlarmSettingsDto(s.OverPressure, s.OverTemp, s.StopHeatOnOverPressure, s.HeatTimeout, s.PressDeviation),
         new LeakTestSettingsDto(s.LeakTestPsi, s.LeakSettleMin, s.LeakMeasureMin, s.LeakRate, s.LeakReminderDays, s.LastLeakTestUtc),
         new ApproachSettingsDto(s.ApproachDelta, s.ApproachRate, s.ApproachFastRate, s.ApproachFinalZone, s.ApproachSettleBand, s.ApproachSettleSec),
-        new StirSettingsDto(s.StirCurrent, s.StirStandbyPct, s.StirRampMs, s.StirMicrostep),
+        new StirSettingsDto(s.StirCurrent, s.StirStandbyPct, s.StirRampMs, s.StirMicrostep, s.StirGearRatio),
         new PressureSettingsDto(s.PressFullScaleMPa),
         s.TempBands,
         new SettingsNotesDto(UnusedKeys),
-        s.Revision);
+        s.Revision,
+        s.Volume is { } v ? new VolumeSettingsDto(v.VesselVolume, v.GasLineVolume, v.ManifoldVolume, v.EffectiveVolume, v.VolumeCalibratedAt) : null);
 }
 
 // —— §7.2 /preflight ——
@@ -74,6 +82,15 @@ public sealed record FieldSchemaDto(string Key, string Label, string Kind, strin
     FieldSchemaDto[]? ItemFields, int? MinItems, int? MaxItems);
 public sealed record StepSchemaDto(string Type, string Label, string Chip, string Help, FieldSchemaDto[] Fields);
 public sealed record ProgramSchemaDto(string ApiVersion, long SettingsRevision, string[] StepTypes, StepSchemaDto[] Steps);
+
+/// <summary>
+/// §6.9 程序 JSON 的一步：<c>{ type, params{…} }</c>（sel 字段为英文枚举码，heat.mode=curve 时 params.segments[{temp,rate,hold}]），
+/// 可原样用于 PUT /channels/{id}/program。name / detail 是只读的中文名称与参数摘要（PUT 忽略）。
+/// </summary>
+public sealed record ProgramStepDto(string Type, JsonElement Params, string Name, string Detail);
+
+/// <summary>GET /channels/{id}/program/run（v0.6）：快照序号 / 时间 + 该通道的运行记录。</summary>
+public sealed record ProgramRunDto(long Seq, DateTime Ts, ProgramRunSnap Run);
 
 // —— §7.2 /device/comm ——
 public sealed record ApiStatsDto(int Clients, int MaxClients, long DroppedTelemetryFrames, long DroppedEvents, long FramesSent, long EventsSent, long AuthFailures,

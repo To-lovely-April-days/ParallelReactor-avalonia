@@ -24,11 +24,11 @@ public partial class DrawerViewModel : ViewModelBase
 
     // 步进器限制：[min,max,step]；上限读全局设置（设置页可改）
     private (double min, double max, double step) LimTsp => (10, _main.Settings.TMaxSp, 5);
-    private (double min, double max, double step) LimVol => (1, _main.Settings.VolMax, 1);
+    private (double min, double max, double step) LimVol => (ValueRules.VolumeMin, _main.Settings.VolMax, 0.1);   // 10 mL 釜：0.1 mL 一步
 
     // SP 范围提示文本（随设置变化）
     public string TspRange => $"{LimTsp.min:0} – {LimTsp.max:0} °C";
-    public string VolRange => $"{LimVol.min:0} – {LimVol.max:0} mL";
+    public string VolRange => $"{LimVol.min:0.#} – {LimVol.max:0.#} mL";
 
     public void Open(int id)
     {
@@ -57,7 +57,7 @@ public partial class DrawerViewModel : ViewModelBase
         switch (parts[0])
         {
             case "Tsp": _main.Local(Ops.TrySetChannelTemp(Src, c.Id, Clamp(c.TSp + d * LimTsp.step, LimTsp))); break;
-            case "Vol": _main.Local(Ops.TrySetChannelVolume(Src, c.Id, (int)Clamp(c.Vol + d * LimVol.step, LimVol))); break;
+            case "Vol": _main.Local(Ops.TrySetChannelVolume(Src, c.Id, Clamp(ValueRules.RoundVolume(c.Vol + d * LimVol.step), LimVol))); break;
         }
     }
 
@@ -80,7 +80,7 @@ public partial class DrawerViewModel : ViewModelBase
                 break;
             case "Vol":
                 _main.Keyboard.OpenNumeric("溶液体积", c.Vol, "mL", LimVol.min, LimVol.max,
-                    v => Ops.TrySetChannelVolume(Src, id, (int)v));
+                    v => Ops.TrySetChannelVolume(Src, id, v));
                 break;
         }
     }

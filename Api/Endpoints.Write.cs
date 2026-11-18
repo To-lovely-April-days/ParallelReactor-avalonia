@@ -53,6 +53,8 @@ public static partial class Endpoints
             (b, c) => cmd.StopChannelAsync(c, Channel(id), true, ctx.RequestAborted)));
         w.MapPost("/channels/copy-config", H((HttpContext ctx) => CommandAsync(ctx, host, new WriteSpec("channel.copyConfig", ActionClass.Control, IdemRequired: true),
             (b, c) => cmd.CopyChannelConfigAsync(c, Channel(Require(b, "from")), IntList(b, "to", required: false), ctx.RequestAborted))));
+        w.MapPut("/channels/{id}/volume", (HttpContext ctx, string id) => CommandAsync(ctx, host, new WriteSpec("channel.volume", ActionClass.Control),
+            (b, c) => cmd.SetVolumeAsync(c, Channel(id), Num(b, "ml") ?? throw new ApiBadRequestException("缺少 ml（溶液体积 mL）"), ctx.RequestAborted)));
         w.MapPost("/channels/{id}/gas-counter/reset", (HttpContext ctx, string id) => CommandAsync(ctx, host, new WriteSpec("channel.gasCounterReset", ActionClass.Control),
             (b, c) => cmd.ResetGasCounterAsync(c, Channel(id), ctx.RequestAborted)));
 

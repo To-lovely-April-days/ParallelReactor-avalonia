@@ -24,7 +24,7 @@ public partial class Reactor : ObservableObject
     [ObservableProperty] private int _rpmSp;
 
     // —— 反应配置 ——
-    [ObservableProperty] private int _vol;       // 溶液体积 mL
+    [ObservableProperty] private double _vol;    // 溶液体积 mL（v0.6 起小数，0.1 mL 分辨率：参与吸气量的气相体积计算）
     [ObservableProperty] private string _blade = "桨式";
     [ObservableProperty] private string _end = "密封";
     [ObservableProperty] private string _run = "02:00:00";

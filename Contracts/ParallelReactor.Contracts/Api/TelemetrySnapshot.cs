@@ -26,7 +26,11 @@ public sealed record ProfileSegmentSnap(int Index, double TempC, double Minutes,
 /// <summary>§6.6 的 profile。</summary>
 public sealed record ProfileSnap(bool Running, int SegCount, ProfileSegmentSnap[] Segments, double ElapsedMin, double TotalMinutes, bool Complete, string StatusText);
 
-/// <summary>§6.3 的单通道。profile 在 /snapshot 与 WS 帧里只在 spMode=curve 时给出，/channels/{id} 总是给出。</summary>
+/// <summary>
+/// §6.3 的单通道。profile 在 /snapshot 与 WS 帧里只在 spMode=curve 时给出，/channels/{id} 总是给出。
+/// v0.6 末尾追加（带默认值：旧 HMI 的帧反序列化后为 null）：gasRate = 最近 1 分钟平均吸气速率 mmol/min（Reactor.GasRate，未在计量或数据不够时 null）；
+/// solutionVolume = 溶液体积 mL（Reactor.Vol，0.1 mL 分辨率，参与气相体积计算）。
+/// </summary>
 public sealed record ChannelSnap(
     int Id,
     bool Installed,
@@ -51,13 +55,24 @@ public sealed record ChannelSnap(
     double? GasConsumed,
     bool ValveOpen,
     bool ProgramOwned,
-    ChannelProgramSnap? Program);
+    ChannelProgramSnap? Program,
+    double? GasRate = null,
+    double? SolutionVolume = null);
 
 /// <summary>
 /// §6.3 的 channels[i].program（v0.5 多程序并行）：该通道正在执行 / 最近一次执行的程序。没跑过程序为 null。
 /// state：preparing / running / waitingGas / finishing / completed / failed / aborted；waitingGas = 当前气路步骤正在排队等待其他程序释放气路。
 /// </summary>
 public sealed record ChannelProgramSnap(bool Running, int StepIndex, int StepCount, string State, string Message, string? StartedBy, DateTime? StartedAt, bool WaitingGas);
+
+/// <summary>
+/// GET /channels/{id}/program/run（v0.6，§7.9）：该通道正在执行 / 最近一次执行的程序。steps 是下发时冻结的副本（§6.9 格式，sel 字段为英文枚举码），
+/// 其余字段每个 Tick 刷新：state = preparing / running / waitingGas / finishing / completed / failed / aborted（同 channels[i].program.state）；
+/// stepIndex 0 起（尚未开始为 −1）；phase = 监视阶段文字（「执行第 4 步 · 升温」/「程序执行完成」…）；message = 监视详情；startedBy = local / 远程来源标签。
+/// 只保留本次开机内的记录（HMI 重启后为空）。
+/// </summary>
+public sealed record ProgramRunSnap(int Channel, bool Running, string State, int StepIndex, int StepCount, string Phase, string Message,
+    string? StartedBy, DateTime StartedAt, bool WaitingGas, ProgramStepDto[] Steps);
 
 /// <summary>§6.3 的 stir。</summary>
 public sealed record StirSnap(bool On, int RpmSp, bool Online, bool Locked, double? MotorCurrentA, double? BusVoltageV, string? Fault, int? AlarmCode, int RampMsPer1000Rpm);
@@ -100,7 +115,14 @@ public sealed record SettingsSnap(
     double StirCurrent, double StirStandbyPct, double StirRampMs, double StirMicrostep,
     double PressFullScaleMPa,
     TempBandSnap[] TempBands,
-    long Revision);
+    long Revision,
+    VolumeSettingsSnap? Volume = null,
+    double StirGearRatio = 1);
+
+/// <summary>
+/// 吸气量计算 / 容积标定相关设置（v0.6，只读；标定只允许在触屏上做）。effectiveVolume / volumeCalibratedAt 各 8 项（通道 1..8），未标定为 null。
+/// </summary>
+public sealed record VolumeSettingsSnap(double VesselVolume, double GasLineVolume, double? ManifoldVolume, double?[] EffectiveVolume, DateTime?[] VolumeCalibratedAt);
 
 /// <summary>§6.3 的遥测帧（WebSocket telemetry 消息 / GET /snapshot 的正文）。</summary>
 public sealed record TelemetrySnapshot(
@@ -133,8 +155,12 @@ public sealed record SnapshotBundle(
     ModuleCommSnap PressureComm,
     ModuleCommSnap StirComm,
     ModuleCommSnap IoComm,
-    long LoggerDroppedLines)
+    long LoggerDroppedLines,
+    ProgramRunSnap?[]? ProgramRuns = null)
 {
     /// <summary>通道号 1..8 → 全量通道快照；越界为 null。</summary>
     public ChannelSnap? Channel(int id) => id >= 1 && id <= FullChannels.Length ? FullChannels[id - 1] : null;
+
+    /// <summary>通道号 1..8 → 该通道正在执行 / 最近一次执行的程序（含冻结步骤）；没跑过或越界为 null。</summary>
+    public ProgramRunSnap? ProgramRun(int id) => ProgramRuns is { } r && id >= 1 && id <= r.Length ? r[id - 1] : null;
 }

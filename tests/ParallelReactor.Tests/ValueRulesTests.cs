@@ -70,6 +70,20 @@ public class ValueRulesTests
     }
 
     [Fact]
+    public void Volume_AcceptsDecimals_AndRoundsStepNoise()
+    {
+        // v0.6：溶液体积为小数（10 mL 釜需要 0.1 mL 分辨率）
+        Assert.Null(ValueRules.Volume(3.5, 8));
+        Assert.Null(ValueRules.Volume(1.0, 8));
+        Assert.NotNull(ValueRules.Volume(0.9, 8));
+        Assert.NotNull(ValueRules.Volume(8.05, 8));
+        Assert.NotNull(ValueRules.Volume(double.NaN, 8));
+        Assert.Equal(3.3, ValueRules.RoundVolume(3.2 + 0.1));   // 步进 0.1 的浮点尾数
+        Assert.Equal(3.46, ValueRules.RoundVolume(3.456));
+        Assert.Equal("溶液体积须在 1–7.5 mL 之间", ValueRules.Volume(9, 7.5)!.Message);
+    }
+
+    [Fact]
     public void Detail_HasMinMaxValue()
     {
         var d = ValueRules.Rpm(2000, 1500)!.Detail;

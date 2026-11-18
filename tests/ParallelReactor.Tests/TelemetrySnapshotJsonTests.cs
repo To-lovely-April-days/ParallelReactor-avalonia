@@ -22,7 +22,8 @@ public class TelemetrySnapshotJsonTests
         ChannelSnap Ch(int id, bool curve) => new(id, id <= 4, id == 3 ? "alarm" : "heating", id == 3 ? "overTemp" : null, id == 3, false, null,
             offline ? null : 148.6, 150, offline ? null : 147, offline ? null : 63, !offline, false, offline ? null : 0, curve ? "curve" : "fixed",
             new ApproachSnap("creep", 150, 147, "逼近中"), curve ? profile : null, offline ? null : 52.31, offline ? null : 1234, 50, null, false, id is 2 or 4,
-            id == 2 ? prog2 : id == 4 ? prog4 : id == 6 ? prog6 : null);
+            id == 2 ? prog2 : id == 4 ? prog4 : id == 6 ? prog6 : null,
+            GasRate: id == 2 ? 0.125 : null, SolutionVolume: id == 2 ? 3.5 : 3);
         var full = Enumerable.Range(1, 8).Select(i => Ch(i, i == 2) with { Profile = profile }).ToArray();
         var frame = new TelemetrySnapshot("telemetry", seq, ts, false, 18233,
             new ModeSnap("local", null),
@@ -37,10 +38,28 @@ public class TelemetrySnapshotJsonTests
             new SessionSnap(true, "TP-017", "TP-017", "TP-017-20261106-070000.csv"));
         var settings = new SettingsSnap(200, 500, 1000, 50, 510, 250, true, 20, 8, 50, 10, 30, 2, 7, null,
             5, 0.2, 1.0, 1.0, 0.2, 90, 1.0, 50, 1000, 10000, 4.137,
-            new[] { new TempBandSnap(0, 0, 100), new TempBandSnap(1, 100, 200), new TempBandSnap(2, 200, 400) }, 42);
+            new[] { new TempBandSnap(0, 0, 100), new TempBandSnap(1, 100, 200), new TempBandSnap(2, 200, 400) }, 42,
+            new VolumeSettingsSnap(10, 0.4, 1.234, new double?[] { 10.62, null, null, null, null, null, null, null },
+                new DateTime?[] { ts.AddDays(-1), null, null, null, null, null, null, null }),
+            2.236842);
         var tick = new TickStats(1200, 100, 0, 1, 12.3, 350.1, 1350.2);
         var mod = new ModuleCommSnap(true, true, 100, 2, ts, ts);
-        return new SnapshotBundle(frame, full, settings, tick, mod, mod, mod, mod, 0);
+        var runs = new ProgramRunSnap?[8];
+        runs[1] = SampleRun(ts);
+        return new SnapshotBundle(frame, full, settings, tick, mod, mod, mod, mod, 0, runs);
+    }
+
+    /// <summary>RV2 正在执行的程序（GET /channels/2/program/run）：两步，第 2 步升温中。</summary>
+    public static ProgramRunSnap SampleRun(DateTime ts)
+    {
+        using var p1 = JsonDocument.Parse("{\"gas\":\"inert\",\"cycles\":10,\"fill\":3,\"vent\":5}");
+        using var p2 = JsonDocument.Parse("{\"mode\":\"fixed\",\"temp\":150,\"wait\":15}");
+        var steps = new[]
+        {
+            new ProgramStepDto("purge", p1.RootElement.Clone(), "吹扫", "惰性气体 × 10 次"),
+            new ProgramStepDto("heat", p2.RootElement.Clone(), "升温", "定值 150°C · 平衡 15 min"),
+        };
+        return new ProgramRunSnap(2, true, "running", 1, 2, "执行第 2 步 · 升温", "148.6 / 150.0 °C", "远程（PC-测试工位1）", ts.AddMinutes(-20), false, steps);
     }
 
     [Fact]
@@ -56,7 +75,7 @@ public class TelemetrySnapshotJsonTests
         {
             "id", "installed", "state", "alarmCause", "overTempTripped", "overPressureTripped", "startedBy", "tempC", "tempSpC", "tempSpDeviceC",
             "heatOutputPct", "tempOnline", "autotuning", "atMode", "spMode", "approach", "profile", "pressurePsi", "pressureRaw", "pressureSpPsi",
-            "gasConsumed", "valveOpen", "programOwned", "program",
+            "gasConsumed", "valveOpen", "programOwned", "program", "gasRate", "solutionVolume",
         }, ch);
         Assert.Equal(new[] { "running", "stepIndex", "stepCount", "state", "message", "startedBy", "startedAt", "waitingGas" },
             root.GetProperty("channels")[1].GetProperty("program").EnumerateObject().Select(p => p.Name));
@@ -139,12 +158,65 @@ public class TelemetrySnapshotJsonTests
         var json = ApiJson.Serialize(SettingsDto.From(Sample().Settings));
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
-        Assert.Equal(new[] { "limits", "alarms", "leakTest", "approach", "stir", "pressure", "tempBands", "notes", "revision" }, root.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(new[] { "limits", "alarms", "leakTest", "approach", "stir", "pressure", "tempBands", "notes", "revision", "volume" }, root.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(new[] { "peakCurrentA", "standbyPct", "rampMsPer1000Rpm", "microstep", "stirGearRatio" }, root.GetProperty("stir").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(2.236842, root.GetProperty("stir").GetProperty("stirGearRatio").GetDouble(), 6);
+        // v0.6 容积（只读）：8 项数组，未标定为 null；标定时间 UTC
+        var vol = root.GetProperty("volume");
+        Assert.Equal(new[] { "vesselVolume", "gasLineVolume", "manifoldVolume", "effectiveVolume", "volumeCalibratedAt" }, vol.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(10, vol.GetProperty("vesselVolume").GetDouble());
+        Assert.Equal(0.4, vol.GetProperty("gasLineVolume").GetDouble());
+        Assert.Equal(1.234, vol.GetProperty("manifoldVolume").GetDouble());
+        Assert.Equal(8, vol.GetProperty("effectiveVolume").GetArrayLength());
+        Assert.Equal(10.62, vol.GetProperty("effectiveVolume")[0].GetDouble());
+        Assert.Equal(JsonValueKind.Null, vol.GetProperty("effectiveVolume")[1].ValueKind);
+        Assert.Equal(8, vol.GetProperty("volumeCalibratedAt").GetArrayLength());
+        Assert.EndsWith("Z", vol.GetProperty("volumeCalibratedAt")[0].GetString());
+        Assert.Equal(JsonValueKind.Null, vol.GetProperty("volumeCalibratedAt")[7].ValueKind);
         Assert.Equal(200, root.GetProperty("limits").GetProperty("tempSpMaxC").GetDouble());
         Assert.Equal(510, root.GetProperty("alarms").GetProperty("overPressurePsi").GetDouble());
         Assert.Equal(42, root.GetProperty("revision").GetInt64());
         Assert.Equal(4, root.GetProperty("notes").GetProperty("unused").GetArrayLength());
         Assert.Equal(3, root.GetProperty("tempBands").GetArrayLength());
+    }
+
+    [Fact]
+    public void Channel_GasRateAndSolutionVolume()
+    {
+        using var doc = JsonDocument.Parse(ApiJson.Serialize(Sample().Frame));
+        var chs = doc.RootElement.GetProperty("channels");
+        Assert.Equal(0.125, chs[1].GetProperty("gasRate").GetDouble());
+        Assert.Equal(3.5, chs[1].GetProperty("solutionVolume").GetDouble());      // 0.1 mL 分辨率：小数原样输出
+        Assert.Equal(JsonValueKind.Null, chs[0].GetProperty("gasRate").ValueKind); // 未在计量 → null
+        Assert.Equal(3, chs[0].GetProperty("solutionVolume").GetDouble());
+        // 旧 HMI 的帧没有这两个字段：反序列化为 null（带默认值的尾部参数）
+        var old = ApiJson.Deserialize<ChannelSnap>("{\"id\":1,\"installed\":true,\"state\":\"idle\",\"tempSpC\":0,\"spMode\":\"fixed\",\"approach\":{\"phase\":\"off\",\"statusText\":\"\"},\"pressureSpPsi\":0}");
+        Assert.NotNull(old);
+        Assert.Null(old!.GasRate);
+        Assert.Null(old.SolutionVolume);
+    }
+
+    [Fact]
+    public void ProgramRunDto_Shape()
+    {
+        var b = Sample();
+        Assert.Null(b.ProgramRun(1));
+        Assert.Null(b.ProgramRun(9));
+        var run = b.ProgramRun(2)!;
+        using var doc = JsonDocument.Parse(ApiJson.Serialize(new ProgramRunDto(b.Frame.Seq, b.Frame.Ts, run)));
+        var root = doc.RootElement;
+        Assert.Equal(new[] { "seq", "ts", "run" }, root.EnumerateObject().Select(p => p.Name));
+        var r = root.GetProperty("run");
+        Assert.Equal(new[] { "channel", "running", "state", "stepIndex", "stepCount", "phase", "message", "startedBy", "startedAt", "waitingGas", "steps" },
+            r.EnumerateObject().Select(p => p.Name));
+        Assert.Equal("running", r.GetProperty("state").GetString());
+        Assert.Equal(1, r.GetProperty("stepIndex").GetInt32());
+        Assert.Equal("远程（PC-测试工位1）", r.GetProperty("startedBy").GetString());
+        var st = r.GetProperty("steps");
+        Assert.Equal(2, st.GetArrayLength());
+        Assert.Equal(new[] { "type", "params", "name", "detail" }, st[0].EnumerateObject().Select(p => p.Name));
+        Assert.Equal("inert", st[0].GetProperty("params").GetProperty("gas").GetString());
+        Assert.Equal(150, st[1].GetProperty("params").GetProperty("temp").GetDouble());
     }
 
     [Fact]

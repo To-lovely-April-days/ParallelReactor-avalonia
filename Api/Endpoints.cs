@@ -73,6 +73,19 @@ public static partial class Endpoints
             return c == null ? ApiErrors.Result(OpCodes.ChannelNotFound, $"通道 {id} 不存在") : ApiErrors.Ok(new ChannelDetailDto(b.Frame.Seq, b.Frame.Ts, c));
         });
 
+        // —— §7.9 运行中的程序（v0.6，A1）：下发时冻结的步骤（§6.9 格式）+ 当前步序 / 阶段 / 发起者；取自快照，不进 UI 线程 ——
+        g.MapGet("/channels/{id}/program/run", (string id) =>
+        {
+            if (!int.TryParse(id, NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) || n < 1 || n > ChannelRange.ChannelCount)
+                return ApiErrors.Result(OpCodes.ChannelNotFound, $"通道 {id} 不存在（有效范围 1–{ChannelRange.ChannelCount}）");
+            var b = Snap();
+            if (b == null) return Starting();
+            var run = b.ProgramRun(n);
+            return run == null
+                ? ApiErrors.Result(OpCodes.NotFound, $"RV{n} 本次开机以来没有执行过程序")
+                : ApiErrors.Ok(new ProgramRunDto(b.Frame.Seq, b.Frame.Ts, run));
+        });
+
         // —— §7.10 事件 / 报警 ——
         g.MapGet("/events", (long? afterSeq, int? limit) =>
         {

@@ -67,6 +67,13 @@ public partial class ProgramViewModel
     public ProgramRunInfo? RunInfoOf(int rv)
         => _runs.TryGetValue(rv, out var r) ? r.Info : _lastRuns.TryGetValue(rv, out var l) ? l.Info : null;
 
+    /// <summary>
+    /// 该通道的运行信息 + 下发时冻结的步骤（正在执行的，否则最近一次已结束的；都没有为 null）。
+    /// 只读：快照构建器（UI 线程，Tick 末尾）据此发布 GET /channels/{id}/program/run 的不可变记录，接口线程不碰运行对象。
+    /// </summary>
+    public (ProgramRunInfo Info, IReadOnlyList<StepSnapshot> Steps)? RunRecordOf(int rv)
+        => _runs.TryGetValue(rv, out var r) ? (r.Info, r.Steps) : _lastRuns.TryGetValue(rv, out var l) ? (l.Info, l.Steps) : null;
+
     /// <summary>「正在运行：RV1 RV3」（无程序时空串）。</summary>
     public string RunningSummary => ProgramRunSet.Summary(RunInfos);
 

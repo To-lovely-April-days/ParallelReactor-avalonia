@@ -26,8 +26,8 @@ public partial class MainViewModel
     public double? EffectiveVolumeOf(int id) => Settings.EffectiveVolume is { } a && id >= 1 && id <= a.Length ? a[id - 1] : null;
 
     private string VolumeBasis(Reactor c) => EffectiveVolumeOf(c.Id) is double eff
-        ? $"有效容积 {eff:0.#}（已标定）− 溶液 {c.Vol}"
-        : $"釜 {Settings.VesselVolume:0.#} − 溶液 {c.Vol} + 管路 {Settings.GasLineVolume:0.#}（未标定）";
+        ? $"有效容积 {eff:0.##}（已标定）− 溶液 {c.Vol:0.##}"
+        : $"釜 {Settings.VesselVolume:0.#} − 溶液 {c.Vol:0.##} + 管路 {Settings.GasLineVolume:0.#}（未标定）";
 
     /// <summary>Tick：更新一个通道的吸气量（只在计量中时累加；停止后保留最后读数）。</summary>
     private void UpdateUptake(Reactor c, bool realT, bool realP)

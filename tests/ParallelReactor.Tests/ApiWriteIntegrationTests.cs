@@ -194,6 +194,49 @@ public class ApiWriteIntegrationTests
     }
 
     [Fact]
+    public async Task SetVolume_ControlClass_DecimalMl_And_Validation()
+    {
+        var (host, src) = await StartAsync();
+        try
+        {
+            using var op = Client(host, Operator);
+            using var viewer = Client(host, Viewer);
+            // 控制类：本地模式 409 MODE_LOCAL；viewer 403（都不进命令层）
+            var (_, b0, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/2/volume", "{\"ml\":3.5}"));
+            Assert.Equal("MODE_LOCAL", Code(b0));
+            var (st1, _, _) = await SendAsync(viewer, Req(HttpMethod.Put, "/channels/2/volume", "{\"ml\":3.5}"));
+            Assert.Equal(HttpStatusCode.Forbidden, st1);
+            Assert.Empty(src.Fake.Calls);
+
+            var (lease, _) = await AcquireAsync(op);
+            // 缺 ml / 非数值 → 400；通道越界 → 404（都不进命令层）
+            var (st2, b2, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/2/volume", "{}", lease: lease));
+            Assert.Equal(HttpStatusCode.BadRequest, st2);
+            Assert.Equal("BAD_REQUEST", Code(b2));
+            var (_, b3, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/2/volume", "{\"ml\":\"3.5\"}", lease: lease));
+            Assert.Equal("BAD_REQUEST", Code(b3));
+            var (st4, b4, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/9/volume", "{\"ml\":3.5}", lease: lease));
+            Assert.Equal(HttpStatusCode.NotFound, st4);
+            Assert.Equal("CHANNEL_NOT_FOUND", Code(b4));
+            Assert.Empty(src.Fake.Calls);
+
+            // 小数 mL 原样交给命令层（0.1 mL 分辨率）；命令层越界 → 422 透传
+            src.Fake.Next = () => CommandOutcome.Done(OpResult.Silent with { Data = new { channel = 2, ml = 3.5, gasVolumeMl = 6.9 } });
+            var (st5, b5, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/2/volume", "{\"ml\":3.5}", lease: lease));
+            Assert.Equal(HttpStatusCode.OK, st5);
+            Assert.Equal(3.5, b5.GetProperty("result").GetProperty("ml").GetDouble());
+            var call = src.Fake.Calls.Single();
+            Assert.Equal(("SetVolume", "2,3.5"), (call.Method, call.Args));
+            Assert.Equal("op.channel.volume", src.OpEvents.Last().Kind);
+            src.Fake.Next = () => CommandOutcome.Done(OpResult.Fail(OpCodes.ParamOutOfRange, "溶液体积须在 1–8 mL 之间"));
+            var (st6, b6, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/2/volume", "{\"ml\":9.5}", lease: lease));
+            Assert.Equal((HttpStatusCode)422, st6);
+            Assert.Equal("PARAM_OUT_OF_RANGE", Code(b6));
+        }
+        finally { await host.StopAsync(); src.Dispose(); }
+    }
+
+    [Fact]
     public async Task Roles_StopClass_Estop_Release()
     {
         var (host, src) = await StartAsync();

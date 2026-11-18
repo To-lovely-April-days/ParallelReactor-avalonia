@@ -163,6 +163,48 @@ public class ApiHostIntegrationTests
     }
 
     [Fact]
+    public async Task ProgramRun_Get_FromSnapshot_404WhenNeverRun()
+    {
+        var (host, src) = await StartAsync(Cfg());
+        try
+        {
+            using var c = Client(host);
+            await Task.Delay(250);   // 等第一帧
+            var r = await c.GetAsync("/api/v1/channels/2/program/run");
+            Assert.Equal(HttpStatusCode.OK, r.StatusCode);
+            using var doc = JsonDocument.Parse(await r.Content.ReadAsStringAsync());
+            var run = doc.RootElement.GetProperty("run");
+            Assert.True(doc.RootElement.GetProperty("seq").GetInt64() > 0);
+            Assert.Equal(2, run.GetProperty("channel").GetInt32());
+            Assert.Equal("running", run.GetProperty("state").GetString());
+            Assert.Equal(1, run.GetProperty("stepIndex").GetInt32());
+            Assert.Equal("远程（PC-测试工位1）", run.GetProperty("startedBy").GetString());
+            Assert.Equal("purge", run.GetProperty("steps")[0].GetProperty("type").GetString());
+            Assert.Equal("inert", run.GetProperty("steps")[0].GetProperty("params").GetProperty("gas").GetString());
+
+            // 没跑过程序 → 404 NOT_FOUND；通道越界 → 404 CHANNEL_NOT_FOUND
+            var n = await c.GetAsync("/api/v1/channels/1/program/run");
+            Assert.Equal(HttpStatusCode.NotFound, n.StatusCode);
+            using var ndoc = JsonDocument.Parse(await n.Content.ReadAsStringAsync());
+            Assert.Equal("NOT_FOUND", ndoc.RootElement.GetProperty("error").GetProperty("code").GetString());
+            var x = await c.GetAsync("/api/v1/channels/9/program/run");
+            Assert.Equal(HttpStatusCode.NotFound, x.StatusCode);
+            using var xdoc = JsonDocument.Parse(await x.Content.ReadAsStringAsync());
+            Assert.Equal("CHANNEL_NOT_FOUND", xdoc.RootElement.GetProperty("error").GetProperty("code").GetString());
+
+            // 新字段经 REST 可见：/channels/{id} 的 gasRate / solutionVolume，/settings 的 volume / stir.stirGearRatio
+            using var ch = JsonDocument.Parse(await c.GetStringAsync("/api/v1/channels/2"));
+            Assert.Equal(3.5, ch.RootElement.GetProperty("channel").GetProperty("solutionVolume").GetDouble());
+            Assert.Equal(0.125, ch.RootElement.GetProperty("channel").GetProperty("gasRate").GetDouble());
+            using var st = JsonDocument.Parse(await c.GetStringAsync("/api/v1/settings"));
+            Assert.Equal(10, st.RootElement.GetProperty("volume").GetProperty("vesselVolume").GetDouble());
+            Assert.Equal(8, st.RootElement.GetProperty("volume").GetProperty("effectiveVolume").GetArrayLength());
+            Assert.True(st.RootElement.GetProperty("stir").GetProperty("stirGearRatio").GetDouble() > 2);
+        }
+        finally { await host.StopAsync(); src.Dispose(); }
+    }
+
+    [Fact]
     public async Task Cidr_NotAllowed_Returns403_EvenForHealth()
     {
         var (host, src) = await StartAsync(Cfg("10.255.0.0/24"));

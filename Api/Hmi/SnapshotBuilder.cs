@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using ParallelReactor.Commands;
 using ParallelReactor.Models;
 using ParallelReactor.Services;
@@ -32,6 +34,19 @@ public static class SnapshotBuilder
             ri.StartedBy, ri.StartedAt.UtcDateTime, ri.WaitingGas);
 
 
+    /// <summary>冻结步骤 → §6.9 JSON 的缓存：键是运行对象的步骤列表（每次运行一份、不可变），每次运行只转换一次。</summary>
+    private static readonly ConditionalWeakTable<IReadOnlyList<StepSnapshot>, ProgramStepDto[]> StepsJson = new();
+
+    /// <summary>GET /channels/{id}/program/run 的记录：动态字段每 Tick 取自 ProgramRunInfo，步骤取缓存。</summary>
+    private static ProgramRunSnap? RunRecord(int id, (ProgramRunInfo Info, IReadOnlyList<StepSnapshot> Steps)? rec)
+    {
+        if (rec is not { } r) return null;
+        var ri = r.Info;
+        var steps = StepsJson.GetValue(r.Steps, s => ProgramStepFormat.Format(s));
+        return new ProgramRunSnap(id, ri.IsActive, ProgramRunSet.PhaseName(ri.Phase), ri.Index, ri.StepCount, ri.PhaseText, ri.Message,
+            ri.StartedBy, ri.StartedAt.UtcDateTime, ri.WaitingGas, steps);
+    }
+
     private static ModuleCommSnap Module(bool configured, bool online, CommStats s, DateTimeOffset? valuesAt = null)
         => new(configured, online, s.Polls, s.Fails, s.LastOkAt?.UtcDateTime, valuesAt?.UtcDateTime);
 
@@ -46,6 +61,7 @@ public static class SnapshotBuilder
 
         var full = new ChannelSnap[8];
         var frameCh = new ChannelSnap[8];
+        var runs = new ProgramRunSnap?[8];
         for (int i = 0; i < 8 && i < vm.Reactors.Count; i++)
         {
             var c = vm.Reactors[i];
@@ -80,8 +96,11 @@ public static class SnapshotBuilder
                 GasConsumed: c.GasValid ? Fin(c.Gas) : null,
                 ValveOpen: c.Valve,
                 ProgramOwned: ProgramRunSet.IsOwned(runInfos, c.Id),
-                Program: ChannelProgram(vm.Program.RunInfoOf(c.Id)));
+                Program: ChannelProgram(vm.Program.RunInfoOf(c.Id)),
+                GasRate: c.GasRate is double rate ? Fin(rate) : null,
+                SolutionVolume: c.Vol);
             full[i] = ch;
+            runs[i] = RunRecord(c.Id, vm.Program.RunRecordOf(c.Id));
             frameCh[i] = c.SpMode == "curve" ? ch : ch with { Profile = null };
         }
 
@@ -123,7 +142,10 @@ public static class SnapshotBuilder
             st.LeakTestPsi, st.LeakSettleMin, st.LeakMeasureMin, st.LeakRate, st.LeakReminderDays,
             st.LastLeakTestUtc is { } lt ? DateTime.SpecifyKind(lt, DateTimeKind.Utc) : null,
             st.ApproachDelta, st.ApproachRate, st.ApproachFastRate, st.ApproachFinalZone, st.ApproachSettleBand, st.ApproachSettleSec,
-            st.StirCurrent, st.StirStandbyPct, st.StirRampMs, st.StirMicrostep, st.PressFullScaleMPa, bands, vm.SettingsRevision);
+            st.StirCurrent, st.StirStandbyPct, st.StirRampMs, st.StirMicrostep, st.PressFullScaleMPa, bands, vm.SettingsRevision,
+            new VolumeSettingsSnap(st.VesselVolume, st.GasLineVolume, st.ManifoldVolume, Eight(st.EffectiveVolume),
+                Eight(st.VolumeCalibUtc).Select(t => t is { } u ? (DateTime?)DateTime.SpecifyKind(u, DateTimeKind.Utc) : null).ToArray()),
+            st.StirGearRatio);
 
         var tick = new TickStats(gate.Interval.TotalMilliseconds, gate.Entered, gate.Skipped, gate.Overruns,
             Math.Round(gate.LastTook.TotalMilliseconds, 1), Math.Round(gate.MaxTook.TotalMilliseconds, 1), Math.Round(gate.LastOverrun.TotalMilliseconds, 1));
@@ -133,6 +155,15 @@ public static class SnapshotBuilder
             Module(HardwareOptions.UseRealAnalog, vm._press.Online, vm._press.Stats, pValid ? ps.At : null),
             Module(HardwareOptions.UseRealStir, vm._stir.Online, vm._stir.Stats),
             Module(HardwareOptions.UseRealIo, vm._valves.Online, vm._valves.Stats),
-            vm.Logger.DroppedLines);
+            vm.Logger.DroppedLines,
+            runs);
+    }
+
+    /// <summary>设置里的按通道数组 → 恰好 8 项的副本（设置文件里缺项 / 多项都按 8 通道对齐；快照不共享可变数组）。</summary>
+    private static T?[] Eight<T>(T?[]? a)
+    {
+        var r = new T?[8];
+        if (a != null) Array.Copy(a, r, Math.Min(8, a.Length));
+        return r;
     }
 }

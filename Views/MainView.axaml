@@ -736,7 +736,7 @@
                   <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="温度" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.TSp, StringFormat='{}{0} °C'}" /></StackPanel></Border>
                   <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="压力" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.PSp, StringFormat='{}{0} psi'}" /></StackPanel></Border>
                   <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="搅拌" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.RpmSp, StringFormat='{}{0} rpm'}" /></StackPanel></Border>
-                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="体积" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Vol, StringFormat='{}{0} mL'}" /></StackPanel></Border>
+                  <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="体积" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Vol, StringFormat='{}{0:0.##} mL'}" /></StackPanel></Border>
                   <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="桨叶" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.Blade}" /></StackPanel></Border>
                   <Border Classes="rvcard"><StackPanel><TextBlock Classes="rvk" Text="结束" /><TextBlock Classes="rvv" Text="{Binding RecipePicker.SelectedRecipe.End}" /></StackPanel></Border>
                 </UniformGrid>

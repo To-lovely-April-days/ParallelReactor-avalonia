@@ -45,16 +45,22 @@ public sealed partial class OperatorCommands
         return (OpResult.Silent with { Data = new { tempC, approachReplanned = c.Approach.Active } }).AsTask();
     }
 
-    /// <summary>溶液体积（mL）。校验 1..VolMax。没有提示（与今天一致）。</summary>
-    public Task<OpResult> TrySetChannelVolume(CommandSource src, int id, int ml)
+    /// <summary>
+    /// 溶液体积（mL，v0.6 起为小数：10 mL 釜需要 0.1 mL 分辨率，它参与吸气量的气相体积计算）。校验 1..VolMax，存入前按 <see cref="ValueRules.VolumeDecimals"/> 位小数取整。
+    /// 计量中改体积：计量器断开基准重新取（不把体积变化算成消耗，见 GasUptakeMeter）。没有提示（与今天一致）。
+    /// 严格守卫（远程）：程序执行中的通道拒绝（CHANNEL_PROGRAM_OWNED，与 TrySetChannelTemp 一致）。
+    /// </summary>
+    public Task<OpResult> TrySetChannelVolume(CommandSource src, int id, double ml)
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (ChannelOr(id, out var c) is { } nf) return nf.AsTask();
         if (Invalid(ValueRules.Volume(ml, _m.Settings.VolMax)) is { } bad) return bad.AsTask();
+        if (CommandPolicy.Strict(src) && ProgramOwned(c) is { } owned) return owned.AsTask();
+        ml = ValueRules.RoundVolume(ml);
         c.Vol = ml;
         _m.RefreshSchematic();
         _m.Drawer.RaiseAll();
-        return (OpResult.Silent with { Data = new { ml } }).AsTask();
+        return (OpResult.Silent with { Data = new { channel = id, ml, gasVolumeMl = Math.Round(_m.GasVolumeMl(c), 2) } }).AsTask();
     }
 
     // ==================== 升温方式 / 曲线 ====================

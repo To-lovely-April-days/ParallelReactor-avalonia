@@ -64,6 +64,8 @@ public interface IRemoteCommands
     Task<CommandOutcome> StopChannelAsync(RemoteCaller c, int id, bool disable, CancellationToken ct);
     Task<CommandOutcome> CopyChannelConfigAsync(RemoteCaller c, int from, IReadOnlyList<int>? to, CancellationToken ct);
     Task<CommandOutcome> ResetGasCounterAsync(RemoteCaller c, int id, CancellationToken ct);
+    /// <summary>PUT /channels/{id}/volume（v0.6）：溶液体积 mL（0.1 mL 分辨率，参与吸气量的气相体积计算）。</summary>
+    Task<CommandOutcome> SetVolumeAsync(RemoteCaller c, int id, double ml, CancellationToken ct);
     // —— §7.5 温度 ——
     Task<CommandOutcome> StartHeatAsync(RemoteCaller c, int id, double? tempC, CancellationToken ct);
     Task<CommandOutcome> StopHeatAsync(RemoteCaller c, int id, CancellationToken ct);

@@ -43,8 +43,14 @@ public static class ValueRules
         => double.IsFinite(v) && v < overTemp ? null
            : new RuleViolation(OpCodes.ParamOutOfRange, $"温度 SP 须低于超温报警值 {N(overTemp)} °C", double.NegativeInfinity, overTemp, v);
 
-    /// <summary>溶液体积：1..VolMax mL。</summary>
+    /// <summary>溶液体积：1..VolMax mL（小数，v0.6 起 0.1 mL 分辨率）。</summary>
     public static RuleViolation? Volume(double ml, double volMax) => Range("溶液体积", ml, VolumeMin, volMax, "mL");
+
+    /// <summary>溶液体积保存的小数位（0.01 mL：键盘 / 远程给 0.1 mL 分辨率，多出的浮点尾数去掉）。</summary>
+    public const int VolumeDecimals = 2;
+
+    /// <summary>溶液体积取整到 <see cref="VolumeDecimals"/> 位小数（步进 0.1 的累加误差、远程多余小数位）。</summary>
+    public static double RoundVolume(double ml) => System.Math.Round(ml, VolumeDecimals, System.MidpointRounding.AwayFromZero);
 
     /// <summary>全局搅拌转速：0..RpmMax rpm。</summary>
     public static RuleViolation? Rpm(double rpm, double rpmMax) => Range("搅拌转速", rpm, 0, rpmMax, "rpm");

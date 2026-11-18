@@ -35,6 +35,7 @@ public sealed class FakeRemoteCommands : IRemoteCommands
     public Task<CommandOutcome> StopChannelAsync(RemoteCaller c, int id, bool disable, CancellationToken ct) => Rec("StopChannel", $"{id},{disable}", c);
     public Task<CommandOutcome> CopyChannelConfigAsync(RemoteCaller c, int from, IReadOnlyList<int>? to, CancellationToken ct) => Rec("CopyChannelConfig", $"{from}->{(to == null ? "all" : string.Join("/", to))}", c);
     public Task<CommandOutcome> ResetGasCounterAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("ResetGasCounter", id.ToString(), c);
+    public Task<CommandOutcome> SetVolumeAsync(RemoteCaller c, int id, double ml, CancellationToken ct) => Rec("SetVolume", $"{id},{ml.ToString(System.Globalization.CultureInfo.InvariantCulture)}", c);
     public Task<CommandOutcome> StartHeatAsync(RemoteCaller c, int id, double? tempC, CancellationToken ct) => Rec("StartHeat", $"{id},{tempC}", c);
     public Task<CommandOutcome> StopHeatAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("StopHeat", id.ToString(), c);
     public Task<CommandOutcome> SetSetpointAsync(RemoteCaller c, int id, double tempC, CancellationToken ct) => Rec("SetSetpoint", $"{id},{tempC}", c);

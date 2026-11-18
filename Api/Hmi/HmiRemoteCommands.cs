@@ -48,6 +48,7 @@ public sealed class HmiRemoteCommands : IRemoteCommands
     public Task<CommandOutcome> StopChannelAsync(RemoteCaller c, int id, bool disable, CancellationToken ct) => Stop((o, s) => o.TryStopChannel(s, id, disable), c, ct);
     public Task<CommandOutcome> CopyChannelConfigAsync(RemoteCaller c, int from, IReadOnlyList<int>? to, CancellationToken ct) => Control((o, s) => o.TryCopyChannelConfig(s, from, to), c, ct);
     public Task<CommandOutcome> ResetGasCounterAsync(RemoteCaller c, int id, CancellationToken ct) => Control((o, s) => o.TryResetGasCounter(s, id), c, ct);
+    public Task<CommandOutcome> SetVolumeAsync(RemoteCaller c, int id, double ml, CancellationToken ct) => Control((o, s) => o.TrySetChannelVolume(s, id, ml), c, ct);
 
     // —— 温度 ——
     public Task<CommandOutcome> StartHeatAsync(RemoteCaller c, int id, double? tempC, CancellationToken ct) => Control((o, s) => o.TryStartHeat(s, id, tempC), c, ct);
