@@ -18,6 +18,7 @@ public partial class StopInfoView : UserControl
         {
             PickDialogVm p => (p.Lead, p.StopRows, p.StopNote),
             StopChannelDialogVm c => (c.Lead, c.Rows, c.StopNote),
+            StopConfirmDialogVm c => (c.Lead, c.Rows, c.StopNote),
             _ => (System.Array.Empty<TextSeg>(), System.Array.Empty<StopRow>(), System.Array.Empty<TextSeg>()),
         };
         LeadText.Segments = lead;

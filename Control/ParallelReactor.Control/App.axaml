@@ -5,12 +5,11 @@
   <!-- 新外壳（pc-v3，PORT-PLAN M2）：Styles/Theme/*.axaml 的 Pr 主题是各控件的默认主题（Theme/Defaults.axaml），Fluent 只剩弹出层设施；
        Fluent 资源覆盖（强调色 / 内容字体 / 字号，Theme/FluentOverrides.cs）在 App.Initialize 里全局合并。
        融合版 F8 删掉了最后两个旧样式页面（程序编辑、性能测试）和它们的宿主 LegacyHost、样式 Perf.axaml / Plan.axaml；
-       剩下的旧样式（Styles/Panels.axaml 等）只对类名生效（检查器零件、陈列页还在用）。 -->
+       F9 随 pc-v3 检查器一起删掉了最后的旧样式（Panels / Property / LegacyTokens）。 -->
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <!-- 旧令牌（旧视图用，键名不变，M7 删除）+ 新令牌（pc-v3，PORT-PLAN §4）：两边键名不重叠 -->
-        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/LegacyTokens.axaml" />
+        <!-- 设计令牌（融合版，tools/fusion-tokens.json → gen-tokens.py） -->
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Tokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Icons.axaml" />
         <!-- 融合版的 Fluent 图标（F2：样稿内嵌的 symbol，键 Icon.f-名字） -->
@@ -34,9 +33,7 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
-    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Panels.axaml" />
-    <StyleInclude Source="avares://ParallelReactor.Control/Styles/Property.axaml" />
-    <!-- 新样式（pc-v3）：只匹配新类名（num、frozen …），旧视图不受影响 -->
+    <!-- 新样式（pc-v3 起）：只匹配类名（num、frozen …） -->
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Typography.axaml" />
     <!-- .frozen（演示冻结、截图）：去掉过渡（M2 起全局） -->
     <StyleInclude Source="avares://ParallelReactor.Control/Styles/Frozen.axaml" />

@@ -21,7 +21,7 @@ namespace ParallelReactor.Control.Shell;
 /// <item>路由 = <see cref="Nav"/>（页面 + 设备 + 通道，取代 pc-v3 的页签）。<see cref="Go"/> 换页面，<see cref="SelectDevice"/> / <see cref="SelectChannel"/> 选设备 / 通道。</item>
 /// <item>页面：每种一个实例（<see cref="Pages"/>，按需创建），<see cref="Page"/> 是当前的。页面的工具条按钮见 <see cref="PageVm.Tools"/>。</item>
 /// <item>布局 = <see cref="Layout"/>（只看窗口尺寸）：设备面板 / 检查器停靠、收起或浮出。</item>
-/// <item>检查器（<see cref="Inspector"/>，pc-v3 的检查器，F3 重做样式）显示 <see cref="Selection"/>：跟着路由选的设备 / 通道。</item>
+/// <item>检查器（<see cref="Ctl"/>，融合版 F3：主页选了设备时显示选中的一路）跟着路由选的设备 / 通道。</item>
 /// </list>
 /// 数据只从 <see cref="Fleet"/> 读；数据、路由或布局变了时各部分就地刷新（<see cref="RefreshChrome"/>）。
 /// 演示：<see cref="ApplyDemoParams"/> 套用样稿的地址参数（page、dev、ch、po / pc、alm，以及 pc-v3 的数据参数）；截图前 <see cref="ResetView"/>。
@@ -68,7 +68,6 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Ribbon = new RibbonVm(this);
         Devices = new DevicePaneVm(this);
         Status = new StatusBarVm(this);
-        Inspector = new InspectorVm(this);
         AlarmPop = new AlarmPopVm(this);
         Ctl = new ChannelCtlVm(this);
         Dialogs.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(DialogHostVm.IsOpen)) AlarmPop.Refresh(); };
@@ -114,7 +113,6 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     public RibbonVm Ribbon { get; }
     public DevicePaneVm Devices { get; }
     public StatusBarVm Status { get; }
-    public InspectorVm Inspector { get; }
     /// <summary>报警弹窗（融合版 F3，样稿 alarmPop）。</summary>
     public AlarmPopVm AlarmPop { get; }
     /// <summary>主页检查器（融合版 F3：选中的一路，样稿 ctlHTML）。</summary>
@@ -166,7 +164,6 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     {
         OnPropertyChanged(nameof(SelectedDevice));
         OnPropertyChanged(nameof(SelectedRv));
-        Inspector.Refresh();
     }
 
     // ---------------- 路由 ----------------
@@ -312,6 +309,13 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Dialogs.Open(name, arg);
     }
 
+    /// <summary>直接打开一个对话框实例（不按名字注册的，例如 <see cref="ParallelReactor.Control.Shell.Dialogs.StopConfirmDialogVm"/>）。</summary>
+    public void ShowDialog(DialogVm vm)
+    {
+        Alarms.IsOpen = false;
+        Dialogs.Show(vm);
+    }
+
     /// <summary>断开一台设备：本机持有或正在申请它的控制权时先打开断开确认，否则直接断开。</summary>
     public void RequestDisconnect(IFleetDevice d)
     {
@@ -442,7 +446,6 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         if (Page != null) Ribbon.SetTools(Page.Tools);
         Devices.Refresh();
         Status.Refresh();
-        Inspector.Refresh();
         Ctl.Refresh();
         AlarmPop.Refresh();
     }

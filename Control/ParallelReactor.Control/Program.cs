@@ -15,9 +15,8 @@ internal static class Program
         // 进程级兜底：任何漏网异常至少留痕到 stderr，不静默崩溃（命令级 try/catch 仍是第一道）
         AppDomain.CurrentDomain.UnhandledException += (_, e) => Console.Error.WriteLine("[Control] 未处理异常: " + e.ExceptionObject);
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) => { Console.Error.WriteLine("[Control] 未观察的任务异常: " + e.Exception); e.SetObserved(); };
-        bool headless = false;
 #if DEBUG
-        headless = (Environment.GetEnvironmentVariable("PR_CONTROL_HEADLESS") ?? "") is "1" or "true";
+        bool headless = (Environment.GetEnvironmentVariable("PR_CONTROL_HEADLESS") ?? "") is "1" or "true";
         // 截图计划（tools/shots.sh 用：每个尺寸开拍前删掉这些名字上一次留下的截图；tools/snap-refs.sh 用：现拍样稿参照图）：
         // 一行一张「名字 路由 尺寸,尺寸 [参数]」，不启动界面
         if ((Environment.GetEnvironmentVariable("PR_CONTROL_SHOT_PLAN") ?? "") is "1" or "true")

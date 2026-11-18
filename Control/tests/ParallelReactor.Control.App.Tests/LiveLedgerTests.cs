@@ -583,7 +583,7 @@ public class LiveLedgerTests
 
     /// <summary>
     /// 复核（中）：真机的等待气路是程序排队等共用气路（别的反应釜正占用），不是样稿的「进气口关闭 · 需在触屏打开」（PORT-PLAN §3.5 / R6）——
-    /// 反应釜页的状态条、检查器、时间轴的悬停都写「等待气路（RV3 占用中）」，没有「✋ 触屏操作」。
+    /// 状态都写「等待气路（RV3 占用中）」，没有「✋ 触屏操作」。
     /// </summary>
     [Fact]
     public async Task LiveWaitingGas_IsTheSharedGasLineQueue()
@@ -597,43 +597,6 @@ public class LiveLedgerTests
         f.RefreshNow();
         var r = d.Reactor(1)!;
         Assert.True(r.Program!.Progress!.WaitGas);
-        // 检查器
-        var shell = new Shell.ShellVm(f);
-        shell.Select(d.K, 1);
-        var insp = Assert.IsType<Shell.ReactorInspectorVm>(shell.Inspector.Body);
-        Assert.Equal("等待气路（RV3 占用中） · 第 2/4 步「充压」暂停计时", insp.WaitText);
-        Assert.Equal("clock", insp.WaitIcon);
-        await f.DisposeAsync();
-    }
-
-    /// <summary>
-    /// 复核（中）：设备上跑着对不上台账的程序（不是本机下发的）—— 程序面板降级显示「RV1 程序 · 第 4/4 步」，检查器也要写这个程序（同总览卡片，§3.4），
-    /// 不能写「没有程序 · 选择后下发」；不画步骤条，消息写在步骤条的位置。
-    /// </summary>
-    [Fact]
-    public async Task Inspector_ShowsTheUnmatchedHmiProgram()
-    {
-        var (f, d, fake, live) = await Connected();
-        var t0 = DateTime.UtcNow.AddMinutes(-50);
-        fake.RaiseTelemetry(Frame(DateTime.UtcNow, LiveFrames.Prog(3, 4, startedAt: t0, startedBy: "远程（PC-别人）", message: "反应中 · 剩 30 分"), temp: 80, state: "reacting"));
-        f.RefreshNow();
-        Assert.Null(live.Program(1));
-        var shell = new Shell.ShellVm(f);
-        shell.Select(d.K, 1);
-        var insp = Assert.IsType<Shell.ReactorInspectorVm>(shell.Inspector.Body);
-        Assert.True(insp.HasProgram);
-        Assert.Equal(("RV1 程序", "第 4/4 步", "运行中"), (insp.ProgName, insp.ProgText, insp.ProgMeta));
-        Assert.False(insp.HasSteps);
-        Assert.Null(insp.Steps);
-        Assert.Equal("反应中 · 剩 30 分", insp.HmiMessage);
-        Assert.Equal("RV1 程序 · 第 4/4 步 · 反应中 · 剩 30 分", insp.ProgTip);
-        Assert.False(string.IsNullOrEmpty(insp.ProgLoad.Reason));   // 下发照样不能点（设备上的程序在跑）
-        // 结束之后：「已结束 · 共 4 步」，没有消息
-        fake.RaiseTelemetry(Frame(DateTime.UtcNow.AddSeconds(1), LiveFrames.Prog(3, 4, "completed", startedAt: t0, startedBy: "远程（PC-别人）", message: "4 步全部完成"), temp: 40, state: "done"));
-        f.RefreshNow();
-        shell.RefreshChrome();
-        Assert.Equal(("已结束 · 共 4 步", "已结束"), (insp.ProgText, insp.ProgMeta));
-        Assert.Null(insp.HmiMessage);
         await f.DisposeAsync();
     }
 

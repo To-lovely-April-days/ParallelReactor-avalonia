@@ -23,10 +23,7 @@ public class TypeScaleLintTests
     /// <summary>旧界面（M2–M6 期间仍在用，M7 删除或改写）：旧稿的 6–11 px 字号都在这些文件里。</summary>
     public static readonly string[] LegacyAllowList =
     {
-        "Styles/LegacyTokens.axaml",   // 旧令牌里的 Fs6–Fs11
-        "Styles/Panels.axaml",         // M2 起也有旧样式页面的宿主（ContentControl.legacy：字号 9）与从旧 Shell.axaml 搬来的平面按钮 / 文本框
-        "Styles/Property.axaml",
-        // 融合版 F8 删掉了旧样式性能测试页的自绘曲线（Controls/ProcessChart.cs）
+        // 融合版 F8 删掉了旧样式性能测试页的自绘曲线（Controls/ProcessChart.cs）；F9 删掉了旧令牌和旧样式（LegacyTokens / Panels / Property）
     };
 
     private const string Num = @"(\d+(?:\.\d+)?)";
@@ -147,7 +144,7 @@ public class TypeScaleLintTests
     private static Dictionary<string, double> FontSizeResources()
     {
         var d = new Dictionary<string, double>(StringComparer.Ordinal);
-        foreach (var f in new[] { "Styles/Tokens.axaml", "Styles/LegacyTokens.axaml" })
+        foreach (var f in new[] { "Styles/Tokens.axaml" })
             foreach (Match m in new Regex(@"<x:Double\s+x:Key=""(Fs\w*)"">\s*" + Num + @"\s*</x:Double>").Matches(AppSource.Read(f)))
                 d[m.Groups[1].Value] = double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture);
         return d;

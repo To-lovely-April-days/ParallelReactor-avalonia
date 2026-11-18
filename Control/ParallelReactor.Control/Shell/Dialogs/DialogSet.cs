@@ -28,6 +28,10 @@ public static class DialogSet
         shell.Dialogs.Register("stopall", arg => new StopAllDialogVm(shell, arg));
         // 融合版 F3：停止一路（检查器「停止该通道」；参数 k:n）
         shell.Dialogs.Register("stopch", arg => StopChannelDialogVm.Create(shell, arg));
+        // 融合版 F9：其它停止类的确认（「停止一律先确认」）；界面上由按钮直接打开，名字给截图 / 地址参数用
+        shell.Dialogs.Register("heatstop", arg => StopConfirmDialogVm.Create(shell, "heatstop", arg));
+        shell.Dialogs.Register("disable", arg => StopConfirmDialogVm.Create(shell, "disable", arg));
+        shell.Dialogs.Register("stiroff", arg => StopConfirmDialogVm.Create(shell, "stiroff", arg));
         shell.Dialogs.Register("edit", arg => EditDeviceDialogVm.Create(shell, arg));
         shell.Dialogs.Register("rename", arg => RenameDialogVm.Create(shell, arg));
         shell.Dialogs.Register("remove", arg => RemoveDialogVm.Create(shell, arg));

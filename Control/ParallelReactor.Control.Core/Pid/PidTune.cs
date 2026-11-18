@@ -85,14 +85,17 @@ public static class PidTune
     }
 
     /// <summary>
-    /// 档位卡片的第三行（样稿 pidtab .st）：超过本机上限 → 「超过本机上限 200 °C」；全部整定过 →「7 路已整定」；部分 →「5/7 路已整定」；都没有 →「都未整定」。
+    /// 档位卡片的第三行（样稿 pidtab .st）：超过本机上限 → 「超过本机上限 200 °C」；全部整定过 →「7 路已整定」；部分 →「5/7 路有整定记录」；都没有 →「无整定记录」（升级前整定的 PID 没有来历，不说「未整定」）。
     /// <paramref name="all"/> = 启用的通道数（停用的不算）。
     /// </summary>
     public static string BandStatus(int tuned, int all, bool usable, double tmaxSp) =>
         !usable ? "超过本机上限 " + PidTexts.Num(tmaxSp) + " °C"
         : all > 0 && tuned >= all ? all.ToString(CultureInfo.InvariantCulture) + " 路已整定"
-        : tuned > 0 ? tuned.ToString(CultureInfo.InvariantCulture) + "/" + all.ToString(CultureInfo.InvariantCulture) + " 路已整定"
-        : "都未整定";
+        : tuned > 0 ? tuned.ToString(CultureInfo.InvariantCulture) + "/" + all.ToString(CultureInfo.InvariantCulture) + " 路有整定记录"
+        : "无整定记录";   // 升级前整定的 PID 没有来历（HMI v0.6 起才记录），不说「未整定」——现场的 PID 照常在用
+
+    /// <summary>没有整定来历的一路（升级前整定 / 从未整定都可能，PID 照常在用）的悬停说明。</summary>
+    public const string NoRecordTip = "没有整定记录：可能是升级前整定的（v0.6 起才记录整定温度和日期），PID 照常使用；需要时可以重新整定";
 }
 
 /// <summary>一个曲线采样：距整定开始的分钟、测量温度 PV（°C）、加热输出 %（缺失为 null）。</summary>

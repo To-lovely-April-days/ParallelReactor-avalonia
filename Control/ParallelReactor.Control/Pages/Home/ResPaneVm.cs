@@ -197,7 +197,9 @@ public sealed partial class ResPaneVm : ObservableObject
     {
         if (Device is not { } d || d.Stir is not { } s) return;
         if (StirLockReason(d) is { } why) { _shell.Toast(why, Services.ToastKind.Warn); return; }
-        _ = d.Actions.RunAsync(s.On ? DeviceAction.StirOff : DeviceAction.StirOn, new ActionPayload(Rpm: s.Rpm));
+        // 关搅拌是停止类：先确认（F9，「停止一律先确认」；一台电机带全部釜，关掉就全停）；开搅拌直接发
+        if (s.On) _shell.ShowDialog(Shell.Dialogs.StopConfirmDialogVm.StirOff(_shell, d, () => StirLockReason(d)));
+        else _ = d.Actions.RunAsync(DeviceAction.StirOn, new ActionPayload(Rpm: s.Rpm));
     }
 
     private void ApplyRpm()

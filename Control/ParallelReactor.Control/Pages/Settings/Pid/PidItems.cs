@@ -31,7 +31,7 @@ public sealed partial class PidBandCardVm : ObservableObject
     [ObservableProperty] private string? _reason;
 }
 
-/// <summary>状态列的样式：灰字 / 标签（品牌蓝「整定中」、琥珀「未整定」、绿「整定完成」）。</summary>
+/// <summary>状态列的样式：灰字 / 标签（品牌蓝「整定中」、灰字「无整定记录」、绿「整定完成」）。</summary>
 public enum PidTone { Mute, Brand, Warn, Run }
 
 /// <summary>

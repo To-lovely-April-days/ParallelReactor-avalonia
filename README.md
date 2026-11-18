@@ -96,7 +96,7 @@ tests/         HMI 单元测试（xunit）
 | `Contracts/ParallelReactor.Contracts` | 线上类型：`TelemetrySnapshot`、REST / WS DTO、`ApiJsonContext`、错误码、`OpCodes`、`EventRecord`、`SessionManifest`、`StepType` |
 | `Control/ParallelReactor.Client` | PC 端接口客户端（REST + WS、租约 / 心跳状态机、重连 / 重同步、幂等重放），纯 BCL |
 | `Control/ParallelReactor.PerfTest` | RV1–RV4 摸底性能测试：方案 JSON、`PerfRunner` 引擎、指标、`report.html` / CSV / JSON |
-| `Control/ParallelReactor.Control` | PC 控制软件（Avalonia 11.1，`research/pc-control.html` 样稿 1:1）：系统视图 + 性能测试视图，Debug 带无头截图模式 |
+| `Control/ParallelReactor.Control` | PC 控制软件（Avalonia 11.1，融合版新设计 `research/main-fusion.html`）：同时连多台设备；外框（深蓝条、菜单栏、运行胶囊、工具条、设备面板、状态栏、报警弹窗）+ 主页 / 程序 / 曲线 / 报警 / 性能测试 / 记录 / 设置七个页面；Debug 带演示数据与无头截图模式 |
 | `Control/tests/ParallelReactor.Control.Tests` | PC 端单元测试（Contracts 往返、Client、PerfTest、Core、色板 / 字号检查；不引用 App） |
 | `Control/tests/ParallelReactor.Control.App.Tests` | PC 控制软件的视图模型、对话框与实时数据源测试（引用 App） |
 | `Control/tools/ClientSmoke` | 对真 HMI 的接口走通工具 |
@@ -105,15 +105,19 @@ tests/         HMI 单元测试（xunit）
 ## Control/ · PC 控制软件
 
 ```bash
-dotnet run --project Control/ParallelReactor.Control        # 桌面窗口（1440×900）
+dotnet run --project Control/ParallelReactor.Control        # 桌面窗口（系统标题栏，默认 1440×900）
+PR_CONTROL_DEMO=1 dotnet run --project Control/ParallelReactor.Control -c Debug   # 演示数据（不连设备、不写配置），旁边有「演示控制」窗口
 dotnet test Control/tests/ParallelReactor.Control.Tests     # PC 端测试（不引用 App）
-dotnet test Control/tests/ParallelReactor.Control.App.Tests # PC 控制软件的视图模型与数据源
+dotnet test Control/tests/ParallelReactor.Control.App.Tests # PC 控制软件的外框、页面、对话框与实时数据源
 ```
 
-- 连接触屏 HMI 的接口（`api.json` 里 `enabled=true` + 令牌），申请控制权后可下发程序 / 加热 / 搅拌等命令；停止类与急停不需要控制权。
-- **性能测试**标签：按 `test-plan/RV1-4摸底性能测试方案.md` 的测试项（阶段 0–5；6–7 二期灰显）勾选 → 开始 → 现场确认 / 仪器读数录入 → 自动生成 `report.html` + `raw/telemetry.csv` + `result.json`（默认 `~/Documents/ParallelReactor/perf/<运行编号>/`）。
-- 截图 / 自动化：`PR_CONTROL_HEADLESS=1 PR_CONTROL_SHOT=<目录> PR_CONTROL_SCENARIO=main|perf|perf-report`。
-- 全部说明见 **doc/控制软件说明.md**（连接与控制权流程、每个界面与截图、性能测试流程、文件去向、环境变量、已知限制）。
+- 连接触屏 HMI 的接口（`api.json` 里 `enabled=true` + 令牌），可同时连多台；申请控制权后可下发程序 / 加热 / 搅拌等命令；停止类与急停不需要控制权，停止先确认。
+- 页面：**主页**（总览卡片；选了设备是运行表 / 气路图 / 卡片 / 棒图 + 叠加曲线 + 共用资源 + 通道检查器）、**程序**（有类型的步骤、条件矩阵、预运行检查）、**曲线**、**报警**、**性能测试**（摸底 + 泄漏测试）、**记录**（跨设备会话、8 路对比、CSV）、**设置**（本机 / 设备连接 / 无人值守 / 设备参数 / 温控 PID 按档自整定 / 吸气量计算（只读）/ 关于）。
+- 压力显示单位可选 MPa / bar / psi（设置 › 常规，马上生效），内部一律 MPa；吸气量由设备（HMI）计算。
+- **性能测试**页：按 `test-plan/RV1-4摸底性能测试方案.md` 的测试项（阶段 0–5；二期灰显）勾选 → 开始 → 现场确认 / 仪器读数录入 → 自动生成 `report.html` + `raw/telemetry.csv` + `result.json`（`<数据目录>/perf/<运行编号>/`，数据目录默认 `~/Documents/ParallelReactor`）。
+- 截图 / 自动化：演示截图 `Control/tools/shots.sh`；对活 HMI `PR_CONTROL_HEADLESS=1 PR_CONTROL_SHOT=<目录> PR_CONTROL_SCENARIO=main|perf|perf-report`。
+- Windows 上的防睡眠、报警声音、微软雅黑字体只编译过、没在实机上跑过（见说明 §2.1）。
+- 全部说明见 **doc/控制软件说明.md**（连接与控制权流程、外框与每个页面、性能测试流程、文件去向、环境变量、已知限制、截图）。
 
 ## 备注
 

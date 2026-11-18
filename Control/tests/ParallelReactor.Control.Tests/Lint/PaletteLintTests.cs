@@ -29,10 +29,7 @@ public class PaletteLintTests
     /// </summary>
     public static readonly string[] LegacyAllowList =
     {
-        "Styles/LegacyTokens.axaml",
-        "Styles/Panels.axaml",
-        "Controls/FillBar.cs",
-        // 融合版 F8 删掉了旧样式的性能测试页（PerfProgressView、ProcessChart）
+        // 融合版 F8 删掉了旧样式的性能测试页（PerfProgressView、ProcessChart）；F9 删掉了旧令牌和旧样式（LegacyTokens / Panels）
     };
 
     /// <summary>故意违规的自检文件（审计自检要种下色板外的颜色，证明 ShotAudit 能报出来）。不是产品代码，不随 M7 清空。</summary>

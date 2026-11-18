@@ -62,12 +62,17 @@ public sealed partial class ChannelCtlVm : ObservableObject
         SpDownCommand = new RelayCommand(() => SetSp(-1));
         SpUpCommand = new RelayCommand(() => SetSp(+1));
         HeatStartCommand = new RelayCommand(() => Act(DeviceAction.HeatStart, new ActionPayload(N: _n, Sp: R?.SpC)));
-        HeatStopCommand = new RelayCommand(() => Act(DeviceAction.HeatStop, ActionPayload.Ch(_n)));
+        // 停止一律先确认（F9）：停止加热、停用通道各开一个确认；启动 / 启用不确认
+        HeatStopCommand = new RelayCommand(() => { if (D is { } d) shell.ShowDialog(Dialogs.StopConfirmDialogVm.HeatStop(shell, d, _n)); });
         VolDownCommand = new RelayCommand(() => SetVol(-1));
         VolUpCommand = new RelayCommand(() => SetVol(+1));
         StopChCommand = new RelayCommand(() => shell.OpenDialog("stopch", _k.ToString(CultureInfo.InvariantCulture) + ":" + _n.ToString(CultureInfo.InvariantCulture)));
         StartChCommand = new RelayCommand(() => Act(DeviceAction.Start, new ActionPayload(N: _n, Sp: R?.SpC)));
-        EnableCommand = new RelayCommand(() => Act(Disabled ? DeviceAction.Enable : DeviceAction.Disable, ActionPayload.Ch(_n)));
+        EnableCommand = new RelayCommand(() =>
+        {
+            if (Disabled) Act(DeviceAction.Enable, ActionPayload.Ch(_n));
+            else if (D is { } d) shell.ShowDialog(Dialogs.StopConfirmDialogVm.Disable(shell, d, _n));
+        });
         CurveCommand = new RelayCommand(() => shell.Toast("曲线升温（最多 16 段）在程序页编辑（F6）", ToastKind.Info));
     }
 

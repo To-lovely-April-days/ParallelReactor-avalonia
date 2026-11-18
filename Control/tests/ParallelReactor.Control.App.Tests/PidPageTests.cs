@@ -49,7 +49,7 @@ public class PidPageTests
         Assert.True(v.HasData);
         Assert.Equal(new[] { "低温档", "中温档", "高温档" }, v.Bands.Select(b => b.Name));
         Assert.Equal(new[] { "0 – 100 °C", "100 – 200 °C", "200 – 400 °C" }, v.Bands.Select(b => b.Range));
-        Assert.Equal(new[] { "5/7 路已整定", "7 路已整定", "超过本机上限 200 °C" }, v.Bands.Select(b => b.Status));
+        Assert.Equal(new[] { "5/7 路有整定记录", "7 路已整定", "超过本机上限 200 °C" }, v.Bands.Select(b => b.Status));
         Assert.Equal(new[] { false, true, false }, v.Bands.Select(b => b.IsOn));
         Assert.False(v.Bands[2].Usable);
         var r1 = v.Rows[0];
@@ -70,7 +70,7 @@ public class PidPageTests
         // 空闲又没整定过的通道：琥珀「未整定」（3号机 RV12 已结束，低温档没整定过）
         s.SelectDevice(3);
         var r12 = v.Rows.Single(r => r.N == 12);
-        Assert.Equal(("未整定", PidTone.Warn, "12.0"), (r12.Status, r12.Tone, r12.P));
+        Assert.Equal(("无整定记录", PidTone.Mute, "12.0"), (r12.Status, r12.Tone, r12.P));
         s.SelectDevice(1);
         v.Bands[1].PickCommand.Execute(null);
         // 超过上限的档点不了

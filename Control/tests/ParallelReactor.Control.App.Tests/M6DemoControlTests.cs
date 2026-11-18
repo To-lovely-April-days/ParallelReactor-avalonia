@@ -234,16 +234,5 @@ public class M6DemoControlTests
         // 不知道屏幕：照算
         Assert.Equal(new PixelPoint(1452, 0), DemoControlWindow.BesidePosition(new PixelPoint(0, 0), 1440, 372, 1, null));
     }
-
-    /// <summary>真机学到令牌只读之后，控制权卡的说明写原因（M6，states-readonly-token 的检查器部分）。</summary>
-    [Fact]
-    public void LeaseCard_LocalNote_FollowsTheLearnedRole()
-    {
-        Assert.Equal("本机只读 · 启动、设定等需要控制权\n停止类操作随时可用", LeaseBoxVm.LocalNote("1号机", TokenRole.Unknown));
-        Assert.Equal("本机只读 · 启动、设定等需要控制权\n停止类操作随时可用", LeaseBoxVm.LocalNote("1号机", new TokenRole(NoEstop: true)));
-        Assert.Equal("1号机的令牌只能读取 · 需要 operator 令牌\n停止类操作随时可用", LeaseBoxVm.LocalNote("1号机", new TokenRole(ReadOnly: true)));
-        Assert.Equal("1号机的令牌只能读取 · 需要 operator 令牌\n停止需要 operator 令牌或急停权限", LeaseBoxVm.LocalNote("1号机", new TokenRole(true, true)));
-    }
-
 }
 #endif

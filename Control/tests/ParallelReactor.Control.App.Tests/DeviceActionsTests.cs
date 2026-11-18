@@ -265,12 +265,6 @@ public class DeviceActionsTests
         Assert.Equal("1号机正在重连 · 稍候", d.Why("leaseRequest"));
         shell.RefreshChrome();
         Assert.Null(shell.Capsule.StopReason);                                        // 全局停止格照常可点
-        shell.Select(1);
-        var insp = Assert.IsType<DeviceInspectorVm>(shell.Inspector.Body);
-        Assert.Null(insp.StopAll.Reason);                                          // 检查器的全部停止、急停照常可用
-        Assert.Null(insp.Estop.Reason);
-        Assert.Equal("1号机正在重连 · 稍候", insp.RunAll.Reason);
-        Assert.EndsWith("重连前只能查看；停止类操作随时可用", insp.Lease.Note);       // 不写「不能操作」
         shell.OpenDialog("estop");
         var dlg = Assert.IsType<EstopDialogVm>(shell.Dialogs.Current);
         var pick = Assert.Single(dlg.Rows);
@@ -288,7 +282,6 @@ public class DeviceActionsTests
         Assert.Equal("1号机已断开 · 先连接", d.Actions.Why(DeviceAction.Estop));
         shell.RefreshChrome();
         Assert.Equal("没有已连接的设备", shell.Capsule.StopReason);
-        Assert.EndsWith("断线时只能查看，不能操作", insp.Lease.Note);
         shell.Dispose();
         await f.DisposeAsync();
     }
@@ -376,10 +369,10 @@ public class DeviceActionsTests
     }
 
     /// <summary>
-    /// 检查器「全部运行」在真机上先列清单确认（D6）：打开清单不发任何命令；清单 = 反应釜 · 程序名 · 程序状态；确认后正好运行清单里的反应釜。
+    /// 「全部运行」（胶囊的启动按钮 → runall:k）在真机上先列清单确认（D6）：打开清单不发任何命令；清单 = 反应釜 · 程序名 · 程序状态；确认后正好运行清单里的反应釜。
     /// </summary>
     [Fact]
-    public async Task Live_RunAll_FromInspector_ConfirmsListFirst()
+    public async Task Live_RunAll_ConfirmsListFirst()
     {
         var (f, d, fake, _) = await Live(ScriptWrites);
         var shell = new ShellVm(f);
@@ -387,10 +380,8 @@ public class DeviceActionsTests
         await HoldLease(f, d, fake);
         await ((LiveDeviceSource)d.Source).UploadProgramAsync(1, ProgramDraftStore.Template("加氢测试-01"), System.Threading.CancellationToken.None);
         f.RefreshNow();
-        shell.Select(1);
-        var insp = Assert.IsType<DeviceInspectorVm>(shell.Inspector.Body);
-        Assert.Null(insp.RunAll.Reason);
-        insp.RunAll.Command.Execute(null);
+        Assert.Equal("", d.Actions.Why(DeviceAction.RunAll));
+        shell.OpenDialog("runall", "1");
         var dlg = Assert.IsType<RunAllDialogVm>(shell.Dialogs.Current);
         Assert.Equal(("全部运行", "运行1号机上已下发程序的反应釜"), (dlg.Title, dlg.Sub));
         var row = Assert.Single(dlg.Rows);
@@ -406,5 +397,85 @@ public class DeviceActionsTests
         Assert.Contains(shell.Toasts.Items, t => t.Text == "1号机 · 已启动 1 个反应釜");
         shell.Dispose();
         await f.DisposeAsync();
+    }
+
+    // ———————————————————— F9：停止一律先确认（停止加热 / 停用通道 / 关共用搅拌 / 中止性能测试 / 中止泄漏测试） ————————————————————
+
+    /// <summary>
+    /// 检查器「停止加热」「停用通道」与共用资源的「关搅拌」都先开确认（StopConfirmDialogVm）：打开时什么都不发，「取消」也不发，确认后正好发一次；
+    /// 「启用」「开搅拌」不确认（不是停止类）。
+    /// </summary>
+    [Fact]
+    public async Task Live_StopActions_ConfirmFirst_SendOnlyOnGo()
+    {
+        var (f, d, fake, _) = await Live(h =>
+        {
+            ScriptWrites(h);
+            h.On("POST", "/channels/1/heat/stop", c => ScriptedHttpHandler.Command(c, false, null));
+            h.On("POST", "/channels/1/disable", c => ScriptedHttpHandler.Command(c, false, null));
+            h.On("PUT", "/stir", c => ScriptedHttpHandler.Command(c, false, null));
+        });
+        var shell = new ShellVm(f);
+        shell.Toasts.Frozen = true;
+        await HoldLease(f, d, fake);
+        fake.RaiseTelemetry(LiveFrames.Frame(DateTime.UtcNow, true, 400,
+            LiveFrames.Ch(1, temp: 80, sp: 100, heat: 50, state: "heating", atMode: 0), LiveFrames.Ch(2), LiveFrames.Ch(3), LiveFrames.Ch(4)));
+        f.RefreshNow();
+        shell.Select(d.K, 1);
+        shell.RefreshChrome();
+
+        // 停止加热：确认 → 发一次
+        shell.Ctl.HeatStopCommand.Execute(null);
+        var dlg = Assert.IsType<StopConfirmDialogVm>(shell.Dialogs.Current);
+        Assert.Equal(("heatstop", "停止 1号机 RV1 加热", "停止加热"), (dlg.Name, dlg.Title, dlg.GoButton.Label));
+        Assert.Contains(dlg.Rows, r => r.Key == "程序");                                  // 写明程序不中止
+        Assert.Null(dlg.GoButton.Reason);
+        Assert.Equal(0, fake.Http.Count("POST", "/channels/1/heat/stop"));
+        await ((IAsyncRelayCommand)dlg.GoButton.Command).ExecuteAsync(null);
+        Assert.False(shell.Dialogs.IsOpen);
+        Assert.Equal(1, fake.Http.Count("POST", "/channels/1/heat/stop"));
+
+        // 停用通道：取消 → 不发
+        Assert.False(shell.Ctl.Disabled);
+        shell.Ctl.EnableCommand.Execute(null);
+        dlg = Assert.IsType<StopConfirmDialogVm>(shell.Dialogs.Current);
+        Assert.Equal(("disable", "停用 1号机 RV1", "停用 RV1"), (dlg.Name, dlg.Title, dlg.GoButton.Label));
+        ((FootBar)dlg.Footer!).Buttons[0].Command.Execute(null);
+        Assert.False(shell.Dialogs.IsOpen);
+        Assert.Equal(0, fake.Http.Count("POST", "/channels/1/disable"));
+
+        // 关共用搅拌：确认 → PUT /stir 一次
+        shell.Go(AppPage.Home);
+        shell.Select(d.K, 1);
+        f.RefreshNow();
+        var res = Assert.IsType<ParallelReactor.Control.Pages.HomePageVm>(shell.Page).Res;
+        res.StirToggleCommand.Execute(null);
+        dlg = Assert.IsType<StopConfirmDialogVm>(shell.Dialogs.Current);
+        Assert.Equal(("stiroff", "停止搅拌 · 1号机"), (dlg.Name, dlg.Title));
+        Assert.Equal(0, fake.Http.Count("PUT", "/stir"));
+        await ((IAsyncRelayCommand)dlg.GoButton.Command).ExecuteAsync(null);
+        Assert.Equal(1, fake.Http.Count("PUT", "/stir"));
+        shell.Dispose();
+        await f.DisposeAsync();
+    }
+
+    /// <summary>性能测试页「中止」先确认（演示：确认后才写「测试已中止」）；泄漏测试没有在进行时「中止」只提示，不开确认。</summary>
+    [Fact]
+    public void Demo_PerfAbort_ConfirmsFirst()
+    {
+        var p = DemoParams.Parse("freeze=1&apop=0");
+        var s = new ShellVm(FleetVm.CreateDemo(p));
+        s.Toasts.Frozen = true;
+        s.ApplyDemoParams(p);
+        s.Go(AppPage.Perf);
+        var abort = s.Page!.Tools.SelectMany(g => g.Tools).First(t => t.Label == "中止");
+        abort.Command.Execute(null);
+        var dlg = Assert.IsType<StopConfirmDialogVm>(s.Dialogs.Current);
+        Assert.Equal(("perfabort", "中止性能测试", "中止测试"), (dlg.Name, dlg.Title, dlg.GoButton.Label));
+        Assert.DoesNotContain(s.Toasts.Items, t => t.Text.StartsWith("测试已中止", StringComparison.Ordinal));
+        ((FootBar)dlg.Footer!).Buttons[1].Command.Execute(null);
+        Assert.False(s.Dialogs.IsOpen);
+        Assert.Contains(s.Toasts.Items, t => t.Text.StartsWith("测试已中止", StringComparison.Ordinal));
+        s.Dispose();
     }
 }

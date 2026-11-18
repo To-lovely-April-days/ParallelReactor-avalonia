@@ -26,7 +26,7 @@ namespace ParallelReactor.Control.Pages.Settings.Pid;
 /// <list type="number">
 /// <item><b>档位卡片</b>（GET /pid 的 bands）：名字、温区、「n/m 路已整定」；下限 ≥ 本机温度上限的档禁用（「超过本机上限 200 °C」）。</item>
 /// <item><b>左表</b>：这一档每路的 P / I / D（手改失焦 / 回车即写入这一档，SetPidAsync）、整定温度、整定日期（窄屏不显示）、状态
-///   （已整定 / 未整定 / 运行中 · 不能整定 / 停用 / 整定中 · 第 k/3 次振荡 / 整定完成）；勾选要整定的通道。</item>
+///   （已整定 / 无整定记录 / 运行中 · 不能整定 / 停用 / 整定中 · 第 k/3 次振荡 / 整定完成）；勾选要整定的通道。</item>
 /// <item><b>右边「自整定」</b>：整定温度（本档 ∩ [40, TMaxSp]，默认 80 / 150 / 250）、所选通道、之后、说明、「开始自整定（n 路）」
 ///   （没有控制权 / 没勾通道 / 温度不在档里时带原因禁用）→ 每路 StartAutotuneAsync(n, tempC, band)，几路同时整定。</item>
 /// <item><b>整定监视</b>（这台设备有通道在整定时）：标题（档、温度、通道、已用时间）+「取消整定」（先确认，CancelAutotuneAsync）；
@@ -439,7 +439,9 @@ public sealed partial class PidSectionVm : ObservableObject
                 }
                 w.TunedSp = !off && cell?.TunedSpC is double tsp ? PidTexts.Num(tsp) + " °C" : "—";
                 w.TunedAt = !off && cell?.TunedAt is DateTime ta ? ta.ToLocalTime().ToString("MM-dd", Inv) : "—";
-                w.TunedTip = !off && cell?.ManualEditedAt is DateTime me ? "整定之后在 " + me.ToLocalTime().ToString("MM-dd HH:mm", Inv) + " 手改过" : null;
+                w.TunedTip = off ? null
+                    : cell?.TunedAt == null ? PidTune.NoRecordTip
+                    : cell.ManualEditedAt is DateTime me ? "整定之后在 " + me.ToLocalTime().ToString("MM-dd HH:mm", Inv) + " 手改过" : null;
                 w.CanCheck = remote && !d.IsOffline && range.Usable && !off && !busy && run == null && tunOther == null;
                 w.CheckReason = w.CanCheck ? null
                     : off ? "停用的通道不能整定" : busy ? "运行中的通道不能整定" : !range.Usable ? "超过本机温度上限"
@@ -455,7 +457,8 @@ public sealed partial class PidSectionVm : ObservableObject
                     : tunOther != null ? ("整定中（" + (bands.FirstOrDefault(b => b.Index == tunOther.TuneBand)?.Name ?? "其它档") + "）", PidTone.Brand)
                     : busy ? ("运行中 · 不能整定", PidTone.Mute)
                     : cell?.TunedAt != null ? (cell.ManualEditedAt != null ? "已整定 · 手改过" : "已整定", PidTone.Mute)
-                    : ("未整定", PidTone.Warn);
+                    : cell?.ManualEditedAt != null ? ("手改过 · 无整定记录", PidTone.Mute)
+                    : ("无整定记录", PidTone.Mute);
             }
             finally { w.Syncing = false; }
         }

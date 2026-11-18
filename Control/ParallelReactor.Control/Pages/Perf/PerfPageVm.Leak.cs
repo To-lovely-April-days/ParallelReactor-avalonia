@@ -186,7 +186,18 @@ public sealed partial class PerfPageVm
         _shell.Fleet.RequestRefresh();
     }
 
-    /// <summary>「中止」（停止类：不需要控制权；真机 DELETE /leak-tests/current）。</summary>
+    /// <summary>「中止」先确认（F9，「停止一律先确认」）：没有进行中的测试时照旧只提示；确认后 <see cref="AbortLeakAsync"/>。</summary>
+    private void ConfirmAbortLeak()
+    {
+        var d = Dev;
+        if (d == null) return;
+        if (d.Source.IsDemo || d.Source is not LiveDeviceSource { Connection: not null }) { _shell.Toast(d.Source.IsDemo ? "当前没有进行中的泄漏测试（演示）" : d.Alias + "未连接", ToastKind.Info); return; }
+        if (LeakSnapOf(d) is not { Running: true }) { _shell.Toast(d.Alias + " 当前没有进行中的泄漏测试", ToastKind.Info); return; }
+        _shell.ShowDialog(Shell.Dialogs.StopConfirmDialogVm.LeakAbort(_shell, d,
+            () => LeakSnapOf(d) is { Running: true } ? null : "泄漏测试已经结束", AbortLeakAsync));
+    }
+
+    /// <summary>中止（停止类：不需要控制权；真机 DELETE /leak-tests/current —— HMI 全关阀，不泄压）。</summary>
     public async Task AbortLeakAsync()
     {
         var d = Dev;
@@ -196,7 +207,7 @@ public sealed partial class PerfPageVm
         try
         {
             await c.Rest.AbortLeakTestAsync(CancellationToken.None).ConfigureAwait(true);
-            _shell.Toast(d.Alias + " · 泄漏测试已中止（泄压）", ToastKind.Ok);
+            _shell.Toast(d.Alias + " · 泄漏测试已中止 · 阀门全关（不放空）", ToastKind.Ok);
         }
         catch (Exception ex) { _shell.Toast(d.Alias + " · 中止失败：" + Fleet.DeviceActions.Describe(ex), ToastKind.Err); }
     }

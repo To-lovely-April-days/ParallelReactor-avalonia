@@ -70,8 +70,8 @@ public class PidTuneTests
     public void BandStatus_Texts()
     {
         Assert.Equal("7 路已整定", PidTune.BandStatus(7, 7, true, 200));
-        Assert.Equal("5/7 路已整定", PidTune.BandStatus(5, 7, true, 200));
-        Assert.Equal("都未整定", PidTune.BandStatus(0, 7, true, 200));
+        Assert.Equal("5/7 路有整定记录", PidTune.BandStatus(5, 7, true, 200));
+        Assert.Equal("无整定记录", PidTune.BandStatus(0, 7, true, 200));   // 升级前整定过的现场设备：不说「未整定」
         Assert.Equal("超过本机上限 200 °C", PidTune.BandStatus(0, 7, false, 200));
     }
 
