@@ -43,16 +43,8 @@ public static class SettingsStore
     private static System.Threading.Timer? _debounce;
     private static Func<PersistedState>? _snapshot;
 
-    /// <summary>读取持久化状态；无文件/损坏返回 null。</summary>
-    public static PersistedState? Load()
-    {
-        try
-        {
-            if (!File.Exists(FilePath)) return null;
-            return JsonSerializer.Deserialize<PersistedState>(File.ReadAllText(FilePath));
-        }
-        catch { return null; }
-    }
+    /// <summary>读取持久化状态；无文件 / 损坏返回 null。升级前先备份旧存档、读不出来先另存原文（见 <see cref="SettingsFileGuard"/>）。</summary>
+    public static PersistedState? Load() => SettingsFileGuard.Read(FilePath, t => JsonSerializer.Deserialize<PersistedState>(t));
 
     /// <summary>防抖保存：800ms 内的连续修改合并为一次写盘。快照函数在真正写盘时才求值。</summary>
     public static void SaveSoon(Func<PersistedState> snapshot)
