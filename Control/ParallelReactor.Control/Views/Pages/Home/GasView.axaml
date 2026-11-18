@@ -1,0 +1,425 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             xmlns:hc="using:ParallelReactor.Control.Controls.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.GasView"
+             x:DataType="pg:HomePageVm">
+  <!-- 通道面板 · 气路图（融合版 F4，样稿 gasView + .gn 一族，取自 HMI 首页「反应器与气路系统」）。
+       网格：左 气源（136）| 每釜一列 | 右 排空（74）；行：釜卡 · 竖管（单向阀 CV → 进气阀 SV）· 共用总管（26）。16 路：上下两排共用中间一根总管（.mir）。
+       版面按面板体的尺寸切换（代码里设类，代替样稿的容器查询）：g = 面板高 ≥ 460（放大：竖管限高 220、整体居中、最宽 1500、釜图 88）；
+       c = 面板高 ≤ 260（紧凑：去掉单向阀、标签、图例，16 路连釜图也去掉）；w = 面板宽 ≤ 820（两侧变窄、不写「点反应釜打开控制」）。
+       阀门只显示状态：电脑端没有维护模式的接口，悬停 / 点击都说明「触屏操作」。不写气体种类（接什么气由工艺决定）。 -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://ParallelReactor.Control/Views/Pages/Home/MonTheme.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <!-- 图例（.lgd）：13 px t-3 行高 18，行距 6；提示另起 4 -->
+    <Style Selector="StackPanel.lgd TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.c StackPanel.lgd">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel#Root.w TextBlock#Hint">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 气源一行（.inr）：名字 62 右对齐 13 px t-2 · 阀 26 · 横管；紧凑 19 高、名字 52、阀 19 -->
+    <Style Selector="DockPanel.inr">
+      <Setter Property="Height" Value="28" />
+    </Style>
+    <Style Selector="Panel#Root.c DockPanel.inr">
+      <Setter Property="Height" Value="19" />
+    </Style>
+    <Style Selector="DockPanel.inr TextBlock.nm">
+      <Setter Property="Width" Value="62" />
+      <Setter Property="Margin" Value="0,0,4,0" />
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.c DockPanel.inr TextBlock.nm">
+      <Setter Property="Width" Value="52" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+    <Style Selector="DockPanel.inr Button">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Margin" Value="0,0,4,0" />
+    </Style>
+    <Style Selector="Panel#Root.c DockPanel.inr Button">
+      <Setter Property="Width" Value="19" />
+      <Setter Property="Height" Value="19" />
+      <Setter Property="Margin" Value="0,0,2,0" />
+    </Style>
+    <Style Selector="Panel#Root.c hc|ValveGlyph.vg">
+      <Setter Property="Size" Value="16" />
+    </Style>
+    <Style Selector="Panel#Root.c Button.vlv">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+    </Style>
+    <!-- 釜卡（.rv）：内边距 6 2、圆角 3；编号 14/600、状态 13 t-3（报警 r-ink 600）；釜图 64（4 路 76、放大 88、16 路 44 / 放大 60、紧凑 44 / 4 路 52）；
+         温度 20/600 行 24（4 路 24 / 28、放大 24 / 30、16 路 16 / 20、放大 16 路 18 / 22、紧凑 15 / 20）+「°C」13 t-3；压力 14/600 t-2（报警红底白字）；吸气 13 t-3 -->
+    <Style Selector="Button.rv">
+      <Setter Property="Padding" Value="2,6" />
+      <Setter Property="Margin" Value="3,0" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv">
+      <Setter Property="Padding" Value="2,4" />
+    </Style>
+    <Style Selector="Panel#Root.c Button.rv">
+      <Setter Property="Padding" Value="1,4" />
+      <Setter Property="Margin" Value="1,0" />
+    </Style>
+    <Style Selector="Button.rv TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rv TextBlock.rvn">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rv TextBlock.st">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.rv TextBlock.st.err">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv TextBlock.st, Panel#Root.c Button.rv TextBlock.st, Panel#Root.mir Button.rv TextBlock.g, Panel#Root.c Button.rv TextBlock.g">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="64" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.n4 Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="76" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Panel#Root.g Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="88" />
+    </Style>
+    <Style Selector="Panel#Root.g.mir Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="60" />
+    </Style>
+    <Style Selector="Panel#Root.c Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Panel#Root.c.n4 Button.rv hc|VesselArt">
+      <Setter Property="Width" Value="52" />
+    </Style>
+    <Style Selector="Panel#Root.c.mir Button.rv hc|VesselArt">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="20" />
+      <Setter Property="LineHeight" Value="24" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Panel#Root.n4 Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="LineHeight" Value="28" />
+    </Style>
+    <Style Selector="Panel#Root.g Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="24" />
+      <Setter Property="LineHeight" Value="34" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <Style Selector="Panel#Root.g.mir Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="22" />
+    </Style>
+    <Style Selector="Panel#Root.c Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <!-- 卡片窄于 70（16 路 1366 宽）：温度 16 -->
+    <Style Selector="Panel#Root.tiny Button.rv TextBlock.t">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <Style Selector="Button.rv Run.u">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p">
+      <Setter Property="Height" Value="20" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv StackPanel.p, Panel#Root.c Button.rv StackPanel.p">
+      <Setter Property="Height" Value="18" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p TextBlock.pv">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.mir Button.rv StackPanel.p TextBlock.pv, Panel#Root.c Button.rv StackPanel.p TextBlock.pv">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p Border.hot">
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p Border.hot.on">
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+      <Setter Property="Padding" Value="4,0" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p Border.hot.on TextBlock.pv">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <!-- 窄卡：报警的压力不画红底，只写红字 -->
+    <Style Selector="Panel#Root.tiny Button.rv StackPanel.p Border.hot.on">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Panel#Root.tiny Button.rv StackPanel.p Border.hot.on TextBlock.pv">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="Button.rv StackPanel.p TextBlock.u, Button.rv TextBlock.g">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rv TextBlock.g">
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+    <Style Selector="Button.rv.off TextBlock.t, Button.rv.off StackPanel.p TextBlock.pv">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <!-- 竖管上的单向阀 + 进气阀（.pc .vs：居中、间距 12、底 4）；16 路 / 紧凑：不画单向阀和 SV 标签 -->
+    <Style Selector="StackPanel.vs">
+      <Setter Property="Spacing" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.c StackPanel.vs">
+      <Setter Property="Spacing" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+    <Style Selector="Panel#Root.mir StackPanel.vs">
+      <Setter Property="Margin" Value="0" />
+    </Style>
+    <Style Selector="Panel#Root.mir hc|CheckValveGlyph, Panel#Root.c hc|CheckValveGlyph, Panel#Root.mir TextBlock.vl, Panel#Root.c TextBlock.vl">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="TextBlock.vl">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="3,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <!-- 16 路：上排竖管伸进总管 4（样稿 .gn.mir .pc > .ln{bottom:-4px}） -->
+    <Style Selector="Panel#Root.mir ItemsControl#PipesTop hc|PipeLine.ln">
+      <Setter Property="Margin" Value="0,0,0,-4" />
+    </Style>
+    <!-- 排空（.vent）：上「排空」13 px t-2、箭头、竖管；阀 28 +「泄压」13 px t-3（白底）；底 18（16 路 10、紧凑 6） -->
+    <Style Selector="StackPanel#VentBox">
+      <Setter Property="Margin" Value="0,0,0,18" />
+    </Style>
+    <Style Selector="Panel#Root.mir StackPanel#VentBox">
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="Panel#Root.c StackPanel#VentBox">
+      <Setter Property="Margin" Value="0,0,0,6" />
+    </Style>
+    <Style Selector="Panel#Root.c Border#VentTag, Panel#Root.mir TextBlock#HdrLabel, Panel#Root.c TextBlock#HdrLabel">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel Name="Root" Background="{StaticResource BgCardBrush}">
+    <Grid Name="Gn">
+      <!-- 左上：图例 -->
+      <StackPanel Name="Lgd" Classes="lgd" Grid.Row="0" Grid.Column="0" Spacing="6" Margin="2,4,10,0">
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <hc:ValveGlyph Size="16" Open="True" />
+          <TextBlock Text="阀开" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <hc:ValveGlyph Size="16" />
+          <TextBlock Text="阀关" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="7">
+          <hc:PipeLine Kind="H" Flow="True" Dash="5" Width="16" Height="3" VerticalAlignment="Center" />
+          <TextBlock Text="气体流动" />
+        </StackPanel>
+        <TextBlock Name="Hint" Text="点反应釜打开控制" TextWrapping="Wrap" Margin="0,4,0,0" />
+      </StackPanel>
+
+      <!-- 左：气源 → 汇流管 → 总管 -->
+      <Panel Name="Gin" Grid.Row="1" Grid.Column="0">
+        <Panel Name="Ins" VerticalAlignment="Bottom">
+          <hc:PipeLine Name="InsLn" Kind="V" FromStart="True" Flow="{Binding Gas.SrcOn}" Width="3" HorizontalAlignment="Right" />
+          <ItemsControl Name="InsRows" ItemsSource="{Binding Gas.Inlets}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Name="InsStack" Spacing="3" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:GasInletVm">
+                <DockPanel Classes="inr">
+                  <TextBlock Classes="nm" DockPanel.Dock="Left" Text="{Binding Name}" ToolTip.Tip="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                  <Button DockPanel.Dock="Left" Classes="vlv" Theme="{StaticResource PrValveBtn}" ToolTip.Tip="{Binding Tip}" Click="OnValve"
+                          AutomationProperties.Name="{Binding Name}">
+                    <hc:ValveGlyph Classes="vg" Horizontal="True" Open="{Binding IsOn}" />
+                  </Button>
+                  <hc:PipeLine Kind="H" Flow="{Binding IsOn}" Height="3" VerticalAlignment="Center" />
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </Panel>
+      </Panel>
+
+      <!-- 右：排空 / 泄压 -->
+      <Panel Name="Vent" Grid.Row="1" Grid.Column="2">
+        <TextBlock Text="排空" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Top" />
+        <Path Data="M0 7 5 0 10 7Z" Fill="{StaticResource PipeHdrBrush}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,18,0,0" />
+        <hc:PipeLine Name="VentLn" Kind="V" Flow="{Binding Gas.VentOn}" Width="3" HorizontalAlignment="Center" Margin="0,22,0,-2" />
+        <StackPanel Name="VentBox" VerticalAlignment="Bottom" HorizontalAlignment="Center" Spacing="6">
+          <Button Classes="vlv" Theme="{StaticResource PrValveBtn}" ToolTip.Tip="{Binding Gas.VentTip}" Click="OnValve" HorizontalAlignment="Center"
+                  AutomationProperties.Name="排空 / 泄压阀">
+            <hc:ValveGlyph Classes="vg" Open="{Binding Gas.VentOn}" />
+          </Button>
+          <Border Name="VentTag" Background="{StaticResource BgCardBrush}" Padding="2,1" HorizontalAlignment="Center">
+            <TextBlock Text="泄压" FontSize="{StaticResource FsBase}" LineHeight="16" Foreground="{StaticResource T3Brush}" />
+          </Border>
+        </StackPanel>
+      </Panel>
+
+      <!-- 上排：釜卡 -->
+      <ItemsControl Name="CardsTop" Grid.Row="0" Grid.Column="1" ItemsSource="{Binding TilesTop}" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" Columns="{Binding MonCols}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="h:MonTileVm">
+            <Button Classes="rv" Theme="{StaticResource PrMonCard}" Classes.on="{Binding IsSelected}" Classes.off="{Binding IsOff}" Click="OnTile"
+                    ToolTip.Tip="{Binding CardTip}" AutomationProperties.Name="{Binding Rv}">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" Height="18" HorizontalAlignment="Center">
+                  <TextBlock Classes="rvn" Text="{Binding Rv}" />
+                  <hc:TileMarkView Dot="{Binding Dot}" Mark="{Binding Mark}" ToolTip.Tip="{Binding MarkTip}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="st" Classes.err="{Binding IsErr}" Text="{Binding Word}" />
+                <hc:VesselArt Heat="{Binding Heat}" Cooling="{Binding Cooling}" Off="{Binding IsOff}" Err="{Binding IsErr}" Bubbles="{Binding Bubbles}"
+                              TFrac="{Binding TFrac}" SpFrac="{Binding SpFrac}" PFrac="{Binding PFrac}" LimFrac="{Binding LimFrac}" />
+                <TextBlock Classes="t num"><Run Text="{Binding TempText}" /><Run Classes="u" Text=" °C" /></TextBlock>
+                <StackPanel Classes="p" Orientation="Horizontal">
+                  <Border Classes="hot" Classes.on="{Binding PressHot}"><TextBlock Classes="pv num" Text="{Binding PressText}" /></Border>
+                  <TextBlock Classes="u" Text="{Binding Unit, Source={x:Static th:PressureText.Instance}}" Margin="2,0,0,0" />
+                </StackPanel>
+                <TextBlock Classes="g num"><Run Text="{Binding GasText}" /><Run Text=" mmol" /></TextBlock>
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- 上排：竖管 + 单向阀 + 进气阀 -->
+      <ItemsControl Name="PipesTop" Grid.Row="1" Grid.Column="1" ItemsSource="{Binding TilesTop}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" Columns="{Binding MonCols}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="h:MonTileVm">
+            <Panel Classes="pc">
+              <hc:PipeLine Classes="ln" Kind="V" Flow="{Binding Flow}" Width="3" HorizontalAlignment="Center" Margin="0,0,0,-2" />
+              <StackPanel Classes="vs">
+                <hc:CheckValveGlyph HorizontalAlignment="Center" ToolTip.Tip="{Binding CvTip}" />
+                <Grid ColumnDefinitions="*,Auto,*">
+                  <Button Grid.Column="1" Classes="vlv" Theme="{StaticResource PrValveBtn}" ToolTip.Tip="{Binding SvTip}" Click="OnValve"
+                          AutomationProperties.Name="{Binding SvLabel}">
+                    <hc:ValveGlyph Classes="vg" Open="{Binding SvOpen}" />
+                  </Button>
+                  <TextBlock Grid.Column="2" Classes="vl" Text="{Binding SvLabel}" />
+                </Grid>
+              </StackPanel>
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- 16 路：下排竖管 + 下排釜卡 -->
+      <ItemsControl Name="PipesLow" Grid.Row="3" Grid.Column="1" ItemsSource="{Binding TilesLow}" IsVisible="{Binding IsN16}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" Columns="{Binding MonCols}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="h:MonTileVm">
+            <Panel Classes="pc">
+              <hc:PipeLine Classes="ln" Kind="V" Flow="{Binding Flow}" Width="3" HorizontalAlignment="Center" Margin="0,-4,0,0" FromStart="True" />
+              <StackPanel Classes="vs">
+                <Grid ColumnDefinitions="*,Auto,*">
+                  <Button Grid.Column="1" Classes="vlv" Theme="{StaticResource PrValveBtn}" ToolTip.Tip="{Binding SvTip}" Click="OnValve"
+                          AutomationProperties.Name="{Binding SvLabel}">
+                    <hc:ValveGlyph Classes="vg" Open="{Binding SvOpen}" />
+                  </Button>
+                </Grid>
+              </StackPanel>
+            </Panel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <ItemsControl Name="CardsLow" Grid.Row="4" Grid.Column="1" ItemsSource="{Binding TilesLow}" IsVisible="{Binding IsN16}" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Rows="1" Columns="{Binding MonCols}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="h:MonTileVm">
+            <Button Classes="rv" Theme="{StaticResource PrMonCard}" Classes.on="{Binding IsSelected}" Classes.off="{Binding IsOff}" Click="OnTile"
+                    ToolTip.Tip="{Binding CardTip}" AutomationProperties.Name="{Binding Rv}">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" Height="18" HorizontalAlignment="Center">
+                  <TextBlock Classes="rvn" Text="{Binding Rv}" />
+                  <hc:TileMarkView Dot="{Binding Dot}" Mark="{Binding Mark}" ToolTip.Tip="{Binding MarkTip}" VerticalAlignment="Center" />
+                </StackPanel>
+                <hc:VesselArt Heat="{Binding Heat}" Cooling="{Binding Cooling}" Off="{Binding IsOff}" Err="{Binding IsErr}" Bubbles="{Binding Bubbles}"
+                              TFrac="{Binding TFrac}" SpFrac="{Binding SpFrac}" PFrac="{Binding PFrac}" LimFrac="{Binding LimFrac}" />
+                <TextBlock Classes="t num"><Run Text="{Binding TempText}" /><Run Classes="u" Text=" °C" /></TextBlock>
+                <StackPanel Classes="p" Orientation="Horizontal">
+                  <Border Classes="hot" Classes.on="{Binding PressHot}"><TextBlock Classes="pv num" Text="{Binding PressText}" /></Border>
+                  <TextBlock Classes="u" Text="{Binding Unit, Source={x:Static th:PressureText.Instance}}" Margin="2,0,0,0" />
+                </StackPanel>
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+
+      <!-- 共用总管 HDR-01（.bus / .hdr / .hdrl）：画在竖管之后，盖住竖管伸进来的 2 px -->
+      <Panel Name="Bus" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3">
+        <hc:PipeLine Name="Hdr" Kind="Header" Flow="{Binding Gas.HeaderFlow}" Height="5" VerticalAlignment="Top" />
+        <TextBlock Name="HdrLabel" Text="{Binding Gas.HeaderText}" FontSize="{StaticResource FsBase}" LineHeight="16" Foreground="{StaticResource T3Brush}"
+                   HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,8,0,0" TextTrimming="CharacterEllipsis" />
+      </Panel>
+    </Grid>
+  </Panel>
+</UserControl>

@@ -243,6 +243,7 @@ public static partial class ShotRunner
         }
         else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices）");
         vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
+        vm.Prefs.Set(vm.Prefs.Current with { PressureUnit = "MPa" });   // 压力单位回到默认（要别的单位时写 punit=bar|psi）
         vm.ApplyDemoParams(p);
         Frozen.Apply(window);
     }

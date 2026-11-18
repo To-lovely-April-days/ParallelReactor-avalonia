@@ -1,0 +1,83 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:h="using:ParallelReactor.Control.Pages.Home">
+  <!-- 主页通道面板三种视图（融合版 F4：气路图 / 卡片 / 棒图）共用的控件主题。三个视图各自 MergedDictionaries 引用。 -->
+
+  <!-- 通道小块（样稿 .rv / .vcard / .cb）：白底、细边、圆角按类；悬停 line-2 边 + 浅阴影；选中品牌蓝边 + 1 px 外圈（扩散 1 的阴影，同样稿 box-shadow 0 0 0 1px）。
+       类 bar（棒图 .cb）：平时无边透明，悬停 bg-hover + line 边，选中 a-soft 底 + a-done 边、圆角 6。 -->
+  <ControlTheme x:Key="PrMonCard" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Top" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="ToolTip.ShowDelay" Value="600" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Border>
+          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="{TemplateBinding CornerRadius}"
+                  IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCardHover}" />
+    </Style>
+    <Style Selector="^.on /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="BoxShadow" Value="{x:Static h:MonConverters.SelRing}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 棒图 -->
+    <Style Selector="^.bar">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <Style Selector="^.bar:pointerover /template/ Border#PART_Body">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+    <Style Selector="^.bar.on /template/ Border#PART_Body">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ADoneBrush}" />
+      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+    </Style>
+
+  </ControlTheme>
+
+  <!-- 阀门（样稿 .vlv）：28（气源 26、紧凑 22 / 19）的方块、白底、圆角 5、无边（只显示状态：维护模式在设备触屏上）；点了提示「触屏操作」。 -->
+  <ControlTheme x:Key="PrValveBtn" TargetType="Button">
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+</ResourceDictionary>

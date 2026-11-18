@@ -278,22 +278,27 @@ internal static class DemoFusion
     public static double? DeadVolume(int k, int n) => k == 3 && n > 14 ? null
         : DemoHistory.Fixed(k == 1 ? 0.4 + (n * 3 % 5) / 10.0 : 1.6 + ((k * 7 + n * 3) % 9) / 10.0, 1);
 
+    /// <summary>样稿 CALD：每台最近一次容积标定的日期（1号机 11-10、2号机 11-03、3号机 10-28）。</summary>
+    public static DateTime CalibratedOn(int k) => k switch
+    {
+        1 => new DateTime(2026, 11, 10, 0, 0, 0, DateTimeKind.Local),
+        2 => new DateTime(2026, 11, 3, 0, 0, 0, DateTimeKind.Local),
+        _ => new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Local),
+    };
+
     /// <summary>
-    /// 整机参数。容积：1号机 / 2号机按未标定（有效容积 null，用 LineMl）；3号机 RV1–14 已标定（样稿 CALD 2026-10-28）：有效容积 = 釜容积 + DEADV，
-    /// 气相体积 = 有效容积 − 溶液，与样稿 gasV 相同。转速上限 450（样稿 STEPT.STIR），传动比 1。
+    /// 整机参数。容积（融合版 F8 起同样稿 DEADV / CALD）：样稿给了管路死体积的通道都算已标定 —— 有效容积 = 釜容积 + DEADV、标定日期 = CALD，
+    /// 气相体积 = 有效容积 − 溶液（与样稿 gasV 逐路相同）；3号机 RV15–16 未标定（用 LineMl）。转速上限 450（样稿 STEPT.STIR），传动比 1。
     /// </summary>
     public static DemoPlant Plant(Dev f, int channelCount)
     {
         var eff = new double?[channelCount];
         var cal = new DateTime?[channelCount];
-        if (f.K == 3)
+        for (int n = 1; n <= channelCount; n++)
         {
-            for (int n = 1; n <= channelCount; n++)
-            {
-                if (DeadVolume(f.K, n) is not double dv) continue;
-                eff[n - 1] = DemoHistory.Fixed(f.VesselMl + dv, 1);
-                cal[n - 1] = new DateTime(2026, 10, 28, 0, 0, 0, DateTimeKind.Local);
-            }
+            if (DeadVolume(f.K, n) is not double dv) continue;
+            eff[n - 1] = DemoHistory.Fixed(f.VesselMl + dv, 1);
+            cal[n - 1] = CalibratedOn(f.K);
         }
         return new DemoPlant(f.PLim, f.TMax, 450, f.StirAmp, 1, f.VesselMl, f.LineMl, eff, cal, f.OnLost, f.HostName);
     }

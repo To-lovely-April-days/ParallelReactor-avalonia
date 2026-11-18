@@ -66,10 +66,42 @@ REFS=(
   "home-vessel|dev=1&page=main&apop=0&mv=vessel|0|F4 卡片"
   "home-bar|dev=1&page=main&apop=0&mv=bar|0|F4 棒图"
   "home-maint|dev=1&page=main&apop=0&mv=gas&scene=maint|0|F4 维护模式"
+  "home-gas-dev2|dev=2&page=main&apop=0&mv=gas|0|F4 气路图 · 4 路"
+  "home-gas-dev3|dev=3&page=main&apop=0&mv=gas|0|F4 气路图 · 16 路（上下两排）"
+  "home-vessel-dev2|dev=2&page=main&apop=0&mv=vessel|0|F4 卡片 · 4 路（宽卡）"
+  "home-vessel-dev3|dev=3&page=main&apop=0&mv=vessel|0|F4 卡片 · 16 路（紧凑）"
+  "home-bar-dev2|dev=2&page=main&apop=0&mv=bar|0|F4 棒图 · 4 路"
+  "home-bar-dev3|dev=3&page=main&apop=0&mv=bar|0|F4 棒图 · 16 路"
+  # —— F5 报警页 / 曲线页 ——
+  "page-alarm-all|dev=0&page=alarm&apop=0|0|F5 报警页 · 全部设备（多一列「设备」）"
+  "page-alarm-sel|dev=1&page=alarm&apop=0|document.querySelector('[data-alsel=H2]').click()|F5 报警页 · 选中已解除的报警（RV6 超温）"
+  "page-alarm-ua|dev=1&page=alarm&apop=0|document.querySelector('[data-alf2=\"st:ua\"]').click()|F5 报警页 · 筛选「未确认」"
+  "page-curve-h1|dev=1&page=curve&apop=0|document.querySelector('[data-cvr=h1]').click();document.querySelector('[data-cvv=G]').click()|F5 曲线页 · 1 h + 气体消耗（三张图）"
+  "page-curve-sel|dev=1&page=curve&apop=0|['6','8'].forEach(n=>document.querySelector('[data-cvch=\"'+n+'\"]').click());document.querySelector('[data-cvsp]').click()|F5 曲线页 · 只选 4 路（末端标签）+ 设定值"
+  "page-curve-cur|dev=1&page=curve&apop=0|const c=document.querySelector('.cvc');const r=c.getBoundingClientRect();c.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,clientX:r.left+r.width*0.6,clientY:r.top+60}))|F5 曲线页 · 十字光标 13:53（提示框 + 读数表）"
   # —— 以后的页面状态 ——
   "page-prog-mx|dev=1&page=prog&apop=0&pgm=mx|0|F6 条件矩阵"
+  # —— F6 程序页 ——
+  "page-prog-one|dev=1&page=prog&apop=0&pgm=one|0|F6 单路程序"
+  "page-prog-one-check|dev=1&page=prog&apop=0&pgm=one|document.querySelector('#pgSend [data-act=pg-check]').click()|F6 单路程序 · 预运行检查"
+  "page-prog-mx-d3|dev=3&page=prog&apop=0&pgm=mx|document.querySelector('[data-mxbank=\"1\"]').click()|F6 条件矩阵 · 16 路设备 RV9–16"
+  "page-prog-mx-check|dev=1&page=prog&apop=0&pgm=mx|document.querySelector('#mxSend [data-act=mx-check]').click()|F6 条件矩阵 · 预运行检查"
+  "page-prog-mx-volbad|dev=1&page=prog&apop=0&pgm=mx|MX.vol[5]=NaN;renderAll()|F6 条件矩阵 · RV5 溶液体积没填"
   "page-set-night|dev=1&page=set&apop=0&set=night|0|F8 无人值守"
   "page-set-upt|dev=1&page=set&apop=0&set=upt|0|F8 吸气量计算"
+  # —— F8 设置页其余几节 · 性能测试的泄漏测试 ——
+  "page-set-conn|dev=1&page=set&apop=0&set=conn|0|F8 设置 · 设备连接"
+  "page-set-lim|dev=1&page=set&apop=0&set=lim|0|F8 设置 · 参数与报警（只读）"
+  "page-set-pid|dev=1&page=set&apop=0&set=pid&pidsel=5|0|PID 自整定 · 中温档，勾了 RV5（可以开始）"
+  "page-set-pid-tuning|dev=1&page=set&apop=0&set=pid&pidsel=5&tune=run|0|PID 自整定 · RV5 整定中（26 min，第 2/3 次振荡）"
+  "page-set-pid-done|dev=1&page=set&apop=0&set=pid&pidsel=5&tune=done|0|PID 自整定 · 整定完成（新旧 PID 对比）"
+  "page-set-comm|dev=1&page=set&apop=0&set=comm|0|F8 设置 · 通讯与模块"
+  "page-set-store|dev=1&page=set&apop=0&set=store|0|F8 设置 · 数据存储"
+  "page-set-about|dev=1&page=set&apop=0&set=about|0|F8 设置 · 关于"
+  "page-set-upt-dev3|dev=3&page=set&apop=0&set=upt|0|F8 吸气量计算 · 16 路（RV15–16 未标定）"
+  "page-set-dev2|dev=2&page=set&apop=0&set=night|0|F8 无人值守 · 选 2号机（本地只读）"
+  "page-test-leak|dev=1&page=test&apop=0|document.querySelector('[data-ptm=leak]').click()|F8 性能测试 · 泄漏测试"
+  "page-test-dev2|dev=2&page=test&apop=0|0|F8 性能测试 · 4 路设备（没有测试计划）"
 )
 
 fail=0; n=0

@@ -138,8 +138,8 @@ public sealed class ModelProfile
     /// <summary>步骤卡片显示的短名：'搅拌电机（全局）' / '搅拌电机（本釜）'。</summary>
     public string StirShort => StirMode == StirMode.Shared ? "搅拌电机（全局）" : "搅拌电机（本釜）";
 
-    /// <summary>量程文字：'≤ 200 ℃ · ≤ 4.14 MPa'（数字按 JS 的 String(number)）。</summary>
-    public string RangeNote => "≤ " + JsNumber.ToString(Limits.TempMaxC) + " ℃ · ≤ " + JsNumber.ToString(Limits.PressureMaxMPa) + " MPa";
+    /// <summary>量程文字：'≤ 200 ℃ · ≤ 4.14 MPa'（数字按 JS 的 String(number)；压力按设置的单位，见 <see cref="Format.PressureDisplay.LimitU"/>）。</summary>
+    public string RangeNote => "≤ " + JsNumber.ToString(Limits.TempMaxC) + " ℃ · ≤ " + Format.PressureDisplay.LimitU(Limits.PressureMaxMPa);
 
     /// <summary>
     /// 气路名称：表内键 → 名称（排空也算）。样稿之外多一层：键对不上时再按 HMI 代码找（真机 GasSnap 的 "A" → '气体 A'）。都找不到返回原样。

@@ -21,7 +21,9 @@ public static class ChartBands
     /// <param name="opts">曲线输入（至少一条纵轴才会改）。</param>
     /// <param name="pMax">型号的压力量程（MPa）；0 / null 按 1（JS <c>o.pMax || 1</c>）。</param>
     /// <param name="limit">要画进来的上限值（接近 / 超过上限时 = 量程）；null = 不画上限线。</param>
-    public static ChartOptions Apply(ChartOptions opts, double? pMax = null, double? limit = null)
+    /// <param name="pScale">压力轴的单位相对 MPa 的倍数（1 MPa = 几个显示单位：MPa 1、bar 10、psi 145.04）：跨度下限 0.1 MPa 按它换算；
+    /// <paramref name="pMax"/> / <paramref name="limit"/> / 数据已经是显示单位。</param>
+    public static ChartOptions Apply(ChartOptions opts, double? pMax = null, double? limit = null, double pScale = 1)
     {
         ArgumentNullException.ThrowIfNull(opts);
         var axes = new List<ChartAxis>(opts.YAxes);
@@ -49,14 +51,15 @@ public static class ChartBands
         {
             double pm = pMax is double pv && pv != 0 && !double.IsNaN(pv) ? pv : 1;
             int dec = axes[1].Dec ?? 3;
-            double span = Math.Max(Math.Max(phi - plo, 0.1), Math.Max(phi * 0.08, 5 * Math.Pow(10, -dec)));
+            double floor01 = 0.1 * pScale;
+            double span = Math.Max(Math.Max(phi - plo, floor01), Math.Max(phi * 0.08, 5 * Math.Pow(10, -dec)));
             double min, max;
             if (phi < pm * 0.05)
             {
                 min = 0;
                 max = Math.Max(phi * 1.6, pm * 0.1);
             }
-            else if (phi - plo <= Math.Max(0.1, phi * 0.25))
+            else if (phi - plo <= Math.Max(floor01, phi * 0.25))
             {
                 min = Math.Max(0, plo - span * 0.18);
                 max = min + span * 2.3;

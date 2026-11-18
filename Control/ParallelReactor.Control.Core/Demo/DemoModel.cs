@@ -64,7 +64,11 @@ public sealed class DemoStir
 public sealed record DemoPlant(
     double OverPressureMPa, double OverTempC, double RpmMax, double StirCurrentA, double StirGearRatio,
     double VesselMl, double LineMl, IReadOnlyList<double?> EffectiveMl, IReadOnlyList<DateTime?> CalibratedAt,
-    string OnRemoteLost, string HostName);
+    string OnRemoteLost, string HostName)
+{
+    /// <summary>泄漏测试设置（融合版 F8）：测试压力 psi、平衡 / 测量 min（样稿 LEAK 145 / 10 / 30）、泄漏率阈值 psi/h（HMI 出厂值 2）。</summary>
+    public (double Psi, double SettleMin, double MeasureMin, double RatePsiH) Leak { get; init; } = (145, 10, 30, 2);
+}
 
 /// <summary>会话标记：时刻、文字、反应釜号（没有为 null）。</summary>
 public sealed record DemoMarker(DateTime At, string Text, int? N);

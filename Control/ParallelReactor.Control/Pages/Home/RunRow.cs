@@ -199,10 +199,10 @@ public sealed partial class RunRowVm : ObservableObject
         SpText = r.SpC is double sp ? sp.ToString("0.0", CultureInfo.InvariantCulture) : Fmt.Dash;
         DevChip = RunRowText.DevChip(own, r.TempC, r.SpC);
         DevTip = DevChip != null ? RunRowText.DevTip(r.TempC!.Value, r.SpC!.Value) : null;
-        // 运行表的压力一律 2 位小数（样稿 fp：toFixed(2)；检查器 / 曲线页仍按型号的小数位）
-        PressText = r.PressureMPa is double pv ? pv.ToString("0.00", CultureInfo.InvariantCulture) : r.PressText;
+        // 运行表的压力：MPa 一律 2 位小数（样稿 fp：toFixed(2)；检查器 / 曲线页仍按型号的小数位），bar 2 位、psi 1 位（设置的压力单位）
+        PressText = r.PressureMPa is double pv ? PressureDisplay.Fixed(pv, 2) : r.PressText;
         PressNa = r.PressNa;
-        PSpText = r.PTargetMPa is double ps && ps > 0 ? ps.ToString("0.00", CultureInfo.InvariantCulture) : Fmt.Dash;
+        PSpText = r.PTargetMPa is double ps && ps > 0 ? PressureDisplay.Fixed(ps, 2) : Fmt.Dash;
         PressHot = r.PressureMPa is double p && plimMPa is double lim && p > lim;
 
         if (r.TempNa) { GasKind = 0; GasText = Fmt.Dash; }

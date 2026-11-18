@@ -28,7 +28,7 @@ public sealed partial class ReactorCurvesVm : ObservableObject
 
     private readonly PointWindow _t = new(), _tsp = new(), _p = new(), _psp = new();
     private DeviceVm? _d;
-    private (ChannelHistory? H, int Version, DateTime Now, int Min, bool Alarm, double? PNow, bool Online, IReadOnlyList<SessionMark>? Marks, ModelProfile? Model, bool Installed) _key;
+    private (ChannelHistory? H, int Version, DateTime Now, int Min, bool Alarm, double? PNow, bool Online, IReadOnlyList<SessionMark>? Marks, ModelProfile? Model, bool Installed, int PUnit) _key;
     private bool _built;
 
     public ReactorCurvesVm(int k, int n)
@@ -104,7 +104,7 @@ public sealed partial class ReactorCurvesVm : ObservableObject
         // 样稿 reactorChartOpts：nearLimit = ch.state === 'alarm'（反应釜自己的状态，不按断线改写）|| 当前压力 ≥ 量程 × 0.9
         bool alarm = rd.Own == StateKey.Alarm;
         var marks = hist.Marks;
-        var key = (h, h?.Version ?? -1, now, min, alarm, rd.PressureMPa, online, (IReadOnlyList<SessionMark>?)marks, (ModelProfile?)src.Model, rd.Installed);
+        var key = (h, h?.Version ?? -1, now, min, alarm, rd.PressureMPa, online, (IReadOnlyList<SessionMark>?)marks, (ModelProfile?)src.Model, rd.Installed, Core.Format.PressureDisplay.Version);
         if (_built && key == _key) return;
         _key = key;
         _built = true;

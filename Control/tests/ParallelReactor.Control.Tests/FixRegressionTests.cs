@@ -394,10 +394,11 @@ public class FixRegressionTests : IDisposable
     {
         var plan = PlanLoader.LoadEmbedded(PlanLoader.BaselinePlan);
         var (runner, dev, clock, prompt) = Make(plan);
-        prompt.OnEntry = r => r.StepId == "F6-2" ? AutoPrompt.Fill(r, 850) : AutoPrompt.Fill(r, 10);
+        // 融合版 F8：n_max 是釜转速、上限 450（F6-2 的录入范围 0–450）
+        prompt.OnEntry = r => r.StepId == "F6-2" ? AutoPrompt.Fill(r, 420) : AutoPrompt.Fill(r, 10);
         var result = await PerfDrive.RunAsync(runner.RunAsync(Req(plan, true, "F6"), CancellationToken.None), clock, dev, maxSteps: 6000);
         Assert.Equal(ItemOutcome.Completed, result.Items[0].Outcome);
-        Assert.Contains("stir on=True rpm=850", dev.Commands);
+        Assert.Contains("stir on=True rpm=420", dev.Commands);
         Assert.DoesNotContain("stir on=True rpm=1000", dev.Commands);
         Assert.NotNull(result.Items[0].CommStart);   // 假设备 GET /device/comm 为 null → 文案「不可用」，但字段已填
         Assert.Contains(result.Events, e => e.Kind == "comm");

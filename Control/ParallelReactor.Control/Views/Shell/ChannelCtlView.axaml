@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:th="using:ParallelReactor.Control.Theme"
              xmlns:c="using:ParallelReactor.Control.Controls"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:b="using:ParallelReactor.Control.Behaviors"
@@ -179,7 +180,7 @@
                 <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="°C" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="温度" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding TempText}" /></StackPanel>
               </Border>
               <Border Grid.Column="1" Classes="pv" Classes.hot="{Binding PressHot}">
-                <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="MPa" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="压力" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding PressText}" /></StackPanel>
+                <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="{Binding Unit, Source={x:Static th:PressureText.Instance}}" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="压力" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding PressText}" /></StackPanel>
               </Border>
               <Border Grid.Column="2" Classes="pv" ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}">
                 <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="mmol" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="吸气" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding GasText}" /></StackPanel>

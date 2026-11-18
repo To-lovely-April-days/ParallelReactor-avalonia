@@ -23,6 +23,7 @@ public partial class HomePage : UserControl
         InitializeComponent();
         RunRows.SizeChanged += (_, _) => ApplyColumns();
         RunScroll.SizeChanged += (_, _) => ApplyColumns();
+        PMon.SizeChanged += (_, _) => ApplyMvTool();
     }
 
     protected override void OnDataContextChanged(System.EventArgs e)
@@ -38,15 +39,34 @@ public partial class HomePage : UserControl
         switch (e.PropertyName)
         {
             case nameof(HomePageVm.IsShort): ApplyRows(); ApplyColumns(); break;
+            case nameof(HomePageVm.MonView): ApplyRows(); break;
             case nameof(HomePageVm.MonMode) or nameof(HomePageVm.CurveMode) or nameof(HomePageVm.ResMode): ApplyPanes(); break;
             case nameof(HomePageVm.IsNarrow): ApplyColumns(); break;
         }
     }
 
+    /// <summary>
+    /// 看板两行的比例：运行表 1.14 : 1（矮屏 1.3 : 1）；气路图 / 卡片 / 棒图 1.7 : 1（样稿 .gcols.mv-x）；矮屏且不是运行表时第二行（曲线 + 共用资源）收起，通道占满（融合版 F4）。
+    /// </summary>
     private void ApplyRows()
     {
-        var top = new GridLength(_vm?.IsShort == true ? 1.3 : 1.14, GridUnitType.Star);
+        bool hide = _vm?.HideRow2 == true;
+        var top = hide ? new GridLength(1, GridUnitType.Star) : new GridLength(_vm?.IsMvX == true ? 1.7 : _vm?.IsShort == true ? 1.3 : 1.14, GridUnitType.Star);
         if (Board.RowDefinitions[0].Height != top) Board.RowDefinitions[0].Height = top;
+        var gap = new GridLength(hide ? 0 : 8);
+        if (Board.RowDefinitions[1].Height != gap) Board.RowDefinitions[1].Height = gap;
+        var bottom = hide ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        if (Board.RowDefinitions[2].Height != bottom) Board.RowDefinitions[2].Height = bottom;
+        Row2.IsVisible = !hide;
+    }
+
+    /// <summary>通道面板窄于 800（样稿 @container pm (max-width:800px)）：灰带不写「运行 6/8」和搅拌电流。</summary>
+    private void ApplyMvTool()
+    {
+        bool narrow = PMon.Bounds.Width - 30 <= 800;
+        MvRun.IsVisible = !narrow;
+        MvSep1.IsVisible = !narrow;
+        MvStir.ShowAmp = !narrow;
     }
 
     /// <summary>折叠的面板：30 宽的竖条（同一行的另一块占满）；通道面板一个人一行，收起后靠左。</summary>

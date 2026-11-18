@@ -58,7 +58,9 @@ public class F2FrameTests
         Assert.True(s.Nav.SelectDevice(0));                         // 报警页可以看全部设备
         s.Go(AppPage.Home);
         Assert.True(s.Nav.IsAll);
-        Assert.IsType<PlaceholderPageVm>(s.OpenPage<PlaceholderPageVm>());
+        // F5 起曲线 / 报警是真页面（不再是占位）
+        Assert.NotNull(s.OpenPage<ParallelReactor.Control.Pages.Curves.CurvePageVm>());
+        Assert.NotNull(s.OpenPage<ParallelReactor.Control.Pages.Alarms.AlarmPageVm>());
     }
 
     [Fact]

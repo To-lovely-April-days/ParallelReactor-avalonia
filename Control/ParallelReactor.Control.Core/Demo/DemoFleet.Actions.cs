@@ -334,7 +334,9 @@ public sealed partial class DemoFleet
     private void RunProgramNow(DemoDevice d, DemoChannel ch)
     {
         var cur = ch.Program!;
-        var def = d.ProgramList.FirstOrDefault(x => x.Id == cur.Id) ?? new ProgramDef(cur.Id ?? "", cur.Name, cur.Note ?? "", cur.Steps);
+        // 融合版 F6：记录里有步骤就用它（程序页下发的程序和程序库同 id、参数却是这一路的）；没有步骤才回到程序库
+        var def = cur.Steps.Count > 0 ? new ProgramDef(cur.Id ?? "", cur.Name, cur.Note ?? "", cur.Steps)
+            : d.ProgramList.FirstOrDefault(x => x.Id == cur.Id) ?? new ProgramDef(cur.Id ?? "", cur.Name, cur.Note ?? "", cur.Steps);
         ch.Program = MakeProgram(def, new ProgSpec(def.Id, Status: ProgramStatus.Running), null, Now);
         var first = ch.Program.Steps.Count > 0 ? ch.Program.Steps[0] : null;
         if (first is null) return;

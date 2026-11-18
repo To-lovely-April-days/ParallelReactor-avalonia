@@ -26,8 +26,8 @@ public static class Keep
 
     private const RegexOptions Opt = RegexOptions.CultureInvariant;
 
-    /// <summary>PR.nbsp：/(\d)\s+(?=(min|s|h|℃|°C|MPa|psi|rpm|%|mL)(?![A-Za-z]))/g → '$1' + U+00A0。</summary>
-    private static readonly Regex UnitGap = new("([0-9])[" + JsSpace + "]+(?=(min|s|h|℃|°C|MPa|psi|rpm|%|mL)(?![A-Za-z]))", Opt);
+    /// <summary>PR.nbsp：/(\d)\s+(?=(min|s|h|℃|°C|MPa|bar|psi|rpm|%|mL)(?![A-Za-z]))/g → '$1' + U+00A0。</summary>
+    private static readonly Regex UnitGap = new("([0-9])[" + JsSpace + "]+(?=(min|s|h|℃|°C|MPa|bar|psi|rpm|%|mL)(?![A-Za-z]))", Opt);
     /// <summary>「4.14 MPa ≥ 3.00 MPa」：运算符两边的空格都不断开。</summary>
     private static readonly Regex OpGap = new("([^·" + JsSpace + "]) (≥|≤|>|<|=|→) ", Opt);
     /// <summary>「… · ≤ 200 ℃」：点后面照样能断行，运算符与后面的数不断开。</summary>

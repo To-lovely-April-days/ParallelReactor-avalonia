@@ -404,7 +404,7 @@ public class F3HomeTests
     {
         var s = Shell();
         s.OpenChannel(1, 1);
-        Assert.Equal(("RV1", "反应中", "气相 5.7 mL = 釜 10 − 溶液 + 管路 0.7", "5.0"), (s.Ctl.Title, s.Ctl.Word, s.Ctl.VolHint, s.Ctl.VolText));
+        Assert.Equal(("RV1", "反应中", "气相 5.7 mL = 有效容积 10.7 − 溶液", "5.0"), (s.Ctl.Title, s.Ctl.Word, s.Ctl.VolHint, s.Ctl.VolText));
         Assert.Equal("第 3/4 步 恒温反应 · 剩 27 min", s.Ctl.Sub2);
         Assert.Null(s.Ctl.Bar);                                   // 1号机远程控制中
         Assert.Equal("RV1 程序运行中", s.Ctl.VolReason);              // 程序运行中设备不让改（HMI CHANNEL_PROGRAM_OWNED）
@@ -413,7 +413,7 @@ public class F3HomeTests
         s.Ctl.VolUpCommand.Execute(null);
         s.Fleet.RefreshNow();
         Assert.Equal("5.1", s.Ctl.VolText);
-        Assert.Equal("气相 5.6 mL = 釜 10 − 溶液 + 管路 0.7", s.Ctl.VolHint);
+        Assert.Equal("气相 5.3 mL = 有效容积 10.4 − 溶液", s.Ctl.VolHint);   // RV5：有效容积 = 10 + DEADV 0.4（样稿）
         s.SelectDevice(3);
         s.OpenChannel(3, 1);
         Assert.Equal("本地只读 · 在工具条「申请控制」后才能操作", s.Ctl.Bar);
@@ -444,8 +444,7 @@ public class F3HomeTests
         var s = Shell();
         Assert.Contains(s.Status.Extra, x => x.Text == "运行中 · 已阻止睡眠");
         Assert.Equal("1号机 · RV1 · 反应中", s.Status.SelText);
-        s.Status.PreventSleep = false;
-        s.RefreshChrome();
+        s.Prefs.Set(s.Prefs.Current with { PreventSleep = false });   // 融合版 F8：设置页「运行中阻止电脑睡眠」（改了马上生效）
         Assert.DoesNotContain(s.Status.Extra, x => x.Text == "运行中 · 已阻止睡眠");
         s.Dispose();
     }

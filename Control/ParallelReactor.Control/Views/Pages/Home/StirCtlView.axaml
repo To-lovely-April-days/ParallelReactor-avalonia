@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.StirCtlView"
+             x:DataType="h:ResPaneVm">
+  <!-- 通道面板灰带上的共用搅拌（融合版 F4，样稿 stirCtl：气路图 / 卡片 / 棒图时）：「搅拌」13/500 t-2 · 釜转速框 28 高（14/600 +「rpm」13 t-3，回车 / 失焦写入）·
+       开关 38 × 22 · 电流 13 t-3（面板窄时不写）。和共用资源面板的搅拌是同一个视图模型（ResPaneVm）。 -->
+  <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="全部反应釜共用一台搅拌电机：同开同关、同一转速（釜转速）">
+    <TextBlock Text="搅拌" FontSize="{StaticResource FsBase}" FontWeight="Medium" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+    <Border Height="28" Padding="9,0" BorderThickness="1" CornerRadius="3" Background="{StaticResource BgCardBrush}" ToolTip.Tip="{Binding RpmTip}"
+            BorderBrush="{Binding StirReason, Converter={x:Static h:MonConverters.RpmEdge}}">
+      <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+        <TextBox Name="RpmIn" Text="{Binding RpmText}" Width="34" Padding="0" MinHeight="0" Height="26" Background="Transparent" BorderThickness="0"
+                 FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" TextAlignment="Right"
+                 VerticalContentAlignment="Center" IsEnabled="{Binding StirReason, Converter={x:Static ObjectConverters.IsNull}}" Classes="num rpmin" />
+        <TextBlock Text="rpm" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+      </StackPanel>
+    </Border>
+    <pr:PrToggle Theme="{StaticResource PrSwitch}" IsChecked="{Binding StirOn, Mode=OneWay}" Command="{Binding StirToggleCommand}"
+                 b:Pr.Reason="{Binding ToggleReason}" ToolTip.Tip="{Binding StirTip}" AutomationProperties.Name="搅拌开关" VerticalAlignment="Center" />
+    <TextBlock Name="Amp" Classes="num" Text="{Binding AmpText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+  </StackPanel>
+</UserControl>

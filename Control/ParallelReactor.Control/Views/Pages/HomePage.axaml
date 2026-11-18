@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:th="using:ParallelReactor.Control.Theme"
              xmlns:c="using:ParallelReactor.Control.Controls"
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
@@ -177,6 +178,13 @@
     <Style Selector="Grid#Board.narrow vp|NetBannerView StackPanel#Txt2">
       <Setter Property="IsVisible" Value="True" />
     </Style>
+    <!-- 灰带里的竖线（样稿 #pMon .sub .vsep：1 × 18 line） -->
+    <Style Selector="Border.vsep">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Background" Value="{StaticResource LineBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
     <!-- 矮屏的共用资源面板（内边距 6 12 8、各节上下 6、最近事件不显示）在 ResPaneView 里按 ResPaneVm.IsShort 切换（子视图自己的样式优先于这里的） -->
   </UserControl.Styles>
   <Panel>
@@ -188,6 +196,8 @@
           <Border Classes="phead" DockPanel.Dock="Top" Padding="14,0,8,0">
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <TextBlock Text="{Binding TempPress, Source={x:Static th:PressureText.Instance}}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding ShowBarUnits}"
+                           ToolTip.Tip="{Binding BarUnitsTip, Source={x:Static th:PressureText.Instance}}" />
                 <pr:SegControl Value="{Binding MonKey}" ToolTip.Tip="显示方式">
                   <pr:SegOption Value="run" Label="运行表" />
                   <pr:SegOption Value="gas" Label="气路图" />
@@ -197,9 +207,22 @@
                 <Button Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="{Binding StopDevLabel}" Command="{Binding StopDeviceCommand}"
                         ToolTip.Tip="停止这台设备上的全部通道（打开「全部停止」，已预选这台）· 不需要控制权" />
               </StackPanel>
-              <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis">
-                <Run Text="{Binding BoardTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxA}" /><Run Text="{Binding CtxRun}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxSep}" /><Run Text="{Binding CtxErr}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding CtxProg}" />
-              </TextBlock>
+              <Panel>
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsRunView}">
+                  <Run Text="{Binding BoardTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxA}" /><Run Text="{Binding CtxRun}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxSep}" /><Run Text="{Binding CtxErr}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding CtxProg}" />
+                </TextBlock>
+                <!-- 气路图 / 卡片 / 棒图（融合版 F4，样稿 monTool 的另一分支）：「运行 6/8」｜ 共用搅拌 ｜ 维护模式（只读：触屏操作）；面板窄于 800 时不写运行数和电流 -->
+                <StackPanel Name="MvTool" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" IsVisible="{Binding IsMvX}" ClipToBounds="True">
+                  <TextBlock Name="MvRun" VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}">
+                    <Run Text="运行 " /><Run Text="{Binding RunCount}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding RunOf}" />
+                  </TextBlock>
+                  <Border Name="MvSep1" Classes="vsep" />
+                  <vp:StirCtlView Name="MvStir" DataContext="{Binding Res}" IsVisible="{Binding HasStir}" VerticalAlignment="Center" />
+                  <Border Classes="vsep" IsVisible="{Binding Res.HasStir}" />
+                  <Button Classes="sm maint" b:Pr.Icon="f-wrench" Content="维护模式" Foreground="{StaticResource TDisBrush}" Command="{Binding Res.MaintCommand}"
+                          ToolTip.Tip="{Binding Res.MaintTip}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Panel>
             </DockPanel>
           </Border>
           <vp:NetBannerView DockPanel.Dock="Top" DataContext="{Binding Net}" IsVisible="{Binding IsVisible}" />
@@ -215,7 +238,7 @@
                   <TextBlock Classes="th r" Text="本步剩余" />
                   <TextBlock Classes="th r" Text="预计结束" />
                   <StackPanel Classes="th2"><TextBlock Classes="th r" Text="温度 °C" /><TextBlock Classes="ths" Text="实测 · 设定" /></StackPanel>
-                  <StackPanel Classes="th2"><TextBlock Classes="th r" Text="压力 MPa" /><TextBlock Classes="ths" Text="实测 · 设定" /></StackPanel>
+                  <StackPanel Classes="th2"><TextBlock Classes="th r" Text="{Binding Header, Source={x:Static th:PressureText.Instance}}" /><TextBlock Classes="ths" Text="实测 · 设定" /></StackPanel>
                   <StackPanel Classes="th2" ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}"><TextBlock Classes="th r" Text="吸气 mmol" /><TextBlock Classes="ths" Text="设备计算" /></StackPanel>
                   <StackPanel Classes="th2"><TextBlock Classes="th r" Text="速率" /><TextBlock Classes="ths" Text="mmol/min" /></StackPanel>
                 </hc:RunRowPanel>
@@ -288,7 +311,10 @@
                 </ItemsControl>
               </ScrollViewer>
             </DockPanel>
-            <TextBlock Classes="plan" Text="{Binding MonPlaceholder}" IsVisible="{Binding !IsRunView}" />
+            <!-- 融合版 F4：气路图 / 卡片 / 棒图（三个视图共用 Tiles） -->
+            <vp:GasView Name="GasV" IsVisible="{Binding IsGasView}" />
+            <vp:VesselView Name="VesselV" IsVisible="{Binding IsVesselView}" />
+            <vp:BarView Name="BarV" IsVisible="{Binding IsBarView}" />
           </Panel>
         </DockPanel>
       </cs:DockPane>
@@ -301,10 +327,79 @@
         </cs:DockPane>
       </Grid>
     </Grid>
-    <!-- 总览（样稿 overviewPanel：一块白色面板，1 px line-sep、直角；灰带 40 高 bg-panel、下边 line-menu、左 14 右 6：「总览」17 px 细体 gbg-title +
-         竖线 +「全部设备 · 3 台 · 28 路」13 px t-3；卡片网格内边距 12、间距 10，每行 3 张）。F2 的卡片是简化版（F4 照样稿做：KPI、通道小格） -->
+    <!-- 总览（融合版 F4，样稿 overviewPanel 最终层叠）：一块白色面板，1 px line-sep；灰带 40 高 bg-panel、下边 line-menu、左 14 右 6：「总览」17 px 细体 gbg-title +
+         竖线 +「全部设备 · 3 台 · 28 路」13 px t-3；卡片网格内边距 12、间距 10，每行 3 张。
+         卡片：line 边、圆角 2，顶上 3 px 状态条（报警红 / 在跑绿 / 其余 n-dot-line）；悬停品牌蓝边。卡头 42 高白底、下边 line-faint、左右 12：7 px 圆点 + 别名 16/600 + 型号 13 t-3 ·
+         右侧小块 24 高圆角 2（远程控制 a-soft 底 a-tab 边品牌蓝 600 + f-plug；本地只读 白底 line-sep 边 t-2 + f-lock）。指标行上下 10 左右 12、间距 16：13 t-3 + 数 18/600 t-1（报警数 > 0 红）。
+         通道小格：每行 8 个、间距 4、30 高圆角 2、bg-press 底 13 t-2；在跑底边 3 px 运行绿；报警白底 r 字 600 + 1.5 px 红框。 -->
     <Border Name="Overview" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSepBrush}" BorderThickness="1"
             IsVisible="{Binding IsOverview}">
+      <Border.Styles>
+        <Style Selector="Button.ovdev">
+          <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+          <Setter Property="BorderThickness" Value="1" />
+          <Setter Property="CornerRadius" Value="2" />
+          <Setter Property="Margin" Value="5" />
+          <Setter Property="Height" Value="NaN" />
+          <Setter Property="MinHeight" Value="0" />
+          <Setter Property="Padding" Value="0" />
+          <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+          <Setter Property="VerticalContentAlignment" Value="Stretch" />
+          <Setter Property="Cursor" Value="Hand" />
+          <Setter Property="Template">
+            <ControlTemplate>
+              <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                      CornerRadius="{TemplateBinding CornerRadius}" ClipToBounds="True">
+                <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                  HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+              </Border>
+            </ControlTemplate>
+          </Setter>
+        </Style>
+        <Style Selector="Button.ovdev:pointerover">
+          <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+        </Style>
+        <Style Selector="Button.ovdev:focus-visible">
+          <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+        </Style>
+        <Style Selector="Border.mat">
+          <Setter Property="Height" Value="30" />
+          <Setter Property="Margin" Value="2" />
+          <Setter Property="CornerRadius" Value="2" />
+          <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+          <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style Selector="Border.mat.run">
+          <Setter Property="BorderBrush" Value="{StaticResource GDotBrush}" />
+          <Setter Property="BorderThickness" Value="0,0,0,3" />
+        </Style>
+        <Style Selector="Border.mat.err">
+          <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+          <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+          <Setter Property="BorderThickness" Value="1.5" />
+        </Style>
+        <Style Selector="Border.mat TextBlock">
+          <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+          <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+          <Setter Property="HorizontalAlignment" Value="Center" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="Border.mat.err TextBlock">
+          <Setter Property="Foreground" Value="{StaticResource RBrush}" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style Selector="StackPanel.kpi TextBlock">
+          <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+          <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="StackPanel.kpi Run.b">
+          <Setter Property="FontSize" Value="18" />
+          <Setter Property="FontWeight" Value="SemiBold" />
+          <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+        </Style>
+      </Border.Styles>
       <DockPanel>
         <Border DockPanel.Dock="Top" Height="40" Background="{StaticResource BgPanelBrush}" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1"
                 Padding="14,0,6,0">
@@ -316,8 +411,8 @@
           </StackPanel>
         </Border>
         <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
-          <StackPanel Margin="12" Spacing="12">
-            <ItemsControl ItemsSource="{Binding Cards}">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Cards}" Margin="7" VerticalAlignment="Top">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                   <UniformGrid Columns="3" />
@@ -325,48 +420,55 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="pg:HomeCardVm">
-                  <Button Theme="{StaticResource PrDevRow}" Background="{StaticResource BgCardBrush}" Margin="0,0,10,10" Command="{Binding OpenCommand}"
-                          ToolTip.Tip="在主页查看这台设备" CornerRadius="0">
-                    <Border BorderBrush="{StaticResource LineSepBrush}" BorderThickness="1">
-                      <DockPanel>
-                        <Border DockPanel.Dock="Top" Height="3" Background="{Binding Health, Converter={x:Static pg:HomeConverters.HealthBar}}" />
-                        <Border DockPanel.Dock="Top" Height="40" Padding="12,0,12,0" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,0,1">
-                          <DockPanel>
-                            <Border DockPanel.Dock="Right" Height="22" Padding="6,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1"
-                                    Background="{StaticResource ASoftBrush}" BorderBrush="{StaticResource ATabBrush}" IsVisible="{Binding Remote}" VerticalAlignment="Center">
-                              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                <c:IconView Icon="f-plug" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
-                                <pr:PrText Text="远程控制" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
-                              </StackPanel>
-                            </Border>
-                            <Border DockPanel.Dock="Right" Height="22" Padding="6,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1"
-                                    Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSepBrush}" IsVisible="{Binding !Remote}" VerticalAlignment="Center">
-                              <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                                <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
-                                <pr:PrText Text="{Binding LeaseShort}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
-                              </StackPanel>
-                            </Border>
-                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                              <Ellipse Width="7" Height="7" Fill="{Binding Health, Converter={x:Static pg:HomeConverters.HealthBar}}" VerticalAlignment="Center" />
-                              <pr:PrText Text="{Binding Alias}" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
-                              <pr:PrText Text="{Binding Model}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                  <Button Classes="ovdev" Command="{Binding OpenCommand}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Alias}">
+                    <DockPanel>
+                      <Border DockPanel.Dock="Top" Height="3" Background="{Binding State, Converter={x:Static pg:HomeConverters.OvBar}}" />
+                      <Border DockPanel.Dock="Top" Height="42" Padding="12,0" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Right" Height="24" Padding="10,0" CornerRadius="2" BorderThickness="1"
+                                  Background="{StaticResource ASoftBrush}" BorderBrush="{StaticResource ATabBrush}" IsVisible="{Binding Remote}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                              <c:IconView Icon="f-plug" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+                              <pr:PrText Text="远程控制" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
                             </StackPanel>
-                          </DockPanel>
-                        </Border>
-                        <StackPanel Margin="12,10,12,12" Spacing="4">
-                          <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}">
-                            <Run Text="{Binding Line1}" /><Run Text="{Binding AlarmRed}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding AlarmTail}" />
-                          </TextBlock>
-                          <pr:PrText Text="{Binding Line2}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
-                        </StackPanel>
-                      </DockPanel>
-                    </Border>
+                          </Border>
+                          <Border DockPanel.Dock="Right" Height="24" Padding="10,0" CornerRadius="2" BorderThickness="1"
+                                  Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSepBrush}" IsVisible="{Binding !Remote}" VerticalAlignment="Center">
+                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                              <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                              <pr:PrText Text="{Binding LeaseShort}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Border>
+                          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <Ellipse Width="7" Height="7" Fill="{Binding State, Converter={x:Static pg:HomeConverters.OvDot}}" VerticalAlignment="Center" />
+                            <pr:PrText Text="{Binding Alias}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                            <pr:PrText Text="{Binding Model}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                      <StackPanel DockPanel.Dock="Top" Classes="kpi" Orientation="Horizontal" Spacing="16" Margin="12,10">
+                        <TextBlock><Run Text="运行 " /><Run Classes="b num" Text="{Binding RunText}" /></TextBlock>
+                        <TextBlock><Run Text="报警 " /><Run Classes="b num" Text="{Binding ErrText}" Foreground="{Binding HasErr, Converter={x:Static pg:HomeConverters.OvErrInk}}" /></TextBlock>
+                        <TextBlock ToolTip.Tip="设备按压降计算的吸气量（各路合计）"><Run Text="气体消耗 " /><Run Classes="b num" Text="{Binding GasText}" /><Run Text=" mmol" /></TextBlock>
+                      </StackPanel>
+                      <ItemsControl ItemsSource="{Binding Mats}" Margin="10,-2,10,10" VerticalAlignment="Top">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="pg:OvMatVm">
+                            <Border Classes="mat" Classes.run="{Binding IsRun}" Classes.err="{Binding IsErr}" ToolTip.Tip="{Binding Tip}">
+                              <TextBlock Classes="num" Text="{Binding Num}" />
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </DockPanel>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <pr:PrText Text="点设备卡片进入这台设备的看板（通道 · 曲线 · 共用资源）· F4 照样稿补上每台的 KPI 和通道小格" FontSize="{StaticResource FsBase}"
-                       Foreground="{StaticResource T3Brush}" Margin="2,-10,0,0" />
+            <pr:PrText Text="点设备卡片进入这台设备的看板（通道 · 曲线 · 共用资源）" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" Margin="14,0,14,14" />
           </StackPanel>
         </ScrollViewer>
       </DockPanel>

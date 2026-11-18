@@ -103,6 +103,22 @@ public sealed partial class FleetVm : ObservableObject, IFleetView, IAsyncDispos
             if (_demo != null) _demo.StopAllStopsStirring = value;
         }
     }
+    /// <summary>
+    /// 断线重连后补拉断开那一段（融合版 F8 设置页「重连后补拉数据」；外壳按本机设置写进来）：传给每台实时设备（LiveDeviceSource.BackfillEnabled），之后新连的也用它。
+    /// 演示数据没有补拉（断线横条照样稿写「已补拉 146 条」）。
+    /// </summary>
+    public bool BackfillEnabled
+    {
+        get => _backfill;
+        set
+        {
+            _backfill = value;
+            foreach (var s in _sources.OfType<LiveDeviceSource>()) s.BackfillEnabled = value;
+        }
+    }
+
+    private bool _backfill = true;
+
     public bool HasSampleModels => DeviceList.Any(d => d.Model.Hypothetical);
     public DateTime Now => _demo?.Now ?? DateTime.Now;
 
@@ -317,6 +333,7 @@ public sealed partial class FleetVm : ObservableObject, IFleetView, IAsyncDispos
     private LiveDeviceSource NewLiveSource(DeviceEntry e) => new(e.ToDeviceConfig(), ClientName, _post, _connFactory, _uiContext, clock: _clock)
     {
         StopAllStopsStirring = StopAllStopsStirring,
+        BackfillEnabled = _backfill,
         LastSerial = e.LastSerial,
         InitialModelKey = e.LastModel,
         // 程序台账（M5）：<配置目录>/programs/<设备 id>.json；截图 / 演示 / 测试的内存配置（CanWrite = false）只在内存里

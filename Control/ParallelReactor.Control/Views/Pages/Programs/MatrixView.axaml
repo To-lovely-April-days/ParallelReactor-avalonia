@@ -1,0 +1,459 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pc="using:ParallelReactor.Control.Controls.Programs"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             xmlns:ed="using:ParallelReactor.Control.Core.Programs.Editor"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.MatrixView"
+             x:DataType="pg:ProgramPageVm">
+  <!-- 条件矩阵（样稿 mxRender：#mxMain | #mxSide + #mxSend）。右列宽 340（窄屏 290），代码里设。
+       表（样稿 .mxt，最终层叠值）：标签列 184（窄屏 170）；表头 54 高（矮屏 46）；格 36 高、内边距 3 4（矮屏 30 / 2 3），输入 28（矮屏 24）；
+       步骤标题行 34（矮屏 28）bg-head；共用行斜纹底；表尾 38 bg-head。 -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Programs/ProgramStyles.axaml" />
+    <!-- 图例（样稿 .mxsub .leg） -->
+    <Style Selector="StackPanel.leg">
+      <Setter Property="Orientation" Value="Horizontal" />
+      <Setter Property="Spacing" Value="6" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.leg > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid#Root.narrow StackPanel.leg3">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 行 -->
+    <Style Selector="DockPanel.mrow">
+      <Setter Property="Height" Value="36" />
+    </Style>
+    <Style Selector="Grid#Root.short DockPanel.mrow">
+      <Setter Property="Height" Value="30" />
+    </Style>
+    <Style Selector="Border.mline">
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.lab">
+      <Setter Property="Width" Value="184" />
+      <Setter Property="Padding" Value="16,0,6,0" />
+    </Style>
+    <Style Selector="Grid#Root.narrow Border.lab">
+      <Setter Property="Width" Value="170" />
+      <Setter Property="Padding" Value="10,0,6,0" />
+    </Style>
+    <Style Selector="Border.lab TextBlock.l">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="Border.lab TextBlock.u">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+      <Setter Property="Margin" Value="5,0,0,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.lab Button.tool">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+    </Style>
+    <Style Selector="Grid#Root.narrow Border.lab Button.tool">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+    </Style>
+    <Style Selector="Border.cell">
+      <Setter Property="Padding" Value="4,3" />
+    </Style>
+    <Style Selector="Grid#Root.short Border.cell">
+      <Setter Property="Padding" Value="3,2" />
+    </Style>
+    <Style Selector="Grid#Root.short TextBox.mxi">
+      <Setter Property="Height" Value="24" />
+    </Style>
+    <Style Selector="Border.sh">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Grid#Root.short Border.sh">
+      <Setter Property="Height" Value="28" />
+    </Style>
+    <Style Selector="Grid#Root.narrow TextBlock.why, Grid#Root.narrow c|IconView.why">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 表头（样稿 .mxt th） -->
+    <Style Selector="Border.thead">
+      <Setter Property="Height" Value="54" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Grid#Root.short Border.thead">
+      <Setter Property="Height" Value="46" />
+    </Style>
+    <Style Selector="TextBlock.rv">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.xc TextBlock.rv">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="TextBlock.small">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+    </Style>
+    <Style Selector="TextBlock.small.busy">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <!-- 检查（样稿 .mxck） -->
+    <Style Selector="Border.ck">
+      <Setter Property="Padding" Value="10,8" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Background" Value="{StaticResource AWashBrush}" />
+    </Style>
+    <Style Selector="Border.ck TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="19" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.ck c|IconView">
+      <Setter Property="Size" Value="16" />
+      <Setter Property="Margin" Value="0,2,8,0" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.ck.no">
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+    </Style>
+    <Style Selector="Border.ck.no TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource AmbInk2Brush}" />
+    </Style>
+    <Style Selector="Border.ck.no c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource AmbBrush}" />
+    </Style>
+    <Style Selector="Border.ck.ok">
+      <Setter Property="Background" Value="{StaticResource G1Brush}" />
+    </Style>
+    <Style Selector="Border.ck.ok TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+    </Style>
+    <Style Selector="Border.ck.ok c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource GDotBrush}" />
+    </Style>
+    <Style Selector="pc|MxTempChart">
+      <Setter Property="Height" Value="150" />
+    </Style>
+    <Style Selector="Grid#Root.short pc|MxTempChart">
+      <Setter Property="Height" Value="110" />
+    </Style>
+  </UserControl.Styles>
+  <UserControl.DataTemplates>
+    <!-- 样品 / 催化剂 -->
+    <DataTemplate DataType="pg:MxSampleRow" x:DataType="pg:MxSampleRow">
+      <Border Classes="mline">
+        <DockPanel Classes="mrow">
+          <Border Classes="lab"><TextBlock Classes="l" Text="样品 / 催化剂" /></Border>
+          <ItemsControl ItemsSource="{Binding Cells}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="pg:MxCellVm">
+                <Border Classes="cell">
+                  <TextBox Classes="mxi txt" Theme="{StaticResource PgCell}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding Enabled}"
+                           Watermark="—" ToolTip.Tip="{Binding Tip}" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+    <!-- 溶液体积（必填） -->
+    <DataTemplate DataType="pg:MxVolRow" x:DataType="pg:MxVolRow">
+      <Border Classes="mline">
+        <DockPanel Classes="mrow">
+          <Border Classes="lab">
+            <DockPanel>
+              <Button Classes="tool" DockPanel.Dock="Right" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-copy" Command="{Binding SameCommand}"
+                      ToolTip.Tip="全部设为第一路的值" VerticalAlignment="Center" />
+              <StackPanel Orientation="Horizontal"><TextBlock Classes="l" Text="溶液体积" /><TextBlock Classes="u" Text="mL" /></StackPanel>
+            </DockPanel>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Cells}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="pg:MxCellVm">
+                <Border Classes="cell">
+                  <TextBox Classes="mxi" Theme="{StaticResource PgCell}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding Enabled}"
+                           Classes.bad="{Binding Bad}" Watermark="必填" ToolTip.Tip="{Binding Tip}" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+    <!-- 步骤标题 -->
+    <DataTemplate DataType="pg:MxHeadRow" x:DataType="pg:MxHeadRow">
+      <Border Classes="sh">
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <Border Width="24" Height="20" CornerRadius="{StaticResource RadiusS}" BorderThickness="1" BorderBrush="{StaticResource Line2Brush}">
+            <TextBlock Text="{Binding No}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Padding="7,0" Height="20" CornerRadius="{StaticResource RadiusS}" Background="{StaticResource BgSideBrush}">
+            <TextBlock Text="{Binding TypeLabel}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+    <!-- 每路可以不同的参数 -->
+    <DataTemplate DataType="pg:MxPerRow" x:DataType="pg:MxPerRow">
+      <Border Classes="mline">
+        <DockPanel Classes="mrow">
+          <Border Classes="lab">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-copy" Command="{Binding SameCommand}" ToolTip.Tip="全部设为第一路的值" />
+                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-trend" Command="{Binding RampCommand}" ToolTip.Tip="等差填充：从第一路到最后一路均匀变化" />
+              </StackPanel>
+              <StackPanel Orientation="Horizontal"><TextBlock Classes="l" Text="{Binding Label}" /><TextBlock Classes="u" Text="{Binding Unit}" /></StackPanel>
+            </DockPanel>
+          </Border>
+          <ItemsControl ItemsSource="{Binding Cells}">
+            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="pg:MxCellVm">
+                <Border Classes="cell">
+                  <TextBox Classes="mxi" Theme="{StaticResource PgCell}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding Enabled}"
+                           Classes.bad="{Binding Bad}" Classes.chg="{Binding Chg}" ToolTip.Tip="{Binding Tip}" VerticalAlignment="Center" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+    <!-- 共用参数（斜纹底，只填一次） -->
+    <DataTemplate DataType="pg:MxSharedRow" x:DataType="pg:MxSharedRow">
+      <Border Classes="mline">
+        <DockPanel Classes="mrow">
+          <Border Classes="lab">
+            <StackPanel Orientation="Horizontal"><TextBlock Classes="l" Text="{Binding Label}" /><TextBlock Classes="u" Text="{Binding Unit}" /></StackPanel>
+          </Border>
+          <pc:Hatch Stripe="{StaticResource AWashBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="8,0,0,0" VerticalAlignment="Center">
+              <ComboBox Theme="{StaticResource PrSelect}" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" IsVisible="{Binding IsSelect}"
+                        Width="150" Height="28" Classes="mxi">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="ed:FieldOption"><TextBlock Text="{Binding Label}" /></DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBox Theme="{StaticResource PgUnit}" Width="104" Height="28" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" b:Pr.Unit="{Binding Unit}"
+                       IsVisible="{Binding IsNum}" Classes.bad="{Binding Bad}" ToolTip.Tip="{Binding Tip}" Classes="mxi" />
+              <c:IconView Classes="why" Icon="{Binding WhyIcon}" Size="14" Foreground="{StaticResource TIconBrush}" VerticalAlignment="Center" Margin="0,0,-6,0" />
+              <TextBlock Classes="why" Text="{Binding Why}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </pc:Hatch>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+  <Grid Name="Root" ColumnDefinitions="*,8,340" RowDefinitions="*,Auto" Classes.narrow="{Binding IsNarrow}" Classes.short="{Binding IsShort}">
+    <!-- 条件矩阵（样稿 #mxMain） -->
+    <Border Classes="pgpanel" Grid.Column="0" Grid.RowSpan="2">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <DockPanel>
+            <pr:SegControl Classes="pgmode" DockPanel.Dock="Right" Value="{Binding ModeKey}" Margin="0,0,78,0"
+                           ToolTip.Tip="单路程序：编辑一个程序的步骤；条件矩阵：同一套步骤，每路填不同条件">
+              <pr:SegOption Value="one" Label="单路程序" />
+              <pr:SegOption Value="mx" Label="条件矩阵" />
+            </pr:SegControl>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="pt" Text="条件矩阵" />
+              <TextBlock Classes="pc" Text="{Binding Mx.TemplateSub, StringFormat='· {0}'}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 图例 · 分组 · 参加 N 路（样稿 .mxsub） -->
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel VerticalAlignment="Center">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="16">
+              <pr:SegControl Value="{Binding Mx.BankKey}" IsVisible="{Binding Mx.IsMany}" VerticalAlignment="Center">
+                <pr:SegOption Value="0" Label="RV1–8" />
+                <pr:SegOption Value="1" Label="RV9–16" />
+              </pr:SegControl>
+              <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center">
+                <Run Text="参加 " /><Run Text="{Binding Mx.IncText}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" 路" />
+              </TextBlock>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <StackPanel Classes="leg">
+                <Border Width="14" Height="12" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource Line2Brush}" Background="{StaticResource BgPanelBrush}" />
+                <TextBlock Text="每路可不同" />
+              </StackPanel>
+              <StackPanel Classes="leg">
+                <Border Width="14" Height="12" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" ClipToBounds="True">
+                  <pc:Hatch Stripe="{StaticResource ATintBrush}" Period="6" />
+                </Border>
+                <TextBlock Text="共用 · 只填一次" />
+              </StackPanel>
+              <StackPanel Classes="leg leg3">
+                <Border Width="14" Height="12" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource AmbLine2Brush}" Background="{StaticResource AmbBgBrush}" />
+                <TextBlock Text="超出范围" />
+              </StackPanel>
+              <StackPanel Classes="leg">
+                <Border Height="18" Padding="5,0" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource LineSoftBrush}" Background="{StaticResource BgCardBrush}">
+                  <TextBlock Text="120" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="粗体 = 已改模板值" />
+              </StackPanel>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 表头：参数 · 每路（参加的勾 · 识别色 · RVn · 状态） -->
+        <Border Classes="thead" DockPanel.Dock="Top" Name="Head">
+          <DockPanel>
+            <Border Classes="lab"><TextBlock Text="参数" FontSize="{StaticResource FsBase}" FontWeight="Medium" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" /></Border>
+            <ItemsControl ItemsSource="{Binding Mx.Columns}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:MxColVm">
+                  <StackPanel VerticalAlignment="Center" Classes.xc="{Binding !Included}" ToolTip.Tip="{Binding Tip}">
+                    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+                      <CheckBox Theme="{StaticResource PrCheck}" IsChecked="{Binding Included}" IsEnabled="{Binding !Off}" MinHeight="17" VerticalAlignment="Center"
+                                AutomationProperties.Name="{Binding Rv}" />
+                      <Border Width="3" Height="14" CornerRadius="2" Background="{Binding ChBrush}" VerticalAlignment="Center" />
+                      <TextBlock Classes="rv" Text="{Binding Rv}" />
+                    </StackPanel>
+                    <TextBlock Classes="small" Classes.busy="{Binding Busy}">
+                      <Run Text="{Binding Status}" /><Run Text="{Binding Time}" />
+                    </TextBlock>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </DockPanel>
+        </Border>
+        <ScrollViewer Name="Body" Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Mx.Rows}" />
+            <!-- 表尾：预计用时（含排队） -->
+            <Border Height="38" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,1,0,0">
+              <DockPanel>
+                <Border Classes="lab">
+                  <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="预计用时" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                    <TextBlock Classes="u" Text="含排队" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" Margin="5,0,0,0" />
+                  </StackPanel>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Mx.Foot}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="pg:MxFootCell">
+                      <TextBlock Text="{Binding Text}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Classes.xc="{Binding Xc}" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </DockPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- 检查与预计（样稿 #mxSide） -->
+    <Border Classes="pgpanel" Grid.Column="2" Grid.Row="0">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="检查与预计" />
+            <TextBlock Classes="pc" Text="{Binding Mx.SideSub, StringFormat='· {0}'}" />
+          </StackPanel>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="16,12,16,16">
+            <ItemsControl ItemsSource="{Binding Mx.Issues}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:MxIssueVm">
+                  <Border Classes="ck" Classes.no="{Binding IsNo}">
+                    <DockPanel>
+                      <c:IconView Icon="f-warn-f" IsVisible="{Binding IsNo}" DockPanel.Dock="Left" />
+                      <c:IconView Icon="f-clock" IsVisible="{Binding IsWait}" DockPanel.Dock="Left" />
+                      <TextBlock Text="{Binding Msg}" />
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Classes="ck ok" IsVisible="{Binding Mx.AllOk}">
+              <DockPanel>
+                <c:IconView Icon="f-ok-f" DockPanel.Dock="Left" />
+                <TextBlock Text="参数全部在范围内，可以下发" />
+              </DockPanel>
+            </Border>
+            <DockPanel Margin="0,20,0,10">
+              <TextBlock DockPanel.Dock="Right" Text="时间 min" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
+              <TextBlock Classes="grp" Text="预计温度 · 各路" />
+            </DockPanel>
+            <pc:MxTempChart Data="{Binding Mx.Chart}" />
+            <Grid ColumnDefinitions="Auto,10,*" RowDefinitions="Auto,4,Auto" Margin="0,8,0,4" IsVisible="{Binding Mx.HasEst}">
+              <TextBlock Classes="mut" Text="最短" />
+              <TextBlock Grid.Column="2" Text="{Binding Mx.Shortest}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+              <TextBlock Grid.Row="2" Classes="mut" Text="最长" />
+              <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Mx.Longest}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+            </Grid>
+            <DockPanel Classes="note2" Margin="0,8,0,0" IsVisible="{Binding Mx.QueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+              <c:IconView Icon="f-info" Size="14" Margin="0,3,6,0" />
+              <TextBlock Text="{Binding Mx.QueueNote}" LineHeight="19" />
+            </DockPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- 下发（样稿 #mxSend） -->
+    <Border Classes="pgpanel" Grid.Column="2" Grid.Row="1" Margin="0,8,0,0">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="下发" />
+            <TextBlock Classes="pc" Text="{Binding SendSub, StringFormat='· {0}'}" />
+          </StackPanel>
+        </Border>
+        <StackPanel Margin="16,12,16,16">
+          <Grid Name="SendForm" ColumnDefinitions="64,16,*" RowDefinitions="Auto,10,Auto">
+            <TextBlock Classes="lb" Text="会话名称" />
+            <TextBox Grid.Column="2" Theme="{StaticResource PrInput}" Text="{Binding Mx.SessionName, UpdateSourceTrigger=LostFocus}" ToolTip.Tip="{Binding Mx.SessionName}" />
+            <TextBlock Grid.Row="2" Classes="lb" Text="记录" />
+            <CheckBox Grid.Row="2" Grid.Column="2" Theme="{StaticResource PrCheck}" IsChecked="{Binding Mx.Record}" Content="下发后开始记录会话" MinHeight="17" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,12,0,2">
+            <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"><Run Text="参加 " /><Run Text="{Binding Mx.IncCount}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" 路" /></TextBlock>
+            <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"><Run Text="空闲 " /><Run Text="{Binding Mx.IdleCount}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /></TextBlock>
+            <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"><Run Text="运行中 " /><Run Text="{Binding Mx.BusyCount}" FontWeight="SemiBold" Foreground="{Binding Mx.BusyCount, Converter={x:Static pg:ProgramConverters.BusyInk}}" /></TextBlock>
+          </StackPanel>
+          <UniformGrid Classes="pgbtn" Columns="2" Margin="0,12,-8,0">
+            <Button b:Pr.Icon="f-task" Content="预运行检查" Command="{Binding Mx.CheckCommand}" Margin="0,0,8,0" />
+            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="下发并运行" Command="{Binding Mx.RunCommand}" b:Pr.Reason="{Binding Mx.RunReason}"
+                    ToolTip.Tip="{Binding Mx.RunTip}" Margin="0,0,8,0" />
+          </UniformGrid>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

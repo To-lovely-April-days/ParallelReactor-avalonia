@@ -15,9 +15,6 @@ public enum NetBannerKind { None, Lost, Back }
 /// <summary>断线横条的文字（样稿 netBar，融合版 F3）：纯函数，单元测试直接调。</summary>
 public static class NetBannerText
 {
-    /// <summary>补拉断线期间的数据（无人值守 · F8 做）。做完之前「已补拉 N 条」只在演示里出现，真机写「这段数据没有补拉」。</summary>
-    public const bool LiveBackfill = false;
-
     /// <summary>时长：「26 s」/「2 min 26 s」/「1 h 05 min」。</summary>
     public static string Gap(TimeSpan t)
     {
@@ -47,12 +44,17 @@ public static class NetBannerText
 
     public static string BackTitle(string alias) => "已重新连接" + alias;
 
-    /// <summary>「断开 2 min 26 s（14:28:41 – 14:31:07）· 已补拉这段的 146 条数据 · 会话 PT-… 记录完整，期间没有新报警」。</summary>
-    public static string BackBody(DateTime lostAt, DateTime backAt, int? rows, string? session, int newAlarms)
+    /// <summary>
+    /// 「断开 2 min 26 s（14:28:41 – 14:31:07）· 已补拉这段的 146 条数据 · 会话 PT-… 记录完整，期间没有新报警」。
+    /// 补拉（融合版 F8）：进行中写「正在补拉这段数据…」，失败写原因，关着 / 没补写「这段数据没有补拉（曲线在这里断开）」。
+    /// </summary>
+    public static string BackBody(DateTime lostAt, DateTime backAt, int? rows, string? session, int newAlarms, bool pending = false, string? error = null)
     {
         var s = "断开 " + Gap(backAt - lostAt) + "（" + lostAt.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " – " + backAt.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + "）· ";
-        s += rows is int r
+        s += pending ? "正在补拉这段数据… · "
+            : rows is int r
             ? "已补拉这段的 " + r.ToString(CultureInfo.InvariantCulture) + " 条数据 · " + (session != null ? "会话 " + session + " 记录完整，" : "")
+            : error is { Length: > 0 } ? "补拉失败（" + error + "）· 曲线在这里断开 · "
             : "这段数据没有补拉（曲线在这里断开）· ";
         return s + (newAlarms == 0 ? "期间没有新报警" : "期间有 " + newAlarms.ToString(CultureInfo.InvariantCulture) + " 条新报警");
     }
@@ -75,7 +77,7 @@ public sealed partial class NetBannerVm : ObservableObject
     {
         _shell = shell;
         RetryCommand = new RelayCommand(() => { if (_k > 0) shell.DeviceAct(_k, "reconnect"); });
-        SettingsCommand = new RelayCommand(() => shell.Go(AppPage.Settings));
+        SettingsCommand = new RelayCommand(() => shell.OpenSettings("night"));
         DismissCommand = new RelayCommand(() => { if (shell.Fleet.Device(_k) is { } d) { d.DismissNetBack(); Apply(d); } });
     }
 
@@ -104,13 +106,13 @@ public sealed partial class NetBannerVm : ObservableObject
         {
             var lostAt = c.LostAt ?? d.Source.DataAt ?? now;
             Title = NetBannerText.LostTitle(d.Alias, now - lostAt);
-            Body = NetBannerText.LostBody(d.Source.Plant.OnRemoteLost, d.Source.DataAt, Math.Max(0, c.Attempts - 1), d.Source.IsDemo || NetBannerText.LiveBackfill);
+            Body = NetBannerText.LostBody(d.Source.Plant.OnRemoteLost, d.Source.DataAt, Math.Max(0, c.Attempts - 1), _shell.Prefs.Current.Backfill);
         }
         else if (kind == NetBannerKind.Back && d.NetBack is { } b)
         {
             Title = NetBannerText.BackTitle(d.Alias);
             int alarms = d.AlarmList.Count(a => a.At >= b.LostAt && a.At <= b.BackAt);
-            Body = NetBannerText.BackBody(b.LostAt, b.BackAt, b.Rows, d.SessionId, alarms);
+            Body = NetBannerText.BackBody(b.LostAt, b.BackAt, b.Rows, d.SessionId, alarms, b.Pending, b.Error);
         }
     }
 }

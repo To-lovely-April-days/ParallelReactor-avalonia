@@ -300,7 +300,7 @@
           "hint": "自动 · 30 min + 读数",
           "steps": [
             { "id": "F6-1", "kind": "hold", "title": "室温 · 搅拌关 · PV 噪声 5 min", "durationSec": 300, "signals": ["tempC"] },
-            { "id": "F6-2", "kind": "manualEntry", "title": "输入 n_max（S2 结果）", "fields": [ { "key": "nMax", "label": "n_max", "unit": "rpm", "instrument": "S2 结果", "min": 0, "max": 2000 } ] },
+            { "id": "F6-2", "kind": "manualEntry", "title": "输入 n_max（S2 结果，≤ 450）", "fields": [ { "key": "nMax", "label": "n_max", "unit": "rpm", "instrument": "S2 结果", "min": 0, "max": 450 } ] },
             { "id": "F6-3", "kind": "command", "title": "搅拌 n_max（取 F6-2 录入值）", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{manual:nMax}", "on": true } } },
             { "id": "F6-4", "kind": "hold", "title": "室温 · 搅拌开 · PV 噪声 5 min", "durationSec": 300, "signals": ["tempC"] },
             { "id": "F6-5", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
@@ -334,7 +334,7 @@
         {
           "id": "S1",
           "title": "转速误差",
-          "purpose": "水、室温；100/200/300/500/750/1000 rpm 先升后降，每档稳定 1 min 后转速表读 3 次（4 釜各测）；e_n、s_n、4 釜极差。方案 3 个循环，本次编码 1 个循环（12 档），其余循环重复运行本项。",
+          "purpose": "水、室温；100/200/300/350/400/450 rpm 先升后降（转速一律是釜里的转速，上限 450；一台电机经齿轮带动全部釜），每档稳定 1 min 后转速表读 3 次（4 釜各测）；e_n、s_n、4 釜极差。方案 3 个循环，本次编码 1 个循环（12 档），其余循环重复运行本项。",
           "sourceRef": "§2 阶段2 S1",
           "targetChannels": [1, 2, 3, 4],
           "channelSelectable": false,
@@ -342,12 +342,12 @@
           "instrument": "激光转速表（0.1 rpm 档）",
           "estimatedMinutes": 120,
           "hint": "转速表读数 · 12 档",
-          "repeat": { "variable": "rpm", "values": [100, 200, 300, 500, 750, 1000, 1000, 750, 500, 300, 200, 100], "unit": "rpm" },
+          "repeat": { "variable": "rpm", "values": [100, 200, 300, 350, 400, 450, 450, 400, 350, 300, 200, 100], "unit": "rpm" },
           "steps": [
             { "id": "S1-1", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } } },
             { "id": "S1-2", "kind": "hold", "title": "稳定 1 min", "durationSec": 60, "signals": ["rpm", "busVoltageV"] },
             { "id": "S1-3", "kind": "manualEntry", "title": "转速表读数（每釜 3 次）", "text": "透过视窗测桨叶；开盖测量只允许常温 / 水 / 低液位 / 防护罩。注明测的是桨还是轴。", "fields": [
-              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "perChannel": true, "min": 0, "max": 3000 },
+              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "perChannel": true, "min": 0, "max": 600 },
               { "key": "pos", "label": "测量位置（桨 / 轴）", "unit": "", "instrument": "", "isText": true } ] },
             { "id": "S1-4", "kind": "measure", "title": "转速指标", "metrics": [
               { "key": "nMean", "label": "n̄_meas", "formula": "mean", "unit": "rpm", "signal": "manual:n" },
@@ -363,32 +363,32 @@
             { "key": "eN", "label": "e_n", "unit": "%", "source": "metric:eN" },
             { "key": "sN", "label": "s_n", "unit": "rpm", "source": "metric:sN" },
             { "key": "pos", "label": "位置", "source": "manual:pos" } ],
-          "referenceValues": [ { "metric": "eN", "text": "搅拌 250–1000 rpm，改转速后 ≤ 50 s 生效", "source": "Endeavor" } ]
+          "referenceValues": [ { "metric": "eN", "text": "搅拌 250–1000 rpm，改转速后 ≤ 50 s 生效（竞品规格；本机上限 450 rpm 釜转速）", "source": "Endeavor" } ]
         },
         {
           "id": "S2",
-          "title": "失步边界 / 最高可用转速（简化）",
-          "purpose": "RpmMax 临时设 2000（触屏）；从 500 起每次 +50，每档 2 min，直到 |e_n|>1% / 异响 / 停转 / 驱动器报警 → n_slip。水 25 ℃ 与硅油 25 ℃ 各 n=2。",
+          "title": "上限内失步检查（简化）",
+          "purpose": "釜转速上限 450 rpm 以内：从 300 起每次 +25，每档 2 min，确认到上限都不失步（|e_n|>1% / 异响 / 停转 / 驱动器报警即判失步 → n_slip）。水 25 ℃ 与硅油 25 ℃ 各 n=2。超过上限的失步边界要在触屏临时调高上限，二期再做。",
           "sourceRef": "§2 阶段2 S2",
           "targetChannels": [1, 2, 3, 4],
           "channelSelectable": false,
           "preconditions": ["S1"],
           "instrument": "激光转速表",
           "estimatedMinutes": 150,
-          "hint": "触屏设 RpmMax + 转速表",
+          "hint": "转速表 · 300–450 rpm",
           "hardCriterion": "|e_n| > 1% 即判失步（判据，非规格）",
-          "repeat": { "variable": "rpm", "values": [500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100, 1150, 1200, 1250, 1300, 1350, 1400, 1450, 1500], "unit": "rpm" },
+          "repeat": { "variable": "rpm", "values": [300, 325, 350, 375, 400, 425, 450], "unit": "rpm" },
           "steps": [
-            { "id": "S2-1", "kind": "compare", "title": "核对 RpmMax ≥ 2000", "compare": { "key": "limits.rpmMax", "min": 2000, "hard": false }, "onFail": "continue" },
+            { "id": "S2-1", "kind": "compare", "title": "核对转速上限 ≥ 450 rpm（釜）", "compare": { "key": "limits.rpmMax", "min": 450, "hard": false }, "onFail": "continue" },
             { "id": "S2-2", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } }, "onFail": "skipItem" },
             { "id": "S2-3", "kind": "hold", "title": "保持 2 min", "durationSec": 120, "signals": ["rpm", "busVoltageV"] },
             { "id": "S2-4", "kind": "manualEntry", "title": "转速表读数 + 现象", "text": "若已出现 |e_n|>1%、异响、停转或驱动器报警，录入后请在下一步选择「跳过」以结束本项（n_slip = 本档）。", "fields": [
-              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 },
+              { "key": "n", "label": "转速表读数 ×3", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 600 },
               { "key": "phen", "label": "现象（正常 / 偏差 / 异响 / 停转 / 报警码）", "unit": "", "instrument": "", "isText": true } ] },
             { "id": "S2-5", "kind": "measure", "title": "本档误差", "metrics": [
               { "key": "eN", "label": "e_n", "formula": "rpmError", "unit": "%", "signal": "manual:n", "reference": "iteration", "perChannel": false, "direction": "twoSided" },
               { "key": "busMin", "label": "母线电压最小", "formula": "min", "unit": "V", "signal": "busVoltageV", "window": "step:S2-3", "perChannel": false } ] },
-            { "id": "S2-6", "kind": "instruction", "title": "继续加 50 rpm？", "text": "本档 {value} rpm 已完成。未出现失步 → 确认进入下一档；已失步 → 选择跳过 / 拒绝以结束本项，n_slip = {value} rpm。", "onFail": "skipItem" }
+            { "id": "S2-6", "kind": "instruction", "title": "继续加 25 rpm？", "text": "本档 {value} rpm 已完成。未出现失步 → 确认进入下一档（到 450 rpm 为止）；已失步 → 选择跳过 / 拒绝以结束本项，n_slip = {value} rpm。", "onFail": "skipItem" }
           ],
           "recordFields": [
             { "key": "iter", "label": "档", "source": "run.iteration" },
@@ -399,7 +399,7 @@
         {
           "id": "S3",
           "title": "加减速与启动",
-          "purpose": "0→1000 与 1000→0，加减速 1000/500/200 ms/1000rpm（触屏设）：是否失步、稳定用时。方案 n=3，本次编码每档 1 轮；n_max 连续 1 h 温升（红外测电机 / 驱动器）未编码，二期或手动记录。",
+          "purpose": "0→450 与 450→0 rpm（釜转速上限），加减速 1000/500/200 ms/1000rpm（触屏设，按电机转速计）：是否失步、稳定用时。方案 n=3，本次编码每档 1 轮；450 rpm 连续 1 h 温升（红外测电机 / 驱动器）未编码，二期或手动记录。",
           "sourceRef": "§2 阶段2 S3",
           "targetChannels": [1, 2, 3, 4],
           "channelSelectable": false,
@@ -411,12 +411,12 @@
           "steps": [
             { "id": "S3-1", "kind": "instruction", "title": "触屏设加减速 {value} ms/1000rpm", "text": "设置页把加减速设为 {value} ms/1000rpm 并正常退出一次让设置写盘。" },
             { "id": "S3-2", "kind": "compare", "title": "核对加减速 = {value}", "compare": { "key": "stir.rampMsPer1000Rpm", "tolerance": 1, "hard": false }, "reference": "iteration", "onFail": "continue" },
-            { "id": "S3-3", "kind": "command", "title": "0 → 1000 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 1000, "on": true } } },
+            { "id": "S3-3", "kind": "command", "title": "0 → 450 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 450, "on": true } } },
             { "id": "S3-4", "kind": "hold", "title": "观察 60 s", "durationSec": 60, "signals": ["rpm", "busVoltageV"] },
             { "id": "S3-5", "kind": "manualEntry", "title": "录入启动结果", "fields": [
               { "key": "slipUp", "label": "启动是否失步（是 / 否）", "unit": "", "instrument": "转速表", "isText": true },
               { "key": "tUp", "label": "稳定用时（启动）", "unit": "s", "instrument": "转速表记录", "min": 0, "max": 120 } ] },
-            { "id": "S3-6", "kind": "command", "title": "1000 → 0 rpm", "perChannel": false, "command": { "op": "stirStop" } },
+            { "id": "S3-6", "kind": "command", "title": "450 → 0 rpm", "perChannel": false, "command": { "op": "stirStop" } },
             { "id": "S3-7", "kind": "hold", "title": "观察 60 s", "durationSec": 60, "signals": ["rpm"] },
             { "id": "S3-8", "kind": "manualEntry", "title": "录入停止结果", "fields": [ { "key": "tDown", "label": "停止用时", "unit": "s", "instrument": "转速表记录", "min": 0, "max": 120 } ] },
             { "id": "S3-9", "kind": "measure", "title": "加减速指标", "metrics": [
@@ -715,14 +715,14 @@
         {
           "id": "T4",
           "title": "搅拌对温度的影响",
-          "purpose": "100 ℃ 稳态，0 / 300 / 1000 rpm 每档 30 min，同日循环 3 次；每档 ΔT_f、通道间一致性、ΔT_d。",
+          "purpose": "100 ℃ 稳态，0 / 300 / 450 rpm（釜转速，上限 450）每档 30 min，同日循环 3 次；每档 ΔT_f、通道间一致性、ΔT_d。",
           "sourceRef": "§2 阶段4 T4",
           "targetChannels": [1, 2, 3, 4],
           "preconditions": ["T1"],
           "instrument": "PT100 ×4",
           "estimatedMinutes": 300,
           "hint": "自动 · 9 档 × 30 min",
-          "repeat": { "variable": "rpm", "values": [0, 300, 1000, 0, 300, 1000, 0, 300, 1000], "unit": "rpm" },
+          "repeat": { "variable": "rpm", "values": [0, 300, 450, 0, 300, 450, 0, 300, 450], "unit": "rpm" },
           "steps": [
             { "id": "T4-1", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
             { "id": "T4-2", "kind": "command", "title": "RV{rv} SP 100 ℃", "command": { "op": "heatStart", "args": { "tempC": 100 }, "expectStatus": ["accepted", "confirmed"] } },
@@ -797,7 +797,7 @@
       "items": [
         {
           "id": "C2-a",
-          "title": "热态 L2（100 ℃，硅油，500 rpm）",
+          "title": "热态 L2（100 ℃，硅油，400 rpm）",
           "purpose": "室温逐步充压到约 0.69 MPa 表压后关全部阀；加热到 100 ℃，按实测压力曲线确定热态平衡时间；记录 2 h；自然冷却后再读室温压力。T1 全部指标 + 两温区模型 r + 热态泄漏率 + ΔP_cold + 带压转速。n=3。",
           "sourceRef": "§2 阶段5 C2-a",
           "targetChannels": [1, 2, 3, 4],
@@ -812,13 +812,13 @@
               { "key": "tAmb", "label": "T_amb", "unit": "℃", "instrument": "温度计", "min": -10, "max": 60 },
               { "key": "pAtm", "label": "P_atm", "unit": "kPa", "instrument": "大气压计", "min": 80, "max": 110 } ] },
             { "id": "C2-3", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
-            { "id": "C2-4", "kind": "command", "title": "搅拌 500 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 500, "on": true } } },
+            { "id": "C2-4", "kind": "command", "title": "搅拌 400 rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": 400, "on": true } } },
             { "id": "C2-5", "kind": "command", "title": "RV{rv} SP 100 ℃", "command": { "op": "heatStart", "args": { "tempC": 100 }, "expectStatus": ["accepted", "confirmed"] } },
             { "id": "C2-6", "kind": "waitStable", "title": "等待温度稳定", "signal": "tempC", "band": 0.5, "maxSlopePerMin": 0.01, "reference": "sp", "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
             { "id": "C2-7", "kind": "waitStable", "title": "等待热态压力平衡（|dP/dt| < 1 psi/10 min）", "signal": "pressurePsi", "maxSlopePerMin": 0.1, "windowSec": 600, "timeoutSec": 7200, "onFail": "continue" },
             { "id": "C2-8", "kind": "hold", "title": "热态记录 2 h", "durationSec": 7200, "signals": ["tempC", "pressurePsi", "pressureRaw", "rpm"] },
             { "id": "C2-9", "kind": "manualEntry", "title": "带压转速与热态读数", "fields": [
-              { "key": "nHot", "label": "带压转速（转速表）", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 },
+              { "key": "nHot", "label": "带压转速（转速表）", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 600 },
               { "key": "tRef", "label": "T_ref 均值", "unit": "℃", "instrument": "PT100", "perChannel": true, "min": 0, "max": 300 } ] },
             { "id": "C2-10", "kind": "measure", "title": "热态指标", "metrics": [
               { "key": "pHot", "label": "P_hot 均值", "formula": "mean", "unit": "psi", "signal": "pressurePsi", "window": "step:C2-8" },
@@ -859,7 +859,7 @@
         {
           "id": "C2-b",
           "title": "高压热态 150 ℃（二期）",
-          "purpose": "150 ℃、500 rpm、硅油，热态压力上限按 §0.1-7 倒推；其余同 C2-a，n=3。",
+          "purpose": "150 ℃、400 rpm、硅油，热态压力上限按 §0.1-7 倒推；其余同 C2-a，n=3。",
           "sourceRef": "§2 阶段5 C2-b（二期）",
           "targetChannels": [1, 2, 3, 4],
           "instrument": "同 C2-a",

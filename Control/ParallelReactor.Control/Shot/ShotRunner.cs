@@ -24,9 +24,9 @@ namespace ParallelReactor.Control.Shot;
 /// 场景 PR_CONTROL_SCENARIO：
 ///  main        「添加设备」对话框填 PR_CONTROL_URL / PR_CONTROL_TOKEN、测试连接（main-add-dialog.png）→ 添加并连接 → 申请控制权（等触屏 / autoGrant）→
 ///              启用 RV1–RV4 → RV1 加热 60 ℃、RV2 80 ℃ → 搅拌 300 rpm → RV3 / RV4 下发 3 步程序并运行 → 等 ≥ 16 帧 →
-///              main-rv1.png（主页 · 1号机 · 检查器 RV1）/ main-rv3.png / main-device1.png / main-overview.png（总览）/ main-program.png（程序页，旧样式）→
+///              main-rv1.png（主页 · 1号机 · 检查器 RV1）/ main-rv3.png / main-device1.png / main-overview.png（总览）/ main-program.png（程序页）→
 ///              收尾（中止程序、停止加热与搅拌、释放控制权）
-///  perf        连接 → 控制权 → 性能测试页（旧样式）→ 勾 S1Q（最短合成项：搅拌 300 rpm 10 s + 3 次转速表读数）+ RV1 → perf-checklist.png →
+///  perf        连接 → 控制权 → 性能测试页→ 勾 S1Q（最短合成项：搅拌 300 rpm 10 s + 3 次转速表读数）+ RV1 → perf-checklist.png →
 ///              开始 → Hold 中 perf-running.png → 等待录入时 perf-prompt.png → 自动填 300 提交 → 等结束 → 收尾
 ///  perf-report 同上但勾 T0Q + S1Q（≈1 min，含加热 60 ℃ 保温 30 s），全自动应答 → 生成报告视图 → perf-report.png；shot.log 记 report.html 路径
 ///  输出目录：PR_CONTROL_DATA/perf/&lt;runId&gt;/（截图时请把 PR_CONTROL_DATA 指到 scratch）。
@@ -116,7 +116,6 @@ public static partial class ShotRunner
             shell.SelectDevice(1); await SettleAsync(); Capture(window, Path.Combine(dir, "main-device1.png"), log);
             shell.SelectDevice(0); await SettleAsync(); Capture(window, Path.Combine(dir, "main-overview.png"), log);
             shell.Go(AppPage.Program);
-            if (shell.OpenPage<LegacyProgramPageVm>() is { } prog) { prog.SetDraft(3, p3); prog.SelectRv(3); }
             await SettleAsync(); Capture(window, Path.Combine(dir, "main-program.png"), log);
 
             // 收尾：停掉自己开的东西（停止类，同样走 DeviceActions），释放控制权
@@ -163,7 +162,7 @@ public static partial class ShotRunner
     {
         await AcquireLeaseAsync(d, log);
         shell.Go(AppPage.Perf);
-        var page = shell.OpenPage<PerfPageVm>() ?? throw new Exception("性能测试页没有打开");
+        var page = shell.OpenPage<Pages.Perf.PerfPageVm>() ?? throw new Exception("性能测试页没有打开");
         var perf = page.Perf;
         perf.ClearAll();
         perf.SelectChannels(1);

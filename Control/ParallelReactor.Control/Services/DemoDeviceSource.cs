@@ -89,12 +89,14 @@ public sealed class DemoDeviceSource : IDeviceSource
             var queue = Device.GasQueue;
             if (_plant is { } cur && cur.GasHolder == holder && cur.GasQueue is { } q && q.SequenceEqual(queue)) return cur;
             _volume ??= new VolumeInfo(p.VesselMl, p.LineMl, p.EffectiveMl, p.CalibratedAt);
-            return _plant = new PlantInfo(p.OverPressureMPa, p.OverTempC, p.RpmMax, p.StirCurrentA, holder, queue, _volume, p.OnRemoteLost, p.StirGearRatio);
+            _leak ??= new LeakTestInfo(p.Leak.Psi, p.Leak.SettleMin, p.Leak.MeasureMin, p.Leak.RatePsiH);
+            return _plant = new PlantInfo(p.OverPressureMPa, p.OverTempC, p.RpmMax, p.StirCurrentA, holder, queue, _volume, p.OnRemoteLost, p.StirGearRatio, _leak);
         }
     }
 
     private PlantInfo? _plant;
     private VolumeInfo? _volume;
+    private LeakTestInfo? _leak;
 
     public SessionInfo? Session => Device.Session is { } s ? new SessionInfo(s.Active, s.Id, s.StartAt, s.Markers.Count) : null;
 
@@ -110,7 +112,10 @@ public sealed class DemoDeviceSource : IDeviceSource
             var src = Device.Alarms;
             if (!SameAlarms(src))
             {
-                _alarmBook.Sync(src);
+                // 融合版 F5：样稿 ALOG 里已经解除的报警排在前面（只进报警簿的 All，报警页用；Current 仍只有当前报警）
+                var cleared = _fleet.ClearedAlarms(Device.K);
+                if (cleared.Count == 0) _alarmBook.Sync(src);
+                else _alarmBook.Sync(cleared.Select(a => a with { Device = _alarmBook.Device }).Concat(src.Select(a => AlarmBook.FromDemo(a, _alarmBook.Device))));
                 Remember(src);
             }
             return _alarmBook;

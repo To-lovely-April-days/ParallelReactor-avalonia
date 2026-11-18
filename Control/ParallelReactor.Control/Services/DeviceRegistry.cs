@@ -228,7 +228,9 @@ public sealed class DeviceRegistry : IAsyncDisposable
     /// 启动：并行连接全部「启动时自动连接」且记住了令牌的设备（D7；没存令牌的不连 —— 设备留在列表里，「已断开」，在「编辑设置」里填了令牌再「连接」）。
     /// 返回的任务在每台的第一次连接尝试都有了结果时完成；不抛：连不上的设备各自显示原因（LiveDeviceSource.LastError + 提示）并倒计时重试。
     /// </summary>
-    public Task StartAsync() => Task.WhenAll(_list.Where(d => d.Entry.CanAutoConnect).Select(d => d.Source.StartAsync()).ToArray());
+    /// <remarks>融合版 F8：设置页「启动时自动连接」关着（<see cref="PcPrefs.AutoConnect"/>）时哪台都不连（各台的勾照旧记着）。</remarks>
+    public Task StartAsync() => !Config.Prefs.AutoConnect ? Task.CompletedTask
+        : Task.WhenAll(_list.Where(d => d.Entry.CanAutoConnect).Select(d => d.Source.StartAsync()).ToArray());
 
     /// <summary>连接一台（「添加并连接」、设备管理「连接」）：同 <see cref="StartAsync"/> 的单台版，不抛。</summary>
     public Task ConnectAsync(Guid id) => ById(id)?.Source.StartAsync() ?? Task.CompletedTask;

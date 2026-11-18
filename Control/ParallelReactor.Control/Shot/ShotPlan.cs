@@ -71,8 +71,17 @@ public static partial class ShotPlan
         new Spec("home-insp4", "main", "dev=1&apop=0&ch=4&po=insp", Both, Ref: "final-frame-insp-{w}.png"),
     };
 
-    /// <summary>默认计划（shots.sh 不给名字时按尺寸跑这些；PR_CONTROL_SHOT_PLAN=1 打印的也是这些）。</summary>
-    public static readonly IReadOnlyList<Spec> All = Fusion;
+    /// <summary>
+    /// 默认计划（shots.sh 不给名字时按尺寸跑这些；PR_CONTROL_SHOT_PLAN=1 打印的也是这些）= <see cref="Fusion"/> + 各阶段分文件（ShotPlan.F5.cs …）里
+    /// 名字以「Stage」或「Part」开头的 <c>private static readonly Spec[]</c> 字段（按字段名排；并行阶段各加各的，不改这里）。
+    /// </summary>
+    public static IReadOnlyList<Spec> All => _all ??= Fusion.Concat(F4Specs()).Concat(F6).Concat(typeof(ShotPlan)
+            .GetFields(System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            .Where(f => (f.Name.StartsWith("Stage", StringComparison.Ordinal) || f.Name.StartsWith("Part", StringComparison.Ordinal)) && f.FieldType == typeof(Spec[]))
+            .OrderBy(f => f.Name, StringComparer.Ordinal)
+            .SelectMany(f => (Spec[])f.GetValue(null)!)).ToList();
+
+    private static IReadOnlyList<Spec>? _all;
 
     /// <summary>按名字找。</summary>
     public static Spec? Find(string name) => All.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

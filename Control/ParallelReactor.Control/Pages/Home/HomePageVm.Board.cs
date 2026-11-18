@@ -12,7 +12,7 @@ using ParallelReactor.Control.Shell;
 
 namespace ParallelReactor.Control.Pages;
 
-/// <summary>通道面板的显示方式（样稿 MONV：运行表 / 气路图 / 卡片 / 棒图；后三种 F4 做）。</summary>
+/// <summary>通道面板的显示方式（样稿 MONV：运行表 / 气路图 / 卡片 / 棒图；后三种在 HomePageVm.Mon.cs，融合版 F4）。</summary>
 public enum MonView { Run, Gas, Vessel, Bar }
 
 /// <summary>
@@ -80,23 +80,14 @@ public sealed partial class HomePageVm
     [ObservableProperty] private string _ctxProg = "";
     [ObservableProperty] private MonView _monView = MonView.Run;
     [ObservableProperty] private string _stopDevLabel = "停止";
-    /// <summary>不是运行表时的占位说明（气路图 / 卡片 / 棒图在 F4）。</summary>
-    [ObservableProperty] private string _monPlaceholder = "";
-
     public bool IsRunView => MonView == MonView.Run;
     partial void OnMonViewChanged(MonView value)
     {
         OnPropertyChanged(nameof(IsRunView));
         OnPropertyChanged(nameof(MonKey));
-        MonPlaceholder = value switch
-        {
-            MonView.Gas => "气路图（阀门、管路、维护模式下手动开关）在 F4 做",
-            MonView.Vessel => "反应釜卡片在 F4 做",
-            MonView.Bar => "仪表棒图在 F4 做",
-            _ => "",
-        };
+        OnMonViewChangedF4();
+        ShowBarUnits = IsN16 && value == MonView.Bar;
     }
-
 
     /// <summary>「停止1号机」：打开全部停止对话框，预选这台。</summary>
     public ICommand StopDeviceCommand => _stopDev ??= new RelayCommand(() => { if (Device is { } d) _shell.OpenDialog("stopall", d.K.ToString(CultureInfo.InvariantCulture)); });
@@ -138,5 +129,6 @@ public sealed partial class HomePageVm
         Curve.Refresh(d);
         Res.IsShort = _shell.Layout.IsShort;
         Res.Refresh(d);
+        RefreshMon(d);
     }
 }

@@ -81,6 +81,7 @@ public sealed partial class DemoFleet
             foreach (var ch in dev.ChannelList)
             {
                 if (!ch.Installed || ch.NoData) continue;   // 融合版停用的通道不采集
+                if (TickAutotune(dev, ch)) continue;   // 自整定中：按整定曲线走（DemoFleet.Pid.cs）
                 if (ch.State == StateKey.Alarm)
                 {
                     if (ch.SpC is double sp) HoldTemp(ch, sp);

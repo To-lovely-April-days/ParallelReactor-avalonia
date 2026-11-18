@@ -161,7 +161,7 @@ public sealed partial class ChannelCtlVm : ObservableObject
         BarErr = d.EstopActive;
 
         TempText = r.TempText;
-        PressText = r.PressureMPa is double p ? p.ToString("0.00", CultureInfo.InvariantCulture) : Fmt.Dash;
+        PressText = PressureDisplay.Fixed(r.PressureMPa, 2);
         PressHot = IsErr;
         GasText = r.GasMmol is double g ? g.ToString("0.0", CultureInfo.InvariantCulture) : Fmt.Dash;
 

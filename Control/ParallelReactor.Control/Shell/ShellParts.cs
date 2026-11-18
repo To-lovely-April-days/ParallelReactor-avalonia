@@ -388,9 +388,9 @@ public sealed partial class RibbonVm : ObservableObject
         if (Device is { } d) _ = d.Actions.RunAsync(a);
     }
 
-    /// <summary>「≤ 200 °C · ≤ 4.14 MPa」（样稿写 °C，Core 的 RangeNote 是 ℃）。</summary>
+    /// <summary>「≤ 200 °C · ≤ 4.14 MPa」（样稿写 °C，Core 的 RangeNote 是 ℃；压力按设置的单位：≤ 41.4 bar / ≤ 600 psi）。</summary>
     public static string RangeText(ModelProfile m) =>
-        "≤ " + JsNumber.ToString(m.Limits.TempMaxC) + " °C · ≤ " + JsNumber.ToString(m.Limits.PressureMaxMPa) + " MPa";
+        "≤ " + JsNumber.ToString(m.Limits.TempMaxC) + " °C · ≤ " + PressureDisplay.LimitU(m.Limits.PressureMaxMPa);
 
     internal void Refresh()
     {
@@ -601,7 +601,7 @@ public sealed partial class DevicePaneVm : ObservableObject
     /// <summary>气源一行下面的说明（样稿 devInfo、阀门小块的悬停）。</summary>
     public const string GasSourceNote = "接什么气由工艺决定";
 
-    /// <summary>设备信息（样稿 devInfo：地址、主机名、量程、压力报警、气源、搅拌、通讯、会话）。没有的项（主机名、压力报警线）F3 接口补上后再加；先写 SN。</summary>
+    /// <summary>设备信息（样稿 devInfo：地址、主机名、量程、压力报警、气源、搅拌、通讯、会话）。主机名接口没有（先写 SN）；压力报警 = 设备设置里的上限（F4）。</summary>
     public static IReadOnlyList<InfoRow> InfoRows(DeviceVm d)
     {
         var m = d.Model;
@@ -610,6 +610,8 @@ public sealed partial class DevicePaneVm : ObservableObject
             new("地址", d.Host + ":" + d.Port.ToString(CultureInfo.InvariantCulture)),
             new("SN", d.Sn.Length > 0 ? d.Sn : Fmt.Dash),
             new("量程", RibbonVm.RangeText(m)),
+            // 压力报警上限（设备设置 alarms，PlantInfo；融合版 F4 补上，样稿 devInfo「压力报警」）
+            new("压力报警", PressureDisplay.FixedU(d.Source.Plant.OverPressureMPa, 2)),
             // 只写气路名，接什么气由工艺决定（2026-11-18 用户确认；样稿 devInfo：名称用「、」连成一行，下面一行灰字）
             m.GasInlets.Count > 0 ? new("气源", string.Join("、", m.GasInlets.Select(g => g.Name)), Sub: GasSourceNote) : new("气源", Fmt.Dash),
             new("搅拌", m.StirMode == StirMode.Shared
@@ -657,8 +659,6 @@ public sealed partial class StatusBarVm : ObservableObject
 
     /// <summary>「运行中 · 已阻止睡眠」（样稿 SETP.nosleep：有设备在运行，本机不会进入睡眠，屏幕可以关闭）。</summary>
     public const string SleepText = "运行中 · 已阻止睡眠";
-    /// <summary>运行时阻止睡眠（设置在 F8，默认开）。</summary>
-    public bool PreventSleep { get; set; } = true;
     /// <summary>F3 的状态项（已阻止睡眠、重连中 …）放这里：在「已连接」与「远程控制」之间，各带一条竖线。</summary>
     public ObservableCollection<StatusItem> Extra { get; } = new();
     [ObservableProperty] private string _remoteText = "";
@@ -680,10 +680,10 @@ public sealed partial class StatusBarVm : ObservableObject
         Conn = on == ds.Count || lost == null
             ? new StatusItem("f-link", "已连接 " + on + "/" + ds.Count + " 台")
             : new StatusItem("f-warn-f", "已连接 " + on + "/" + ds.Count + " 台 · " + lost.Alias + "重连中", Alert: true);
-        // 融合版 F3：有设备在运行时「运行中 · 已阻止睡眠」（防睡眠在 F8 真正做，开关也在 F8 的设置里；默认开）
-        bool sleepBlock = PreventSleep && ds.Any(d => d.Running > 0);
+        // 融合版 F8：只在真的阻止着系统睡眠时写「运行中 · 已阻止睡眠」（设置开 + 有设备在运行 + 系统接受了申请，见 ShellVm.Sleep）
+        bool sleepBlock = _shell.Sleep.Held;
         bool has = Extra.Any(x => x.Text == SleepText);
-        if (sleepBlock && !has) Extra.Add(new StatusItem("f-pc", SleepText, Tip: "有设备在运行，本机不会进入睡眠；屏幕可以关闭"));
+        if (sleepBlock && !has) Extra.Add(new StatusItem("f-pc", SleepText, Tip: "有设备在运行，本机不会进入睡眠；屏幕可以关闭 · 全部结束后恢复系统设置"));
         else if (!sleepBlock && has) Extra.Remove(Extra.First(x => x.Text == SleepText));
         RemoteText = "远程控制 " + ds.Count(d => !d.IsOffline && d.Lease == LeaseState.Remote) + " 台";
         RecordText = "记录 " + ds.Count(d => d.SessionId != null) + "/" + ds.Count + " 台";

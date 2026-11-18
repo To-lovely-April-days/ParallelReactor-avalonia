@@ -1,3 +1,4 @@
+using ParallelReactor.Control.Core.Format;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -160,8 +161,13 @@ public sealed partial class AlarmPopVm : ObservableObject
     [ObservableProperty] private string _stopLabel = "停止";
     [ObservableProperty] private string? _stopReason;
     [ObservableProperty] private string? _ackReason;
-    /// <summary>报警声音（有未确认的报警时每 30 s 响一次；声音本身在 F8 做，这里只记开关）。</summary>
+    /// <summary>报警声音（有未确认的报警级报警时每 30 s 响一次）：和设置页「常规 › 报警声音」是同一个设置（融合版 F8），在这里改直接保存。</summary>
     [ObservableProperty] private bool _soundOn = true;
+
+    partial void OnSoundOnChanged(bool value)
+    {
+        if (_shell.Prefs.Current.AlarmSound != value) _shell.Prefs.SetAndSave(p => p with { AlarmSound = value });
+    }
 
     /// <summary>报警名（文字第一个「 · 」之前）与设备已做的（之后）。</summary>
     public static (string Name, string Auto) Split(string text)
@@ -225,9 +231,10 @@ public sealed partial class AlarmPopVm : ObservableObject
             Tiles = isP
                 ? new[]
                 {
-                    new PopTile("当前压力", r.PressureMPa is double p ? p.ToString("0.00", CultureInfo.InvariantCulture) : "—", "MPa", true),
-                    new PopTile("报警上限", plant.OverPressureMPa is double l ? l.ToString("0.00", CultureInfo.InvariantCulture) : "—", "MPa", false),
-                    new PopTile("设定压力", r.PTargetMPa is double s && s > 0 ? s.ToString("0.00", CultureInfo.InvariantCulture) : "—", "MPa", false),
+                    // 压力按设置的单位（MPa 2 位小数、bar 2 位、psi 1 位）
+                    new PopTile("当前压力", PressureDisplay.Fixed(r.PressureMPa, 2), PressureDisplay.Unit, true),
+                    new PopTile("报警上限", PressureDisplay.Fixed(plant.OverPressureMPa, 2), PressureDisplay.Unit, false),
+                    new PopTile("设定压力", r.PTargetMPa is double s && s > 0 ? PressureDisplay.Fixed(s, 2) : "—", PressureDisplay.Unit, false),
                 }
                 : new[]
                 {
@@ -245,7 +252,7 @@ public sealed partial class AlarmPopVm : ObservableObject
                 Trend = new PopTrend(buf, cnt, ChartTime.Ms(hn.AddMinutes(-60)), ChartTime.Ms(hn), isP ? plant.OverPressureMPa : plant.OverTempC, sp, ChartTime.Ms(c.At));
                 HasSp = sp != null;
                 HasTrend = cnt > 1;
-                TrendCap = (isP ? "压力 MPa" : "温度 °C") + " · 近 60 min";
+                TrendCap = (isP ? PressureDisplay.Label("压力") : "温度 °C") + " · 近 60 min";
                 TrendRange = hn.AddMinutes(-60).ToString("HH:mm", CultureInfo.InvariantCulture) + " – 现在";
             }
             else { HasTrend = false; Trend = null; }

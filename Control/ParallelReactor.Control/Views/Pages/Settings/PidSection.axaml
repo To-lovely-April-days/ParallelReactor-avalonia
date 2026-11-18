@@ -1,0 +1,229 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ca="using:ParallelReactor.Control.Controls.Alarms"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Settings"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pp="using:ParallelReactor.Control.Pages.Settings.Pid"
+             xmlns:cp="using:ParallelReactor.Control.Core.Pid"
+             x:Class="ParallelReactor.Control.Views.Pages.Settings.PidSection"
+             x:DataType="pp:PidSectionVm">
+  <!-- 设置 → 温控 / PID（自整定，样稿 pidBody）：说明条（本地只读 / 未连接）· 档位卡片（上下 12、左右 14，下边 line-faint）·
+       左表 | 右边 600（窄屏 440）：自整定表单，或整定监视（标题 + 两张图 + 振荡步骤 / 结果）。窄屏：不显示整定日期、输入 56、格子左右 8。 -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Settings/PidStyles.axaml" />
+  </UserControl.Styles>
+
+  <Grid Name="Root" RowDefinitions="Auto,Auto,*" Classes.pidnar="{Binding IsNarrow}">
+    <Border Classes="lockbar" Margin="16,10,16,0" IsVisible="{Binding LockText, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <DockPanel>
+        <c:IconView Icon="f-lock" DockPanel.Dock="Left" />
+        <TextBlock Classes="lbt" Text="{Binding LockText}" />
+      </DockPanel>
+    </Border>
+
+    <!-- 档位卡片 -->
+    <Border Grid.Row="1" Padding="14,12" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1" IsVisible="{Binding HasData}">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Right" Classes="mut" Text="档位分界在触屏「设置 → 温控」里改" IsVisible="{Binding !IsNarrow}" />
+        <ItemsControl ItemsSource="{Binding Bands}">
+          <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="pp:PidBandCardVm">
+              <Button Theme="{StaticResource PidTab}" Classes="pidtab" Classes.on="{Binding IsOn}" Classes.na="{Binding !Usable}" Command="{Binding PickCommand}"
+                      ToolTip.Tip="{Binding Reason}" AutomationProperties.Name="{Binding Name}">
+                <StackPanel Spacing="2">
+                  <TextBlock Classes="pn" Text="{Binding Name}" />
+                  <TextBlock Classes="rg num" Text="{Binding Range}" />
+                  <TextBlock Classes="st" Text="{Binding Status}" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DockPanel>
+    </Border>
+
+    <TextBlock Grid.Row="2" Classes="mut" Margin="16,14" VerticalAlignment="Top" Text="{Binding NoData}" IsVisible="{Binding !HasData}" />
+
+    <DockPanel Grid.Row="2" IsVisible="{Binding HasData}">
+      <!-- ———— 右边：自整定 / 整定监视 ———— -->
+      <Border DockPanel.Dock="Right" Name="Side" Width="600">
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <Panel Name="SidePad" Margin="16,12">
+            <!-- 表单 -->
+            <StackPanel IsVisible="{Binding ShowForm}">
+              <TextBlock Classes="pidgrp" Text="{Binding FormTitle}" Margin="0,0,0,0" />
+              <Grid ColumnDefinitions="84,16,*" RowDefinitions="Auto,12,Auto,12,Auto" Margin="0,10,0,12">
+                <TextBlock Classes="lab" Text="整定温度" />
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10">
+                  <TextBox Name="Sp" Theme="{StaticResource PidUnit}" Classes.bad="{Binding SpBad}" Text="{Binding SpText}" AutomationProperties.Name="整定温度" />
+                  <TextBlock Classes="mut" Text="{Binding SpRange}" />
+                </StackPanel>
+                <TextBlock Grid.Row="2" Classes="lab" Text="整定通道" />
+                <Panel Grid.Row="2" Grid.Column="2" MinHeight="24">
+                  <ItemsControl ItemsSource="{Binding Chips}" IsVisible="{Binding HasChips}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="pp:PidChipVm">
+                        <Border Classes="pidchip">
+                          <StackPanel Orientation="Horizontal" Spacing="5">
+                            <Ellipse Width="8" Height="8" Fill="{Binding Color}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Rv}" />
+                          </StackPanel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <TextBlock Classes="mut" Text="{Binding ChipHint}" IsVisible="{Binding !HasChips}" TextWrapping="Wrap" />
+                </Panel>
+                <TextBlock Grid.Row="4" Classes="lab" Text="之后" />
+                <TextBlock Grid.Row="4" Grid.Column="2" Classes="mut" Text="{Binding AfterText}" TextWrapping="Wrap" />
+              </Grid>
+              <DockPanel Classes="note2">
+                <c:IconView Icon="f-info" />
+                <TextBlock b:Pr.CjkRuns="True"><Run Text="整定温度选这一档里" /><Run Text="平时最常用的反应温度" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" /><Run Text="：整出的" /><Run Text="{Binding FormNoteC}" /></TextBlock>
+              </DockPanel>
+              <Grid ColumnDefinitions="*,8,*" Margin="0,12,0,0">
+                <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Height="34" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,0"
+                        Content="{Binding StartLabel}" Command="{Binding StartCommand}" b:Pr.Reason="{Binding StartReason}" ToolTip.Tip="{Binding StartReason}" />
+              </Grid>
+            </StackPanel>
+
+            <!-- 整定监视 -->
+            <StackPanel IsVisible="{Binding ShowMonitor}">
+              <DockPanel Margin="0,0,0,8">
+                <Button Name="CancelBtn" DockPanel.Dock="Right" Theme="{StaticResource PrButton}" Classes="sm" b:Pr.Icon="f-stop" Content="取消整定"
+                        Command="{Binding CancelCommand}" b:Pr.Reason="{Binding CancelReason}" IsVisible="{Binding !MonDone}" VerticalAlignment="Center" />
+                <WrapPanel Name="MonHead" VerticalAlignment="Center">
+                  <TextBlock Classes="pidmt" Text="{Binding MonTitle}" Margin="0,0,10,0" />
+                  <TextBlock Classes="mut" Text="{Binding MonSub}" />
+                </WrapPanel>
+              </DockPanel>
+              <cs:PidChart Data="{Binding Chart}" />
+              <!-- 振荡步骤 -->
+              <StackPanel IsVisible="{Binding !MonDone}" Margin="0,8,0,0" Spacing="8">
+                <ItemsControl ItemsSource="{Binding Steps}">
+                  <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="pp:PidStepVm">
+                      <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Panel Width="16" Height="16" VerticalAlignment="Center">
+                          <Ellipse Width="16" Height="16" Fill="{StaticResource ASoftBrush}" IsVisible="{Binding Cur}" />
+                          <Ellipse Classes="pidsd" Classes.done="{Binding Done}" Classes.cur="{Binding Cur}" />
+                        </Panel>
+                        <TextBlock Classes="pidst" Classes.cur="{Binding Cur}" Text="{Binding Text}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Classes="mut" Text="{Binding StepNote}" TextWrapping="Wrap" LineHeight="18" />
+              </StackPanel>
+              <!-- 结果 -->
+              <StackPanel IsVisible="{Binding MonDone}">
+                <ItemsControl ItemsSource="{Binding Results}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="pp:PidResultVm">
+                      <Border Classes="pidres" ToolTip.Tip="{Binding Text}">
+                        <DockPanel>
+                          <Border DockPanel.Dock="Left" Width="3" Height="16" CornerRadius="2" Background="{Binding Color}" Margin="0,0,14,0" />
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Rv}" FontWeight="SemiBold" Margin="0,0,14,0" />
+                          <Panel DockPanel.Dock="Right" Classes="okw">
+                            <TextBlock Text="{Binding Saved}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource GInkBrush}" IsVisible="{Binding Ok}" Margin="14,0,0,0" />
+                          </Panel>
+                          <StackPanel>
+                            <ItemsControl ItemsSource="{Binding Parts}" IsVisible="{Binding Ok}">
+                              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="cp:PidDiffPart">
+                                  <TextBlock Classes="pidpart"><Run Text="{Binding Key}" /><Run Text=" " /><Run Text="{Binding Old}" Foreground="{StaticResource TDisBrush}" TextDecorations="Strikethrough" /><Run Text=" → " /><Run Text="{Binding New}" FontWeight="SemiBold" /><Run Text="{Binding Unit}" /></TextBlock>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <TextBlock Text="{Binding Fail}" IsVisible="{Binding Failed}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInkBrush}" TextWrapping="Wrap" />
+                            <!-- 窄屏：「已存入…档」放到第二行（右边放不下三项对比） -->
+                            <Panel Classes="okn">
+                              <TextBlock Text="{Binding Saved}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource GInkBrush}" IsVisible="{Binding Ok}" Margin="0,4,0,0" />
+                            </Panel>
+                          </StackPanel>
+                        </DockPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <DockPanel Classes="note2" Margin="0,12,0,0" IsVisible="{Binding HasOkNote}">
+                  <c:IconView Icon="f-ok-f" />
+                  <TextBlock Text="{Binding OkNote}" />
+                </DockPanel>
+              </StackPanel>
+            </StackPanel>
+          </Panel>
+        </ScrollViewer>
+      </Border>
+
+      <!-- ———— 左表 ———— -->
+      <Border BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,1,0">
+        <DockPanel>
+          <Border Classes="thead" DockPanel.Dock="Top">
+            <ca:ColumnsPanel Name="HeadCols" Columns="103,90*,103*,103*,80*,82*,188*">
+              <TextBlock Text="通道" /><TextBlock Classes="r" Text="P" /><TextBlock Classes="r" Text="I (s)" /><TextBlock Classes="r" Text="D (s)" />
+              <TextBlock Classes="r" Text="整定温度" /><TextBlock Classes="r" Text="整定日期" IsVisible="{Binding !IsNarrow}" /><TextBlock Text="状态" />
+            </ca:ColumnsPanel>
+          </Border>
+          <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+              <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="pp:PidRowVm">
+                    <Border Classes="trow pidrow" Classes.on="{Binding IsOn}">
+                      <Panel>
+                        <Border Width="3" HorizontalAlignment="Left" Margin="0,-9" Background="{StaticResource ABrush}" IsVisible="{Binding IsOn}" />
+                        <ca:ColumnsPanel Columns="103,90*,103*,103*,80*,82*,188*">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <pr:PrCheckBox Theme="{StaticResource PrCheck}" IsChecked="{Binding Checked}" IsEnabled="{Binding CanCheck}" MinHeight="17"
+                                           VerticalAlignment="Center" ToolTip.Tip="{Binding CheckReason}" AutomationProperties.Name="{Binding Rv}" />
+                            <Border Width="3" Height="14" CornerRadius="2" Background="{Binding Color}" VerticalAlignment="Center" />
+                            <TextBlock Classes="b" Text="{Binding Rv}" VerticalAlignment="Center" />
+                          </StackPanel>
+                          <Panel>
+                            <TextBox Theme="{StaticResource PrInput}" Classes="pidi num" Text="{Binding P, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding CanEdit}"
+                                     IsVisible="{Binding HasValues}" ToolTip.Tip="{Binding EditReason}" AutomationProperties.Name="P" />
+                            <TextBlock Classes="m r" Text="—" IsVisible="{Binding !HasValues}" />
+                          </Panel>
+                          <Panel>
+                            <TextBox Theme="{StaticResource PrInput}" Classes="pidi num" Text="{Binding I, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding CanEdit}"
+                                     IsVisible="{Binding HasValues}" ToolTip.Tip="{Binding EditReason}" AutomationProperties.Name="I" />
+                            <TextBlock Classes="m r" Text="—" IsVisible="{Binding !HasValues}" />
+                          </Panel>
+                          <Panel>
+                            <TextBox Theme="{StaticResource PrInput}" Classes="pidi num" Text="{Binding D, UpdateSourceTrigger=LostFocus}" IsEnabled="{Binding CanEdit}"
+                                     IsVisible="{Binding HasValues}" ToolTip.Tip="{Binding EditReason}" AutomationProperties.Name="D" />
+                            <TextBlock Classes="m r" Text="—" IsVisible="{Binding !HasValues}" />
+                          </Panel>
+                          <TextBlock Classes="num r" Text="{Binding TunedSp}" Classes.m="{Binding !HasValues}" />
+                          <TextBlock Classes="num r m" Text="{Binding TunedAt}" ToolTip.Tip="{Binding TunedTip}"
+                                     IsVisible="{Binding !$parent[UserControl].((pp:PidSectionVm)DataContext).IsNarrow}" />
+                          <Panel>
+                            <TextBlock Classes="m" Text="{Binding Status}" IsVisible="{Binding !IsTag}" />
+                            <Border Classes="tag" Classes.brand="{Binding IsBrand}" Classes.warn="{Binding IsWarn}" Classes.run="{Binding IsRun}" IsVisible="{Binding IsTag}">
+                              <TextBlock Text="{Binding Status}" />
+                            </Border>
+                          </Panel>
+                        </ca:ColumnsPanel>
+                      </Panel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <DockPanel Classes="note2" Margin="14,10,14,12">
+                <c:IconView Icon="f-info" />
+                <TextBlock Text="{Binding TableNote}" />
+              </DockPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </DockPanel>
+  </Grid>
+</UserControl>

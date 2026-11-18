@@ -20,6 +20,20 @@ public readonly record struct ChartPoint(double T, double V)
     public static ChartPoint At(DateTime t, double? v) => new(ChartTime.Ms(t), v ?? double.NaN);
 }
 
+/// <summary>曲线点的小工具。</summary>
+public static class ChartPoints
+{
+    /// <summary>每个值乘 <paramref name="k"/>（压力 MPa → 显示单位）；k = 1 原样返回同一个列表。null → 空。</summary>
+    public static IReadOnlyList<ChartPoint> Scale(IReadOnlyList<ChartPoint>? points, double k)
+    {
+        if (points is null) return Array.Empty<ChartPoint>();
+        if (k == 1) return points;
+        var a = new ChartPoint[points.Count];
+        for (int i = 0; i < a.Length; i++) a[i] = new ChartPoint(points[i].T, points[i].V * k);
+        return a;
+    }
+}
+
 /// <summary>JS 的 Date 值（UTC 毫秒）与 DateTime 之间的换算（曲线的横轴、刻度、悬停时间都用它）。</summary>
 public static class ChartTime
 {

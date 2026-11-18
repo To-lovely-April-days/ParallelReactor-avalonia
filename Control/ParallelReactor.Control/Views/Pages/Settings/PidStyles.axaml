@@ -1,0 +1,244 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="using:ParallelReactor.Control.Controls"
+        xmlns:ca="using:ParallelReactor.Control.Controls.Alarms"
+        xmlns:b="using:ParallelReactor.Control.Behaviors">
+  <!-- 设置 → 温控 / PID（自整定，样稿 CSS「PID-AUTOTUNE」）：类名都带 pid 前缀，不和 F8 / 程序页的类冲突。
+       档位卡片 .pidtab：最小宽 170（窄屏 150）、内边距 8 12、line 边、圆角 4；名字 14/600、温区 13 t-2、状态 13 t-3（样稿 12.5，本机最小字号 13）；选中品牌蓝边 + 底边 3 px + a-tint 底、名字品牌蓝；
+       不能用的档 55 % 不透明。表 .pidt：行上下 9（输入 30 高），选中 / 在整定的行 a-tint 底 + 左边 3 px 品牌蓝；输入 72 宽（窄屏 56）。
+       右边：表单标签列 84 + 间距 16、行距 12；整定温度 = 输入 + 「°C」单位块（超出本档 琥珀边 + amb-bg 底）；通道小块 24 高圆角 12；
+       监视：标题 15/600 + 13 t-3；振荡步骤 10 px 圆点（完成品牌蓝实心、当前品牌蓝圈 + a-soft 光晕、600 品牌蓝字）；结果行 14 px、下边 line-faint。 -->
+  <Styles.Resources>
+    <!-- 档位卡片 -->
+    <ControlTheme x:Key="PidTab" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="12,8" />
+      <Setter Property="MinWidth" Value="170" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="VerticalContentAlignment" Value="Top" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Name="PART_Bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border Name="PART_Bar" Height="3" VerticalAlignment="Bottom" Margin="1,0,1,1" Background="{StaticResource ABrush}" IsVisible="False" />
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Padding="{TemplateBinding Padding}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover /template/ Border#PART_Bg">
+        <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      </Style>
+      <Style Selector="^.on">
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      </Style>
+      <Style Selector="^.on /template/ Border#PART_Bg">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      </Style>
+      <Style Selector="^.on /template/ Border#PART_Bar">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^.na">
+        <Setter Property="Opacity" Value="0.55" />
+        <Setter Property="Cursor" Value="No" />
+      </Style>
+      <Style Selector="^:focus-visible /template/ Border#PART_Bg">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      </Style>
+    </ControlTheme>
+
+    <!-- 整定温度：输入 + 右侧「°C」单位块（样稿 .unit：输入 84 + u；超出本档 .bad 琥珀） -->
+    <ControlTheme x:Key="PidUnit" TargetType="TextBox">
+      <Setter Property="ClipToBounds" Value="False" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Width" Value="118" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="SelectionBrush" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="SelectionForegroundBrush" Value="{StaticResource T1Brush}" />
+      <Setter Property="CaretBrush" Value="{StaticResource T1Brush}" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Name="PART_BorderElement" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border Name="PART_Ring" Margin="-3" BorderThickness="3" BorderBrush="{StaticResource FocusRingBrush}" CornerRadius="6" IsVisible="False" IsHitTestVisible="False" />
+            <Grid ColumnDefinitions="*,Auto" Margin="1">
+              <ScrollViewer Name="PART_ScrollViewer" Theme="{StaticResource PrScrollViewer}" Margin="{TemplateBinding Padding}"
+                            HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}" CaretIndex="{TemplateBinding CaretIndex}"
+                               SelectionStart="{TemplateBinding SelectionStart}" SelectionEnd="{TemplateBinding SelectionEnd}"
+                               TextAlignment="{TemplateBinding TextAlignment}" SelectionBrush="{TemplateBinding SelectionBrush}"
+                               SelectionForegroundBrush="{TemplateBinding SelectionForegroundBrush}" CaretBrush="{TemplateBinding CaretBrush}"
+                               VerticalAlignment="Center" />
+              </ScrollViewer>
+              <Border Grid.Column="1" Width="32" Background="{StaticResource BgPanelBrush}" BorderBrush="{StaticResource LineBrush}" BorderThickness="1,0,0,0"
+                      CornerRadius="0,2,2,0">
+                <TextBlock Text="°C" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Grid>
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
+      </Style>
+      <Style Selector="^:focus-within">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      </Style>
+      <Style Selector="^:focus-within /template/ Border#PART_Ring">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+      <Style Selector="^.bad">
+        <Setter Property="BorderBrush" Value="{StaticResource AmbLine2Brush}" />
+        <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      </Style>
+      <Style Selector="^:disabled">
+        <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+        <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+      </Style>
+    </ControlTheme>
+  </Styles.Resources>
+
+  <!-- 档位卡片的文字 -->
+  <Style Selector="Button.pidtab TextBlock.pn">
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+  </Style>
+  <Style Selector="Button.pidtab.on TextBlock.pn">
+    <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+  </Style>
+  <Style Selector="Button.pidtab TextBlock.rg">
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+  </Style>
+  <Style Selector="Button.pidtab TextBlock.st">
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+  </Style>
+  <Style Selector="Grid.pidnar Button.pidtab">
+    <Setter Property="MinWidth" Value="150" />
+  </Style>
+
+  <!-- 表：行上下 9；窄屏格子左右 8 -->
+  <Style Selector="Border.pidrow">
+    <Setter Property="Padding" Value="0,9" />
+    <Setter Property="MinHeight" Value="0" />
+  </Style>
+  <Style Selector="Border.pidrow.on">
+    <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+  </Style>
+  <Style Selector="Grid.pidnar Border.trow ca|ColumnsPanel > :is(Control), Grid.pidnar Border.thead TextBlock">
+    <Setter Property="Margin" Value="8,0" />
+  </Style>
+  <Style Selector="TextBox.pidi">
+    <Setter Property="Width" Value="72" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+    <Setter Property="TextAlignment" Value="Right" />
+  </Style>
+  <Style Selector="Grid.pidnar TextBox.pidi">
+    <Setter Property="Width" Value="56" />
+  </Style>
+  <Style Selector="Border.tag.run">
+    <Setter Property="Background" Value="{StaticResource G1Brush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+  </Style>
+  <Style Selector="Border.trow Border.tag.run TextBlock">
+    <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+  </Style>
+
+  <!-- 右边：表单 -->
+  <Style Selector="TextBlock.pidgrp">
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+  </Style>
+  <Style Selector="Border.pidchip">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="Margin" Value="0,0,6,0" />
+  </Style>
+  <Style Selector="Border.pidchip TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 右边：监视 -->
+  <Style Selector="TextBlock.pidmt">
+    <Setter Property="FontSize" Value="{StaticResource FsPaneTitle}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Ellipse.pidsd">
+    <Setter Property="Width" Value="10" />
+    <Setter Property="Height" Value="10" />
+    <Setter Property="Stroke" Value="{StaticResource Line2Brush}" />
+    <Setter Property="StrokeThickness" Value="1.5" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Ellipse.pidsd.done">
+    <Setter Property="Fill" Value="{StaticResource ABrush}" />
+    <Setter Property="Stroke" Value="{StaticResource ABrush}" />
+  </Style>
+  <Style Selector="Ellipse.pidsd.cur">
+    <Setter Property="Stroke" Value="{StaticResource ABrush}" />
+  </Style>
+  <Style Selector="TextBlock.pidst">
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="TextBlock.pidst.cur">
+    <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Border.pidres">
+    <Setter Property="Padding" Value="0,10" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+  <Style Selector="Border.pidres TextBlock">
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.pidres TextBlock.pidpart">
+    <Setter Property="Margin" Value="0,0,14,0" />
+  </Style>
+  <Style Selector="Grid.pidnar Border.pidres TextBlock.pidpart">
+    <Setter Property="Margin" Value="0,0,10,0" />
+  </Style>
+  <Style Selector="Border.pidres Panel.okn">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+  <Style Selector="Grid.pidnar Border.pidres Panel.okn">
+    <Setter Property="IsVisible" Value="True" />
+  </Style>
+  <Style Selector="Grid.pidnar Border.pidres Panel.okw">
+    <Setter Property="IsVisible" Value="False" />
+  </Style>
+</Styles>

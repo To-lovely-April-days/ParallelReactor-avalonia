@@ -443,9 +443,11 @@ public class DemoFusionTests
         Assert.Equal((9.5, 250.0, 450.0, 1.2, 100.0, "keep"), (p2.OverPressureMPa, p2.OverTempC, p2.RpmMax, p2.StirCurrentA, p2.VesselMl, p2.OnRemoteLost));
         Assert.Equal((3.0, 200.0, 0.9, 25.0, "stopHeat"), (p3.OverPressureMPa, p3.OverTempC, p3.StirCurrentA, p3.VesselMl, p3.OnRemoteLost));
         Assert.All(new[] { p1, p2, p3 }, p => Assert.Equal(1, p.StirGearRatio));
-        Assert.Equal(8, p1.EffectiveMl.Count);
-        Assert.All(p1.EffectiveMl, Assert.Null);
-        Assert.All(p2.EffectiveMl, Assert.Null);
+        // 融合版 F8：同样稿 DEADV / CALD，1号机 / 2号机也都标定过（有效容积 = 釜容积 + DEADV）
+        Assert.Equal(new double?[] { 10.7, 10.5, 10.8, 10.6, 10.4, 10.7, 10.5, 10.8 }, p1.EffectiveMl);
+        Assert.Equal(new double?[] { 102.4, 101.8, 102.1, 102.4 }, p2.EffectiveMl);
+        Assert.Equal(new DateTime(2026, 11, 10), p1.CalibratedAt[0]!.Value.Date);
+        Assert.Equal(new DateTime(2026, 11, 3), p2.CalibratedAt[3]!.Value.Date);
         // 3号机 RV1–14 已标定：有效容积 = 25 + DEADV（1.6 + ((21 + 3n) % 9) / 10），RV15–16 未标定
         Assert.Equal(new double?[] { 27.2, 26.6, 26.9, 27.2, 26.6, 26.9, 27.2, 26.6, 26.9, 27.2, 26.6, 26.9, 27.2, 26.6, null, null }, p3.EffectiveMl);
         Assert.Equal(new DateTime(2026, 10, 28), p3.CalibratedAt[0]!.Value.Date);

@@ -126,8 +126,11 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     private bool _wasLost;
     private DateTime? _lostAt;
 
-    /// <summary>断开之后又连上（融合版 F3 断线横条「已重新连接」）：断开时刻、恢复时刻、补拉的条数（补拉在 F8；没有为 null）。关掉横条后为 null。</summary>
-    public sealed record NetBackInfo(DateTime LostAt, DateTime BackAt, int? Rows);
+    /// <summary>
+    /// 断开之后又连上（融合版 F3 断线横条「已重新连接」）：断开时刻、恢复时刻、补拉回来的条数（融合版 F8：没补拉 / 还没补完为 null）、
+    /// 正在补拉、补拉失败的原因、对应的那一次补拉（LiveDeviceSource.Backfill 的 Seq）。关掉横条后为 null。
+    /// </summary>
+    public sealed record NetBackInfo(DateTime LostAt, DateTime BackAt, int? Rows, bool Pending = false, string? Error = null, int BackfillSeq = 0);
 
     /// <summary>见 <see cref="NetBackInfo"/>。</summary>
     [ObservableProperty] private NetBackInfo? _netBack;
@@ -143,8 +146,17 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     {
         bool lost = !conn.Online && conn.EverOnline;
         if (lost && !_wasLost) { _lostAt = conn.LostAt ?? now; NetBack = null; }
-        else if (!lost && _wasLost && conn.Online) NetBack = new NetBackInfo(_lostAt ?? now, now, null);
+        else if (!lost && _wasLost && conn.Online)
+        {
+            var nb = new NetBackInfo(_lostAt ?? now, now, null);
+            if (Source is LiveDeviceSource { Backfill: { Pending: true } b }) nb = nb with { Pending = true, BackfillSeq = b.Seq };
+            NetBack = nb;
+        }
         _wasLost = lost;
+        // 补拉（融合版 F8）落地 / 失败了：横条跟着改「已补拉 N 条」/「补拉失败」
+        if (NetBack is { BackfillSeq: > 0 } cur && Source is LiveDeviceSource { Backfill: { } st } && st.Seq == cur.BackfillSeq
+            && (cur.Pending != st.Pending || cur.Rows != st.Rows || cur.Error != st.Error))
+            NetBack = cur with { Pending = st.Pending, Rows = st.Rows, Error = st.Error };
     }
 
     /// <summary>

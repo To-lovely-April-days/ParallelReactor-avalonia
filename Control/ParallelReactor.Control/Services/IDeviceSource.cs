@@ -140,6 +140,8 @@ public interface IDeviceSource : IAsyncDisposable
 /// <item><see cref="Volume"/>：容积（真机设置 volume.*，只读；标定只能在触屏做）。</item>
 /// <item><see cref="OnRemoteLost"/>：PC 断开时设备怎么做（真机 GET /control 的 onRemoteLost：keep / stopHeat / estop）。</item>
 /// <item><see cref="StirGearRatio"/>：搅拌传动比（电机转速 ÷ 釜转速，真机设置 stir.stirGearRatio，只读）。</item>
+/// <item><see cref="Leak"/>（融合版 F8）：泄漏测试的设置（测试压力、平衡 / 测量时间、泄漏率阈值；真机设置 leakTest.*，只读）——
+///   性能测试页的泄漏测试和记录页保压类的判据都用这里的阈值。</item>
 /// </list>
 /// </summary>
 public sealed record PlantInfo(
@@ -151,9 +153,20 @@ public sealed record PlantInfo(
     IReadOnlyList<int>? GasQueue = null,
     VolumeInfo? Volume = null,
     string? OnRemoteLost = null,
-    double? StirGearRatio = null)
+    double? StirGearRatio = null,
+    LeakTestInfo? Leak = null)
 {
     public static readonly PlantInfo Empty = new();
+}
+
+/// <summary>
+/// 泄漏测试的设置（融合版 F8，真机设置 leakTest.*；只能在触屏改）：测试压力 psi（表压）、平衡时间、测量时间（min）、泄漏率阈值 psi/h（HMI 出厂 2，
+/// 按温度补偿后的压降 ≤ 阈值算通过）、上一次测试时刻（本地时间；没有为 null）。
+/// </summary>
+public sealed record LeakTestInfo(double TestPsi, double SettleMin, double MeasureMin, double RatePsiH, DateTime? LastTest = null)
+{
+    /// <summary>HMI 的出厂值（Models/AppSettings：145 psi、10 min、30 min、2 psi/h）。</summary>
+    public static readonly LeakTestInfo HmiDefault = new(145, 10, 30, 2);
 }
 
 /// <summary>

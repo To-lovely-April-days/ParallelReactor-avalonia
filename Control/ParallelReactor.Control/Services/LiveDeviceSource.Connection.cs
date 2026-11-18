@@ -940,10 +940,13 @@ public sealed partial class LiveDeviceSource
             LastError = null;
             _reported = null;
             _failures = 0;
+            // 融合版 F8：断线之后又连上 → 补拉断开那一段（设置开着时）
+            MaybeStartBackfill();
         }
         else if (_conn == ConnStatus.Online)
         {
             _lostAt = _now();
+            NoteGapStart();
             // 曲线在断线处断开（重连后的第一帧不和断线前的最后一帧连成一条直线）。时刻按设备时钟：用户断开、改地址时连接对象已经没了，
             // 用记下的时钟差（复核：以前退回到本机时钟，HMI 的钟慢几个小时时这一个标记就把 4 h 的曲线全裁掉了）
             _history.Data.MarkGap(_clock.UtcNow + HistoryClockOffset);

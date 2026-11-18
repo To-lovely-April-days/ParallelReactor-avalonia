@@ -1,0 +1,396 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pc="using:ParallelReactor.Control.Controls.Programs"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             xmlns:ed="using:ParallelReactor.Control.Core.Programs.Editor"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.OneView"
+             x:DataType="pg:ProgramPageVm">
+  <!-- 单路程序（样稿 PAGES.prog.render：#pgSteps | #pgParam + #pgSend）。右列宽 372（窄屏 340），代码里设；参数面板占满，下发面板按内容高。 -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Programs/ProgramStyles.axaml" />
+    <!-- 步骤一行（样稿 .board.pg .pgs：最小高 46、左右 16、间距 10） -->
+    <Style Selector="Button.pgs">
+      <Setter Property="MinHeight" Value="46" />
+      <Setter Property="Padding" Value="16,0" />
+    </Style>
+    <Style Selector="Border.no">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.no TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.pgs.on Border.no">
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Button.pgs.on Border.no TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    </Style>
+    <Style Selector="Border.ty">
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="7,0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgSideBrush}" />
+    </Style>
+    <Style Selector="Border.ty TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.kv">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Grid#Root.narrow TextBlock.kv2">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 参数表单（样稿 #pgParam .frm：标签 78、间距 12、行距 10） -->
+    <Style Selector="TextBlock.fl">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.rng">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="DockPanel.bad TextBlock.rng">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- 通道小块（样稿 .pgc：80 × 47、内边距 6 8、line-soft 边圆角 4；选中品牌蓝边 a-tint 底；不能选 bg-sunken、RV 灰） -->
+    <Style Selector="ToggleButton.pgc">
+      <Setter Property="Margin" Value="0,0,6,6" />
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Name="PART_Body" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1"
+                  CornerRadius="{StaticResource Radius}" Padding="8,6">
+            <Panel>
+              <StackPanel>
+                <TextBlock Name="PART_Rv" Text="{Binding Rv}" FontSize="{StaticResource FsCell}" FontWeight="Bold" Foreground="{StaticResource T1Brush}" x:DataType="pg:ChipVm" />
+                <TextBlock Text="{Binding Status}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" x:DataType="pg:ChipVm" />
+              </StackPanel>
+              <Border Name="PART_Box" Width="15" Height="15" CornerRadius="{StaticResource RadiusS}" BorderThickness="1" BorderBrush="{StaticResource LineFirmBrush}"
+                      Background="{StaticResource BgCardBrush}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,1,-2,0">
+                <c:IconView Name="PART_Check" Icon="check" Size="11" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}" IsVisible="False"
+                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Panel>
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="ToggleButton.pgc:pointerover /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    </Style>
+    <Style Selector="ToggleButton.pgc:checked /template/ Border#PART_Body">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.pgc:checked /template/ Border#PART_Box">
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="ToggleButton.pgc:checked /template/ c|IconView#PART_Check">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="ToggleButton.pgc.dis">
+      <Setter Property="Cursor" Value="No" />
+    </Style>
+    <Style Selector="ToggleButton.pgc.dis /template/ Border#PART_Body">
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.pgc.dis /template/ TextBlock#PART_Rv">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="ToggleButton.pgc.dis /template/ Border#PART_Box">
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    </Style>
+    <Style Selector="Grid#Root.short ToggleButton.pgc /template/ Border#PART_Body">
+      <Setter Property="Padding" Value="8,4" />
+    </Style>
+    <Style Selector="Grid#Root.short ToggleButton.pgc">
+      <Setter Property="Margin" Value="0,0,4,4" />
+    </Style>
+    <Style Selector="Button.lnk">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="20" />
+    </Style>
+    <Style Selector="Button.slnk">
+      <Setter Property="Padding" Value="4,0" />
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid Name="Root" ColumnDefinitions="*,8,372" RowDefinitions="*,Auto" Classes.narrow="{Binding IsNarrow}" Classes.short="{Binding IsShort}">
+    <!-- 步骤（样稿 #pgSteps） -->
+    <Border Classes="pgpanel" Grid.Column="0" Grid.RowSpan="2">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <DockPanel>
+            <pr:SegControl Classes="pgmode" DockPanel.Dock="Right" Value="{Binding ModeKey}" Margin="0,0,78,0"
+                           ToolTip.Tip="单路程序：编辑一个程序的步骤；条件矩阵：同一套步骤，每路填不同条件">
+              <pr:SegOption Value="one" Label="单路程序" />
+              <pr:SegOption Value="mx" Label="条件矩阵" />
+            </pr:SegControl>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="pt" Text="步骤" />
+              <TextBlock Classes="pc" Text="{Binding One.ProgName, StringFormat='· {0}'}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 共 4 步 · 约 2 h 01 min ｜ 校验通过 · 适用 HT-PR8 …… 上移 下移 删除 -->
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel VerticalAlignment="Center">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-up" Content="上移" Command="{Binding One.UpCommand}" b:Pr.Reason="{Binding One.UpReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-dn" Content="下移" Command="{Binding One.DownCommand}" b:Pr.Reason="{Binding One.DownReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-delete" Content="删除" Command="{Binding One.DeleteCommand}" b:Pr.Reason="{Binding One.DeleteReason}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="{Binding One.TotalText}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+              <Border Width="1" Height="16" Background="{StaticResource LineSoftBrush}" VerticalAlignment="Center" />
+              <Border Classes="tag" Classes.run="{Binding One.Valid}" Classes.warn="{Binding !One.Valid}">
+                <StackPanel Orientation="Horizontal" Spacing="4">
+                  <c:IconView Icon="f-check" IsVisible="{Binding One.Valid}" />
+                  <c:IconView Icon="f-warn-f" IsVisible="{Binding !One.Valid}" />
+                  <TextBlock Text="{Binding One.IssueTag}" />
+                </StackPanel>
+              </Border>
+              <TextBlock Text="{Binding One.AppliesTo}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 运行中的程序锁住（样稿 .lockbar.amb） -->
+        <Border Classes="lockbar amb" DockPanel.Dock="Top" Margin="16,10,16,0" IsVisible="{Binding One.Locked}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" b:Pr.Icon="f-copy" Content="复制为新程序" Command="{Binding One.DupCommand}" Margin="10,0,0,0" />
+            <c:IconView Icon="f-lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding One.LockText}" />
+          </DockPanel>
+        </Border>
+        <!-- 预计温度 / 压力（样稿 #pgPrev：176 高，矮屏 112；上下两张，不用双轴） -->
+        <Border DockPanel.Dock="Top" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+          <pc:PlanPreviewChart Name="Preview" Plan="{Binding One.Plan}" Selected="{Binding One.PlanSel}" Height="176" Margin="0,0,6,0" />
+        </Border>
+        <!-- 添加步骤（样稿 .pgadd） -->
+        <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Classes="mut" Text="添加步骤" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <ItemsControl ItemsSource="{Binding One.AddTypes}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:AddStepVm">
+                  <Button b:Pr.Icon="f-plus" Content="{Binding Label}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}" Padding="9,0" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding One.Steps}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:StepRowVm">
+                  <Button Classes="pgs" Theme="{StaticResource PgRow}" Classes.on="{Binding IsSelected}" Command="{Binding PickCommand}"
+                          AutomationProperties.Name="{Binding Name}">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Dur}" Width="76" TextAlignment="Right" FontSize="{StaticResource FsBase}"
+                                 Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="3" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="10,0,0,0">
+                        <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="待改" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" ClipToBounds="True">
+                        <Border Classes="no"><TextBlock Text="{Binding No}" /></Border>
+                        <Border Classes="ty"><TextBlock Text="{Binding TypeLabel}" /></Border>
+                        <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                   MaxWidth="120" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Classes="kv">
+                          <Run Text="{Binding K1}" /><Run Text=" " /><Run Text="{Binding V1}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" />
+                        </TextBlock>
+                        <TextBlock Classes="kv kv2" Margin="4,0,0,0">
+                          <Run Text="{Binding K2}" /><Run Text=" " /><Run Text="{Binding V2}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" />
+                        </TextBlock>
+                      </StackPanel>
+                    </DockPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <!-- 待改项（样稿 .pgiss） -->
+            <Border Margin="12,10" Padding="10,8" BorderBrush="{StaticResource AmbLineBrush}" BorderThickness="1" Background="{StaticResource AmbBgBrush}"
+                    CornerRadius="{StaticResource RadiusS}" IsVisible="{Binding One.HasIssues}">
+              <ItemsControl ItemsSource="{Binding One.Issues}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <DockPanel>
+                      <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,3,6,0" />
+                      <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource AmbInk2Brush}" TextWrapping="Wrap" />
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- 参数（样稿 #pgParam） -->
+    <Border Classes="pgpanel" Grid.Column="2" Grid.Row="0">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="参数" />
+            <TextBlock Classes="pc" Text="{Binding One.ParamSub, StringFormat='· {0}'}" />
+          </StackPanel>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="16,12,16,16" IsVisible="{Binding One.HasStep}">
+            <Grid ColumnDefinitions="78,12,*" Margin="0,0,0,10">
+              <TextBlock Classes="fl" Text="步骤名称" />
+              <TextBox Grid.Column="2" Theme="{StaticResource PrInput}" Text="{Binding One.StepName, UpdateSourceTrigger=LostFocus}" IsReadOnly="{Binding One.Locked}"
+                       b:Pr.Reason="{Binding One.Locked, Converter={x:Static pg:ProgramConverters.LockReason}}" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding One.Fields}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:FieldVm">
+                  <Grid ColumnDefinitions="78,12,*" Margin="0,0,0,10">
+                    <TextBlock Classes="fl" Text="{Binding Label}" />
+                    <ComboBox Grid.Column="2" Theme="{StaticResource PrSelect}" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                              IsVisible="{Binding IsSelect}" MinWidth="150" HorizontalAlignment="Left" IsEnabled="{Binding !Locked}">
+                      <ComboBox.ItemTemplate>
+                        <DataTemplate x:DataType="ed:FieldOption">
+                          <TextBlock Text="{Binding Label}" />
+                        </DataTemplate>
+                      </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <!-- 范围放不下时（压力「0.01 – 3.14（≈ 363 psi）」在窄的参数面板里）把括号整段折到第二行，不裁掉 -->
+                    <DockPanel Grid.Column="2" IsVisible="{Binding IsNum}" Classes.bad="{Binding Bad}">
+                      <TextBox DockPanel.Dock="Left" Theme="{StaticResource PgUnit}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" b:Pr.Unit="{Binding Unit}"
+                               Classes.bad="{Binding Bad}" IsEnabled="{Binding !Locked}" Classes="pgnum" />
+                      <c:IconView DockPanel.Dock="Left" Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="8,0,-4,0" />
+                      <TextBlock Classes="rng" Text="{Binding RangeShown}" TextWrapping="Wrap" Margin="8,0,0,0" />
+                    </DockPanel>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <DockPanel Classes="note2" IsVisible="{Binding One.Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0">
+              <c:IconView Icon="f-info" />
+              <TextBlock Text="{Binding One.Note}" />
+            </DockPanel>
+            <!-- 曲线升温的段（最多 16 段） -->
+            <StackPanel IsVisible="{Binding One.IsCurve}" Margin="0,16,0,0" Spacing="6">
+              <TextBlock Classes="grp" Text="曲线段（最多 16 段）" />
+              <Grid ColumnDefinitions="28,*,*,*,28" Height="28">
+                <TextBlock Classes="mut" Text="段" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="mut" Text="目标 °C" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBlock Grid.Column="2" Classes="mut" Text="斜率 °C/min" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" />
+                <TextBlock Grid.Column="3" Classes="mut" Text="保温 min" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,6,0" />
+              </Grid>
+              <ItemsControl ItemsSource="{Binding One.Segments}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="pg:SegVm">
+                    <Grid ColumnDefinitions="28,*,*,*,28" Margin="0,0,0,4">
+                      <TextBlock Classes="mut" Text="{Binding No}" VerticalAlignment="Center" />
+                      <TextBox Grid.Column="1" Theme="{StaticResource PgCell}" Text="{Binding Temp, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadTemp}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
+                      <TextBox Grid.Column="2" Theme="{StaticResource PgCell}" Text="{Binding Rate, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadRate}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
+                      <TextBox Grid.Column="3" Theme="{StaticResource PgCell}" Text="{Binding Hold, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadHold}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
+                      <Button Grid.Column="4" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-delete" Command="{Binding DeleteCommand}" ToolTip.Tip="删除这一段" IsEnabled="{Binding !Locked}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Theme="{StaticResource PrLink}" Classes="lnk" b:Pr.Icon="f-plus" Content="添加段" Command="{Binding One.AddSegCommand}" HorizontalAlignment="Left"
+                      b:Pr.Reason="{Binding One.Locked, Converter={x:Static pg:ProgramConverters.LockReason}}" />
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- 下发（样稿 #pgSend） -->
+    <Border Classes="pgpanel" Grid.Column="2" Grid.Row="1" Margin="0,8,0,0">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="下发" />
+            <TextBlock Classes="pc" Text="{Binding SendSub, StringFormat='· {0}'}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="lockbar" DockPanel.Dock="Top" Margin="16,10,16,0" Classes.amb="{Binding One.SendBarAmb}"
+                IsVisible="{Binding One.SendBar, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+          <DockPanel>
+            <c:IconView Icon="f-lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <TextBlock Text="{Binding One.SendBar}" />
+          </DockPanel>
+        </Border>
+        <StackPanel Margin="16,12,16,16">
+          <ItemsControl ItemsSource="{Binding One.Chips}" Margin="0,0,-6,-6" Name="Chips">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="pg:ChipVm">
+                <ToggleButton Classes="pgc" Classes.dis="{Binding Disabled}" IsChecked="{Binding IsChecked}" IsHitTestVisible="{Binding !Disabled}"
+                              ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Rv}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <DockPanel Margin="0,8,0,0">
+            <TextBlock DockPanel.Dock="Right" Classes="mut" Text="{Binding One.SelCountText}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <Button Theme="{StaticResource PrLink}" Classes="lnk" Content="选全部空闲" Command="{Binding One.IdleCommand}" b:Pr.Reason="{Binding One.IdleReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="lnk" Content="清空" Command="{Binding One.ClearCommand}" />
+            </StackPanel>
+          </DockPanel>
+          <!-- 溶液体积（所选各路相同，0.1 mL，必填） -->
+          <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+            <TextBlock Text="溶液体积" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+            <TextBox Name="Vol" Theme="{StaticResource PgUnit}" Width="108" Text="{Binding One.VolText, UpdateSourceTrigger=LostFocus}" b:Pr.Unit="mL"
+                     Watermark="必填" Classes.bad="{Binding One.VolBad}" ToolTip.Tip="0.1 mL；上下键 ±0.1" />
+          </StackPanel>
+          <TextBlock Text="{Binding One.VolHint}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" Margin="0,8,0,0"
+                     Classes.bad="{Binding One.VolBad}" Name="VolHint" />
+          <DockPanel Classes="note2">
+            <c:IconView Icon="f-info" />
+            <TextBlock Text="下发会覆盖通道上已有的程序；运行中的通道不能下发" />
+          </DockPanel>
+          <UniformGrid Classes="pgbtn" Columns="2" Margin="0,12,-8,0">
+            <Button b:Pr.Icon="f-task" Content="预运行检查" Command="{Binding One.CheckCommand}" b:Pr.Reason="{Binding One.CheckReason}" Margin="0,0,8,0" />
+            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="下发并运行" Command="{Binding One.RunCommand}" b:Pr.Reason="{Binding One.RunReason}"
+                    ToolTip.Tip="{Binding One.RunTip}" Margin="0,0,8,0" />
+          </UniformGrid>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

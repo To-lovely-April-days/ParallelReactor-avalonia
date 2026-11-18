@@ -74,7 +74,7 @@ public sealed class OverlayChart : Avalonia.Controls.Control, IAuditText
         if (d == null || W < 160 || H < 90) return;
         double iw = W - L - R, ih = H - T - B, span = Math.Max(1, d.T1 - d.T0);
         int nT = ih >= 150 ? 4 : 2;
-        double top = d.Mode == Pages.Home.OverlayMode.G ? 5 : 1;
+        double top = d.MinTop > 0 ? d.MinTop : d.Mode == Pages.Home.OverlayMode.G ? 5 : 1;
         if (d.Limit is double lim0) top = Math.Max(top, lim0);
         foreach (var ln in d.Lines)
             for (int i = 0; i < ln.Count; i++) if (double.IsFinite(ln.Points[i].V)) top = Math.Max(top, ln.Points[i].V);

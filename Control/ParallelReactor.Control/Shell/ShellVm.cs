@@ -47,10 +47,17 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     private readonly Dictionary<AppPage, PageVm> _pages = new();
 
-    public ShellVm(FleetVm fleet, DockLayout? layout = null)
+    public ShellVm(FleetVm fleet, DockLayout? layout = null, Core.Unattended.ISleepInhibitor? sleep = null, Core.Unattended.IAlarmSound? sound = null)
     {
         Fleet = fleet;
         Layout = layout ?? new DockLayout();
+        // 融合版 F8：本机设置（devices.json 的 "pc"）、防睡眠、报警声音（演示 / 无头 / 截图不调系统、不出声）
+        Prefs = new PrefsStore(fleet.Config);
+        Sleep = new Core.Unattended.SleepGuard(sleep ?? Services.Unattended.PlatformUnattended.SleepInhibitor(fleet.IsDemo));
+        Beeper = new Core.Unattended.AlarmBeeper(sound ?? Services.Unattended.PlatformUnattended.AlarmSound(fleet.IsDemo));
+        fleet.BackfillEnabled = Prefs.Current.Backfill;
+        _pressureVersion = Core.Format.PressureDisplay.Version;
+        Prefs.Changed += OnPrefsChanged;
         Nav = new NavVm(fleet);
         Toasts = new ToastService();
         Dialogs = new DialogHostVm((t, k) => Toasts.Show(t, k));
@@ -74,10 +81,10 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
         DialogSet.Register(this);
 
-        // 深蓝条右端：设置 / 关于 / 帮助都到「设置」页（F8 在那里做「关于」「帮助」两节），工具（通讯日志、诊断包）F9
-        SettingsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => Go(AppPage.Settings));
-        AboutCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { Go(AppPage.Settings); Toast(AboutText, ToastKind.Info); });
-        HelpCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { Go(AppPage.Settings); Toast("使用说明在「设置 › 帮助」（F8）", ToastKind.Info); });
+        // 深蓝条右端（融合版 F8）：设置 → 设置页「常规」；关于 / 帮助 → 设置页「关于」（版本、设备、服务热线、使用说明）；工具（通讯日志、诊断包）F9
+        SettingsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => OpenSettings("gen"));
+        AboutCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => OpenSettings("about"));
+        HelpCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => OpenSettings("about"));
         ToolsCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() => Toast("工具：通讯日志 · 导出诊断包（F9）", ToastKind.Info));
         // 深蓝条上的工位名：改本机客户端名（真机注册了 client 对话框；演示数据改不了）
         ClientCommand = new CommunityToolkit.Mvvm.Input.RelayCommand(() =>
@@ -91,6 +98,12 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     public FleetVm Fleet { get; }
     public DockLayout Layout { get; }
+    /// <summary>本机设置（融合版 F8 设置页「本机」；当前值马上生效，「保存」写进 devices.json）。</summary>
+    public PrefsStore Prefs { get; }
+    /// <summary>运行中阻止电脑睡眠（融合版 F8 无人值守）：每次刷新按设置 + 有没有设备在运行申请 / 释放。</summary>
+    public Core.Unattended.SleepGuard Sleep { get; }
+    /// <summary>报警声音（融合版 F8）：有未确认的报警级报警时每 30 s 响一次。</summary>
+    public Core.Unattended.AlarmBeeper Beeper { get; }
     public NavVm Nav { get; }
     public ToastService Toasts { get; }
     public DialogHostVm Dialogs { get; }
@@ -199,16 +212,29 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         vm = p switch
         {
             AppPage.Home => new HomePageVm(this),
-            // 程序（F6 前）沿用旧样式的程序页（编辑 / 下发 / 导出）；性能测试（F8 前）沿用旧样式的性能测试页
-            AppPage.Program => new LegacyProgramPageVm(this),
-            AppPage.Perf => new PerfPageVm(this),
+            // 程序（融合版 F6）：程序库 + 单路程序 + 条件矩阵；性能测试 / 设置（F8）
+            AppPage.Program => new Pages.Programs.ProgramPageVm(this),
+            AppPage.Perf => new Pages.Perf.PerfPageVm(this),
             AppPage.Gallery => new GalleryPageVm(),
-            _ => new PlaceholderPageVm(p, this),
+            AppPage.Alarms => new Pages.Alarms.AlarmPageVm(this),
+            AppPage.Curves => new Pages.Curves.CurvePageVm(this),
+            AppPage.Records => new Pages.Records.RecordsPageVm(this),
+            AppPage.Settings => new Pages.Settings.SettingsPageVm(this),
+            _ => throw new ArgumentOutOfRangeException(nameof(p), p, "没有这个页面"),
         };
         vm.ToolsChanged += (_, _) => { if (ReferenceEquals(vm, Page)) Ribbon.SetTools(vm.Tools); };
         _pages[p] = vm;
         Pages.Add(vm);
         return vm;
+    }
+
+    /// <summary>
+    /// 打开设置页的某一节（深蓝条「设置」= 常规、「关于」「帮助」= 关于；断线横条「断线设置」= 无人值守）。键同样稿 SET_NAV：gen / conn / night / lim / pid / comm / store / upt / about。
+    /// </summary>
+    public void OpenSettings(string section)
+    {
+        Go(AppPage.Settings);
+        if (Page is Pages.Settings.SettingsPageVm sp) sp.Section = section;
     }
 
     /// <summary>已经建过的某种页面（没有为 null）。</summary>
@@ -231,6 +257,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Fleet.ApplyDemoParams(p);
         if (X("net") == "back" && Fleet.Device(netK) is { } nb) nb.ForceNetBack(Fleet.Now.AddSeconds(-146), Fleet.Now, 146);
         AlarmPop.Off = X("apop") == "0";
+        // 压力单位（截图 / 走查：punit=MPa|bar|psi，同设置 → 常规「压力单位」；演示没有配置文件，只改当前值）
+        if (X("punit") is { Length: > 0 } pu) Prefs.Set(Prefs.Current with { PressureUnit = Core.Format.PressureUnits.Normalize(pu) });
         var page = AppPages.Parse(X("page"));
         if (page != null || X("dev") != null)
         {
@@ -244,7 +272,9 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         if (X("po") != null || X("pc") != null) Layout.ApplyParams(X("po"), X("pc"));
         if (X("alm") == "1") Alarms.IsOpen = true;
         if (X("ovm") is { Length: > 0 } ovm && OpenPage<HomePageVm>() is { } hp) hp.Curve.ModeKey = ovm;
+        if (X("mv") is { Length: > 0 } mv && OpenPage<HomePageVm>() is { } hm) hm.MonKey = mv;
         Nav.Prune();
+        Page?.ApplyParams(X);
         Page?.Refresh(Fleet);
         RefreshChrome();
         if (p.DialogName is { Length: > 0 } dn) OpenDialog(dn, p.DialogArg);
@@ -265,6 +295,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         _channelPicked.Clear();
         Layout.Reset();
         OpenPage<HomePageVm>()?.ResetBoard();
+        foreach (var pg in Pages) pg.ResetView();
         AlarmPop.Reset(false);
         Nav.Reset();
     }
@@ -363,9 +394,45 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         RefreshChrome();
     }
 
+    /// <summary>本机设置变了：防睡眠 / 声音 / 补拉马上跟着变（不等「保存」，同样稿 SETP）；压力单位变了整个界面重算一遍（读数、表格、曲线、对话框）。</summary>
+    private void OnPrefsChanged(object? sender, EventArgs e)
+    {
+        Fleet.BackfillEnabled = Prefs.Current.Backfill;
+        AlarmPop.SoundOn = Prefs.Current.AlarmSound;
+        if (_pressureVersion != Core.Format.PressureDisplay.Version)
+        {
+            // PrefsStore 已经换了 PressureDisplay 的单位：设备的读数文字（ReactorVm）先重算，再刷新页面（隐藏的页面打开时自己刷新）、外框、打开着的对话框
+            _pressureVersion = Core.Format.PressureDisplay.Version;
+            Fleet.RefreshNow();
+            foreach (var p in Pages) if (!ReferenceEquals(p, Page)) p.Refresh(Fleet);
+            return;   // RefreshNow → OnFleetChanged 已经刷新了当前页、外框、对话框
+        }
+        RefreshChrome();
+    }
+
+    /// <summary>上次刷新时的压力单位版本（<see cref="Core.Format.PressureDisplay.Version"/>）。</summary>
+    private int _pressureVersion;
+
+    /// <summary>有设备在运行（有在跑的通道；断线的按断线前的状态算 —— 设备照常在跑，本机更不该睡）。</summary>
+    public bool AnyRunning => Fleet.Devices.Any(d => d.Running > 0);
+
+    /// <summary>
+    /// 无人值守（融合版 F8，每次刷新）：按设置申请 / 释放防睡眠；按未确认的报警级报警决定要不要响一声（<see cref="Core.Unattended.AlarmBeeper"/>）。
+    /// </summary>
+    private void UpdateUnattended()
+    {
+        Sleep.Update(Prefs.Current.PreventSleep, AnyRunning);
+        var keys = new List<string>();
+        foreach (var d in Fleet.Devices)
+            foreach (var a in d.AlarmList)
+                if (a.IsErr && !a.Acked && a.Active && !a.IsEstop) keys.Add(d.K.ToString(CultureInfo.InvariantCulture) + ":" + a.Id);
+        Beeper.Tick(DateTime.UtcNow, Prefs.Current.AlarmSound, keys);
+    }
+
     /// <summary>外框各部分按当前数据 / 路由 / 布局刷新文字和标记。</summary>
     public void RefreshChrome()
     {
+        UpdateUnattended();
         ShowInspector = Nav.Page == AppPage.Home && Nav.DeviceK > 0;
         StripTitle = ProductTitle + " — " + Fleet.Devices.Count.ToString(CultureInfo.InvariantCulture) + " 台设备";
         Menubar.Refresh();
@@ -385,7 +452,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     /// <summary>退出前收尾：先中止运行中的性能测试，再释放全部数据源。整体不超过 <paramref name="timeout"/>。</summary>
     public async Task ShutdownAsync(TimeSpan timeout)
     {
-        var perf = OpenPage<PerfPageVm>();
+        var perf = OpenPage<Pages.Perf.PerfPageVm>();
         var work = Task.Run(async () =>
         {
             if (perf != null) await perf.Perf.AbortAndWaitAsync(TimeSpan.FromSeconds(3)).ConfigureAwait(false);
@@ -396,6 +463,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
 
     public void Dispose()
     {
+        Sleep.Dispose();
+        Prefs.Changed -= OnPrefsChanged;
         Fleet.Changed -= OnFleetChanged;
         Fleet.Toast -= OnFleetToast;
         Layout.Changed -= OnLayoutChanged;

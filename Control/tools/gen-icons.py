@@ -21,17 +21,8 @@ APP = os.path.normpath(os.path.join(HERE, '..', 'ParallelReactor.Control'))
 DEFAULT_MOCK = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'research', 'pc-v3'))
 
 # 旧界面（research/pc-control.html）还在用的图标：原样照抄 M1 之前的 Styles/Icons.axaml，不做任何换算（只留旧视图引用的键；Lint/IconSetTests 核对）
-LEGACY = [
-    ('IcoGauge', 'M4 17a8 8 0 1 1 16 0 M12 13 17 8M7 17h10M5 14l-2-1M19 14l2-1M12 5V3 M11 13a1 1 0 1 0 2 0a1 1 0 1 0 -2 0'),
-    ('IcoClock', 'M4 12a8 8 0 1 0 16 0a8 8 0 1 0 -16 0 M12 7v5l3 2'),
-    ('IcoList', 'M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'),
-    ('IcoClose', 'm6 6 12 12M18 6 6 18'),
-    ('IcoExpand', 'M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5M3 8l6-6M21 8l-6-6M3 16l6 6M21 16l-6 6'),
-    ('IcoMove', 'M12 2v20M2 12h20M12 2l-3 3M12 2l3 3M22 12l-3-3M22 12l-3 3M12 22l-3-3M12 22l3-3M2 12l3-3M2 12l3 3'),
-    ('IcoSearch', 'M4 10a6 6 0 1 0 12 0a6 6 0 1 0 -12 0 m11 5 6 6M7 10h6M10 7v6'),
-    ('IcoZoomOut', 'M4 10a6 6 0 1 0 12 0a6 6 0 1 0 -12 0 m11 5 6 6M7 10h6'),
-    ('IcoTree', 'M12 3v5M5 13v5M19 13v5M5 13h14M12 8v5M5 8h14 M10 4a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M3 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M17 20a2 2 0 1 0 4 0a2 2 0 1 0 -4 0'),
-]
+# 旧界面的 Ico* 键：融合版 F8 删掉旧样式的性能测试页 / 程序页之后没人用了，全部删掉（IconSetTests 要求名单只许变短）
+LEGACY = []
 
 
 def fmt(v):
@@ -266,7 +257,8 @@ def gen_axaml(icons, converted):
         if fill:
             L.append(f'  <StreamGeometry x:Key="Icon.{name}.Fill">{fill}</StreamGeometry>')
     L.append('')
-    L.append(f'  <!-- 旧界面（research/pc-control.html）还在用的 {len(LEGACY)} 个图标，键 Ico*：几何原样保留（旧视图外观不变，旧 IconView 用法按 viewBox 单位描边），M7 删除。 -->')
+    if LEGACY:
+        L.append(f'  <!-- 旧界面（research/pc-control.html）还在用的 {len(LEGACY)} 个图标，键 Ico*：几何原样保留（旧视图外观不变，旧 IconView 用法按 viewBox 单位描边），M7 删除。 -->')
     for k, v in LEGACY:
         L.append(f'  <StreamGeometry x:Key="{k}">{v}</StreamGeometry>')
     L.append('</ResourceDictionary>')

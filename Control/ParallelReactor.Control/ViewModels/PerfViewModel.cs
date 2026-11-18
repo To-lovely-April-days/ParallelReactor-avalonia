@@ -6,13 +6,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ParallelReactor.Api;
 using ParallelReactor.Client;
-using ParallelReactor.Control.Controls;
 using ParallelReactor.PerfTest.Engine;
 using ParallelReactor.PerfTest.Model;
 using ParallelReactor.PerfTest.Results;
@@ -20,8 +18,8 @@ using ParallelReactor.PerfTest.Results;
 namespace ParallelReactor.Control.ViewModels;
 
 /// <summary>
-/// 性能测试视图（mock data-view="perf"）：左侧测试项清单 + 通道芯片；右上测试进度（总进度条 / 步骤行 / 四张卡 / 确认卡 / 报告表）；
-/// 右下实时曲线；检查器按钮（开始 / 暂停 / 继续 · 确认 / 继续 · 中止 · 生成报告 · 下载报告 · 下载原始数据 · 返回测试项）。
+/// 性能测试的视图模型（融合版 F8 起由 Pages/Perf/PerfPageVm 排成新版面：测试项、进度与当前一步、结果；旧样式的实时曲线去掉了）：
+/// 测试项清单 + 通道；进度（总进度、步骤行、录入 / 确认 / 安全询问）；报告表；开始 / 暂停 / 继续 · 确认 / 继续 · 中止 · 生成报告 · 打开报告 / 目录。
 /// 同时实现 <see cref="IOperatorPrompt"/>：引擎线程上的确认 / 录入 / 安全询问被投递到 UI 线程，在 TaskCompletionSource 上等待操作员点「确认 / 继续」。
 /// 引擎 = PerfTest 库的 <see cref="PerfRunner"/>（会话 / 打点经 HMI sessions API，HMI 自己的 CSV 也带上标记）。
 /// 宿主（连接、客户端名、是否在看、toast）是 <see cref="IPerfHost"/>（M2 起 = 新外壳的性能测试页 Pages/PerfPageVm，不再依赖旧的主视图模型）。
@@ -53,7 +51,6 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
     public ObservableCollection<PerfEntryFieldVm> ExtraEntryFields { get; } = new();
     public ObservableCollection<PerfCheckVm> ChecklistItems { get; } = new();
     public ObservableCollection<PerfReportRowVm> ReportRows { get; } = new();
-    public ChartVm Chart { get; }
 
     // —— 清单 ——
     [ObservableProperty] private string _selectedText = "已选 0 项";
@@ -120,18 +117,10 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
     public string OutputDirName => OutputDir.Length == 0 ? "" : Path.GetFileName(OutputDir.TrimEnd(Path.DirectorySeparatorChar));
     partial void OnOutputDirChanged(string value) => OnPropertyChanged(nameof(OutputDirName));
     public bool ShowRunView => !ShowReport;
-    public string ChartSubtitle => $"{LiveRv} 温度 · 压力 · 全局转速";
 
     public PerfViewModel(IPerfHost main, TestPlan plan)
     {
         _main = main; Plan = plan;
-        Chart = new ChartVm("实时曲线", ChartSubtitle, new[]
-        {
-            new ChartSeries("温度", ProcessChart.TempColor),
-            new ChartSeries("压力", ProcessChart.OilColor, right: true),
-            new ChartSeries("转速", ProcessChart.SpeedColor, right: true),
-        })
-        { LeftMax = 200, RightMax = 1000, XLabel = "测试时间 (mins)", RightLabel = "压力 (psi) / 转速 (rpm)" };
         BuildGroups();
         for (int i = 0; i < 8; i++)
         {
@@ -236,12 +225,12 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
         {
             PlanId = Plan.PlanId, ItemIds = ids, Channels = chans,
             Operator = _main.ClientName, SoftwareVersion = "pc-" + (typeof(PerfViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0"),
-            OutputRoot = ResultStore.DefaultRoot(), R0SignedOff = _r0Passed,
+            OutputRoot = System.IO.Path.Combine(Services.DataDirs.Root, "perf"), R0SignedOff = _r0Passed,
         };
         _runStartedUtc = DateTime.UtcNow;
         IsRunning = true; IsPaused = false; IsFinished = false; ShowReport = false;
         ProgressTitle = "测试进度"; StatusText = "运行中";
-        LiveRv = "RV" + chans[0]; LivePath = $"/RV{chans[0]}/模拟输入"; Chart.Subtitle = ChartSubtitle; OnPropertyChanged(nameof(ChartSubtitle));
+        LiveRv = "RV" + chans[0]; LivePath = $"/RV{chans[0]}/模拟输入";
         BuildRows(ids, chans);
         AddEvent($"开始：{ids.Count} 项 · {string.Join(" ", chans.Select(r => "RV" + r))}");
         _main.Toast($"性能测试开始：{string.Join(" ", chans.Select(r => "RV" + r))} · {ids.Count} 项");
@@ -512,7 +501,7 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
         var t = p.LiveTempC.Count > 0 && p.LiveTempC[0] is double tv ? tv.ToString("0.0", CultureInfo.InvariantCulture) : "—";
         var pr = p.LivePressurePsi.Count > 0 && p.LivePressurePsi[0] is double pv ? pv.ToString("0.0", CultureInfo.InvariantCulture) : "—";
         LiveTp = $"{t} ℃ · {pr} psi";
-        if (p.Channels.Count > 0) { var rv = "RV" + p.Channels[0]; if (rv != LiveRv) { LiveRv = rv; LivePath = $"/{rv}/模拟输入"; Chart.Subtitle = ChartSubtitle; OnPropertyChanged(nameof(ChartSubtitle)); } }
+        if (p.Channels.Count > 0) { var rv = "RV" + p.Channels[0]; if (rv != LiveRv) { LiveRv = rv; LivePath = $"/{rv}/模拟输入"; } }
 
         // 步骤行：项行 + 当前项的步骤子行
         if (p.ItemId != _curItemId)
@@ -671,7 +660,6 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
         CurName = "—"; CurHint = "点击右侧「开始测试」"; Countdown = "--:--"; CountdownLabel = "倒计时";
         ClearEntry(); ChecklistItems.Clear(); OnPropertyChanged(nameof(HasChecklist));
         Rows.Clear(); EventLines.Clear(); ReportRows.Clear(); ReportMeta = ""; ReportTime = "总用时 —"; ReportPath = ""; OutputDir = "";
-        foreach (var s in Chart.Series) s.Points.Clear(); Chart.XMax = 88; Chart.Revision++;
         if (!keepSelection) ClearAll();
         RefreshButtons();
     }
@@ -694,42 +682,19 @@ public sealed partial class PerfViewModel : ObservableObject, IOperatorPrompt
         while (EventLines.Count > 40) EventLines.RemoveAt(EventLines.Count - 1);
     }
 
-    // ───────────────────────── 遥测 → 曲线 ─────────────────────────
+    // ───────────────────────── 遥测 ─────────────────────────
 
-    /// <summary>宿主每次刷新调用（最新一帧）：运行中按首个目标通道画温度 / 压力 / 全局转速（rpm 原值）。</summary>
+    /// <summary>宿主每次刷新调用（最新一帧）：没在测时按首个目标通道写实时读数（运行中由引擎的进度给）。</summary>
     public void OnTelemetry(IReactorConnection c, TelemetrySnapshot f)
     {
-        if (!_main.IsVisible && !IsRunning) return;
+        if (IsRunning || !_main.IsVisible) return;
         int rv = int.TryParse(LiveRv.AsSpan(2), out var r) ? r : 1;
-        var origin = _runStartedUtc ?? (c.Telemetry.Snapshot().FirstOrDefault()?.Ts ?? f.Ts);
-        foreach (var s in Chart.Series) s.Points.Clear();
-        double maxX = 0, maxT = 0, maxR = 0;
-        foreach (var fr in c.Telemetry.Snapshot())
-        {
-            if (fr.Ts < origin) continue;
-            double x = (fr.Ts - origin).TotalMinutes; maxX = Math.Max(maxX, x);
-            var cs = fr.Channels.FirstOrDefault(ch => ch.Id == rv);
-            if (cs?.TempC is double t) { Chart.Series[0].Points.Add(new Point(x, t)); maxT = Math.Max(maxT, t); }
-            if (cs?.PressurePsi is double p) { Chart.Series[1].Points.Add(new Point(x, p)); maxR = Math.Max(maxR, p); }
-            var rpm = fr.Stir.On ? fr.Stir.RpmSp : 0; Chart.Series[2].Points.Add(new Point(x, rpm)); maxR = Math.Max(maxR, rpm);
-        }
-        Chart.XMax = NiceXMax(maxX);
-        Chart.LeftMax = maxT <= 200 ? 200 : 300;
-        Chart.RightMax = Math.Max(1000, Math.Ceiling(maxR / 500) * 500);
-        Chart.Revision++;
-        if (!IsRunning)
-        {
-            var cs = f.Channels.FirstOrDefault(ch => ch.Id == rv);
-            LiveRpm = (f.Stir.On ? f.Stir.RpmSp : 0).ToString(CultureInfo.InvariantCulture);
-            LiveTp = $"{(cs?.TempC is double tt ? tt.ToString("0.0", CultureInfo.InvariantCulture) : "—")} ℃ · {(cs?.PressurePsi is double pp ? pp.ToString("0.0", CultureInfo.InvariantCulture) : "—")} psi";
-        }
+        var cs = f.Channels.FirstOrDefault(ch => ch.Id == rv);
+        LiveRpm = (f.Stir.On ? f.Stir.RpmSp : 0).ToString(CultureInfo.InvariantCulture);
+        LiveTp = $"{(cs?.TempC is double tt ? tt.ToString("0.0", CultureInfo.InvariantCulture) : "—")} ℃ · {(cs?.PressurePsi is double pp ? pp.ToString("0.0", CultureInfo.InvariantCulture) : "—")} psi";
     }
 
     // ───────────────────────── 工具 ─────────────────────────
-
-    /// <summary>X 轴范围：无数据 / 超过 70 min 时用 mock 的 88 min 格；短数据按 1 / 2 / 5 / 10 / 20 / 40 min 档位放大，曲线可见（原在旧主视图模型里）。</summary>
-    internal static double NiceXMax(double spanMin)
-        => spanMin <= 0 ? 88 : spanMin < 0.9 ? 1 : spanMin < 1.8 ? 2 : spanMin < 4.5 ? 5 : spanMin < 9 ? 10 : spanMin < 18 ? 20 : spanMin < 36 ? 40 : spanMin < 70 ? 88 : Math.Ceiling(spanMin * 1.1 / 10) * 10;
 
     private static string Fmt(TimeSpan t, bool hours = true)
         => hours || t.TotalHours >= 1 ? $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}" : $"{t.Minutes:00}:{t.Seconds:00}";

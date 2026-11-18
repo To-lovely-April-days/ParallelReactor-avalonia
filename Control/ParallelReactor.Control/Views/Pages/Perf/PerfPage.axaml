@@ -1,0 +1,459 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ca="using:ParallelReactor.Control.Controls.Alarms"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:p="using:ParallelReactor.Control.Pages.Perf"
+             xmlns:s="using:ParallelReactor.Control.Pages.Settings"
+             xmlns:vm="using:ParallelReactor.Control.ViewModels"
+             x:Class="ParallelReactor.Control.Views.Pages.Perf.PerfPage"
+             x:DataType="p:PerfPageVm">
+  <!-- 性能测试页（融合版 F8，样稿 PAGES.test）：左「测试项」400（窄屏 340）| 8 | 右上「进度」* / 8 / 右下「结果」230（矮屏 170）。
+       泄漏测试：左「泄漏测试」| 右「结果」（整高）。这台设备没有测试计划（不是 HT-PR8）时一整块「性能测试」+ 空状态（泄漏测试照样能用）。
+       测试项一行（.pti-r）：上下 6 左右 16、32 高；状态图标 18 · 复选框 15 · 编号 44 宽 14/600 · 名字 14 t-2（折行）· 分钟 13 t-3；当前一行 a-tint 底 + 3 px 品牌蓝。
+       当前一步的卡片（.ptcur）：a-line 边、bg-head 底、圆角 4、内边距 12 14；人工录入 4 格（.pin：「RV1 本机 0.997」14/600 + 30 高的带单位输入）。 -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Programs/ProgramStyles.axaml" />
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Settings/F8Styles.axaml" />
+    <Style Selector="TextBlock.ptg">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="14,10,14,4" />
+      <Setter Property="LineHeight" Value="16" />
+    </Style>
+    <Style Selector="Border.ptr">
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Padding" Value="16,6" />
+    </Style>
+    <Style Selector="Border.ptr.cur">
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+    </Style>
+    <Style Selector="Border.ptr.off TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Button.chip">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.bar">
+      <Setter Property="Height" Value="8" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.ptcur">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="14,12" />
+      <Setter Property="Margin" Value="0,14,0,0" />
+    </Style>
+    <Style Selector="Border.ptcur.safety">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="TextBlock.ptp">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="22" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,8,0,0" />
+    </Style>
+    <Style Selector="TextBlock.kk">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <Style Selector="TextBlock.kv">
+      <Setter Property="FontSize" Value="{StaticResource FsKpi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="31" />
+    </Style>
+    <Style Selector="Grid#Root.narrow TextBlock.wide">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Name="Root" ColumnDefinitions="400,8,*" Classes.narrow="{Binding IsNarrow}">
+
+    <!-- ================= 没有测试计划（不是 HT-PR8；摸底测试时）================= -->
+    <Border Classes="panel" Grid.ColumnSpan="3" Name="NoPlan">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <DockPanel>
+            <pr:SegControl DockPanel.Dock="Right" Classes="pgmode" Margin="0,0,78,0" Value="{Binding ModeKey}" ToolTip.Tip="摸底测试 / 泄漏测试">
+              <pr:SegOption Value="perf" Label="摸底测试" />
+              <pr:SegOption Value="leak" Label="泄漏测试" />
+            </pr:SegControl>
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="pt" Text="性能测试" />
+              <TextBlock Classes="dot" Text="·" />
+              <TextBlock Classes="pc" Text="{Binding DevSub}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <StackPanel HorizontalAlignment="Center" Margin="0,44,0,0" Spacing="6">
+          <c:IconView Icon="f-beaker" Size="22" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Center" />
+          <TextBlock Text="{Binding NoPlanTitle}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" HorizontalAlignment="Center" />
+          <TextBlock Text="摸底测试计划「RV1–RV4 首台摸底性能测试」只适用 HT-PR8 的 RV1–RV4。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
+          <TextBlock Text="泄漏测试可以用：点右上角「泄漏测试」。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- ================= 摸底测试 · 测试项 ================= -->
+    <Border Classes="panel" Grid.Column="0" Name="Items">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="测试项" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="首台摸底" />
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top" BorderThickness="0">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button Theme="{StaticResource PrLink}" Content="全选" FontWeight="SemiBold" Command="{Binding SelectAllCommand}" ToolTip.Tip="勾上全部可以做的测试项" />
+              <Button Theme="{StaticResource PrLink}" Content="清空" FontWeight="SemiBold" Command="{Binding ClearCommand}" ToolTip.Tip="去掉还没做的测试项" />
+            </StackPanel>
+            <pr:SegControl Value="{Binding ModeKey}" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="摸底测试 / 泄漏测试">
+              <pr:SegOption Value="perf" Label="摸底测试" />
+              <pr:SegOption Value="leak" Label="泄漏测试" />
+            </pr:SegControl>
+          </DockPanel>
+        </Border>
+        <!-- 测试通道（.ptch：左右 12、下 10） -->
+        <StackPanel DockPanel.Dock="Top" Margin="12,0,12,10" Spacing="6">
+          <WrapPanel>
+            <TextBlock Classes="mut" Text="测试通道" Margin="0,0,8,0" Height="22" VerticalAlignment="Center" Padding="0,3,0,0" />
+            <ItemsControl ItemsSource="{Binding Chans}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="p:PtChanVm">
+                  <Button Classes="chip" Command="{Binding ToggleCommand}" IsVisible="{Binding Reason, Converter={x:Static ObjectConverters.IsNull}}" ToolTip.Tip="{Binding Tip}" Margin="0,0,8,6">
+                    <Border Classes="tag" Classes.brand="{Binding IsOn}" Classes.mute="{Binding !IsOn}"><TextBlock Text="{Binding Name}" /></Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Classes="tag mute" ToolTip.Tip="本计划只测 RV1–RV4" Margin="0,0,8,6"><TextBlock Text="{Binding ChanNote}" /></Border>
+          </WrapPanel>
+          <TextBlock Classes="mut" Text="{Binding SelText}" />
+        </StackPanel>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Groups}" Margin="0,0,0,8">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="p:PtGroupVm">
+                <StackPanel>
+                  <TextBlock Classes="ptg" Text="{Binding Title}" />
+                  <ItemsControl ItemsSource="{Binding Items}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="p:PtItemVm">
+                        <Border Classes="ptr" Classes.cur="{Binding IsCur}" Classes.off="{Binding IsOff}" ToolTip.Tip="{Binding Tip}">
+                          <Panel>
+                            <Border Width="3" Margin="-16,-6,0,-6" HorizontalAlignment="Left" Background="{StaticResource ABrush}" IsVisible="{Binding IsCur}" />
+                            <Grid ColumnDefinitions="18,8,15,9,44,8,*,8,Auto">
+                              <Panel Grid.Column="0" Width="18" Height="18" VerticalAlignment="Center">
+                                <c:IconView Icon="f-ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsDone}" ToolTip.Tip="完成" />
+                                <c:IconView Icon="f-next" Size="16" Foreground="{StaticResource T3Brush}" IsVisible="{Binding IsSkip}" ToolTip.Tip="跳过" />
+                                <c:IconView Icon="f-play" Size="16" Foreground="{StaticResource ABrush}" IsVisible="{Binding IsCur}" ToolTip.Tip="正在测" />
+                              </Panel>
+                              <pr:PrCheckBox Grid.Column="2" Theme="{StaticResource PrCheck}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding CanCheck}"
+                                             MinHeight="0" Height="16" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="{Binding Id}" />
+                              <TextBlock Grid.Column="4" Text="{Binding Id}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="6" Text="{Binding Name}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="20" VerticalAlignment="Center" />
+                              <TextBlock Grid.Column="8" Text="{Binding Minutes}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                            </Grid>
+                          </Panel>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- ================= 摸底测试 · 进度 + 结果 ================= -->
+    <Grid Name="Right" Grid.Column="2" RowDefinitions="*,8,230">
+      <Border Classes="panel" Grid.Row="0">
+        <DockPanel>
+          <Border Classes="ph" DockPanel.Dock="Top">
+            <DockPanel>
+              <pr:Badge DockPanel.Dock="Right" Margin="0,0,72,0" Text="{Binding RunTag}" Tone="{Binding RunTone}" ShowDot="{Binding RunDot}" />
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Classes="pt" Text="进度" />
+                <TextBlock Classes="dot" Text="·" />
+                <TextBlock Classes="pc" Text="{Binding RunSub}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="16,12,16,16">
+              <!-- 总进度（.ptprog）：条 8 高 + 「11 / 21 项」「已用 …」「预计还要 …」14 t-2（数字 600 t-1） -->
+              <DockPanel Height="17">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="18" Margin="18,0,0,0">
+                  <TextBlock Classes="num" Text="{Binding DoneText}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                  <TextBlock Classes="num" Text="{Binding UsedText}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                  <TextBlock Classes="num" Text="{Binding RemainText}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Border Name="Bar" Classes="bar" VerticalAlignment="Center">
+                  <Border Name="BarFill" HorizontalAlignment="Left" Width="0" CornerRadius="4" Background="{StaticResource ABrush}" />
+                </Border>
+              </DockPanel>
+
+              <!-- 当前一步（.ptcur） -->
+              <Border Classes="ptcur" Classes.safety="{Binding IsSafety}" IsVisible="{Binding HasCur}">
+                <StackPanel>
+                  <DockPanel>
+                    <Border Classes="tag" DockPanel.Dock="Right"><TextBlock Text="{Binding CurKind}" /></Border>
+                    <StackPanel Orientation="Horizontal" Spacing="10">
+                      <Border Classes="tag brand"><TextBlock Text="{Binding CurId}" /></Border>
+                      <TextBlock Text="{Binding CurTitle}" FontSize="{StaticResource FsValue}" FontWeight="Bold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                      <TextBlock Classes="mut" Text="{Binding CurHint}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                  </DockPanel>
+                  <TextBlock Classes="ptp" Text="{Binding CurPrompt}" />
+                  <!-- 人工录入（.ptin：4 列、间距 10） -->
+                  <ItemsControl ItemsSource="{Binding Entries}" IsVisible="{Binding IsEntry}" Margin="0,12,0,0">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="p:PtEntryVm">
+                        <StackPanel Margin="0,0,10,8" Spacing="6">
+                          <TextBlock FontSize="{StaticResource FsCell}" TextTrimming="CharacterEllipsis"><Run Text="{Binding Label}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" " /><Run Text="{Binding Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" /></TextBlock>
+                          <TextBox Theme="{StaticResource PgUnit}" Width="NaN" HorizontalAlignment="Stretch" Text="{Binding Text}" b:Pr.Unit="{Binding Unit}"
+                                   Classes.bad="{Binding HasError}" Watermark="外部读数" AutomationProperties.Name="{Binding Label}" />
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <!-- 手动确认：检查表 + 两人签字 -->
+                  <StackPanel IsVisible="{Binding IsConfirm}" Margin="0,10,0,0" Spacing="6">
+                    <ItemsControl ItemsSource="{Binding Checklist}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PerfCheckVm">
+                          <pr:PrCheckBox Theme="{StaticResource PrCheck}" IsChecked="{Binding IsChecked}" Content="{Binding Text}" Margin="0,0,0,6" />
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding TwoSigners}">
+                      <TextBlock Classes="mut" Text="签字" />
+                      <TextBox Theme="{StaticResource PrInput}" Width="140" Watermark="签字人 1" Text="{Binding Perf.Signer1}" />
+                      <TextBox Theme="{StaticResource PrInput}" Width="140" Watermark="签字人 2" Text="{Binding Perf.Signer2}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
+                    <Button Theme="{StaticResource PrPrimary}" Height="{StaticResource BtnLg}" FontSize="{StaticResource FsCell}" b:Pr.Icon="f-check" Content="{Binding ConfirmLabel}"
+                            Command="{Binding ConfirmCommand}" b:Pr.Reason="{Binding ConfirmReason}" />
+                    <Button Theme="{StaticResource PrButton}" Height="{StaticResource BtnLg}" Content="跳过" Command="{Binding SkipPromptCommand}" IsVisible="{Binding CanSkipPrompt}"
+                            ToolTip.Tip="这一步记为「跳过」" />
+                    <TextBlock Classes="mut" Text="{Binding Countdown}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+              <!-- 没在测（未开始 / 已完成） -->
+              <Border Classes="ptcur" IsVisible="{Binding IsIdle}">
+                <StackPanel Spacing="6">
+                  <TextBlock Text="{Binding IdleTitle}" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" TextWrapping="Wrap" />
+                  <TextBlock Classes="ptp" Margin="0" Text="{Binding IdleText}" />
+                  <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsFinished}" Margin="0,6,0,0">
+                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-doc" Content="打开报告" Command="{Binding OpenReportCommand}" />
+                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-reset" Content="返回测试项" Command="{Binding BackCommand}" />
+                  </StackPanel>
+                </StackPanel>
+              </Border>
+
+              <TextBlock Classes="grp" Text="实时" Margin="0,20,0,10" />
+              <ItemsControl ItemsSource="{Binding Kpis}">
+                <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="p:PtKpiVm">
+                    <Border Classes="kpi" Margin="0,0,8,0">
+                      <StackPanel>
+                        <TextBlock Classes="kk" Text="{Binding K}" />
+                        <TextBlock Classes="kv num"><Run Text="{Binding V}" /><Run Text=" " FontSize="{StaticResource FsBase}" /><Run Text="{Binding U}" FontSize="{StaticResource FsBase}" FontWeight="Normal" Foreground="{StaticResource T4Brush}" /></TextBlock>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <DockPanel Classes="note2" Margin="0,12,0,0" IsVisible="{Binding HasNote}">
+                <c:IconView Icon="f-info" />
+                <TextBlock Text="{Binding Note}" />
+              </DockPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+
+      <Border Classes="panel" Grid.Row="2">
+        <DockPanel>
+          <Border Classes="ph" DockPanel.Dock="Top">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock Classes="pt" Text="结果" />
+              <TextBlock Classes="dot" Text="·" />
+              <TextBlock Classes="pc" Text="摸底测试默认不判定" />
+            </StackPanel>
+          </Border>
+          <Border Classes="thead" DockPanel.Dock="Top">
+            <ca:ColumnsPanel Columns="1*,1*,2.2*,2*,1*,1.2*">
+              <TextBlock Text="测试项" /><TextBlock Text="通道" /><TextBlock Text="设定 · 标准" /><TextBlock Classes="r" Text="实测" /><TextBlock Classes="r" Text="误差" /><TextBlock Text="判定" />
+            </ca:ColumnsPanel>
+          </Border>
+          <Panel>
+            <TextBlock Classes="mut" Text="{Binding ResultsEmpty}" IsVisible="{Binding !HasResults}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0" />
+            <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding Results}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="p:PtResVm">
+                    <Border Classes="trow">
+                      <ca:ColumnsPanel Columns="1*,1*,2.2*,2*,1*,1.2*">
+                        <TextBlock Classes.b="{Binding IsItem}" Text="{Binding Item}" ToolTip.Tip="{Binding Item}" />
+                        <TextBlock Text="{Binding Ch}" />
+                        <TextBlock Classes="m" Text="{Binding Setting}" ToolTip.Tip="{Binding Setting}" />
+                        <TextBlock Classes="num r" Text="{Binding Measured}" />
+                        <TextBlock Classes="num r" Text="{Binding Error}" />
+                        <Panel><pr:Badge Text="{Binding Verdict}" Tone="{Binding Tone}" ShowDot="False" IsVisible="{Binding Verdict, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" /></Panel>
+                      </ca:ColumnsPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Panel>
+        </DockPanel>
+      </Border>
+    </Grid>
+
+    <!-- ================= 泄漏测试 ================= -->
+    <Border Classes="panel" Grid.Column="0" Name="LeakSet">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="泄漏测试" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="{Binding DevSub}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <pr:SegControl Value="{Binding ModeKey}" HorizontalAlignment="Left" VerticalAlignment="Center" ToolTip.Tip="摸底测试 / 泄漏测试">
+            <pr:SegOption Value="perf" Label="摸底测试" />
+            <pr:SegOption Value="leak" Label="泄漏测试" />
+          </pr:SegControl>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="16,12,16,16">
+            <TextBlock Classes="grp first" Text="参数（来自设备设置 · 只读）" />
+            <ItemsControl ItemsSource="{Binding LeakParams}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="s:SetRoRow">
+                  <Grid ColumnDefinitions="92,16,*">
+                    <TextBlock Classes="mut" Text="{Binding Label}" Foreground="{StaticResource T2Brush}" />
+                    <TextBlock Grid.Column="2" Classes="rov"><Run Text="{Binding Value}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" " /><Run Text="{Binding Unit}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" " /><Run Text="{Binding Note}" Foreground="{StaticResource T3Brush}" /></TextBlock>
+                  </Grid>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="grp" Text="阶段" />
+            <ItemsControl ItemsSource="{Binding LeakPhases}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="p:LeakPhaseVm">
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <Panel Width="20" Height="20">
+                      <Ellipse Fill="{StaticResource G1Brush}" IsVisible="{Binding Done}" />
+                      <c:IconView Icon="f-check" Size="12" Foreground="{StaticResource GDotBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding Done}" />
+                      <Ellipse Fill="{StaticResource ATintBrush}" Stroke="{StaticResource ABrush}" StrokeThickness="1" IsVisible="{Binding Cur}" />
+                      <Ellipse Stroke="{StaticResource LineBrush}" StrokeThickness="1" IsVisible="{Binding Todo}" />
+                    </Panel>
+                    <TextBlock Text="{Binding Text}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <Border Classes="lockbar" Margin="0,10,0,0" IsVisible="{Binding LeakState, Converter={x:Static ObjectConverters.IsNotNull}}">
+              <DockPanel><c:IconView Icon="f-clock" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakState}" /></DockPanel>
+            </Border>
+            <TextBlock Classes="grp" Text="测试通道" />
+            <ItemsControl ItemsSource="{Binding LeakChans}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="p:PtChanVm">
+                  <Button Classes="chip" Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding Tip}" Margin="0,0,8,6" b:Pr.Reason="{Binding Reason}">
+                    <Border Classes="tag" Classes.brand="{Binding IsOn}" Classes.mute="{Binding !IsOn}"><TextBlock Text="{Binding Name}" /></Border>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="mut" Text="{Binding LeakSelText}" />
+            <DockPanel Classes="note2" Margin="0,12,0,0">
+              <c:IconView Icon="f-info" />
+              <TextBlock Text="所选通道不能在运行、加热或报警中；测试期间占用气路，程序的升压步骤会排队" />
+            </DockPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <Border Classes="panel" Grid.Column="2" Name="LeakRes">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="结果" />
+            <TextBlock Classes="dot" Text="·" IsVisible="{Binding LeakResSub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            <TextBlock Classes="pc" Text="{Binding LeakResSub}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="thead" DockPanel.Dock="Top">
+          <ca:ColumnsPanel Columns="1*,1.4*,1.4*,1.9*,1*,2.1*">
+            <TextBlock Text="通道" /><TextBlock Classes="r" Text="起始 psi" /><TextBlock Classes="r" Text="结束 psi" /><TextBlock Classes="r" Text="泄漏率 psi/h" /><TextBlock Classes="r" Text="阈值" /><TextBlock Text="结论" />
+          </ca:ColumnsPanel>
+        </Border>
+        <Panel>
+          <TextBlock Classes="mut" Text="{Binding LeakEmpty}" IsVisible="{Binding !HasLeakRows}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" />
+          <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
+              <ItemsControl ItemsSource="{Binding LeakRows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="p:LeakRowVm">
+                    <Border Classes="trow" MinHeight="38">
+                      <ca:ColumnsPanel Columns="1*,1.4*,1.4*,1.9*,1*,2.1*">
+                        <TextBlock Classes="b" Text="{Binding Rv}" />
+                        <TextBlock Classes="num r" Text="{Binding Start}" />
+                        <TextBlock Classes="num r" Text="{Binding End}" />
+                        <TextBlock Classes="num r" Classes.b="{Binding IsBad}" Text="{Binding Rate}" Foreground="{Binding IsBad, Converter={x:Static p:PerfConverters.BadInk}}" />
+                        <TextBlock Classes="num r m" Text="{Binding Limit}" />
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                          <c:IconView Icon="f-ok-f" Size="15" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsOk}" VerticalAlignment="Center" />
+                          <c:IconView Icon="f-no-f" Size="15" Foreground="{StaticResource RBrush}" IsVisible="{Binding IsBad}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding Verdict}" FontWeight="{Binding IsNa, Converter={x:Static p:PerfConverters.VerdictWeight}}"
+                                     Foreground="{Binding Ok, Converter={x:Static p:PerfConverters.VerdictInk}}" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </ca:ColumnsPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Border Classes="lockbar amb" Margin="14,10,14,10" IsVisible="{Binding LeakWarn, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <DockPanel><c:IconView Icon="f-warn-f" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakWarn}" /></DockPanel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </Panel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

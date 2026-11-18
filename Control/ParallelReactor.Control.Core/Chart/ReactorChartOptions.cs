@@ -27,7 +27,10 @@ public static class ReactorChartOptions
     public const int DefaultMinutes = 30;
 
     public const string TempName = "温度", TempSpName = "温度设定", PressureName = "压力", PressureSpName = "压力设定";
-    public const string TempAxis = "温度 ℃", PressureAxis = "压力 MPa";
+    public const string TempAxis = "温度 ℃";
+
+    /// <summary>压力轴名：'压力 MPa'（按设置的压力单位）。</summary>
+    public static string PressureAxis => PressureDisplay.Label("压力");
     public const string Empty = "暂无数据", EmptyOffline = "离线 · 暂无数据";
     /// <summary>曲线面板标题（样稿 curvesPanel）。</summary>
     public const string PanelTitle = "曲线";
@@ -35,11 +38,11 @@ public static class ReactorChartOptions
     public const string RangeUnit = "min";
     public static string RangeTip(int minutes) => "近 " + minutes + " min";
 
-    /// <summary>上限线的文字：'上限 3.000 MPa'（小数位按型号）。</summary>
+    /// <summary>上限线的文字：'上限 3.000 MPa'（小数位按型号；单位按设置）。</summary>
     public static string LimitText(ModelProfile model)
     {
         ArgumentNullException.ThrowIfNull(model);
-        return "上限 " + Fmt.Mpa(model.Limits.PressureMaxMPa, model.PressureDecimals) + " MPa";
+        return "上限 " + PressureDisplay.WithUnit(model, model.Limits.PressureMaxMPa);
     }
 
     /// <summary>接近 / 超过上限（样稿 nearLimit）：反应釜自己的状态是报警，或当前压力 ≥ 量程 × 0.9。</summary>
@@ -66,22 +69,27 @@ public static class ReactorChartOptions
         if (markers is not null)
             foreach (var m in markers)
                 if (m.N is null || m.N == n) marks.Add(new ChartMarker(ChartTime.Ms(m.At), m.Text) { Color = ChartTokens.Mark });
-        int pDec = model.PressureDecimals;
-        double lim = model.Limits.PressureMaxMPa;
+        // 压力按设置的单位画（数据是 MPa：点、量程、上限都乘同一个倍数；MPa 时倍数 1，与改单位之前相同）
+        double k = PressureUnits.PerMpa(PressureDisplay.Primary);
+        string pu = PressureDisplay.Unit;
+        int pDec = PressureDisplay.Decimals(model.PressureDecimals);
+        double lim = model.Limits.PressureMaxMPa * k;
         bool near = NearLimit(model, alarm, pressureNow);
+        pressure = ChartPoints.Scale(pressure, k);
+        pressureSp = ChartPoints.Scale(pressureSp, k);
         var opts = new ChartOptions
         {
             Series = Array.AsReadOnly(new[]
             {
                 new ChartSeries(TempName, temp ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.Temp, Axis = 0, Width = 2.5, Unit = "℃", Dec = 1 },
                 new ChartSeries(TempSpName, tempSp ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.TempSp, Axis = 0, Dash = "6 4", Width = 1.5, Unit = "℃", Dec = 1, NoEnd = true },
-                new ChartSeries(PressureName, pressure ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.Pressure, Axis = 1, Width = 2.5, Unit = "MPa", Dec = 3 },
-                new ChartSeries(PressureSpName, pressureSp ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.PressureSp, Axis = 1, Dash = "6 4", Width = 1.5, Unit = "MPa", Dec = 3, NoEnd = true },
+                new ChartSeries(PressureName, pressure ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.Pressure, Axis = 1, Width = 2.5, Unit = pu, Dec = PressureDisplay.Decimals(3) },
+                new ChartSeries(PressureSpName, pressureSp ?? Array.Empty<ChartPoint>()) { Color = ChartTokens.PressureSp, Axis = 1, Dash = "6 4", Width = 1.5, Unit = pu, Dec = PressureDisplay.Decimals(3), NoEnd = true },
             }),
             YAxes = Array.AsReadOnly(new[]
             {
                 new ChartAxis { Label = TempAxis, Unit = "℃", MinSpan = 20 },
-                new ChartAxis { Label = PressureAxis, Unit = "MPa", Dec = pDec, MinSpan = Math.Max(0.2, lim * 0.25) },
+                new ChartAxis { Label = PressureAxis, Unit = pu, Dec = pDec, MinSpan = Math.Max(0.2 * k, lim * 0.25) },
             }),
             RefLines = near
                 ? Array.AsReadOnly(new[] { new ChartRefLine(1, lim) { Color = ChartTokens.Limit, LabelColor = ChartTokens.LimitInk, Label = LimitText(model) } })
@@ -91,7 +99,7 @@ public static class ReactorChartOptions
             Markers = marks.AsReadOnly(),
             EmptyText = offline ? EmptyOffline : Empty,
         };
-        return bands ? ChartBands.Apply(opts, lim, near ? lim : null) : opts;
+        return bands ? ChartBands.Apply(opts, lim, near ? lim : null, k) : opts;
     }
 
     /// <summary>

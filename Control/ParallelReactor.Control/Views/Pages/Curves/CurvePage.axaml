@@ -1,0 +1,308 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:th="using:ParallelReactor.Control.Theme"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ca="using:ParallelReactor.Control.Controls.Alarms"
+             xmlns:cc="using:ParallelReactor.Control.Controls.Curves"
+             xmlns:cv="using:ParallelReactor.Control.Pages.Curves"
+             x:Class="ParallelReactor.Control.Views.Pages.Curves.CurvePage"
+             x:DataType="cv:CurvePageVm">
+  <!-- 曲线页（融合版 F5，样稿 PAGES.curve + PAGES-REFINE）：左「通道」260（跨两行）| 8 | 右上「趋势」/ 8 / 右下「光标读数 · 区间统计」236（矮屏 196）。
+       面板同报警页（.board.pg > .panel）。通道行 .cvli：34 高、左右 16、下边 line-faint；勾选 16 · 8 · 识别色短线 22 · 8 · RVn 40 宽 14/600 · 读数 13 t-2 右对齐（单位 t-3）；
+       没勾的名字和读数 t-dis。趋势：筛选条 44（分段 · 竖线 · 温度 / 压力 / 气体消耗 · 竖线 · 设定值 ·｜实时 / 已暂停）；图区内边距 2 6 4 0，几张图平分高度。
+       读数：分析条 34（左右 14、间距 18、下边 line-faint）+ 表头 38 + 行（上下 9 左右 12、14 px）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{StaticResource PaneBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.phead">
+      <Setter Property="Height" Value="{StaticResource PaneHeadH}" />
+      <Setter Property="Background" Value="{StaticResource PaneHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneHeadLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="16,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.pt">
+      <Setter Property="FontSize" Value="{StaticResource FsPaneTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource PaneTitleBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.pc">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.dot">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource TSepBrush}" />
+      <Setter Property="Margin" Value="8,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.sub">
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.vsep">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Background" Value="{StaticResource LineBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.lnk">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinHeight" Value="20" />
+    </Style>
+    <!-- 通道行 -->
+    <Style Selector="Border.cvli">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.cvli:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
+    </Style>
+    <Style Selector="Border.cvli TextBlock.nm">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Width" Value="40" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cvli TextBlock.vv">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cvli TextBlock.vv Run.u">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.cvli.off TextBlock.nm, Border.cvli.off TextBlock.vv">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Border.cvli.off TextBlock.vv Run.u">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="CheckBox.ck">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 读数表 -->
+    <Style Selector="TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="12,0" />
+    </Style>
+    <Style Selector="TextBlock.th.r">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Button.cvr">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinHeight" Value="39" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+    <Style Selector="Button.cvr ca|ColumnsPanel > :is(Control)">
+      <Setter Property="Margin" Value="12,9" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.cvr TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Button.cvr TextBlock.r">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Button.cvr TextBlock.b">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.cvr TextBlock.mut">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.cvr TextBlock.hot">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="StackPanel.ana TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="StackPanel.ana Run.b">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Name="Root" ColumnDefinitions="260,8,*" RowDefinitions="*,8,236">
+    <!-- ============ 通道 ============ -->
+    <Border Classes="panel" Grid.RowSpan="3">
+      <DockPanel>
+        <Border Classes="phead" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="通道" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="{Binding ChSub}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding SelText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <Button Classes="lnk" Theme="{StaticResource PrLink}" Content="全选" Command="{Binding AllCommand}" ToolTip.Tip="勾选全部有读数的通道" />
+              <Button Classes="lnk" Theme="{StaticResource PrLink}" Content="运行中" Command="{Binding RunningCommand}" ToolTip.Tip="只勾选在运行或报警的通道" />
+              <Button Classes="lnk" Theme="{StaticResource PrLink}" Content="清空" Command="{Binding NoneCommand}" ToolTip.Tip="全部不勾" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Channels}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="cv:CurveChVm">
+                  <Border Classes="cvli" Classes.off="{Binding !IsOn}" ToolTip.Tip="{Binding Tip}">
+                    <CheckBox IsChecked="{Binding IsOn}" IsEnabled="{Binding IsEnabled}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                              AutomationProperties.Name="{Binding Label}">
+                      <DockPanel Margin="2,0,0,0">
+                        <cc:KeyLine Color="{Binding Color}" Dashed="{Binding Dashed}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                        <TextBlock Classes="nm" Text="{Binding Label}" Margin="0,0,8,0" />
+                        <TextBlock Classes="vv num"><Run Text="{Binding Temp}" /><Run Classes="u" Text="°C" /><Run Text=" · " /><Run Text="{Binding Press}" /><Run Classes="u" Text="{Binding Unit, Source={x:Static th:PressureText.Instance}}" /></TextBlock>
+                      </DockPanel>
+                    </CheckBox>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Text="{Binding Note}" Margin="14,10" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <!-- ============ 趋势 ============ -->
+    <Border Classes="panel" Grid.Column="2" Grid.Row="0">
+      <DockPanel>
+        <Border Classes="phead" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="趋势" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="{Binding TrendSub}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel>
+            <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
+              <pr:Badge Tone="Ok" Text="实时" ShowDot="True" IsVisible="{Binding Follow}" ToolTip.Tip="跟随最新数据" />
+              <pr:Badge Tone="None" ShowDot="False" Text="已暂停" IsVisible="{Binding !Follow}" ToolTip.Tip="已暂停滚动 · 工具条「实时跟随」恢复" />
+            </Panel>
+            <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+              <pr:SegControl Value="{Binding RangeKey}" ToolTip.Tip="时间范围（本机最多保留 240 min；更早的数据在「记录」页下载）">
+                <pr:SegOption Value="m5" Label="5 min" />
+                <pr:SegOption Value="m15" Label="15 min" />
+                <pr:SegOption Value="h1" Label="1 h" />
+                <pr:SegOption Value="run" Label="全程" />
+                <pr:SegOption Value="cus" Label="自定义…" />
+              </pr:SegControl>
+              <Border Classes="vsep" />
+              <CheckBox Classes="ck" Content="温度" IsChecked="{Binding ShowT}" />
+              <CheckBox Classes="ck" Content="压力" IsChecked="{Binding ShowP}" />
+              <CheckBox Classes="ck" Content="气体消耗" IsChecked="{Binding ShowG}" ToolTip.Tip="吸气量（mmol）由设备计算" />
+              <Border Classes="vsep" />
+              <CheckBox Classes="ck" Content="设定值" IsChecked="{Binding ShowSp}" ToolTip.Tip="画出各路的温度设定 / 目标压力（识别色点线）" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Panel Name="Charts" Margin="0,2,0,4">
+          <cc:EqualRows Margin="0,0,6,0">
+            <cc:CurveChart Name="ChT" Data="{Binding TData}" CursorT="{Binding Cursor}" IsVisible="{Binding ShowT}" />
+            <cc:CurveChart Name="ChP" Data="{Binding PData}" CursorT="{Binding Cursor}" IsVisible="{Binding ShowP}" />
+            <cc:CurveChart Name="ChG" Data="{Binding GData}" CursorT="{Binding Cursor}" IsVisible="{Binding ShowG}" />
+          </cc:EqualRows>
+          <cc:CurveTipLayer Tip="{Binding Tip}" />
+          <TextBlock Text="至少勾选一个变量" IsVisible="{Binding NoVars}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- ============ 光标读数 · 区间统计 ============ -->
+    <Border Classes="panel" Grid.Column="2" Grid.Row="2">
+      <DockPanel>
+        <Border Classes="phead" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="光标读数 · 区间统计" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="{Binding ReadoutSub}" />
+          </StackPanel>
+        </Border>
+        <Border DockPanel.Dock="Top" Height="34" Padding="14,0" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Right" Text="{Binding CountText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            <StackPanel Classes="ana" Orientation="Horizontal" Spacing="18" ClipToBounds="True">
+              <TextBlock Text="分析（自动）" FontWeight="SemiBold" Foreground="{StaticResource T3Brush}" />
+              <TextBlock ToolTip.Tip="已选各路当前吸气速率（设备计算）的平均"><Run Text="平均反应速率 " /><Run Classes="b num" Text="{Binding RateText}" /><Run Text=" mmol/min" /></TextBlock>
+              <TextBlock ToolTip.Tip="已选各路当前吸气量的相对标准偏差（样本标准差 / 平均）"><Run Text="气体消耗 RSD " /><Run Classes="b num" Text="{Binding RsdText}" /><Run Text=" %" /></TextBlock>
+              <TextBlock ToolTip.Tip="反应中的各路：|实测 − 设定| 的最大值"><Run Text="温度最大偏差 " /><Run Classes="b num" Text="±" /><Run Classes="b num" Text="{Binding DevText}" /><Run Text=" °C" /></TextBlock>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <Border Name="Head" DockPanel.Dock="Top" Height="38" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,0,1">
+          <ca:ColumnsPanel Columns="148*,144*,125*,210*,114*,145*,137*,158*,137*">
+            <TextBlock Classes="th" Text="通道" />
+            <TextBlock Classes="th" Text="状态" />
+            <TextBlock Classes="th r" Text="温度 °C" />
+            <TextBlock Classes="th r" Text="区间 最低 / 最高" />
+            <TextBlock Classes="th r" Text="平均" />
+            <TextBlock Classes="th r" Text="{Binding Header, Source={x:Static th:PressureText.Instance}}" />
+            <TextBlock Classes="th r" Text="区间最高" />
+            <TextBlock Classes="th r" Text="气体 mmol" />
+            <TextBlock Classes="th r" Text="区间增加" />
+          </ca:ColumnsPanel>
+        </Border>
+        <Panel>
+          <ScrollViewer Name="Scroll" Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="cv:CurveRowVm">
+                  <Button Classes="cvr" Theme="{StaticResource PrRunRow}" Classes.on="{Binding IsSelected}" Command="{Binding PickCommand}" CommandParameter="{Binding}"
+                          ToolTip.Tip="选中这一路（检查器、主页同步）" AutomationProperties.Name="{Binding Rv}">
+                    <ca:ColumnsPanel Columns="148*,144*,125*,210*,114*,145*,137*,158*,137*">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <cc:KeyLine Color="{Binding Color}" Dashed="{Binding Dashed}" VerticalAlignment="Center" />
+                        <TextBlock Classes="b" Text="{Binding Rv}" />
+                      </StackPanel>
+                      <TextBlock Classes="mut" Text="{Binding Word}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="r b num" Text="{Binding T}" />
+                      <TextBlock Classes="r num" Text="{Binding TRange}" />
+                      <TextBlock Classes="r num" Text="{Binding TMean}" />
+                      <TextBlock Classes="r b num" Text="{Binding P}" />
+                      <TextBlock Classes="r num" Classes.hot="{Binding PHot}" Text="{Binding PMax}" />
+                      <TextBlock Classes="r num" Text="{Binding G}" />
+                      <TextBlock Classes="r num" Text="{Binding GRise}" ToolTip.Tip="{Binding GTip}" />
+                    </ca:ColumnsPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <TextBlock IsVisible="{Binding NoRows}" Text="左侧勾选通道后显示读数" Margin="12,12" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}" />
+        </Panel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

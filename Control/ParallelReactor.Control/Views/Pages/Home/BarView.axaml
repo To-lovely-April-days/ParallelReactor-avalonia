@@ -1,0 +1,204 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pg="using:ParallelReactor.Control.Pages"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             xmlns:hc="using:ParallelReactor.Control.Controls.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.BarView"
+             x:DataType="pg:HomePageVm">
+  <!-- 通道面板 · 仪表棒图（融合版 F4，样稿 barView + .fb / .cb 一族，ISA-101 风格）：每路一列 —— 编号 + 状态点、状态字、温度条 + 压力条（条高 = 实测 / 量程；
+       黑线 + 小三角 = 目标，红虚线 = 压力报警上限；报警时压力条变红）、「温 压」、温度 18/600、压力 15/600 t-2（报警 r-ink）、转速、步骤小条。
+       列数：4 路 4、8 路 8、16 路 16（一行）；条高 170（4 路 160、16 路 190；面板高 ≤ 300：76 / 70 / 90）。16 路：条窄 11、不写单位（BarTUnit / BarPUnit 为空，灰带写「°C / MPa」）、不写状态字；
+       面板宽 ≤ 700 时 16 路只写编号数字。类由代码按尺寸设（代替样稿的容器查询）。 -->
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://ParallelReactor.Control/Views/Pages/Home/MonTheme.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="Button.cb">
+      <Setter Property="Margin" Value="4,0" />
+      <Setter Property="Padding" Value="4,6,4,8" />
+    </Style>
+    <Style Selector="Panel#Root.n16 Button.cb">
+      <Setter Property="Margin" Value="2,0" />
+      <Setter Property="Padding" Value="0,4,0,6" />
+    </Style>
+    <Style Selector="Panel#Root.short Button.cb">
+      <Setter Property="Padding" Value="4" />
+    </Style>
+    <Style Selector="Button.cb TextBlock">
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.rvn">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.st">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.st.err">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.cb hc|BarPair">
+      <Setter Property="Height" Value="170" />
+      <Setter Property="Margin" Value="0,8,0,4" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Panel#Root.n4 Button.cb hc|BarPair">
+      <Setter Property="Height" Value="160" />
+      <Setter Property="BarWidth" Value="30" />
+    </Style>
+    <Style Selector="Panel#Root.n16 Button.cb hc|BarPair">
+      <Setter Property="Height" Value="190" />
+      <Setter Property="BarWidth" Value="11" />
+      <Setter Property="BarGap" Value="5" />
+      <Setter Property="Arrows" Value="False" />
+    </Style>
+    <Style Selector="Panel#Root.short Button.cb hc|BarPair">
+      <Setter Property="Height" Value="76" />
+      <Setter Property="Margin" Value="0,6,0,2" />
+    </Style>
+    <Style Selector="Panel#Root.short.n4 Button.cb hc|BarPair">
+      <Setter Property="Height" Value="70" />
+    </Style>
+    <Style Selector="Panel#Root.short.n16 Button.cb hc|BarPair">
+      <Setter Property="Height" Value="90" />
+    </Style>
+    <!-- 「温 压」：每个字在自己那根条下居中 -->
+    <Style Selector="StackPanel.bl TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.v1">
+      <Setter Property="Margin" Value="0,8,0,0" />
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="23" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.v2">
+      <Setter Property="Margin" Value="0,2,0,0" />
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="LineHeight" Value="21" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.v2.hot">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="Panel#Root.n4 Button.cb TextBlock.v1">
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="LineHeight" Value="30" />
+    </Style>
+    <Style Selector="Panel#Root.n4 Button.cb TextBlock.v2">
+      <Setter Property="FontSize" Value="18" />
+      <Setter Property="LineHeight" Value="22" />
+    </Style>
+    <Style Selector="Panel#Root.n16 Button.cb TextBlock.v1">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+    <Style Selector="Panel#Root.n16 Button.cb TextBlock.v2">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+    <Style Selector="Panel#Root.short Button.cb TextBlock.v1">
+      <Setter Property="Margin" Value="0,4,0,0" />
+    </Style>
+    <Style Selector="Panel#Root.short.n4 Button.cb TextBlock.v1">
+      <Setter Property="FontSize" Value="22" />
+      <Setter Property="LineHeight" Value="26" />
+    </Style>
+    <Style Selector="Panel#Root.short.n4 Button.cb TextBlock.v2">
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="LineHeight" Value="20" />
+    </Style>
+    <!-- 面板宽 ≤ 700：温度 16、压力 14（16 路仍是 14 / 13） -->
+    <Style Selector="Panel#Root.nar:not(.n16) Button.cb TextBlock.v1">
+      <Setter Property="FontSize" Value="16" />
+    </Style>
+    <Style Selector="Panel#Root.nar:not(.n16) Button.cb TextBlock.v2">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+    </Style>
+    <Style Selector="Button.cb Run.u">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.ft">
+      <Setter Property="Margin" Value="0,6,0,0" />
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.cb hc|StepStrip">
+      <Setter Property="Margin" Value="0,6,0,2" />
+      <Setter Property="SegWidth" Value="14" />
+      <Setter Property="SegHeight" Value="5" />
+      <Setter Property="Radius" Value="1" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <!-- 16 路：不写状态字、单位、转速、步骤条；窄：只写编号 -->
+    <Style Selector="Panel#Root.n16 Button.cb TextBlock.st, Panel#Root.n16 Button.cb TextBlock.ft, Panel#Root.n16 Button.cb hc|StepStrip">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel#Root.short Button.cb TextBlock.ft, Panel#Root.short Button.cb hc|StepStrip">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.cb TextBlock.num1">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel#Root.nar.n16 Button.cb TextBlock.num1">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Panel#Root.nar.n16 Button.cb TextBlock.rvn">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.cb.off TextBlock.v1, Button.cb.off TextBlock.v2">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Panel Name="Root" Background="{StaticResource BgCardBrush}">
+    <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+      <ItemsControl Name="Bars" ItemsSource="{Binding Tiles}" Margin="8,6,8,10" VerticalAlignment="Top">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Columns="{Binding BarCols}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="h:MonTileVm">
+            <Button Classes="cb bar" Theme="{StaticResource PrMonCard}" Classes.on="{Binding IsSelected}" Classes.off="{Binding IsOff}" Click="OnTile"
+                    ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Rv}">
+              <StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="5" Height="20" HorizontalAlignment="Center">
+                  <TextBlock Classes="rvn" Text="{Binding Rv}" />
+                  <TextBlock Classes="rvn num1" Text="{Binding Num}" />
+                  <hc:TileMarkView Dot="{Binding Dot}" Mark="{Binding Mark}" ToolTip.Tip="{Binding MarkTip}" VerticalAlignment="Center" />
+                </StackPanel>
+                <TextBlock Classes="st" Classes.err="{Binding IsErr}" Text="{Binding Word}" />
+                <hc:BarPair Name="Pair" TFrac="{Binding TFrac}" SpFrac="{Binding SpFrac}" PFrac="{Binding PFrac}" PspFrac="{Binding PspFrac}"
+                            LimFrac="{Binding LimFrac}" Hot="{Binding IsErr}" />
+                <StackPanel Classes="bl" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="{Binding #Pair.BarGap}">
+                  <Panel Width="{Binding #Pair.BarWidth}"><TextBlock Text="温" Margin="-6,0" /></Panel>
+                  <Panel Width="{Binding #Pair.BarWidth}"><TextBlock Text="压" Margin="-6,0" /></Panel>
+                </StackPanel>
+                <TextBlock Classes="v1 num"><Run Text="{Binding TempText}" /><Run Classes="u" Text="{Binding BarTUnit}" /></TextBlock>
+                <TextBlock Classes="v2 num" Classes.hot="{Binding IsErr}"><Run Text="{Binding PressText}" /><Run Classes="u" Text="{Binding BarPUnit}" /></TextBlock>
+                <TextBlock Classes="ft num" Text="{Binding RpmText, StringFormat='{}{0} rpm'}" />
+                <hc:StepStrip Segs="{Binding Segs}" />
+              </StackPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Panel>
+</UserControl>

@@ -382,7 +382,9 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         GasQueue: f?.Programs?.WaitingGas,
         Volume: volume ?? VolumeOf(s?.Volume),
         OnRemoteLost: string.IsNullOrEmpty(onRemoteLost) ? null : onRemoteLost,
-        StirGearRatio: s?.Stir is { } st && st.StirGearRatio > 0 ? st.StirGearRatio : null);
+        StirGearRatio: s?.Stir is { } st && st.StirGearRatio > 0 ? st.StirGearRatio : null,
+        Leak: s?.LeakTest is { } lt ? new LeakTestInfo(lt.TestPsi, lt.SettleMin, lt.MeasureMin, lt.RateLimitPsiPerHr,
+            lt.LastTestUtc is { } lu ? (lu.Kind == DateTimeKind.Local ? lu : DateTime.SpecifyKind(lu, DateTimeKind.Utc).ToLocalTime()) : null) : null);
 
     /// <summary>设置 volume.* → 容积（标定时刻 UTC → 本地时间；没有这一节的旧 HMI 为 null）。</summary>
     public static VolumeInfo? VolumeOf(VolumeSettingsDto? v)

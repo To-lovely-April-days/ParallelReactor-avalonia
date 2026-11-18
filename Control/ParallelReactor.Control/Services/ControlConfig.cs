@@ -52,6 +52,7 @@ public sealed class DeviceEntry
 /// PC 端本机配置 v2：devices.json（PORT-PLAN §5 M3）——
 /// <code>
 /// { "version": 2, "clientName": "PC-测试工位1", "timelineMinutes": 20, "tokenStore": "dpapi" | "file",
+///   "pc": { "dataDir", "pressureUnit", "autoConnect", "alarmSound", "preventSleep", "backfill" }（融合版 F8 本机设置，见 <see cref="PcPrefs"/>），
 ///   "devices": [ { "id", "alias", "host", "port", "token"（只有 Windows DPAPI 的密文）, "rememberToken", "autoConnect", "lastSerial", "lastModel" }, … ] }
 /// </code>
 /// 设备的顺序就是数组的顺序（设备管理、资源管理器、总览按它排）。本机客户端名全局一个（样稿：「本机客户端名全局一个」）。
@@ -93,6 +94,9 @@ public sealed class ControlConfig
 
     /// <summary>时间轴窗口（分钟，v1 带过来的，默认 20）。</summary>
     public int TimelineMinutes { get; set; } = 20;
+
+    /// <summary>本机设置（融合版 F8 设置页：数据目录、压力单位、启动时自动连接、报警声音、防睡眠、补拉）。没写的项用默认值。</summary>
+    public PcPrefs Prefs { get; set; } = PcPrefs.Default;
 
     /// <summary>全部设备，按顺序。</summary>
     public List<DeviceEntry> Devices { get; } = new();
@@ -240,10 +244,25 @@ public sealed class ControlConfig
             // 没写客户端名（或清洗后为空）：用这台电脑的默认名（下次保存时写进去）
             ClientName = NormalizeClientName(Str(root, "clientName")) is { Length: > 0 } cn ? cn : MachineClientName();
             if (Int(root, "timelineMinutes") is int tm && tm is > 0 and <= 24 * 60) TimelineMinutes = tm;
+            if (Prop(root, "pc") is { ValueKind: JsonValueKind.Object } pc) Prefs = ReadPrefs(pc);
             var tokens = TokenMode == TokenStoreMode.File ? TokenProtector.ReadFile(TokenFilePath) : new Dictionary<Guid, string>();
             if (Prop(root, "devices") is { ValueKind: JsonValueKind.Array } arr)
                 foreach (var el in arr.EnumerateArray()) ReadDevice(el, tokens);
         }
+    }
+
+    /// <summary>"pc" 一节（容错：类型不对的项用默认值；压力单位只认 MPa / bar / psi，不分大小写，写回时规范成 'MPa' / 'bar' / 'psi'）。</summary>
+    public static PcPrefs ReadPrefs(JsonElement pc)
+    {
+        var d = PcPrefs.Default;
+        var unit = Str(pc, "pressureUnit");
+        return new PcPrefs(
+            DataDir: (Str(pc, "dataDir") ?? d.DataDir).Trim(),
+            PressureUnit: Core.Format.PressureUnits.IsKnown(unit) ? Core.Format.PressureUnits.Normalize(unit) : d.PressureUnit,
+            AutoConnect: Bool(pc, "autoConnect") ?? d.AutoConnect,
+            AlarmSound: Bool(pc, "alarmSound") ?? d.AlarmSound,
+            PreventSleep: Bool(pc, "preventSleep") ?? d.PreventSleep,
+            Backfill: Bool(pc, "backfill") ?? d.Backfill);
     }
 
     private void ReadDevice(JsonElement el, Dictionary<Guid, string> tokens)
@@ -379,6 +398,14 @@ public sealed class ControlConfig
             w.WriteString("clientName", ClientName);
             w.WriteNumber("timelineMinutes", TimelineMinutes);
             w.WriteString("tokenStore", TokenMode == TokenStoreMode.Dpapi ? "dpapi" : "file");
+            w.WriteStartObject("pc");
+            w.WriteString("dataDir", Prefs.DataDir);
+            w.WriteString("pressureUnit", Prefs.PressureUnit);
+            w.WriteBoolean("autoConnect", Prefs.AutoConnect);
+            w.WriteBoolean("alarmSound", Prefs.AlarmSound);
+            w.WriteBoolean("preventSleep", Prefs.PreventSleep);
+            w.WriteBoolean("backfill", Prefs.Backfill);
+            w.WriteEndObject();
             w.WriteStartArray("devices");
             foreach (var d in Devices)
             {

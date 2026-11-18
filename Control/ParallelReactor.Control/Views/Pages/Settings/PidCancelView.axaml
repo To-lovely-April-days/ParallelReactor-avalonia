@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:pp="using:ParallelReactor.Control.Pages.Settings.Pid"
+             x:Class="ParallelReactor.Control.Views.Pages.Settings.PidCancelView"
+             x:DataType="pp:PidCancelDialogVm">
+  <!-- 「取消整定」确认的内容（外观同断开确认：说明 .dlgp + 琥珀说明） -->
+  <StackPanel>
+    <TextBlock Classes="dlgp" Text="{Binding Text}" />
+    <pr:Note Tone="Warn" Content="{Binding Warn}" />
+  </StackPanel>
+</UserControl>

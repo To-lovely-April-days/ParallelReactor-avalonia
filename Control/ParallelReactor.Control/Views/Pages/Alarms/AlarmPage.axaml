@@ -1,0 +1,369 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ca="using:ParallelReactor.Control.Controls.Alarms"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:al="using:ParallelReactor.Control.Pages.Alarms"
+             x:Class="ParallelReactor.Control.Views.Pages.Alarms.AlarmPage"
+             x:DataType="al:AlarmPageVm">
+  <!-- 报警页（融合版 F5，样稿 PAGES.alarm + PAGES-REFINE）：左「报警与事件」（筛选 · 四个指标 · 表）| 8 | 右「详情」400（窄屏 340）。
+       面板 = .board.pg > .panel：白底、1 px pane-line、圆角 4、ShadowCard；灰带 42（pane-head，下边 pane-head-line，左 16 右 8）：标题 15/600 +「·」t-sep + 副标题 13 t-3。
+       筛选条 = .sub：44 高、左右 16、下边 line-faint。表头 38（白底、下边 line-soft、13/500 t-3、左右 12）；格子上下 9 左右 12、14 px、下边 line-faint、顶端对齐。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{StaticResource PaneBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.phead">
+      <Setter Property="Height" Value="{StaticResource PaneHeadH}" />
+      <Setter Property="Background" Value="{StaticResource PaneHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneHeadLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="16,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.pt">
+      <Setter Property="FontSize" Value="{StaticResource FsPaneTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource PaneTitleBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.pc">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.dot">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource TSepBrush}" />
+      <Setter Property="Margin" Value="8,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.sub">
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.vsep">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Background" Value="{StaticResource LineBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <!-- 指标块（.board.pg .kpi）：line-soft 边、bg-head 底、圆角 4、内边距 10 14；k 13 t-3，v 22/600 t-1 行高 28；报警 = r-line 边、r-bg 底、r-ink 字 -->
+    <Style Selector="Border.kpi">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Height" Value="66" />
+    </Style>
+    <Style Selector="Border.kpi.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="Border.kpi TextBlock.k">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="16" />
+    </Style>
+    <Style Selector="Border.kpi TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsKpi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="28" />
+    </Style>
+    <Style Selector="Border.kpi.err TextBlock.v">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <!-- 表头 / 行 -->
+    <Style Selector="TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="12,0" />
+    </Style>
+    <Style Selector="TextBlock.th.r">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Button.alr">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+    <Style Selector="Button.alr.ua /template/ Border#PART_Mark">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="Button.alr.ua.on /template/ Border#PART_Mark">
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Button.alr ca|ColumnsPanel > :is(Control)">
+      <Setter Property="Margin" Value="12,9" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+    </Style>
+    <Style Selector="Button.alr TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="17" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.mut">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.alt">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.ald">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="16" />
+      <Setter Property="Margin" Value="0,1,0,0" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.ald.red">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.als">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.als.act">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.alr TextBlock.r">
+      <Setter Property="TextAlignment" Value="Right" />
+    </Style>
+    <!-- 详情 -->
+    <Style Selector="TextBlock.lb">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="17" />
+    </Style>
+    <Style Selector="TextBlock.fv">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="17" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.grp">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Margin" Value="0,20,0,10" />
+    </Style>
+    <Style Selector="Button.dbtn">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Margin" Value="0,0,8,8" />
+    </Style>
+    <Style Selector="TextBox.srch">
+      <Setter Property="Width" Value="150" />
+      <Setter Property="Padding" Value="28,0,9,0" />
+    </Style>
+    <Style Selector="Grid#Root.narrow TextBox.srch">
+      <Setter Property="Width" Value="110" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Name="Root" ColumnDefinitions="*,8,400" Classes.narrow="{Binding IsNarrow}">
+    <!-- ============ 报警与事件 ============ -->
+    <Border Classes="panel" Grid.Column="0">
+      <DockPanel>
+        <Border Classes="phead" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="报警与事件" />
+            <TextBlock Classes="dot" Text="·" />
+            <TextBlock Classes="pc" Text="{Binding ScopeText}" />
+          </StackPanel>
+        </Border>
+        <!-- 筛选（.sub.alf：三组分段，组间 8 + 竖线 + 8；右端搜索 150 / 窄屏 110） -->
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel>
+            <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
+              <TextBox Classes="srch" Text="{Binding Query}" Watermark="搜索" ToolTip.Tip="搜索报警名、来源、设备名" />
+              <c:IconView Icon="f-search" Size="15" Foreground="{StaticResource T3Brush}" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False" />
+            </Panel>
+            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+              <pr:SegControl Value="{Binding RangeKey}" ToolTip.Tip="时间段">
+                <pr:SegOption Value="day" Label="今天" />
+                <pr:SegOption Value="d7" Label="近 7 天" />
+                <pr:SegOption Value="cus" Label="自定义…" />
+              </pr:SegControl>
+              <Border Classes="vsep" />
+              <pr:SegControl Value="{Binding LevelKey}" ToolTip.Tip="级别">
+                <pr:SegOption Value="all" Label="全部" />
+                <pr:SegOption Value="hi" Label="报警" />
+                <pr:SegOption Value="lo" Label="提醒" />
+                <pr:SegOption Value="ev" Label="事件" />
+              </pr:SegControl>
+              <Border Classes="vsep" />
+              <pr:SegControl Value="{Binding StateKey}" ToolTip.Tip="状态">
+                <pr:SegOption Value="all" Label="全部" />
+                <pr:SegOption Value="ua" Label="未确认" />
+                <pr:SegOption Value="act" Label="活动" />
+                <pr:SegOption Value="clr" Label="已解除" />
+              </pr:SegControl>
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 四个指标（.alk：左右 12、下 10、间距 8） -->
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,8,*,8,*,8,*" Margin="12,0,12,10">
+          <Border Classes="kpi" Grid.Column="0" Classes.err="{Binding KpiActiveErr}">
+            <StackPanel><TextBlock Classes="k" Text="活动报警" /><TextBlock Classes="v num" Text="{Binding KpiActive}" /></StackPanel>
+          </Border>
+          <Border Classes="kpi" Grid.Column="2">
+            <StackPanel><TextBlock Classes="k" Text="未确认" /><TextBlock Classes="v num" Text="{Binding KpiUnacked}" /></StackPanel>
+          </Border>
+          <Border Classes="kpi" Grid.Column="4">
+            <StackPanel><TextBlock Classes="k" Text="提醒" /><TextBlock Classes="v num" Text="{Binding KpiWarn}" /></StackPanel>
+          </Border>
+          <Border Classes="kpi" Grid.Column="6">
+            <StackPanel><TextBlock Classes="k" Text="今天的事件" /><TextBlock Classes="v num" Text="{Binding KpiToday}" /></StackPanel>
+          </Border>
+        </Grid>
+        <!-- 表头（38，白底、下边 line-soft；竖滚动条出现时右边让出滚动条的宽） -->
+        <Border Name="Head" DockPanel.Dock="Top" Height="38" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,0,1">
+          <ca:ColumnsPanel Columns="96,56,70,80,2*,1*,160,76">
+            <TextBlock Classes="th" Text="时间" />
+            <TextBlock Classes="th" Text="级别" />
+            <TextBlock Classes="th" Text="设备" IsVisible="{Binding IsAllDevices}" />
+            <TextBlock Classes="th" Text="来源" />
+            <TextBlock Classes="th" Text="内容" />
+            <TextBlock Classes="th r" Text="值 / 限值" />
+            <TextBlock Classes="th" Text="状态" />
+            <TextBlock Classes="th" Text="" />
+          </ca:ColumnsPanel>
+        </Border>
+        <Panel>
+          <ScrollViewer Name="Scroll" Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="al:AlarmRowVm">
+                  <Button Classes="alr" Theme="{StaticResource PrRunRow}" Classes.on="{Binding IsSelected}" Classes.ua="{Binding IsUa}"
+                          Command="{Binding PickCommand}" CommandParameter="{Binding Key}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Title}">
+                    <ca:ColumnsPanel Columns="96,56,70,80,2*,1*,160,76">
+                      <TextBlock Classes="mut num" Text="{Binding Time}" />
+                      <c:IconView Icon="{Binding Level, Converter={x:Static al:AlarmConverters.LevelIcon}}" Size="18" HorizontalAlignment="Left"
+                                  Foreground="{Binding Level, Converter={x:Static al:AlarmConverters.LevelBrush}}" />
+                      <TextBlock Text="{Binding Device}" IsVisible="{Binding ShowDevice}" />
+                      <TextBlock Text="{Binding Src}" TextWrapping="Wrap" />
+                      <StackPanel>
+                        <TextBlock Classes="alt" Text="{Binding Title}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                        <TextBlock Classes="ald" Text="{Binding Act}" IsVisible="{Binding HasAct}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Act}" />
+                      </StackPanel>
+                      <StackPanel>
+                        <TextBlock Classes="alt r num" Text="{Binding Val}" IsVisible="{Binding HasVal}" />
+                        <TextBlock Classes="mut r" Text="—" IsVisible="{Binding !HasVal}" />
+                        <TextBlock Classes="ald r num" Text="{Binding Lim}" IsVisible="{Binding HasLim}" />
+                      </StackPanel>
+                      <StackPanel>
+                        <TextBlock Classes="als" Classes.act="{Binding StateActive}" Classes.mut="{Binding IsEvent}" Text="{Binding StateText}" />
+                        <TextBlock Classes="ald" Classes.red="{Binding AckRed}" Text="{Binding AckText}" IsVisible="{Binding HasAckText}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding AckText}" />
+                      </StackPanel>
+                      <Panel>
+                        <Button Theme="{StaticResource PrButton}" Content="确认" Padding="9,0" Height="28" Margin="0,-1,0,0" HorizontalAlignment="Left"
+                                IsVisible="{Binding ShowAck}" Command="{Binding AckCommand}" CommandParameter="{Binding}"
+                                b:Pr.Reason="{Binding AckReason}" ToolTip.Tip="确认这条报警 · 不需要控制权" />
+                      </Panel>
+                    </ca:ColumnsPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" Spacing="6">
+            <c:IconView Icon="f-check" Size="28" Foreground="{StaticResource TNoneBrush}" HorizontalAlignment="Center" />
+            <TextBlock Text="暂无报警与事件" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
+          </StackPanel>
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- ============ 详情 ============ -->
+    <Border Classes="panel" Grid.Column="2">
+      <DockPanel>
+        <Border Classes="phead" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="详情" />
+            <TextBlock Classes="dot" Text="·" IsVisible="{Binding HasDetail}" />
+            <TextBlock Classes="pc" Text="{Binding DetailSub}" />
+          </StackPanel>
+        </Border>
+        <Panel>
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled" IsVisible="{Binding HasDetail}">
+            <StackPanel Margin="16,12,16,16">
+              <!-- 标题（.aldh：图标 24 · 间距 10 · 报警名 18/600 行高 24 + 第二行 13 t-3；下 14） -->
+              <DockPanel Margin="0,0,0,14">
+                <c:IconView DockPanel.Dock="Left" Icon="{Binding DetailLevel, Converter={x:Static al:AlarmConverters.LevelIcon}}" Size="24" VerticalAlignment="Top"
+                            Foreground="{Binding DetailLevel, Converter={x:Static al:AlarmConverters.LevelBrush}}" Margin="0,0,10,0" />
+                <StackPanel>
+                  <TextBlock Text="{Binding DetailTitle}" FontSize="18" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="24" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding DetailMeta}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                </StackPanel>
+              </DockPanel>
+              <!-- 发生 / 状态 / 确认 / 值 / 限值 / 自动动作（.alfr：标签列 76 + 间距 16、行距 8） -->
+              <ItemsControl ItemsSource="{Binding DetailFields}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Spacing="8" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="al:AlarmFieldVm">
+                    <Grid ColumnDefinitions="92,*">
+                      <TextBlock Classes="lb" Text="{Binding Label}" Margin="0,0.5,0,0" />
+                      <TextBlock Grid.Column="1" Classes="fv">
+                        <Run Text="{Binding Text}" FontWeight="{Binding Bold, Converter={x:Static al:AlarmFieldConverters.Weight}}"
+                             Foreground="{Binding Red, Converter={x:Static al:AlarmFieldConverters.Ink}}" /><Run Text="{Binding Tail}" />
+                      </TextBlock>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel IsVisible="{Binding DetailTip, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <TextBlock Classes="grp" Text="处理建议" />
+                <TextBlock Text="{Binding DetailTip}" FontSize="{StaticResource FsCell}" LineHeight="22" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" />
+              </StackPanel>
+              <ca:AlarmSpark Height="150" Margin="0,14,0,0" Data="{Binding Spark}" IsVisible="{Binding Spark, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <StackPanel IsVisible="{Binding HasRelated}">
+                <TextBlock Classes="grp" Text="相关事件" />
+                <ItemsControl ItemsSource="{Binding Related}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="al:AlarmRelVm">
+                      <Button Theme="{StaticResource PrRunRow}" Height="NaN" MinHeight="30" BorderBrush="{StaticResource LineFaintBrush}"
+                              Command="{Binding PickCommand}" CommandParameter="{Binding Key}" ToolTip.Tip="查看这一条">
+                        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,6">
+                          <c:IconView Icon="{Binding Level, Converter={x:Static al:AlarmConverters.LevelIcon}}" Size="16" VerticalAlignment="Center"
+                                      Foreground="{Binding Level, Converter={x:Static al:AlarmConverters.LevelBrush}}" />
+                          <TextBlock Text="{Binding Time}" Width="60" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding Text}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+              <!-- 按钮（.albtn：上 16、间距 8、高 32） -->
+              <WrapPanel Margin="0,16,-8,-8">
+                <Button Classes="dbtn" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-check" Content="确认" Command="{Binding AckCommand}"
+                        IsVisible="{Binding CanAck}" b:Pr.Reason="{Binding AckReason}" ToolTip.Tip="确认这条报警 · 不需要控制权" />
+                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-locate" Content="定位到通道" Command="{Binding LocateCommand}"
+                        IsVisible="{Binding HasCh}" ToolTip.Tip="在主页选中这一路并打开控制面板" />
+                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-trend" Content="查看曲线" Command="{Binding CurveCommand}"
+                        IsVisible="{Binding HasCh}" ToolTip.Tip="在曲线页看这一路最近 1 h" />
+                <Button Classes="dbtn" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="{Binding StopLabel}" Command="{Binding StopCommand}"
+                        IsVisible="{Binding CanStop}" b:Pr.Reason="{Binding StopReason}" ToolTip.Tip="停止这一路（先确认）· 不需要控制权" />
+              </WrapPanel>
+            </StackPanel>
+          </ScrollViewer>
+          <TextBlock IsVisible="{Binding !HasDetail}" Text="选择左侧一条记录查看详情" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" />
+        </Panel>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

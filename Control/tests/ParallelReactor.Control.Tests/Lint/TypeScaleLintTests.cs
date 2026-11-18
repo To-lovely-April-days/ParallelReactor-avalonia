@@ -25,11 +25,8 @@ public class TypeScaleLintTests
     {
         "Styles/LegacyTokens.axaml",   // 旧令牌里的 Fs6–Fs11
         "Styles/Panels.axaml",         // M2 起也有旧样式页面的宿主（ContentControl.legacy：字号 9）与从旧 Shell.axaml 搬来的平面按钮 / 文本框
-        "Styles/Perf.axaml",
-        "Styles/Plan.axaml",
         "Styles/Property.axaml",
-        // 自绘的 7 px 刻度 / 标签（FormattedText 字面量规则，M1 复核补上）
-        "Controls/ProcessChart.cs",
+        // 融合版 F8 删掉了旧样式性能测试页的自绘曲线（Controls/ProcessChart.cs）
     };
 
     private const string Num = @"(\d+(?:\.\d+)?)";

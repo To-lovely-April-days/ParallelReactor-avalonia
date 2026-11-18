@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             xmlns:v="using:ParallelReactor.Control.Views.Pages.Programs"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.PreflightView"
+             x:DataType="pg:PreflightDialogVm">
+  <!-- 预运行检查（样稿 .pgck / .ckr）：line 边框圆角 3；每行 图标 18 · 项目 120（14/600 t-1）· 说明（14 t-2），内边距 7 10、行间 line-faint；下面一句总结（13 t-3）。 -->
+  <StackPanel>
+    <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="1" CornerRadius="{StaticResource RadiusS}">
+      <ItemsControl ItemsSource="{Binding Rows}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="pg:CheckRowVm">
+            <Border BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="10,7" MinHeight="37" Classes="ckr">
+              <Grid ColumnDefinitions="20,8,120,8,*">
+                <c:IconView Icon="{Binding Icon}" Size="18" VerticalAlignment="Top" Margin="0,0,0,0"
+                            Foreground="{Binding Kind, Converter={x:Static v:PreflightView.KindInk}}" />
+                <TextBlock Grid.Column="2" Text="{Binding Title}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="4" Text="{Binding Detail}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </Border>
+    <TextBlock Text="{Binding Summary}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" Margin="0,10,0,0" />
+  </StackPanel>
+</UserControl>

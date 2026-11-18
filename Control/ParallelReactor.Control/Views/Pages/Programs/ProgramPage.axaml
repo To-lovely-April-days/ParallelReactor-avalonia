@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             xmlns:v="using:ParallelReactor.Control.Views.Pages.Programs"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.ProgramPage"
+             x:DataType="pg:ProgramPageVm">
+  <!-- 程序页（融合版 F6，样稿 PAGES.prog）：程序库 | 8 | 当前模式（单路程序：步骤 | 参数 + 下发；条件矩阵：矩阵 | 检查与预计 + 下发）。
+       列宽（样稿 .board.pg-prog）：单路 268 / * / 372（窄屏 236 / * / 340）；矩阵 248 / * / 340（窄屏 200 / * / 290）—— 代码里按模式和宽窄设。 -->
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Programs/ProgramStyles.axaml" />
+    <Style Selector="Button.li TextBlock.nm">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="LineHeight" Value="19" />
+    </Style>
+    <Style Selector="Button.li TextBlock.l2">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="19" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+  </UserControl.Styles>
+  <Grid Name="Root" ColumnDefinitions="248,8,*">
+    <!-- 程序库（样稿 #pgLib） -->
+    <Border Classes="pgpanel" Grid.Column="0">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Classes="pt" Text="程序库" />
+            <TextBlock Classes="pc" Text="{Binding LibCount, StringFormat='· {0}'}" />
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <Panel VerticalAlignment="Center">
+            <TextBox Theme="{StaticResource PrInput}" Text="{Binding LibQuery}" Watermark="搜索程序名" Padding="28,0,9,0" Name="LibSearch" />
+            <c:IconView Icon="f-search" Size="16" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Left" Margin="9,0,0,0"
+                        VerticalAlignment="Center" IsHitTestVisible="False" />
+          </Panel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top" BorderThickness="0,0,0,1">
+          <pr:SegControl Value="{Binding LibScope}" OptionsSource="{Binding ScopeOptions}" VerticalAlignment="Center" Height="26" />
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <ItemsControl ItemsSource="{Binding Lib}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:LibItemVm">
+                  <Button Classes="li" Theme="{StaticResource PgRow}" Classes.on="{Binding IsSelected}"
+                          Command="{Binding $parent[UserControl].((pg:ProgramPageVm)DataContext).PickLibCommand}" CommandParameter="{Binding}"
+                          AutomationProperties.Name="{Binding Name}">
+                    <StackPanel>
+                      <DockPanel MinHeight="22">
+                        <Border DockPanel.Dock="Right" Classes="tag" Classes.run="{Binding TagRun}" Classes.warn="{Binding TagWarn}"
+                                IsVisible="{Binding HasTag}" Margin="8,0,0,0" VerticalAlignment="Top">
+                          <TextBlock Text="{Binding TagText}" />
+                        </Border>
+                        <TextBlock Classes="nm" Text="{Binding Name}" />
+                      </DockPanel>
+                      <TextBlock Classes="l2" Text="{Binding Line2}" Margin="0,3,0,0" />
+                      <TextBlock Classes="l2" Text="{Binding Line3}" />
+                    </StackPanel>
+                  </Button>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Classes="mut" Text="没有符合条件的程序" Margin="16,14" IsVisible="{Binding LibEmpty}" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+    <v:OneView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding IsOne}" Name="OnePane" />
+    <v:MatrixView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding IsMatrix}" Name="MxPane" />
+  </Grid>
+</UserControl>

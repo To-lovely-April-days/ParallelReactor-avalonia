@@ -1,0 +1,580 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:r="using:ParallelReactor.Control.Pages.Records"
+             xmlns:rc="using:ParallelReactor.Control.Controls.Records"
+             x:Class="ParallelReactor.Control.Views.Pages.Records.RecordsPage"
+             x:DataType="r:RecordsPageVm">
+  <!-- 记录页（融合版 F7，样稿 PAGES.rec + CSS REC-V2 / V2b / V2c 的最终层叠值）：
+       看板 = 两列（运行记录 380，窄屏 300 | 8 | 其余）× 两行（8 路对比 * | 8 | 标记与事件 236，矮屏 168），运行记录跨两行。
+       面板同样稿 .board.pg .panel：白底、1 px pane-line、圆角 4、ShadowCard；灰带 42（pane-head、下边 pane-head-line、左 16 右 8）：标题 15/600 +「· 说明」13 t-3（点 t-sep）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{StaticResource PaneBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneLineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowCard}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <Style Selector="Border.ph">
+      <Setter Property="Height" Value="{StaticResource PaneHeadH}" />
+      <Setter Property="Background" Value="{StaticResource PaneHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PaneHeadLineBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+      <Setter Property="Padding" Value="16,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.pt">
+      <Setter Property="FontSize" Value="{StaticResource FsPaneTitle}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.pc">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- 子工具行（样稿 .sub）：44 高、左右 16、下边 line-faint -->
+    <Style Selector="Border.sub">
+      <Setter Property="Height" Value="44" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <!-- 会话列表（样稿 .rcl）：分组头 13/600 t-3、bg-head、上 10 下 6；会话行 上下 11 左右 16，名字 14/600，其余 13 t-3 行高 19 -->
+    <Style Selector="Border.rcg">
+      <Setter Property="Padding" Value="16,10,16,6" />
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Button.rci">
+      <Setter Property="Height" Value="NaN" />
+      <Setter Property="Padding" Value="16,11" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    </Style>
+    <Style Selector="Button.rci TextBlock.l2">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="19" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="0,3,0,0" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    </Style>
+    <!-- 对比面板标题行（样稿 #rcCmp .rch）：52 高（矮屏 44）、左右 16、间距 10、下边 line-faint；名字 16/600；说明 13 t-3（窄屏不写） -->
+    <Style Selector="Border.rch">
+      <Setter Property="Height" Value="52" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Grid#Board.short Border.rch">
+      <Setter Property="Height" Value="44" />
+    </Style>
+    <Style Selector="Grid#Board.narrow TextBlock.mta">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.rbtn:not(:reason):not(:disabled)">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <!-- 对比面板正文（样稿 .rcb）：上 12 左右 16 下 14、各块间距 12；矮屏 8 14 10、间距 8 -->
+    <Style Selector="StackPanel.rcbTop">
+      <Setter Property="Margin" Value="16,12,16,0" />
+    </Style>
+    <Style Selector="Grid#Board.short StackPanel.rcbTop">
+      <Setter Property="Margin" Value="14,8,14,0" />
+    </Style>
+    <Style Selector="Grid.rccmp">
+      <Setter Property="Margin" Value="16,12,16,14" />
+    </Style>
+    <Style Selector="Grid#Board.short Grid.rccmp">
+      <Setter Property="Margin" Value="14,8,14,10" />
+    </Style>
+    <!-- KPI（样稿 .rck .kpi）：bg-head 底、line-soft 边、圆角 4、内边距 10 14；名 13 t-3；值 22/600 行高 28（矮屏 24；行内单位把行框撑到 31 / 27，这里直接写 31 / 27）+ 单位 13 t-4；说明 13 t-3（矮屏不写） -->
+    <Style Selector="Border.kpi">
+      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="14,10" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="Border.kpi.warn">
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AmbLineBrush}" />
+    </Style>
+    <Style Selector="Border.kpi.err">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="TextBlock.kv">
+      <Setter Property="FontSize" Value="{StaticResource FsKpi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LineHeight" Value="31" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Grid#Board.short TextBlock.kv">
+      <Setter Property="LineHeight" Value="27" />
+    </Style>
+    <Style Selector="Border.kpi.warn TextBlock.kv">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="Border.kpi.err TextBlock.kv">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="Border.kpi.ok TextBlock.kv">
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+    </Style>
+    <Style Selector="Grid#Board.short Panel.ks">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 曲线框 / 结果表框（样稿 .rccv / .rctb）：1 px bg-app 边、圆角 4 -->
+    <Style Selector="Border.box">
+      <Setter Property="BorderBrush" Value="{StaticResource BgAppBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="ClipToBounds" Value="True" />
+    </Style>
+    <!-- 结果表（样稿 .rres）：表头 40（矮屏 34，单位小字不写）13/500 t-3、下边 line-soft；行 40（矮屏 30）14 px、下边 line-faint -->
+    <Style Selector="Border.rhd">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Grid#Board.short Border.rhd">
+      <Setter Property="Height" Value="34" />
+    </Style>
+    <Style Selector="TextBlock.th">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.ths">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="LineHeight" Value="14" />
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+    </Style>
+    <Style Selector="Grid#Board.short TextBlock.ths, Grid#Board.narrow TextBlock.ths">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.rw">
+      <Setter Property="Height" Value="40" />
+    </Style>
+    <Style Selector="Grid#Board.short Button.rw">
+      <Setter Property="Height" Value="30" />
+    </Style>
+    <Style Selector="Button.rw TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.rv">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.rw.off TextBlock.rv">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.b">
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.none">
+      <Setter Property="Foreground" Value="{StaticResource TNoneBrush}" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.dvp, Button.rw TextBlock.rsl">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.rsl.w">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.rsl.e">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- 判定标签（样稿 .tag.run / .tag.err：22 高、左右 8、圆角 3、13/500；通过 g-1 / g-line / g-ink，不通过 r-soft / r-line / r-ink 600） -->
+    <Style Selector="Border.tagb">
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{StaticResource G1Brush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Border.tagb.err">
+      <Setter Property="Background" Value="{StaticResource RSoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="Button.rw TextBlock.tagt">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+    </Style>
+    <Style Selector="Button.rw Border.tagb.err TextBlock.tagt">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Grid#Board.narrow rc|DivBar">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <!-- 下方页签（样稿 #rcEv .ctabs）：每个 41 高、左右 12、14 px t-2；当前 = 品牌蓝 600 + 下边 2 px；数字 13 t-4 左 6 -->
+    <Style Selector="Button.ctab">
+      <Setter Property="Height" Value="41" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.ctab:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.ctab TextBlock.tl">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Button.ctab:pointerover TextBlock.tl">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Button.ctab.on TextBlock.tl">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.ctab Border.ul">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Button.ctab.on Border.ul">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Grid#Board.narrow TextBlock.fwhat">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Grid.ev TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Name="Board" Classes.narrow="{Binding IsNarrow}" Classes.short="{Binding IsShort}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="8" />
+      <RowDefinition Height="{Binding BottomH}" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{Binding ListW}" />
+      <ColumnDefinition Width="8" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+
+    <!-- ———————————————— 运行记录 ———————————————— -->
+    <Border Classes="panel" Grid.RowSpan="3">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="pt" Text="运行记录" />
+            <TextBlock Classes="pc"><Run Text="·" Foreground="{StaticResource TSepBrush}" /><Run Text="  " /><Run Text="{Binding ListSub}" /></TextBlock>
+          </StackPanel>
+        </Border>
+        <Border Classes="sub" DockPanel.Dock="Top">
+          <DockPanel VerticalAlignment="Center">
+            <pr:SegControl DockPanel.Dock="Left" Height="26" Value="{Binding Range}" ToolTip.Tip="按日期筛选">
+              <pr:SegOption Value="all" Label="全部" />
+              <pr:SegOption Value="7d" Label="近 7 天" />
+              <pr:SegOption Value="custom" Label="自定义…" />
+            </pr:SegControl>
+            <Panel Margin="14,0,0,0">
+              <TextBox Theme="{StaticResource PrInput}" Text="{Binding Query}" Watermark="搜索会话 / 程序" Padding="28,0,9,0" AutomationProperties.Name="搜索会话" />
+              <c:IconView Icon="f-search" Size="15" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False" />
+            </Panel>
+          </DockPanel>
+        </Border>
+        <Panel>
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Items}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="r:RecListItemVm">
+                  <Panel>
+                    <Border Classes="rcg" IsVisible="{Binding IsGroup}">
+                      <TextBlock Text="{Binding Group}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T3Brush}" />
+                    </Border>
+                    <Button Classes="rci" Theme="{StaticResource PrRunRow}" Classes.on="{Binding IsOn}" IsVisible="{Binding !IsGroup}"
+                            Command="{Binding PickCommand}" AutomationProperties.Name="{Binding Name}">
+                      <StackPanel>
+                        <DockPanel Height="22">
+                          <pr:Badge DockPanel.Dock="Right" Text="{Binding Tag}" Tone="{Binding Tone}" ShowDot="{Binding TagDot}" Margin="8,0,0,0" />
+                          <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </DockPanel>
+                        <TextBlock Classes="l2" Text="{Binding Line2}" />
+                        <TextBlock Classes="l2 num"><Run Text="{Binding Line3}" Foreground="{StaticResource T4Brush}" /><Run Text="{Binding IdText}" Foreground="{StaticResource T4Brush}" /></TextBlock>
+                      </StackPanel>
+                    </Button>
+                  </Panel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+          <TextBlock Text="{Binding ListStatus}" IsVisible="{Binding ListStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                     VerticalAlignment="Top" HorizontalAlignment="Center" Margin="16,24" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"
+                     TextWrapping="Wrap" TextAlignment="Center" />
+        </Panel>
+      </DockPanel>
+    </Border>
+
+    <!-- ———————————————— 8 路对比 ———————————————— -->
+    <Border Classes="panel" Grid.Column="2">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Classes="pt" Text="{Binding CmpTitle}" />
+            <TextBlock Classes="pc" IsVisible="{Binding HasSel}"><Run Text="·" Foreground="{StaticResource TSepBrush}" /><Run Text="  " /><Run Text="{Binding CmpId}" /></TextBlock>
+          </StackPanel>
+        </Border>
+        <TextBlock DockPanel.Dock="Top" IsVisible="{Binding !HasSel}" Text="选择左侧一条记录" Margin="16,40" HorizontalAlignment="Center"
+                   FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
+        <Border Classes="rch" DockPanel.Dock="Top" IsVisible="{Binding HasSel}">
+          <DockPanel VerticalAlignment="Center">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
+              <Button Classes="sm rbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-trend" Content="查看曲线" Command="{Binding CurvesCommand}"
+                      b:Pr.Reason="{Binding CurvesReason}" ToolTip.Tip="{Binding CurvesTip}" />
+              <Button Classes="sm" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-reset" Content="{Binding RedoLabel}" Command="{Binding RedoCommand}"
+                      b:Pr.Reason="{Binding RedoReason}" ToolTip.Tip="{Binding RedoTip}" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10" ClipToBounds="True">
+              <TextBlock Text="{Binding SesName}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+              <pr:Badge Text="{Binding SesTag}" Tone="{Binding SesTone}" ShowDot="{Binding SesDot}" />
+              <TextBlock Classes="mta" Text="{Binding SesMeta}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center"
+                         TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+        <!-- 中断 / 提醒说明（样稿 .lockbar.amb：上 10 左右 16、内边距 8 12、圆角 4、amb-bg、字 amb-ink-2、图标 18 琥珀） -->
+        <Border DockPanel.Dock="Top" IsVisible="{Binding HasNote}" Margin="16,10,16,0" Padding="12,8" CornerRadius="{StaticResource Radius}" Background="{StaticResource AmbBgBrush}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <c:IconView Icon="f-warn-f" Size="18" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding Note}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInk2Brush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <StackPanel Classes="rcbTop" DockPanel.Dock="Top" IsVisible="{Binding HasSel}">
+          <ItemsControl ItemsSource="{Binding Kpis}" Margin="0,0,-8,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <UniformGrid Rows="1" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="r:RecKpiVm">
+                <Border Classes="kpi" Classes.warn="{Binding IsWarn}" Classes.err="{Binding IsErr}" Classes.ok="{Binding IsOk}">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Key}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="kv num" TextTrimming="CharacterEllipsis"><Run Text="{Binding Value}" /><Run Text="{Binding Unit, Mode=OneWay, StringFormat=' {0}'}" FontSize="{StaticResource FsBase}" FontWeight="Normal" Foreground="{StaticResource T4Brush}" /></TextBlock>
+                    <Panel Classes="ks"><TextBlock Text="{Binding Sub}" IsVisible="{Binding HasSub}" Margin="0,2,0,0" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"
+                               TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sub}" /></Panel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+        <Grid Classes="rccmp" IsVisible="{Binding HasSel}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="{Binding ChartW}" />
+            <ColumnDefinition Width="{Binding CmpGap}" />
+            <ColumnDefinition Width="{Binding TableW}" />
+          </Grid.ColumnDefinitions>
+          <!-- 叠加曲线 -->
+          <Border Classes="box" Padding="12,8,12,6">
+            <DockPanel>
+              <DockPanel DockPanel.Dock="Top" Height="30">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding ShowMean}">
+                  <Line StartPoint="0,0" EndPoint="18,0" Stroke="{StaticResource ChTitleBrush}" StrokeThickness="2" StrokeDashArray="2,1.5" VerticalAlignment="Center" />
+                  <TextBlock Text="平均" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                </StackPanel>
+                <Panel VerticalAlignment="Center" HorizontalAlignment="Left">
+                  <pr:SegControl Height="26" Value="{Binding ModeKey}" IsVisible="{Binding !IsHold}" ToolTip.Tip="曲线显示的量">
+                    <pr:SegOption Value="G" Label="吸气量" />
+                    <pr:SegOption Value="T" Label="温度" />
+                    <pr:SegOption Value="P" Label="压力" />
+                  </pr:SegControl>
+                  <TextBlock Text="{Binding HoldChartTitle}" IsVisible="{Binding IsHold}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                </Panel>
+              </DockPanel>
+              <Panel>
+                <rc:RecChart Name="Chart" Data="{Binding Chart}" />
+                <TextBlock Text="{Binding SeriesStatus}" IsVisible="{Binding HasSeriesStatus}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" TextAlignment="Center" Margin="16" />
+              </Panel>
+            </DockPanel>
+          </Border>
+          <!-- 结果表 -->
+          <Border Classes="box" Grid.Column="2">
+            <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+              <StackPanel>
+                <!-- 表头 -->
+                <Border Classes="rhd" IsVisible="{Binding !IsHold}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="{Binding Cols.C0}" /><ColumnDefinition Width="{Binding Cols.C1}" /><ColumnDefinition Width="{Binding Cols.C2}" />
+                      <ColumnDefinition Width="{Binding Cols.C3}" /><ColumnDefinition Width="{Binding Cols.C4}" /><ColumnDefinition Width="{Binding Cols.C5}" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="th" Margin="{Binding Cols.Pad}" Text="通道" />
+                    <TextBlock Classes="th" Grid.Column="1" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="吸气 mmol" />
+                    <TextBlock Classes="th" Grid.Column="2" Margin="{Binding Cols.Pad}" Text="与平均相比" />
+                    <StackPanel Grid.Column="3" Margin="{Binding Cols.Pad}" VerticalAlignment="Center" HorizontalAlignment="Right">
+                      <TextBlock Classes="th" HorizontalAlignment="Right" Text="最大速率" /><TextBlock Classes="ths" Text="mmol/min" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="4" Margin="{Binding Cols.Pad}" VerticalAlignment="Center" HorizontalAlignment="Right">
+                      <TextBlock Classes="th" HorizontalAlignment="Right" Text="到 90 %" /><TextBlock Classes="ths" Text="用时" />
+                    </StackPanel>
+                    <TextBlock Classes="th" Grid.Column="5" Margin="{Binding Cols.Pad}" Text="状态" />
+                  </Grid>
+                </Border>
+                <Border Classes="rhd" IsVisible="{Binding IsHold}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="{Binding Cols.C0}" /><ColumnDefinition Width="{Binding Cols.C1}" /><ColumnDefinition Width="{Binding Cols.C2}" /><ColumnDefinition Width="{Binding Cols.C3}" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Classes="th" Margin="{Binding Cols.Pad}" Text="通道" />
+                    <TextBlock Classes="th" Grid.Column="1" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="压降" />
+                    <TextBlock Classes="th" Grid.Column="2" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="换算" />
+                    <TextBlock Classes="th" Grid.Column="3" Margin="{Binding Cols.Pad}" Text="判定" />
+                  </Grid>
+                </Border>
+                <ItemsControl ItemsSource="{Binding Rows}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="r:RecRowVm">
+                      <Button Classes="rw" Theme="{StaticResource PrRunRow}" Classes.on="{Binding IsOn}" Classes.off="{Binding !Used}" Command="{Binding PickCommand}"
+                              AutomationProperties.Name="{Binding Rv}" ToolTip.Tip="点一下在曲线上突出这一路，再点取消">
+                        <Grid>
+                          <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="{Binding Cols.C0}" /><ColumnDefinition Width="{Binding Cols.C1}" /><ColumnDefinition Width="{Binding Cols.C2}" />
+                            <ColumnDefinition Width="{Binding Cols.C3}" /><ColumnDefinition Width="{Binding Cols.C4}" /><ColumnDefinition Width="{Binding Cols.C5}" />
+                          </Grid.ColumnDefinitions>
+                          <StackPanel Orientation="Horizontal" Margin="{Binding Cols.Pad}" VerticalAlignment="Center">
+                            <Border Width="3" Height="16" CornerRadius="2" Background="{Binding ChBrush}" Margin="0,0,9,0" />
+                            <TextBlock Classes="rv" Text="{Binding Rv}" />
+                          </StackPanel>
+                          <!-- 吸气类 -->
+                          <TextBlock Classes="b num" Grid.Column="1" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="{Binding GText}" IsVisible="{Binding ShowUptake}" />
+                          <StackPanel Grid.Column="2" Margin="{Binding Cols.Pad}" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding ShowUptake}">
+                            <rc:DivBar Width="64" Height="10" Value="{Binding Rel}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBlock Classes="dvp num" Text="{Binding RelText}" MinWidth="42" TextAlignment="Right" />
+                          </StackPanel>
+                          <TextBlock Classes="num" Grid.Column="3" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="{Binding RateText}" IsVisible="{Binding ShowUptake}" />
+                          <Panel Grid.Column="4" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" IsVisible="{Binding ShowUptake}">
+                            <TextBlock Classes="num" IsVisible="{Binding HasT90}"><Run Text="{Binding T90Text}" /><Run Text=" min" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" /></TextBlock>
+                            <TextBlock Classes="none" Text="{Binding T90None}" ToolTip.Tip="{Binding T90Tip}" IsVisible="{Binding !HasT90}" />
+                          </Panel>
+                          <TextBlock Classes="rsl" Grid.Column="5" Margin="{Binding Cols.Pad}" Classes.w="{Binding IsWarn}" Classes.e="{Binding IsErr}" Text="{Binding Result}"
+                                     IsVisible="{Binding ShowUptake}" />
+                          <TextBlock Classes="none" Grid.Column="1" Grid.ColumnSpan="5" Margin="{Binding Cols.Pad}" Text="{Binding OffText}" IsVisible="{Binding ShowOff}" />
+                        <!-- 保压类：压降 psi/h（15/600 + 单位 13 t-4）· 换算 kPa/h t-3 · 判定标签 -->
+                          <TextBlock Classes="num" Grid.Column="1" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" IsVisible="{Binding ShowHold}"><Run Text="{Binding DropText}" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" /><Run Text=" psi/h" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" /></TextBlock>
+                          <TextBlock Classes="num" Grid.Column="2" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" Text="{Binding KpaText}" Foreground="{StaticResource T3Brush}" IsVisible="{Binding ShowHold}" />
+                          <Panel Grid.Column="3" Margin="{Binding Cols.Pad}" IsVisible="{Binding ShowHold}" VerticalAlignment="Center">
+                            <Border Classes="tagb" Classes.err="{Binding !Ok}"><TextBlock Classes="tagt" Text="{Binding Result}" /></Border>
+                          </Panel>
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <!-- 统计行（样稿 tfoot：40 高、bg-head、上边 line-soft、左右 14） -->
+                <Border Height="40" Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,1,0,0" IsVisible="{Binding !IsHold}">
+                  <Grid>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="{Binding Cols.C0}" /><ColumnDefinition Width="{Binding Cols.C1}" /><ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="统计" Margin="14,0" VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T1Brush}" />
+                    <TextBlock Grid.Column="1" Classes="num" Text="{Binding FootMean}" Margin="{Binding Cols.Pad}" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               FontSize="{StaticResource FsValue}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                    <TextBlock Grid.Column="2" Margin="14,0" VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis">
+                      <Run Text="{Binding FootLine}" /><Run Text="{Binding FootSkip}" />
+                    </TextBlock>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Border>
+
+    <!-- ———————————————— 标记与事件 / 数据文件 ———————————————— -->
+    <Border Classes="panel" Grid.Column="2" Grid.Row="2">
+      <DockPanel>
+        <Border Classes="ph" DockPanel.Dock="Top" Padding="8,0">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+            <Button Classes="ctab" Theme="{StaticResource PrRunRow}" Classes.on="{Binding IsMarks}" Command="{Binding TabCommand}" CommandParameter="mk" AutomationProperties.Name="标记与事件">
+              <Panel>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12,0"><TextBlock Classes="tl" Text="标记与事件" VerticalAlignment="Center" /><TextBlock Text="{Binding EventCount}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" VerticalAlignment="Center" /></StackPanel>
+                <Border Classes="ul" Height="2" Background="{StaticResource ABrush}" VerticalAlignment="Bottom" />
+              </Panel>
+            </Button>
+            <Button Classes="ctab" Theme="{StaticResource PrRunRow}" Classes.on="{Binding !IsMarks}" Command="{Binding TabCommand}" CommandParameter="fl" AutomationProperties.Name="数据文件">
+              <Panel>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Margin="12,0"><TextBlock Classes="tl" Text="数据文件" VerticalAlignment="Center" /><TextBlock Text="{Binding FileCount}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" VerticalAlignment="Center" /></StackPanel>
+                <Border Classes="ul" Height="2" Background="{StaticResource ABrush}" VerticalAlignment="Bottom" />
+              </Panel>
+            </Button>
+          </StackPanel>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled" Padding="16,2,16,8">
+          <Panel>
+            <StackPanel IsVisible="{Binding IsMarks}">
+              <ItemsControl ItemsSource="{Binding Events}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="r:RecEventVm">
+                    <Border Height="32" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+                      <Grid Classes="ev" ColumnDefinitions="26,74,62,*">
+                        <c:IconView Icon="{Binding Icon}" Size="16" Foreground="{Binding IconBrush}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Classes="num" Text="{Binding Time}" Foreground="{StaticResource T3Brush}" />
+                        <TextBlock Grid.Column="2" Text="{Binding Src}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                        <TextBlock Grid.Column="3" Text="{Binding Text}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="这个会话没有标记和事件" IsVisible="{Binding EventsEmpty}" Margin="0,8" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" />
+            </StackPanel>
+            <StackPanel IsVisible="{Binding !IsMarks}">
+              <Border Height="38" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,0,1">
+                <Grid ColumnDefinitions="*,1.4*,150,90">
+                  <TextBlock Classes="th" Text="文件" />
+                  <TextBlock Classes="th" Grid.Column="1" Text="内容" IsVisible="{Binding !IsNarrow}" />
+                  <TextBlock Classes="th" Grid.Column="2" Text="大小" HorizontalAlignment="Right" Margin="0,0,14,0" />
+                </Grid>
+              </Border>
+              <ItemsControl ItemsSource="{Binding Files}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="r:RecFileVm">
+                    <Border Height="40" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+                      <Grid ColumnDefinitions="*,1.4*,150,90">
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding What}">
+                          <c:IconView Icon="f-doc" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          <TextBlock Text="{Binding File}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Classes="fwhat" Text="{Binding What}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" Classes="num" Text="{Binding Size}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,14,0" />
+                        <Button Grid.Column="3" Theme="{StaticResource PrLink}" b:Pr.Icon="f-down" Content="下载" Command="{Binding Download}" b:Pr.Reason="{Binding Reason}"
+                                HorizontalAlignment="Left" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </Panel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+</UserControl>

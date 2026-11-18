@@ -1,3 +1,4 @@
+using ParallelReactor.Control.Core.Format;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -21,10 +22,11 @@ public enum OverlayMode { G, T, P }
 public sealed record OverlayLine(int N, Color Color, bool Dashed, ChartPoint[] Points, int Count);
 
 /// <summary>
-/// 叠加曲线一帧的输入（每次刷新一个新实例，控件拿到就重画）：时间窗（起点 / 现在，ms）、量（标题、单位、小数位）、各条线、选中的一路、压力上限（P 模式画红虚线）、刻度间隔。
+/// 叠加曲线一帧的输入（每次刷新一个新实例，控件拿到就重画）：时间窗（起点 / 现在，ms）、量（标题、单位、小数位）、各条线、选中的一路、压力上限（P 模式画红虚线）、刻度间隔、
+/// 纵轴至少画到的值（0 = 控件的默认：吸气量 5、其余 1；压力 = 1 MPa 换算成设置的单位）。压力的点和上限已经是设置的压力单位。
 /// </summary>
 public sealed record OverlayData(double T0, double T1, OverlayMode Mode, string Title, string Unit, int Decimals,
-    IReadOnlyList<OverlayLine> Lines, int Selected, double? Limit, DateTime Start);
+    IReadOnlyList<OverlayLine> Lines, int Selected, double? Limit, DateTime Start, double MinTop = 0);
 
 /// <summary>图例芯片（样稿 #pCurve .lgc）：点一下选中这一路。</summary>
 public sealed partial class OverlayChipVm : ObservableObject
@@ -111,6 +113,8 @@ public sealed partial class OverlayVm : ObservableObject
 
         var start = WindowStart(now, live.Select(r => src.History.Channel(r.N) is { Count: > 0 } ch ? (DateTime?)ch[0].T.ToLocalTime() : null));
         double minutes = (now - start).TotalMinutes;
+        // 压力按设置的单位画（MPa 时倍数 1，与改单位之前相同）
+        double k = PressureUnits.PerMpa(PressureDisplay.Primary);
         var lines = new List<OverlayLine>(live.Count);
         foreach (var r in live)
         {
@@ -123,16 +127,17 @@ public sealed partial class OverlayVm : ObservableObject
             // 每次一份新数组（控件拿着上一帧画到下一帧来之前）
             var pts = new ChartPoint[n];
             Array.Copy(buf, pts, n);
+            if (mode == OverlayMode.P && k != 1) for (int i = 0; i < n; i++) pts[i] = new ChartPoint(pts[i].T, pts[i].V * k);
             lines.Add(new OverlayLine(r.N, RunRowText.ChColor(r.N), r.N > 8, pts, n));
         }
         var (title, unit, dec) = mode switch
         {
             OverlayMode.T => ("温度", "°C", 1),
-            OverlayMode.P => ("压力", "MPa", 2),
+            OverlayMode.P => ("压力", PressureDisplay.Unit, PressureDisplay.Decimals(2)),
             _ => ("吸气量", "mmol", 1),
         };
         Data = new OverlayData(ChartTime.Ms(start), ChartTime.Ms(now), mode, title, unit, dec, lines, sel,
-            mode == OverlayMode.P ? src.Plant.OverPressureMPa : null, start);
+            mode == OverlayMode.P ? src.Plant.OverPressureMPa * k : null, start, mode == OverlayMode.P ? k : 0);
         OptText = lines.Count.ToString(CultureInfo.InvariantCulture) + " 路叠加 · " + start.ToString("HH:mm", CultureInfo.InvariantCulture) + " – 现在";
     }
 }

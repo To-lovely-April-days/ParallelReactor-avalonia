@@ -143,7 +143,8 @@ public sealed partial class ResPaneVm : ObservableObject
             if (!EditingRpm) RpmText = Math.Round(stir.Rpm).ToString(CultureInfo.InvariantCulture);
             AmpText = (stir.On && plant.StirCurrentA is double a ? a : 0).ToString("0.0", CultureInfo.InvariantCulture) + " A";
             var pay = new ActionPayload(Rpm: Math.Round(stir.Rpm));
-            var why = d.Actions.Why(stir.On ? DeviceAction.StirOff : DeviceAction.StirOn, pay);
+            // 融合版 F8（样稿 stirCtl：本地只读时开关灰掉）：没有控制权时开、关都不让点（停搅拌本来不需要控制权，用户决定照样稿；全部停止照样会停搅拌）
+            var why = StirLockReason(d) ?? d.Actions.Why(stir.On ? DeviceAction.StirOff : DeviceAction.StirOn, pay);
             var whySet = d.Actions.Why(DeviceAction.StirSet, pay);
             ToggleReason = why.Length > 0 ? why : null;
             StirReason = whySet.Length > 0 ? whySet : null;
@@ -185,12 +186,17 @@ public sealed partial class ResPaneVm : ObservableObject
         return new ResEventVm(e.At.ToString("HH:mm", CultureInfo.InvariantCulture), src, title, e.Level);
     }
 
+    /// <summary>共用搅拌开关的「本地只读」原因（在线、但本机没有控制权）；能点时为 null（断线等由守卫说）。</summary>
+    public static string? StirLockReason(DeviceVm d) =>
+        !d.IsOffline && d.Lease != Controls.Pr.LeaseState.Remote ? d.Alias + "为本地只读 · 先申请控制权" : null;
+
     /// <summary>釜转速上限（设备设置；没有时 450）。</summary>
     public static double RpmMax(DeviceVm d) => d.Source.Plant.RpmMax ?? 450;
 
     private void ToggleStir()
     {
         if (Device is not { } d || d.Stir is not { } s) return;
+        if (StirLockReason(d) is { } why) { _shell.Toast(why, Services.ToastKind.Warn); return; }
         _ = d.Actions.RunAsync(s.On ? DeviceAction.StirOff : DeviceAction.StirOn, new ActionPayload(Rpm: s.Rpm));
     }
 

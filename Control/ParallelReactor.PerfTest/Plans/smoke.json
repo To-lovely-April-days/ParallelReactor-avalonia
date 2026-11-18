@@ -25,7 +25,7 @@
             { "id": "T0Q-2", "kind": "command", "title": "RV{rv} 加热到 60 ℃", "command": { "op": "heatStart", "args": { "tempC": 60 }, "expectStatus": ["accepted", "confirmed"] } },
             { "id": "T0Q-3", "kind": "hold", "title": "保温记录 30 s", "durationSec": 30, "signals": ["tempC", "pressurePsi", "heatOutputPct"] },
             { "id": "T0Q-4", "kind": "manualEntry", "title": "录入转速表读数", "text": "读取转速表（自检时可填任意值）", "fields": [
-              { "key": "tacho", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 1, "min": 0, "max": 3000 } ] },
+              { "key": "tacho", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 1, "min": 0, "max": 600 } ] },
             { "id": "T0Q-5", "kind": "measure", "title": "计算", "metrics": [
               { "key": "tMean", "label": "记录窗口温度均值", "formula": "mean", "unit": "℃", "signal": "tempC", "window": "step:T0Q-3" },
               { "key": "tMax", "label": "记录窗口温度最大值", "formula": "max", "unit": "℃", "signal": "tempC", "window": "step:T0Q-3" },
@@ -60,7 +60,7 @@
             { "id": "S1Q-1", "kind": "command", "title": "搅拌 {value} rpm", "perChannel": false, "command": { "op": "stir", "args": { "rpm": "{value}", "on": true } } },
             { "id": "S1Q-2", "kind": "hold", "title": "稳定 10 s", "durationSec": 10, "signals": ["rpm", "busVoltageV"] },
             { "id": "S1Q-3", "kind": "manualEntry", "title": "转速表读 3 次", "fields": [
-              { "key": "n", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 3000 } ] },
+              { "key": "n", "label": "转速表读数", "unit": "rpm", "instrument": "激光转速表", "repeat": 3, "min": 0, "max": 600 } ] },
             { "id": "S1Q-4", "kind": "measure", "title": "计算", "metrics": [
               { "key": "eN", "label": "转速误差 e_n", "formula": "rpmError", "unit": "%", "signal": "manual:n", "reference": "iteration", "direction": "twoSided", "reference5": "Endeavor 250–1000 rpm" },
               { "key": "nSigma", "label": "转速读数 s_n", "formula": "sigma", "unit": "rpm", "signal": "manual:n" } ] },

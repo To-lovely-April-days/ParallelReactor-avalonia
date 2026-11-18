@@ -15,11 +15,12 @@ public sealed record TickSet(double Lo, double Hi, double Step, IReadOnlyList<do
 /// </summary>
 public static class ChartTicks
 {
-    /// <summary>按单位的最小跨度（样稿 MIN_SPAN）：℃ 5、MPa 0.05、psi 5、% 10、rpm 10、mmol 0.2；其它单位 0（不限）。</summary>
+    /// <summary>按单位的最小跨度（样稿 MIN_SPAN）：℃ 5、MPa 0.05、bar 0.5（= 0.05 MPa，压力单位设置加的）、psi 5、% 10、rpm 10、mmol 0.2；其它单位 0（不限）。</summary>
     public static double MinSpanOf(string? unit) => unit switch
     {
         "℃" => 5,
         "MPa" => 0.05,
+        "bar" => 0.5,
         "psi" => 5,
         "%" => 10,
         "rpm" => 10,

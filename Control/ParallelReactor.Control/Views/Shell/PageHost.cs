@@ -66,13 +66,16 @@ public sealed class PageHost : Panel
         foreach (var (p, v) in _views) v.IsVisible = ReferenceEquals(p, cur);
     }
 
-    /// <summary>页面视图模型 → 视图（F3 起主页换成真正的看板；程序 / 性能测试 F6 / F8 前是旧样式页面）。</summary>
+    /// <summary>页面视图模型 → 视图（融合版：每种页面一份；F8 起没有占位页了）。</summary>
     private static Avalonia.Controls.Control Create(PageVm p) => p switch
     {
         HomePageVm => new HomePage(),
-        PlaceholderPageVm => new PlaceholderPage(),
-        LegacyProgramPageVm => new LegacyProgramPage(),
-        PerfPageVm => new PerfPage(),
+        ParallelReactor.Control.Pages.Programs.ProgramPageVm => new Views.Pages.Programs.ProgramPage(),
+        ParallelReactor.Control.Pages.Perf.PerfPageVm => new ParallelReactor.Control.Views.Pages.Perf.PerfPage(),
+        ParallelReactor.Control.Pages.Settings.SettingsPageVm => new ParallelReactor.Control.Views.Pages.Settings.SettingsPage(),
+        ParallelReactor.Control.Pages.Alarms.AlarmPageVm => new ParallelReactor.Control.Views.Pages.Alarms.AlarmPage(),
+        ParallelReactor.Control.Pages.Curves.CurvePageVm => new ParallelReactor.Control.Views.Pages.Curves.CurvePage(),
+        ParallelReactor.Control.Pages.Records.RecordsPageVm => new ParallelReactor.Control.Views.Pages.Records.RecordsPage(),
         GalleryPageVm => new ScrollViewer { Content = new GalleryPage(), HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled },
         _ => new Panel(),
     };

@@ -150,6 +150,71 @@ public sealed class ChannelHistory
         Append(new HistorySample(u, null, null, null, null, null, null, null, Gap: true));
     }
 
+    /// <summary>
+    /// 补拉（融合版 F8 无人值守：断线重连后从设备取回断开那一段，GET /telemetry?from&amp;to）：把 <paramref name="samples"/> 里落在
+    /// [<paramref name="fromUtc"/>, <paramref name="toUtc"/>] 的采样并进来，返回并进来的格数。
+    /// <list type="bullet">
+    /// <item>已有的读数优先（同一格里有本机收到的帧就不换）；补进来的按 10 s 一格（同一格留最后一个）。</item>
+    /// <item>这一段里原来的断开标记去掉 —— 补齐之后两个采样仍相隔超过 <see cref="GapSeconds"/> 的地方照样重新插断开标记（设备那段也没数据）。</item>
+    /// <item>整个缓冲按时间重排一遍（只在重连后做一次，不在每帧的路径上）；仍只留最近 <see cref="KeepMinutes"/>。</item>
+    /// </list>
+    /// </summary>
+    public int Merge(IReadOnlyList<HistorySample> samples, DateTime fromUtc, DateTime toUtc)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        var from = Utc(fromUtc);
+        var to = Utc(toUtc);
+        if (to < from || samples.Count == 0) return 0;
+        var cells = new HashSet<long>();
+        var all = new List<HistorySample>(_count + samples.Count);
+        for (int i = 0; i < _count; i++)
+        {
+            var h = this[i];
+            if (h.Gap && h.T >= from && h.T <= to) continue;
+            if (!h.Gap) cells.Add(Cell(h.T));
+            all.Add(h);
+        }
+        // 补进来的：每格只取最后一个，已有读数的格子不动
+        var add = new SortedDictionary<long, HistorySample>();
+        foreach (var raw in samples)
+        {
+            if (raw.Gap) continue;
+            var t = Utc(raw.T);
+            if (t < from || t > to) continue;
+            long c = Cell(t);
+            if (cells.Contains(c)) continue;
+            add[c] = raw with { T = t };
+        }
+        if (add.Count == 0)
+        {
+            if (all.Count != _count) Rebuild(all);
+            return 0;
+        }
+        all.AddRange(add.Values);
+        all.Sort((a, b) => a.T.CompareTo(b.T));
+        Rebuild(all);
+        return add.Count;
+    }
+
+    /// <summary>按时间顺序重新装一遍（断开标记由 <see cref="Append"/> 按间隔重新插；原有的断开标记留着）。</summary>
+    private void Rebuild(List<HistorySample> sorted)
+    {
+        _head = 0;
+        _count = 0;
+        foreach (var s in sorted) Append(s);
+        Version++;
+    }
+
+    /// <summary>最后一个读数（不是断开标记）的时刻（UTC）；没有为 null。断线时记下它，重连后从它补拉。</summary>
+    public DateTime? LastDataAt
+    {
+        get
+        {
+            for (int i = _count - 1; i >= 0; i--) if (!this[i].Gap) return this[i].T;
+            return null;
+        }
+    }
+
     /// <summary>第一个时刻 ≥ <paramref name="t"/> 的采样下标（二分）；都更早时 = <see cref="Count"/>。</summary>
     public int LowerBound(DateTime t)
     {
@@ -296,6 +361,29 @@ public sealed class DeviceHistory
     {
         foreach (var h in _channels.Values) h.MarkGap(t);
         Version++;
+    }
+
+    /// <summary>
+    /// 补拉（融合版 F8）：每路把补回来的采样并进来（见 <see cref="ChannelHistory.Merge"/>），返回并进来的格数（各路合计）。
+    /// </summary>
+    public int Merge(IReadOnlyDictionary<int, List<HistorySample>> samples, DateTime fromUtc, DateTime toUtc)
+    {
+        ArgumentNullException.ThrowIfNull(samples);
+        int n = 0;
+        foreach (var (ch, list) in samples) n += Channel(ch).Merge(list, fromUtc, toUtc);
+        Version++;
+        return n;
+    }
+
+    /// <summary>各路最后一个读数里最晚的时刻（UTC；断线时记下它，重连后从它补拉）。没有数据为 null。</summary>
+    public DateTime? LastDataAt
+    {
+        get
+        {
+            DateTime? best = null;
+            foreach (var h in _channels.Values) if (h.LastDataAt is { } t && (best is null || t > best)) best = t;
+            return best;
+        }
     }
 
     /// <summary>清空所有通道（HMI 重启、换设备）。</summary>

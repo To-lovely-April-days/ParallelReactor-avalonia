@@ -155,7 +155,7 @@ public static class ProgramPanelText
         if (estop) return new SafetyBox(n, "急停", SafetyTone.Err, "急停已触发 · 加热 / 进气 / 搅拌已切断 · 需在触屏复位");
         if (channelAlarm || errAlarmText is not null) return new SafetyBox(n, "报警", SafetyTone.Err, errAlarmText ?? "超压报警");
         return new SafetyBox(n, "正常", SafetyTone.Ok,
-            "急停未触发 · 量程内 ≤ " + JsNumber.ToString(model.Limits.PressureMaxMPa) + " MPa · ≤ " + JsNumber.ToString(model.Limits.TempMaxC) + " ℃");
+            "急停未触发 · 量程内 ≤ " + PressureDisplay.LimitU(model.Limits.PressureMaxMPa) + " · ≤ " + JsNumber.ToString(model.Limits.TempMaxC) + " ℃");
     }
 
     /// <summary>面包屑的全文（悬停提示）：'1号机 › RV1 › 加氢-标准'；没有程序时最后一段「无程序」。</summary>
