@@ -31,7 +31,7 @@ public partial class LiveDeviceSourceTests
         await r.StartAsync(("192.168.1.20", "1号机"));
         await r.Until(() => OnlineState(r.D(1)), "上线");
         var shell = await r.On(() => { var s = new ShellVm(r.Fleet); s.Toasts.Frozen = true; return s; });
-        Assert.Null(await r.On(() => shell.StopCell.Reason));
+        Assert.Null(await r.On(() => shell.Capsule.StopReason));
 
         // HMI 整个不通（拒绝连接）：WS 断了，重连时网络层失败 → REST 也到不了 —— 不再「尽力发送」
         a.Down = true;
@@ -50,7 +50,7 @@ public partial class LiveDeviceSourceTests
         await r.On(() => shell.OpenDialog("stopall"));
         var sa = await r.On(() => (StopAllDialogVm)shell.Dialogs.Current!);
         Assert.Equal(("连接中断 · 无法发送", false), await r.On(() => (sa.Rows[0].Reason, sa.Rows[0].IsOn)));
-        Assert.Equal("没有已连接的设备", await r.On(() => shell.StopCell.Reason));
+        Assert.Equal("没有已连接的设备", await r.On(() => shell.Capsule.StopReason));
         await r.On(() => shell.Dialogs.Close());
 
         // 主机回来：WS 重连上 → 已连接，停止类回来
@@ -58,7 +58,7 @@ public partial class LiveDeviceSourceTests
         await r.AdvanceUntil(() => OnlineState(r.D(1)), "重新连上");
         Assert.True(await r.On(() => r.S(1).StopReachable && r.D(1).CanStop));
         await r.On(() => r.Fleet.RefreshNow());
-        Assert.Null(await r.On(() => shell.StopCell.Reason));
+        Assert.Null(await r.On(() => shell.Capsule.StopReason));
         await r.On(() => shell.Dispose());
         Assert.Empty(r.Ui.Errors);
     }

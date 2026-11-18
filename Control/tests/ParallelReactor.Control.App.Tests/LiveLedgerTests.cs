@@ -597,19 +597,12 @@ public class LiveLedgerTests
         f.RefreshNow();
         var r = d.Reactor(1)!;
         Assert.True(r.Program!.Progress!.WaitGas);
-        var strip = Assert.Single(ReactorPageVm.AlertsOf(d, r), a => a.Key == "ra-wait");
-        Assert.Equal(("等待气路（RV3 占用中）", "第 2/4 步「充压」暂停计时", false, "clock"), (strip.Title, strip.Text, strip.Touch, strip.Icon));
         // 检查器
         var shell = new Shell.ShellVm(f);
         shell.Select(d.K, 1);
         var insp = Assert.IsType<Shell.ReactorInspectorVm>(shell.Inspector.Body);
         Assert.Equal("等待气路（RV3 占用中） · 第 2/4 步「充压」暂停计时", insp.WaitText);
         Assert.Equal("clock", insp.WaitIcon);
-        // 时间轴的悬停
-        var segs = shell.Timeline.Groups.SelectMany(g => g.Rows.OfType<Shell.TlRowVm>()).SelectMany(x => x.Segments).ToList();
-        Assert.NotEmpty(segs);
-        Assert.DoesNotContain(segs, x => x.Tip.Contains("触屏开阀", StringComparison.Ordinal));
-        Assert.Contains(segs, x => x.Tip.EndsWith(" · 等待气路（RV3 占用中）", StringComparison.Ordinal));
         await f.DisposeAsync();
     }
 

@@ -51,7 +51,7 @@ public sealed partial class ReactorInspectorVm : ObservableObject
         ProgLoad = new InspAct("下发", "send", () => { var id = SelectedProgram?.Id; _progDirty = false; Act(DeviceAction.ProgLoad, new ActionPayload(N: N, Id: id)); });
         ProgRun = new InspAct("运行", "play", () => Act(DeviceAction.ProgRun, P));
         ProgAbort = new InspAct("中止", "stop", () => Act(DeviceAction.ProgAbort, P));
-        EditProgram = new InspAct("编辑程序", "edit", () => shell.Navigate(Route.Placeholder("program")));
+        EditProgram = new InspAct("编辑程序", "edit", () => shell.Go(AppPage.Program));
         Mark = new InspAct("打标记", "flag", () => Act(DeviceAction.SessionMark, new ActionPayload(N: N, Text: Rv + " 标记")));
         StirLink = new InspAct("设置", null, () => { shell.Select(D.K); shell.Inspector.RequestFocus("rpm"); });
         GoDevice = new InspAct("去" + d.Alias, null, () => shell.Select(D.K));

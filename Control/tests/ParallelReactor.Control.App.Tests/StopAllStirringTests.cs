@@ -62,7 +62,8 @@ public class StopAllStirringTests
         shell.OpenDialog("stopall");
         var dlg = Assert.IsType<StopAllDialogVm>(shell.Dialogs.Current);
         Assert.Equal(stopsStirring, dlg.StopsStirring);
-        Assert.Equal(StopAllText.Sub(stopsStirring), dlg.Sub);
+        // 融合版 F3：没有副标题；「对气路做什么」表的搅拌一行跟着设置
+        Assert.Equal(stopsStirring ? "停止" : "不变", string.Concat(dlg.StopRows.Single(r => r.Key == "搅拌").Value.Select(v => v.Text)));
         var note = string.Concat(dlg.Note.Select(s => s.Text));
         Assert.Equal(StopAllText.Note(stopsStirring), note);                          // 粗体段拼起来就是 StopAllText.Note
         Assert.Equal(!stopsStirring, note.Contains("搅拌保持当前状态", StringComparison.Ordinal));

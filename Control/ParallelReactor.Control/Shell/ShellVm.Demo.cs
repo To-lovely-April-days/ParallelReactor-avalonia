@@ -17,7 +17,7 @@ namespace ParallelReactor.Control.Shell;
 public sealed partial class ShellVm
 {
     /// <summary>当前的演示参数，去掉只在打开页面时用一次的部分（对话框、选中、外框、滚动）。</summary>
-    private DemoParams DemoBase => (Fleet.Params ?? DemoParams.Default) with { Dialog = null, Sel = null, Explorer = null, TimelineCollapsed = null, Scroll = null };
+    private DemoParams DemoBase => (Fleet.Params ?? DemoParams.Default) with { Dialog = null, Sel = null, Explorer = null, TimelineCollapsed = null, Scroll = null, Extra = System.Array.Empty<KeyValuePair<string, string>>() };
 
     private static string Key(int k) => k.ToString(CultureInfo.InvariantCulture);
 
@@ -37,8 +37,7 @@ public sealed partial class ShellVm
     private static IReadOnlyList<string> Keys(IEnumerable<int> ks) => ks.Distinct().OrderBy(k => k).Select(Key).ToList();
 
     /// <summary>
-    /// 设备组合（样稿「设备 1 / 3 / 4 台」）：devs（3 = 默认），同时清掉控制权 / 断线 / 报警 / 急停的覆盖；页签回到默认（样稿 shell.tabs = []），
-    /// 当前页面还在就留在原地（它的页签重新加上），不在了回到总览。
+    /// 设备组合（样稿「设备 1 / 3 / 4 台」）：devs（3 = 默认），同时清掉控制权 / 断线 / 报警 / 急停的覆盖；当前页面不变（选中的设备不在了时回到总览 / 第一台）。
     /// </summary>
     public void DemoSetDevs(string combo)
     {
@@ -51,8 +50,7 @@ public sealed partial class ShellVm
             Alarm = System.Array.Empty<KeyValuePair<string, string>>(),
             Estop = System.Array.Empty<string>(),
         };
-        Tabs.ResetToDefaults();
-        ApplyDemoParams(p, Route);
+        ApplyDemoParams(p);
     }
 
     /// <summary>
@@ -122,8 +120,8 @@ public sealed partial class ShellVm
     public bool DemoFrozen => Fleet.Params?.Freeze == true;
 
     /// <summary>
-    /// 重置（样稿「重置」）：演示数据从头生成、参数全部回到默认（设备组合、冻结、覆盖都去掉），页签、资源管理器 / 时间轴的展开、专注、
-    /// 时间轴收起与跨度回到默认，关掉对话框（样稿新地址里没有 dialog），回到总览，提示「演示数据已重置」（info）。
+    /// 重置（样稿「重置」）：演示数据从头生成、参数全部回到默认（设备组合、冻结、覆盖都去掉），外框布局回到默认，
+    /// 关掉对话框与报警列表（样稿新地址里没有 dialog），回到主页 · 1号机，提示「演示数据已重置」（info）。
     /// 与截图的 <see cref="ResetView"/> 不同的两处照样稿：选中的对象还在就留着（样稿不动 shell.sel，pruneSel 只换掉不在了的），
     /// 已有的提示不清（同一个 ToastItem 放回去，计时器照旧按时把它拿掉）。
     /// </summary>
@@ -136,7 +134,7 @@ public sealed partial class ShellVm
         ResetView();
         foreach (var t in toasts) Toasts.Items.Add(t);
         if (Fleet.Device(k) is { } d && (n == null || d.Reactors.Any(r => r.N == n))) Select(k, n);
-        ApplyDemoParams(DemoParams.Default, Route.Overview);
+        ApplyDemoParams(DemoParams.Default);
         Toast("演示数据已重置", ToastKind.Info);
     }
 }

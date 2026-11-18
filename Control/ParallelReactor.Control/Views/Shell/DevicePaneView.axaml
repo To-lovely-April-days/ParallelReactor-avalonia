@@ -1,0 +1,145 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.DevicePaneView"
+             x:DataType="sh:ShellVm">
+  <!-- 设备面板的内容（融合版 F2；样稿 renderDevbar / devInfo）。
+       灰带（.ptool：42 高、pane-head 底、下边 rail-line、左右 14）：「设备 n 台 · m 路」13 px t-2（数字 t-1 600）+ 添加 / 重新扫描（28 圆钮，间距 10）。
+       列表（内边距 4 4 8，可滚动）：行（PrDevRow，下边距 3）——
+         总览行：48 高，5 px 灰色条、左右 10、间距 10：网格图标 18 · 「总览」17 px 细体 gbg-title · 「3 台 · 运行 20/28」13 px t-3；
+         设备行：5 px 状态条（上下各留 8）、内容 10 / 12：别名 20 px 细体（选中品牌蓝常规）+ 型号 13 px t-3（间距 8）+ 右端控制权（远程 = 22 高 a-soft 小块；否则锁 15 t-icon）；
+           第二行 13 px t-2（上 4，报警 / 急停 / 断线 r-ink 600）；第三行「最早 … 结束」13 px t-3（上 2）。
+       设备信息（.dvi：外边距 10 4 4、左右 6）：标题 15 px 品牌蓝 + 1.5 px 品牌蓝下划线（下 6、再下 8）；两列 64 + 其余、行距 6 列距 8、行高 18，键 t-3、值 t-1。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.bar">
+      <Setter Property="Width" Value="5" />
+      <Setter Property="Margin" Value="0,8" />
+      <Setter Property="CornerRadius" Value="0,3,3,0" />
+      <Setter Property="Background" Value="{StaticResource NDotLineBrush}" />
+    </Style>
+    <Style Selector="Border.bar.run">
+      <Setter Property="Background" Value="{StaticResource GDotBrush}" />
+    </Style>
+    <Style Selector="Border.bar.err">
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBlock.nm">
+      <Setter Property="FontSize" Value="{StaticResource FsDevName}" />
+      <Setter Property="FontWeight" Value="Light" />
+      <Setter Property="Foreground" Value="{StaticResource GbgTitleBrush}" />
+      <Setter Property="LineHeight" Value="26" />
+    </Style>
+    <Style Selector="Button.on TextBlock.nm">
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="TextBlock.md">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.r2">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="Margin" Value="0,4,0,0" />
+      <Setter Property="LineHeight" Value="16" />
+    </Style>
+    <Style Selector="TextBlock.r3">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="0,2,0,0" />
+      <Setter Property="LineHeight" Value="16" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel TextElement.FontSize="{StaticResource FsBase}">
+    <Border DockPanel.Dock="Top" Height="{StaticResource PaneHeadH}" Background="{StaticResource PaneHeadBrush}" BorderBrush="{StaticResource RailLineBrush}"
+            BorderThickness="0,0,0,1" Padding="14,0">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-plus" ToolTip.Tip="添加设备" Command="{Binding Devices.AddCommand}" />
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-refresh" ToolTip.Tip="设备管理 · 重新连接" Command="{Binding Devices.RescanCommand}" />
+        </StackPanel>
+        <TextBlock VerticalAlignment="Center" Foreground="{StaticResource T2Brush}">
+          <Run Text="设备 " /><Run Text="{Binding Devices.Count}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" 台 · " /><Run Text="{Binding Devices.Channels}" /><Run Text=" 路" />
+        </TextBlock>
+      </DockPanel>
+    </Border>
+    <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="4,4,4,8">
+        <ItemsControl ItemsSource="{Binding Devices.Rows}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sh:DeviceRowVm">
+              <Button Theme="{StaticResource PrDevRow}" Classes.on="{Binding IsOn}" Command="{Binding SelectCommand}" ToolTip.Tip="{Binding Tip}"
+                      AutomationProperties.Name="{Binding Name}">
+                <Panel>
+                  <!-- 总览 / 全部设备 -->
+                  <DockPanel Height="48" IsVisible="{Binding IsAll}">
+                    <Border Classes="bar" DockPanel.Dock="Left" />
+                    <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0" VerticalAlignment="Center">
+                      <c:IconView Icon="f-grid" Size="18" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
+                      <pr:PrText Classes="nm" Text="{Binding Name}" FontSize="{StaticResource FsDevAll}" VerticalAlignment="Center" />
+                      <pr:PrText Classes="md" Text="{Binding Model}" />
+                    </StackPanel>
+                  </DockPanel>
+                  <!-- 一台设备 -->
+                  <DockPanel MinHeight="68" IsVisible="{Binding !IsAll}">
+                    <Border Classes="bar" Classes.run="{Binding BarRun}" Classes.err="{Binding BarErr}" DockPanel.Dock="Left" />
+                    <StackPanel Margin="12,10">
+                      <DockPanel Height="26">
+                        <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
+                          <Border Height="22" Padding="6,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1" Background="{StaticResource ASoftBrush}"
+                                  BorderBrush="{StaticResource ATabBrush}" IsVisible="{Binding IsRemote}" ToolTip.Tip="本机远程控制中">
+                            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+                              <c:IconView Icon="f-plug" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+                              <pr:PrText Text="远程" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+                            </StackPanel>
+                          </Border>
+                          <c:IconView Icon="f-lock" Size="15" Foreground="{StaticResource TIconBrush}" IsVisible="{Binding !IsRemote}" ToolTip.Tip="本地只读" />
+                        </Panel>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <pr:PrText Classes="nm" Text="{Binding Name}" VerticalAlignment="Center" />
+                          <pr:PrText Classes="md" Text="{Binding Model}" />
+                        </StackPanel>
+                      </DockPanel>
+                      <TextBlock Classes="r2" TextTrimming="CharacterEllipsis">
+                        <Run Text="{Binding Line1}" /><Run Text="{Binding Line1Red}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding Line1Tail}" />
+                      </TextBlock>
+                      <pr:PrText Classes="r3" Text="{Binding Eta}" IsVisible="{Binding HasEta}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Panel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <!-- 设备信息 -->
+        <StackPanel Margin="10,10,10,4" IsVisible="{Binding Devices.HasInfo}">
+          <Border BorderBrush="{StaticResource ABrush}" BorderThickness="0,0,0,1.5" Padding="0,0,0,6" Margin="0,0,0,8">
+            <pr:PrText Text="{Binding Devices.InfoTitle}" FontSize="{StaticResource FsPaneTitle}" Foreground="{StaticResource ABrush}" />
+          </Border>
+          <ItemsControl ItemsSource="{Binding Devices.Info}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="6" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sh:InfoRow">
+                <DockPanel>
+                  <pr:PrText DockPanel.Dock="Left" Width="72" Text="{Binding Key}" Foreground="{StaticResource T3Brush}" LineHeight="18" Padding="0,0,8,0" />
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource GDotBrush}" VerticalAlignment="Center" IsVisible="{Binding Dot}" />
+                    <TextBlock Text="{Binding Value}" Foreground="{StaticResource T1Brush}" LineHeight="18" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

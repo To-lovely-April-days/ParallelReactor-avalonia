@@ -19,6 +19,9 @@
     <DataTemplate DataType="dlg:PickDialogVm" x:DataType="dlg:PickDialogVm">
       <vd:PickDialogView />
     </DataTemplate>
+    <DataTemplate DataType="dlg:StopChannelDialogVm" x:DataType="dlg:StopChannelDialogVm">
+      <vd:StopInfoView />
+    </DataTemplate>
     <DataTemplate DataType="dlg:LeaseDialogVm" x:DataType="dlg:LeaseDialogVm">
       <vd:LeaseDialogView />
     </DataTemplate>
@@ -165,7 +168,7 @@
   </UserControl.Styles>
   <Panel>
     <Border Name="Scrim" Background="{StaticResource OverlayBrush}" />
-    <ContentControl Name="Holder" Content="{Binding Dialogs.Current}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24">
+    <ContentControl Name="Holder" Content="{Binding Dialogs.Current}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24">
       <ContentControl.ContentTemplate>
         <DataTemplate x:DataType="sh:DialogVm">
           <!-- 键盘（M3 复核）：打开时焦点移到框里第一个位置上一个看不见的锚点（0 × 0、不在 Tab 顺序里、没有焦点外观）；

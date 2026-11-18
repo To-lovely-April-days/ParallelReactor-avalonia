@@ -231,6 +231,13 @@ public static class ActionGuard
         return v < 0 || v > max ? "超出量程 · " + model.Name + " ≤ " + JsNumber.ToString(max) + " ℃" : "";
     }
 
+    /// <summary>溶液体积检查（融合版 F3，样稿没有）：'请输入溶液体积' / '溶液体积不能为负'。上限看设备的釜容积（数据源检查）。</summary>
+    public static string VolumeCheck(double? ml)
+    {
+        if (ml is not double v || !double.IsFinite(v)) return "请输入溶液体积";
+        return v < 0 ? "溶液体积不能为负" : "";
+    }
+
     /// <summary>转速检查（样稿 rpmCheck）：'请输入转速' / '超出量程 · 0–1500 rpm'。</summary>
     public static string RpmCheck(ModelProfile? model, double? rpm)
     {
@@ -451,6 +458,14 @@ public static class ActionGuard
                 return f.Conn == ConnStatus.Online ? "已连接" : f.Conn == ConnStatus.Connecting ? "正在重连" : "";
             case DeviceAction.Rename:
                 return AliasError(p.Alias, f.Peers);
+            case DeviceAction.SetVolume:
+            {
+                // 融合版 F3：HMI 对执行程序的通道拒绝改体积（CHANNEL_PROGRAM_OWNED），这里先写明；上限（釜容积）由数据源按设置检查
+                string r = NeedCh(f, p);
+                if (r.Length > 0) return r;
+                if (f.Channel(p.N)!.Program is ProgramStatus.Running or ProgramStatus.Held) return Rv(p) + " 程序运行中";
+                return VolumeCheck(p.Ml);
+            }
             default:   // StopAll、Remove：没有自己的检查
                 return "";
         }

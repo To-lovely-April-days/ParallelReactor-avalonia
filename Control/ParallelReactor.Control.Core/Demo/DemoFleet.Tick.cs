@@ -80,7 +80,7 @@ public sealed partial class DemoFleet
         {
             foreach (var ch in dev.ChannelList)
             {
-                if (!ch.Installed) continue;
+                if (!ch.Installed || ch.NoData) continue;   // 融合版停用的通道不采集
                 if (ch.State == StateKey.Alarm)
                 {
                     if (ch.SpC is double sp) HoldTemp(ch, sp);
@@ -96,7 +96,7 @@ public sealed partial class DemoFleet
             var cut = AddMs(now, -KeepMin * MinMs);
             foreach (var ch in dev.ChannelList)
             {
-                if (!ch.Installed) continue;
+                if (!ch.Installed || ch.NoData) continue;
                 var h = ch.HistoryList;
                 h.Add(DemoHistory.Sample(dev, ch, now));
                 int drop = 0;

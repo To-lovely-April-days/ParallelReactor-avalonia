@@ -302,6 +302,13 @@ public sealed partial class DemoFleet
                 d.Alias = ActionGuard.JsTrim(p.Alias ?? "");
                 return ("已重命名（原名 " + old + "）", false);
             }
+            case DeviceAction.SetVolume:
+            {
+                // 融合版 F3：溶液体积（0.1 mL 分辨率；守卫已查过有数、不为负、程序没在运行）
+                double ml = DeviceActions.RoundVolume(p.Ml ?? 0);
+                ch!.VolumeMl = ml;
+                return (DeviceActions.VolumeText(ch.N, ml), false);
+            }
             case DeviceAction.Remove:
                 if (d.Lease.State != LeaseStatus.Local) SetLease(d, "local");
                 _devices.Remove(d);

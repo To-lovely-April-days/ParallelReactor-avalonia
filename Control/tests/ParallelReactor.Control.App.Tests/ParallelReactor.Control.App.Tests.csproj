@@ -38,6 +38,8 @@
          （MockVectors/PageMockVectors.cs 的 dv-* / dx-* / td-* / tt-*；Core 那边用同一份数据直接测计算器） -->
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageVectorData.cs" Link="MockVectors/PageVectorData.cs" />
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/PageMockVectors.cs" Link="MockVectors/PageMockVectors.cs" />
+    <!-- pc-v3 样稿的色板（ChartMockVectors 的 palette）：曲线向量是 pc-v3 画的，颜色按当时的色板比（融合版 F1 换了色板） -->
+    <Compile Include="../ParallelReactor.Control.Tests/MockVectors/ChartMockVectors.cs" Link="MockVectors/ChartMockVectors.cs" />
     <!-- M5 反应釜页「程序」面板（ReactorProgramTests）：样稿在 WebKit 里量的画布、状态行、工具、卡片标记、安全联锁（Core 的 StepFlowLayoutTests 用同一份数据测版面）；
          程序台账的实时接线（LiveLedgerTests）用手造的遥测帧（LiveFrames，同 Core 的 LedgerMatchTests / StepTrackerTests） -->
     <Compile Include="../ParallelReactor.Control.Tests/MockVectors/ReactorMockVectors.cs" Link="MockVectors/ReactorMockVectors.cs" />

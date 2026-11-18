@@ -1,0 +1,198 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.FrameSection">
+  <!-- 外框零件（融合版 F1，样稿 main-fusion.html .titlebar / .menubar / .cap / .tbar / .pane / .status）：F2 搭外壳之前先在这里把令牌和控件主题拼一遍。
+       深蓝条在系统标题栏之下（用户决定：用系统标题栏 + 窗口内的深蓝条，不自绘窗口按钮）。只用令牌。 -->
+  <UserControl.Resources>
+    <!-- 深蓝条上的半透明白（样稿 .tb-chip rgba(255,255,255,.16)）：t-inv 的透明度变体 -->
+    <SolidColorBrush x:Key="StripChipBrush" Color="{StaticResource TInvColor}" Opacity="0.16" />
+  </UserControl.Resources>
+  <StackPanel Spacing="14">
+    <!-- 窗口内的深蓝条（.titlebar：30 高、tb-a → tb-b 渐变、13 px） -->
+    <Border Height="{StaticResource StripH}" Background="{StaticResource SideGradientBrush}" Padding="8,0,12,0" CornerRadius="{StaticResource RadiusStep}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="14" VerticalAlignment="Center">
+          <TextBlock Text="关于" FontSize="{StaticResource FsBase}" Foreground="{StaticResource SideInk2Brush}" />
+          <TextBlock Text="设置" FontSize="{StaticResource FsBase}" Foreground="{StaticResource SideInk2Brush}" />
+          <TextBlock Text="帮助" FontSize="{StaticResource FsBase}" Foreground="{StaticResource SideInk2Brush}" />
+          <TextBlock Text="工具" FontSize="{StaticResource FsBase}" Foreground="{StaticResource SideInk2Brush}" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource BrandOrangeBrush}">
+            <TextBlock Text="A" FontSize="{StaticResource FsBase}" FontWeight="Bold" Foreground="{StaticResource TInvBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Background="{StaticResource StripChipBrush}" CornerRadius="3" Padding="8,2">
+            <TextBlock Text="PC-测试工位1" FontSize="{StaticResource FsBase}" Foreground="{StaticResource TInvBrush}" />
+          </Border>
+          <TextBlock Text="ALZK Parallel Reactor Control · 平行反应仪控制软件 — 3 台设备" FontSize="{StaticResource FsBase}"
+                     Foreground="{StaticResource StripInkBrush}" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 菜单栏（.menubar：54 高、白底、下边 line-menu；页面 24 px 细体 gbg-menu，当前页品牌蓝 400）+ 运行胶囊（.cap） -->
+    <Border Height="{StaticResource MenubarH}" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineMenuBrush}"
+            BorderThickness="0,0,0,1" Padding="0,0,12,0">
+      <DockPanel>
+        <Border DockPanel.Dock="Right" Height="{StaticResource CapH}" CornerRadius="{StaticResource RadiusCap}" Background="{StaticResource CapBgBrush}"
+                Padding="20,0,8,0" VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="1号机" FontSize="{StaticResource FsCap}" Foreground="{StaticResource TInvBrush}" Margin="0,0,6,0" VerticalAlignment="Center" />
+            <Button Theme="{StaticResource PrCapButton}" Classes="go" b:Pr.Icon="play" ToolTip.Tip="启动" AutomationProperties.Name="启动" />
+            <Button Theme="{StaticResource PrCapButton}" b:Pr.Icon="stop" ToolTip.Tip="全部停止" AutomationProperties.Name="全部停止" />
+            <Button Theme="{StaticResource PrCapButton}" b:Pr.Icon="rec" ToolTip.Tip="记录" AutomationProperties.Name="记录" />
+            <Button Theme="{StaticResource PrCapEstop}" b:Pr.Icon="power" Content="急停" Margin="4,0,0,0" />
+          </StackPanel>
+        </Border>
+        <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">
+          <TextBlock Text="主页" FontSize="{StaticResource FsMenu}" FontWeight="Normal" Foreground="{StaticResource MenuOnBrush}"
+                     Padding="{StaticResource MenuItemPadding}" VerticalAlignment="Center" />
+          <TextBlock Text="程序" FontSize="{StaticResource FsMenu}" FontWeight="Light" Foreground="{StaticResource MenuInkBrush}"
+                     Padding="{StaticResource MenuItemPadding}" VerticalAlignment="Center" />
+          <TextBlock Text="曲线" FontSize="{StaticResource FsMenu}" FontWeight="Light" Foreground="{StaticResource MenuInkBrush}"
+                     Padding="{StaticResource MenuItemPadding}" VerticalAlignment="Center" />
+          <Panel VerticalAlignment="Stretch">
+            <TextBlock Text="报警" FontSize="{StaticResource FsMenu}" FontWeight="Light" Foreground="{StaticResource MenuInkBrush}"
+                       Padding="12,0,26,0" VerticalAlignment="Center" />
+            <Border MinWidth="20" Height="20" CornerRadius="10" Padding="6,0" Background="{StaticResource MenuBadgeBrush}"
+                    HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,2,0">
+              <TextBlock Text="3" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold" Foreground="{StaticResource TInvBrush}"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+          </Panel>
+          <TextBlock Text="性能测试" FontSize="{StaticResource FsMenu}" FontWeight="Light" Foreground="{StaticResource MenuInkBrush}"
+                     Padding="{StaticResource MenuItemPadding}" VerticalAlignment="Center" />
+          <TextBlock Text="记录" FontSize="{StaticResource FsMenu}" FontWeight="Light" Foreground="{StaticResource MenuInkBrush}"
+                     Padding="{StaticResource MenuItemPadding}" VerticalAlignment="Center" />
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 工具条（.tbar：46 高、白底、下边 ribbon-line；设备下拉 + 控制权小块 + 竖分隔 + 工具条按钮） -->
+    <Border Height="{StaticResource RibbonH}" Background="{StaticResource RibbonBgBrush}" BorderBrush="{StaticResource RibbonLineBrush}"
+            BorderThickness="0,0,0,1" Padding="12,0">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="flag" Content="打标记" />
+          <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="download" Content="导出" />
+          <Border Width="1" Height="22" Margin="4,0" Background="{StaticResource RibbonSepBrush}" />
+          <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="refresh" Content="重置布局" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+          <TextBlock Text="设备：" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          <ComboBox Theme="{StaticResource PrSelect}" SelectedIndex="0" Height="{StaticResource RibbonSelH}" MinWidth="{StaticResource RibbonSelW}"
+                    CornerRadius="{StaticResource RadiusStep}" BorderBrush="{StaticResource LineFirmBrush}" FontSize="{StaticResource FsBase}">
+            <ComboBoxItem Theme="{StaticResource PrSelectItem}" Content="1号机 · HT-PR8" />
+            <ComboBoxItem Theme="{StaticResource PrSelectItem}" Content="2号机 · HT-PR4" />
+          </ComboBox>
+          <Border Width="1" Height="22" Margin="4,0" Background="{StaticResource RibbonSepBrush}" />
+          <TextBlock Text="控制权：" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          <!-- .lz.on：a-soft 底 + a-tab 边 + 品牌蓝 600；.lz：白底 line-sep 边 -->
+          <Border Height="{StaticResource PillH}" Padding="9,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1"
+                  Background="{StaticResource ASoftBrush}" BorderBrush="{StaticResource ATabBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <c:IconView Icon="link" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+              <TextBlock Text="远程控制中" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <Border Height="{StaticResource PillH}" Padding="9,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1"
+                  Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineSepBrush}">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <c:IconView Icon="lock" Size="14" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+              <TextBlock Text="释放" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- 停靠区（.dock：bg-app 底、间距 8、内边距 8）：收起的面板（只剩 30 宽的竖条）· 带竖条的面板 · 只有标题灰带的面板 -->
+    <Border Background="{StaticResource DockBgBrush}" Padding="{StaticResource DockPadding}" Height="196">
+      <Grid ColumnDefinitions="Auto,8,2*,8,*">
+        <!-- 收起：竖条 30（圆钮 + 竖排名字 + 设备号小方块） -->
+        <Border Width="{StaticResource RailColW}" Background="{StaticResource RailBgBrush}" BorderBrush="{StaticResource PaneLineBrush}" BorderThickness="1"
+                CornerRadius="{StaticResource Radius}" BoxShadow="{StaticResource ShadowCard}">
+          <StackPanel Spacing="8" Margin="0,9,0,0" HorizontalAlignment="Center">
+            <Border Width="{StaticResource RailBtn}" Height="{StaticResource RailBtn}" CornerRadius="9" BorderThickness="1.2" BorderBrush="{StaticResource RailBtnBrush}">
+              <c:IconView Icon="right" Size="10" Foreground="{StaticResource RailInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Text="设&#x0a;备" FontSize="{StaticResource FsRail}" LineHeight="18" Foreground="{StaticResource RailInkBrush}" TextAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <!-- 展开：左竖条 28 + 面板体（标题灰带 42 + 内容） -->
+        <Border Grid.Column="2" Background="{StaticResource PaneBgBrush}" BorderBrush="{StaticResource PaneLineBrush}" BorderThickness="1"
+                CornerRadius="{StaticResource Radius}" BoxShadow="{StaticResource ShadowCard}" ClipToBounds="True">
+          <DockPanel>
+            <Border DockPanel.Dock="Left" Width="{StaticResource RailW}" Background="{StaticResource RailBgBrush}" BorderBrush="{StaticResource RailLineBrush}" BorderThickness="0,0,1,0">
+              <StackPanel Spacing="8" Margin="0,9,0,0" HorizontalAlignment="Center">
+                <Border Width="{StaticResource RailBtn}" Height="{StaticResource RailBtn}" CornerRadius="9" BorderThickness="1.2" BorderBrush="{StaticResource RailBtnBrush}">
+                  <c:IconView Icon="left" Size="10" Foreground="{StaticResource RailInkBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="通&#x0a;道" FontSize="{StaticResource FsRail}" LineHeight="18" Foreground="{StaticResource RailInkBrush}" TextAlignment="Center" />
+              </StackPanel>
+            </Border>
+            <Border DockPanel.Dock="Top" Height="{StaticResource PaneHeadH}" Background="{StaticResource PaneHeadBrush}"
+                    BorderBrush="{StaticResource PaneHeadLineBrush}" BorderThickness="0,0,0,1" Padding="14,0,8,0">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <pr:SegControl Value="run">
+                    <pr:SegOption Value="run" Label="运行表" />
+                    <pr:SegOption Value="gas" Label="气路图" />
+                    <pr:SegOption Value="card" Label="卡片" />
+                    <pr:SegOption Value="bar" Label="棒图" />
+                  </pr:SegControl>
+                  <Button Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="停止1号机" />
+                </StackPanel>
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}"
+                           TextTrimming="CharacterEllipsis" ToolTip.Tip="1号机 · 8 路 · 运行 6 · 报警 1 · 程序「平行合成程序 A」">
+                  <Run Text="1号机" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" · 8 路 · 运行 " /><Run Text="6" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" · " /><Run Text="报警 1" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text=" · 程序「平行合成程序 A」" />
+                </TextBlock>
+              </DockPanel>
+            </Border>
+            <TextBlock Margin="14,12" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" LineHeight="{StaticResource LhBase}"
+                       Text="面板：白底 · 1 px pane-line · 圆角 4 · ShadowCard；左侧竖条 28（rail-bg、右边 rail-line、18 px 圆钮、14 px 竖排名字）；标题灰带 42（pane-head、下边 pane-head-line）。" />
+          </DockPanel>
+        </Border>
+        <!-- 只有标题灰带的面板（其它页面的 .board.pg .panel） -->
+        <Border Grid.Column="4" BorderBrush="{StaticResource PaneLineBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
+                BoxShadow="{StaticResource ShadowCard}" ClipToBounds="True">
+        <pr:PrPanel Title="共用资源" Sub="气路空闲 · 无排队" ShowGrip="False" CanMaximize="False" CanClose="False">
+          <StackPanel Margin="14,10" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <pr:Chip Content="惰性气 N₂" />
+              <pr:Chip Content="气体 A H₂" IsChecked="True" />
+              <pr:Chip Content="排空" b:Pr.Reason="维护模式下才能开阀" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock Text="搅拌" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+              <ToggleButton Theme="{StaticResource PrSwitch}" IsChecked="True" Content="400 rpm · 全部釜共用" />
+            </StackPanel>
+          </StackPanel>
+        </pr:PrPanel>
+        </Border>
+      </Grid>
+    </Border>
+
+    <!-- 状态栏（.status：26 高、bg-bar、上边 line-grey、13 px t-2、竖分隔 line-sep） -->
+    <Border Height="{StaticResource StatusBarH}" Background="{StaticResource BgBarBrush}" BorderBrush="{StaticResource LineGreyBrush}"
+            BorderThickness="0,1,0,0" Padding="12,0">
+      <DockPanel>
+        <TextBlock DockPanel.Dock="Right" Text="采样 1 s · 2026-11-15 14:30:07" Classes="num" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <TextBlock Text="已连接 3/3 台" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" />
+          <Border Width="1" Height="14" Background="{StaticResource LineSepBrush}" />
+          <TextBlock Text="远程控制 1 台" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" />
+          <Border Width="1" Height="14" Background="{StaticResource LineSepBrush}" />
+          <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}">
+            <Run Text="报警 2 · 提醒 1 · " /><Run Text="未确认 3" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" />
+          </TextBlock>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

@@ -33,6 +33,8 @@ public sealed partial class PickRowVm : ObservableObject
     [ObservableProperty] private string _alias = "";
     [ObservableProperty] private string _sub = "";
     [ObservableProperty] private string _runText = "";
+    /// <summary>型号（「HT-PR8」，融合版勾选行别名后面的灰字）。</summary>
+    [ObservableProperty] private string _model = "";
     /// <summary>勾上了（样稿 is-on：checked && !reason）。</summary>
     [ObservableProperty] private bool _isOn;
     /// <summary>不能选的原因（样稿 is-dis + data-reason）；null = 能选。</summary>
@@ -58,7 +60,9 @@ public abstract partial class PickDialogVm : DialogVm
         Shell = shell;
         Name = name;
         Arg = arg;
-        Width = 640;
+        Width = 518;
+        Sub = null;
+        Icon = null;
         AllCommand = new RelayCommand(() => { foreach (var d in shell.Fleet.Devices) Sel[d.K] = d.CanStop && Excluded(d).Length == 0; Refresh(); });
         NoneCommand = new RelayCommand(() => { foreach (var d in shell.Fleet.Devices) Sel[d.K] = false; Refresh(); });
         CancelButton = new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this)));
@@ -78,6 +82,17 @@ public abstract partial class PickDialogVm : DialogVm
     public ICommand NoneCommand { get; }
     public FootButton CancelButton { get; }
 
+    /// <summary>融合版 F3（样稿 pick + stopTbl）：开头一句（粗体段 600）。</summary>
+    public IReadOnlyList<TextSeg> Lead { get; protected init; } = Array.Empty<TextSeg>();
+    /// <summary>「对程序 / 加热 / 搅拌 / 气路 / 釜内压力做什么」表（样稿 STOPK）。</summary>
+    public IReadOnlyList<StopRow> StopRows { get; protected init; } = Array.Empty<StopRow>();
+    /// <summary>琥珀说明（样稿 STOP_NOTE）。</summary>
+    public IReadOnlyList<TextSeg> StopNote => StopTexts.Note;
+    /// <summary>预选了一台时的说明（「已预选 1号机 · 可再勾选其它设备」）；没有预选为 null。</summary>
+    [ObservableProperty] private string? _preText;
+    /// <summary>「已选 3 台」（全部停止「… · 共 18 个运行中的反应釜」）：融合版不放在底栏左侧（样稿没有），按钮的提示里有。</summary>
+    [ObservableProperty] private string _pickedText = "";
+
     /// <summary>勾选条左边的说明（样稿 pickBar 的 label）。</summary>
     [ObservableProperty] private string _caption = "";
     /// <summary>说明（样稿 ui.note，中性；粗体段见 TextSeg）。</summary>
@@ -87,7 +102,7 @@ public abstract partial class PickDialogVm : DialogVm
     protected abstract string Excluded(DeviceVm d);
 
     /// <summary>勾选行右侧的运行情况（全部停止：没在运行时「无运行中 · 仍会发送」）。</summary>
-    protected virtual string RunTextOf(DeviceVm d) => DialogText.RunText(d);
+    protected virtual string RunTextOf(DeviceVm d) => "运行 " + d.Running + "/" + d.Installed;
 
     /// <summary>样稿 picked：勾了、已连接、不被排除的设备（按列表顺序）。</summary>
     public IReadOnlyList<DeviceVm> Picked => Shell.Fleet.Devices.Where(d => Sel.TryGetValue(d.K, out var on) && on && d.CanStop && Excluded(d).Length == 0).ToList();
@@ -118,6 +133,7 @@ public abstract partial class PickDialogVm : DialogVm
             var reason = RowReason(d);
             row.Alias = d.Alias;
             row.Sub = d.ModelLabel + " · " + d.Host;
+            row.Model = d.Model.Label.Split(' ')[0];
             row.Reason = reason;
             row.IsOn = Sel.TryGetValue(d.K, out var on) && on && reason == null;
             row.RunText = reason ?? RunTextOf(d);
@@ -232,12 +248,13 @@ public sealed partial class EstopDialogVm : PickDialogVm
     public EstopDialogVm(ShellVm shell, string? arg) : base(shell, "estop", arg)
     {
         _one = DialogText.ParseK(arg) is int k && shell.Fleet.Device(k) != null ? k : null;
-        Title = "急停";
-        Sub = "立即切断所选设备的加热、进气与搅拌，运行中的程序全部中止";
-        Icon = "estop";
+        // 融合版 F3（样稿 openEstop）：「急停 · 远程停机」+ 开头一句 + 「对气路做什么」表 + 琥珀说明 + 设备勾选；确认「急停 3 台」（红色实心，没有图标）
+        Title = "急停 · 远程停机";
         IsDanger = true;
+        Lead = StopTexts.LeadEstop;
+        StopRows = StopTexts.Estop;
         // 发出即关（SendAsync）：执行期间按钮不灰（AsyncRelayCommand 默认执行期间是没有原因的禁用，M6）
-        GoButton = new FootButton("急停所选 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Danger, "estop", large: true);
+        GoButton = new FootButton("急停 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Danger);
         Footer = new FootBar(CancelButton, GoButton);
         // 样稿：急停<b>不需要控制权</b>，连接正常就会发送。<span nw>急停<b>复位只能在设备触屏上操作</b>，</span><span nw>本机不能复位。</span>
         Note = new[]
@@ -267,8 +284,9 @@ public sealed partial class EstopDialogVm : PickDialogVm
                 : one.Alias + " 未勾选 · 勾选后才会急停";
         }
         int n = Picked.Count;
-        FooterLeft = "已选 " + n + " 台";
-        GoButton.Label = "急停所选 " + n + " 台";
+        PreText = one != null && Sel.TryGetValue(one.K, out var on1) && on1 ? "已预选 " + one.Alias + " · 可再勾选其它设备" : null;
+        GoButton.Label = "急停 " + n + " 台";
+        PickedText = "已选 " + n + " 台";
         GoButton.Reason = n > 0 ? null : "至少选择一台已连接的设备";
     }
 
@@ -295,10 +313,12 @@ public sealed partial class StopAllDialogVm : PickDialogVm
     public StopAllDialogVm(ShellVm shell, string? arg) : base(shell, "stopall", arg)
     {
         _stopsStirring = shell.Fleet.StopAllStopsStirring;
+        // 融合版 F3（样稿 openStop）：开头一句 + 「对气路做什么」表（搅拌一行跟着设置）+ 琥珀说明 + 设备勾选；参数 k（通道面板「停止1号机」）= 只预选这一台
         Title = "全部停止";
-        Sub = StopAllText.Sub(_stopsStirring);
-        Icon = "stop";
-        GoButton = new FootButton("停止所选 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "stop", large: true);
+        Lead = StopTexts.LeadAll;
+        StopRows = StopTexts.All(_stopsStirring);
+        _one = DialogText.ParseK(arg) is int k1 && shell.Fleet.Device(k1) != null ? k1 : null;
+        GoButton = new FootButton("全部停止 0 台", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary);
         Footer = new FootBar(CancelButton, GoButton);
         Caption = "选择设备（已连接的默认全选）";
         // 样稿：全部停止<b>不需要控制权</b>，连接正常就会发送（…）。搅拌也会一并停止；需要立即切断并锁定请用急停。（最后一句跟着设置，StopAllText.StirNote）
@@ -307,8 +327,10 @@ public sealed partial class StopAllDialogVm : PickDialogVm
             new TextSeg("全部停止"), new TextSeg("不需要控制权", Bold: true),
             new TextSeg("，连接正常就会发送（本机看到的状态可能滞后，所以不会因为「看起来没在运行」而跳过）。" + StopAllText.StirNote(_stopsStirring)),
         };
-        InitSelection(null);
+        InitSelection(_one);
     }
+
+    private readonly int? _one;
 
     public FootButton GoButton { get; }
 
@@ -317,14 +339,17 @@ public sealed partial class StopAllDialogVm : PickDialogVm
 
     protected override string Excluded(DeviceVm d) => d.Facts.Role.CanStop ? "" : TokenRole.NoStopText(d.Alias);
 
-    protected override string RunTextOf(DeviceVm d) => d.Running > 0 ? DialogText.RunText(d) : "无运行中 · 仍会发送";
+    protected override string RunTextOf(DeviceVm d) => d.Running > 0 ? "运行 " + d.Running + "/" + d.Installed : "无运行中 · 仍会发送";
 
     protected override void RefreshTexts()
     {
         var list = Picked;
         int n = list.Count, nRun = list.Sum(d => d.Running);
-        FooterLeft = "已选 " + n + " 台 · 共 " + nRun + " 个运行中的反应釜";
-        GoButton.Label = "停止所选 " + n + " 台";
+        var one = _one is int k ? Shell.Fleet.Device(k) : null;
+        PreText = one != null && Sel.TryGetValue(one.K, out var on1) && on1 ? "已预选 " + one.Alias + " · 可再勾选其它设备" : null;
+        GoButton.Tip = "共 " + nRun + " 个运行中的反应釜";
+        PickedText = "已选 " + n + " 台 · 共 " + nRun + " 个运行中的反应釜";
+        GoButton.Label = "全部停止 " + n + " 台";
         GoButton.Reason = n > 0 ? null : "至少选择一台已连接的设备";
     }
 

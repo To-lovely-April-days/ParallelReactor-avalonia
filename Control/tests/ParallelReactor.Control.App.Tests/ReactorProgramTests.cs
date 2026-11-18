@@ -13,6 +13,8 @@ using ParallelReactor.Control.Pages;
 using ParallelReactor.Control.Shell;
 using Xunit;
 
+using ParallelReactor.Control.Tests.Fakes;
+
 namespace ParallelReactor.Control.Tests;
 
 /// <summary>
@@ -29,21 +31,21 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class ReactorProgramTests
 {
-    private static (ShellVm Shell, ReactorPageVm Page) Open(int k, int n, string query = "freeze=1", int width = 1920, int height = 1080, string? setup = null)
+    private static (ShellVm Shell, ReactorParts Page) Open(int k, int n, string query = "freeze=1", int width = 1920, int height = 1080, string? setup = null)
     {
+        if (setup != "adddevice") return ReactorParts.Open(k, n, query, width, height);
         var p = DemoParams.Parse(query);
         if (!p.Freeze) p = p with { Freeze = true };
         var s = new ShellVm(FleetVm.CreateDemo(p));
         s.Toasts.Frozen = true;
         s.Layout.Update(new Size(width, height));
-        if (setup == "adddevice" && s.Fleet.DemoData is { } demo)
+        if (s.Fleet.DemoData is { } demo)
         {
             demo.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
             s.Fleet.RefreshNow();
         }
-        s.ApplyDemoParams(p, Route.Reactor(k, n));
-        var page = Assert.IsType<ReactorPageVm>(s.Page);
-        return (s, page);
+        s.ApplyDemoParams(p);
+        return (s, new ReactorParts(s, k, n));
     }
 
     // ———————————————————— 对照样稿 ————————————————————
@@ -245,74 +247,6 @@ public class ReactorProgramTests
 
     // ———————————————————— 状态条 · 页面拥有的报警 · 断线说明条 ————————————————————
 
-    [Fact]
-    public void AlarmStrip_OwnsTheOnlyAck_InspectorDoesNotRepeatIt()
-    {
-        var (shell, page) = Open(3, 11, "freeze=1&sel=3/11");
-        var a = Assert.Single(page.Alerts);
-        Assert.Equal((ReactorAlertTone.Err, "超压报警", "确认", (string?)null), (a.Tone, a.Title, a.ButtonText, a.ButtonReason));
-        Assert.Equal("RV11 超压 3.12 MPa ≥ 3.00 MPa · 已关闭 SV11 · 程序在第 2/4 步暂停", a.Text);
-        var owned = Assert.Single(page.OwnedAlarms);
-        Assert.Equal(ReactorPageVm.StripOwnerName, owned.Value);
-        Assert.StartsWith("3:", owned.Key, StringComparison.Ordinal);
-        // 检查器（选中的就是这个反应釜）：这条报警不再列出（屏幕上只有一个「确认」）
-        var insp = Assert.IsType<ReactorInspectorVm>(shell.Inspector.Body);
-        Assert.Empty(insp.TopAlarms);
-        Assert.True(page.ShowsReconnect);
-        // 确认：报警条写「✓ 已确认」，页面不再拥有它
-        a.ButtonCommand.Execute(null);
-        shell.Fleet.RefreshNow();
-        var acked = Assert.Single(page.Alerts);
-        Assert.True(acked.Acked);
-        Assert.Null(acked.ButtonText);
-        Assert.Empty(page.OwnedAlarms);
-    }
-
-    [Fact]
-    public void WarnStrip_IsNeutral_AndOwned()
-    {
-        var (_, page) = Open(1, 3);
-        var a = Assert.Single(page.Alerts);
-        Assert.Equal((ReactorAlertTone.Warn, "warn", "提醒", "确认"), (a.Tone, a.Icon, a.Title, a.ButtonText));
-        Assert.Single(page.OwnedAlarms);
-    }
-
-    [Fact]
-    public void OfflineBanner_ReconnectOnThePage()
-    {
-        var (_, page) = Open(4, 1, "freeze=1&devs=4&sel=4/1");
-        var off = page.Alerts[0];
-        Assert.True(off.IsOff);
-        Assert.False(off.HasIcon);
-        Assert.Matches(@"^连接中断 · 重连中 \d+ s$", off.ConnText);
-        Assert.Equal("读数停在最后时刻 · 数据停在 10:11:40", off.Text);
-        Assert.Equal(("立即重连", "refresh", (string?)null), (off.ButtonText, off.ButtonIcon, off.ButtonReason));
-        Assert.True(page.ShowsReconnect);
-        var vm = page.Program;
-        Assert.True(vm.Stale);
-        Assert.Equal(("离线", "停在第 3/4 步 · 数据停在 10:11:40"), (vm.StatusWord, vm.StatusFull));
-        Assert.Equal("当前（离线）", vm.Steps[2].Mark);
-        Assert.False(vm.Steps[2].CondRun);
-        Assert.Equal(("= 未知", SafetyTone.Mute), (vm.SafeValue, vm.SafeTone));
-    }
-
-    [Fact]
-    public void EstopStrip_ThenAlarm_ProgramAborted()
-    {
-        var (_, page) = Open(3, 11, "freeze=1&estop=3&sel=3/11");
-        Assert.Equal(2, page.Alerts.Count);
-        Assert.Equal((ReactorAlertTone.Err, "estop"), (page.Alerts[0].Tone, page.Alerts[0].Icon));
-        Assert.Equal("加热 / 进气 / 搅拌已切断 · 复位只能在3号机触屏上操作", page.Alerts[0].Text);
-        Assert.Null(page.Alerts[0].ButtonText);
-        Assert.Equal("超压报警", page.Alerts[1].Title);
-        var vm = page.Program;
-        Assert.Equal(("已中止", "第 2/4 步"), (vm.StatusWord, vm.StatusFull));
-        Assert.Equal(("已中止", StepMarkKind.Abort), (vm.Steps[1].Mark, vm.Steps[1].MarkKind));
-        Assert.True(vm.Steps[1].IsAbort);
-        Assert.Equal(1, vm.CurIndex);
-        Assert.Equal(("= 急停", SafetyTone.Err, "急停已触发 · 加热 / 进气 / 搅拌已切断 · 需在触屏复位"), (vm.SafeValue, vm.SafeTone, vm.SafeNote));
-    }
-
     // ———————————————————— 没有程序 · 从未连上 · 未安装 ————————————————————
 
     [Fact]
@@ -356,71 +290,6 @@ public class ReactorProgramTests
         Assert.All(vm.Steps, s => Assert.Equal("", s.Mark));
     }
 
-    [Fact]
-    public void NeverConnected_OnlyALine()
-    {
-        var (_, page) = Open(4, 1, setup: "adddevice");
-        var vm = page.Program;
-        Assert.True(vm.HasNoProgram);
-        Assert.True(vm.NeverConnected);
-        Assert.Equal(("RV1 没有程序", "5号机尚未连接 · 连上后这里显示程序库"), (vm.NoProgTitle, vm.NoProgLead));
-        Assert.Empty(vm.Library);
-        Assert.False(vm.HasPreview);
-        Assert.Equal("首次连接 · 尚未收到数据", Assert.Single(page.Alerts).Text);
-        Assert.Null(page.Alerts[0].ButtonText);                              // 首次连接：没有按钮（正在自动连）
-    }
-
-    [Fact]
-    public void Uninstalled_Routable_QuietExplanation()
-    {
-        var (shell, page) = Open(1, 5);
-        Assert.Equal(Route.Reactor(1, 5), shell.Route);
-        Assert.False(page.Installed);
-        Assert.Empty(page.OwnedAlarms);
-        var u = page.Un;
-        Assert.Equal(("1号机 › RV5", "1号机 · RV5 未安装", "RV5 · 空位"), (u.Crumb, u.Title, u.Caption));
-        Assert.Equal("1号机（HT-PR8 · 现场）只装了 RV1–RV4，RV5–RV8 未安装。这个位置没有釜体，也没有温度、压力、加热和搅拌测点，不能下发程序。", u.Text);
-        Assert.Equal(("HT-PR8 · 现场", "8 路 · 已装 RV1–RV4", "50 mL 釜 · 溶液 ≤ 20 mL", "示例型号 · 参数为假设"), (u.KvModel, u.KvChannels, u.KvVessel, u.KvNote));
-        Assert.Equal(("1号机 的位置 · 8 路", "去已安装的反应釜", "打开1号机设备页"), (u.SlotsTitle, u.ChipsTitle, u.OpenText));
-        Assert.Equal(8, u.Slots.Count);
-        Assert.True(u.Slots[4].IsCur);
-        Assert.False(u.Slots[4].Installed);
-        Assert.Equal("RV5 未安装", u.Slots[4].Tip);
-        Assert.Equal("打开 1号机 · RV1 · 反应中", u.Slots[0].Tip);
-        Assert.Equal(new[] { "RV1", "RV2", "RV3", "RV4" }, u.Chips.Select(c => c.Rv));
-        Assert.Equal(("反应中", "打开 1号机 · RV1"), (u.Chips[0].Word, u.Chips[0].Tip));
-        // 去已安装的反应釜 / 设备页
-        u.Chips[2].OpenCommand.Execute(null);
-        Assert.Equal(Route.Reactor(1, 3), shell.Route);
-        Assert.Contains(shell.Tabs.Tabs, t => t.Route == Route.Reactor(1, 3));
-        Assert.DoesNotContain(shell.Tabs.Tabs, t => t.Route == Route.Reactor(1, 5));   // 未安装位置的页签只在它是当前页签时留着
-    }
-
-    [Fact]
-    public void Uninstalled_OutOfRange_IsNotRoutable()
-    {
-        var (shell, _) = Open(1, 1);
-        shell.Navigate(Route.Reactor(1, 9));
-        Assert.Equal(Route.Overview, shell.Route);
-    }
-
     // ———————————————————— 版式：宽版式只在工作区 ≥ 1800 ————————————————————
 
-    [Theory]
-    [InlineData(1226, 752, false, true)]     // 1920 × 1080
-    [InlineData(1526, 752, false, true)]     // 1920 收起资源管理器
-    [InlineData(936, 592, false, false)]     // 1600 × 900
-    [InlineData(1002, 460, false, false)]    // 1366 × 768
-    [InlineData(2196, 1112, true, false)]    // 2560 × 1440 收起资源管理器
-    public void Layout_WideOnlyFrom1800(double w, double h, bool wide, bool prog2)
-    {
-        var g = ReactorPageLayout.Compute(w, h);
-        Assert.Equal((wide, prog2), (g.Wide, g.Prog2));
-        Assert.Equal(wide, g[ReactorPanel.Props] != null);
-        // 关掉「程序」：右边一栏铺满整个宽度
-        var x = ReactorPageLayout.Compute(w, h, new[] { ReactorPanel.Program });
-        Assert.Null(x[ReactorPanel.Program]);
-        Assert.Equal(0, x[ReactorPanel.Curves]!.Value.X);
-        Assert.Equal(w, x[ReactorPanel.Curves]!.Value.W, 3);
-    }
 }

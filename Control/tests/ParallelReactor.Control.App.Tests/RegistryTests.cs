@@ -217,13 +217,13 @@ public class RegistryTests
         Assert.Empty(shell.Fleet.Devices);
         f.AddDevice(Dev("1号机"));
         f.AddDevice(Dev("2号机", "10.0.0.2"));
-        shell.Navigate(Route.Device(2));
-        Assert.Equal(PageKind.Device, shell.Route.Page);
-        Assert.Contains(shell.Tabs.Tabs, x => x.Id == "device/2");
+        shell.SelectDevice(2);
+        Assert.Equal(2, shell.Nav.DeviceK);
+        Assert.Contains(shell.Devices.Rows, x => x.K == 2);
         _ = f.Device(2)!.Actions.RunAsync(Core.Guard.DeviceAction.Remove);
         Assert.Null(f.Device(2));
-        Assert.Equal(PageKind.Overview, shell.Route.Page);                        // 设备没了：回到总览（样稿 onDevices）
-        Assert.DoesNotContain(shell.Tabs.Tabs, x => x.Id == "device/2");
+        Assert.Equal((AppPage.Home, 0), (shell.Nav.Page, shell.Nav.DeviceK));     // 设备没了：主页回到总览
+        Assert.DoesNotContain(shell.Devices.Rows, x => x.K == 2);
         shell.Dispose();
     }
 }

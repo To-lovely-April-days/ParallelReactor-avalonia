@@ -11,7 +11,7 @@ using ParallelReactor.PerfTest.Results;
 namespace ParallelReactor.PerfTest.Report;
 
 /// <summary>
-/// 自包含中文 HTML 报告，样式令牌与 PC 控制软件（research/pc-control.html）一致：--purple #765cc5、背景 #ececee、面板 #f7f7f8、
+/// 自包含中文 HTML 报告，样式令牌与 PC 控制软件（research/pc-control.html）一致：强调色 ALZK 品牌蓝 #204797（融合版 F1 去掉紫色）、背景 #ececee、面板 #f7f7f8、
 /// 1 px #c9c9cd 线、Segoe UI/Arial、8–11 px 小字。结构：头部 meta → 前置检查表 → 项目汇总（结论 / 参考值 vs 实测，无合格判定除非方案给硬限）
 /// → 每项一节（步骤时间线、基线数据表、§4 记录表、人工录入、操作员备注、SVG 曲线）→ 事件摘要 → 附录（原始文件、公式）。
 /// </summary>
@@ -244,7 +244,7 @@ public static class HtmlReportWriter
                 if (rpm.Count > 0 && rpm.Any(p => p.Y > 0)) series.Add(new SvgSeries("转速设定", SvgChart.LineSpeed, rpm, true));
             }
             var bands = it.Steps.Where(s => (s.Kind == nameof(StepKind.Hold) || s.Kind == nameof(StepKind.WaitStable)) && s.StartedAt.HasValue && s.EndedAt.HasValue)
-                .Select(s => new SvgBand((s.StartedAt!.Value - from).TotalSeconds, (s.EndedAt!.Value - from).TotalSeconds, s.Title, s.Kind == nameof(StepKind.Hold) ? "#dcf8c7" : "#e5e0f5")).ToList();
+                .Select(s => new SvgBand((s.StartedAt!.Value - from).TotalSeconds, (s.EndedAt!.Value - from).TotalSeconds, s.Title, s.Kind == nameof(StepKind.Hold) ? "#dcf8c7" : "#e5ecf7")).ToList();
             var markers = it.Steps.Where(s => s.Kind == nameof(StepKind.Command) && s.StartedAt.HasValue).Select(s => new SvgMarker((s.StartedAt!.Value - from).TotalSeconds, s.Title)).ToList();
             if (series.Count > 0)
             {
@@ -326,7 +326,7 @@ public static class HtmlReportWriter
 
     /// <summary>与 pc-control.html 同令牌。</summary>
     public const string Css = """
-:root{--line:#c9c9cd;--soft-line:#dedee1;--panel:#f7f7f8;--ink:#3f3f45;--muted:#85858c;--purple:#765cc5;--green:#efffe4;--green-line:#dcf8c7;--blue:#6269df;--bg:#ececee;--pass:#5a8f3a;--fail:#b85360}
+:root{--line:#c9c9cd;--soft-line:#dedee1;--panel:#f7f7f8;--ink:#3f3f45;--muted:#85858c;--accent:#204797;--green:#efffe4;--green-line:#dcf8c7;--blue:#6269df;--bg:#ececee;--pass:#5a8f3a;--fail:#b85360}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Arial,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif;font-size:9px;line-height:1.45}
 .page{max-width:1120px;margin:14px auto;padding:0 12px}

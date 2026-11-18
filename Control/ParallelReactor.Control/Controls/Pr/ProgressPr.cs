@@ -29,12 +29,13 @@ public sealed class ProgressPr : Avalonia.Controls.Control
     /// <summary>0..1（超出范围按边界画）。</summary>
     public double Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
     public ProgressTone Tone { get => GetValue(ToneProperty); set => SetValue(ToneProperty, value); }
-    /// <summary>运行中：更深的绿 + 末端线 + 呼吸。</summary>
+    /// <summary>运行中：品牌蓝 + 末端线 + 呼吸。</summary>
     public bool IsRunning { get => GetValue(IsRunningProperty); set => SetValue(IsRunningProperty, value); }
 
-    internal static readonly IBrush DoneFill = Gradient(Palette.G2Color, Palette.G3Color);
-    internal static readonly IBrush RunFill = Gradient(Palette.G2Color, Palette.G4Color);
-    private static readonly IBrush ErrFill = Gradient(Palette.RBgColor, Palette.RLineColor);
+    // 融合版 F1（样稿 .rtab .pgb）：已完成 a-done、运行中品牌蓝、报警红（实心；Gradient 两端同色，保留渐变的写法给以后用）
+    internal static readonly IBrush DoneFill = Gradient(Palette.ADoneColor, Palette.ADoneColor);
+    internal static readonly IBrush RunFill = Gradient(Palette.AColor, Palette.AColor);
+    private static readonly IBrush ErrFill = Gradient(Palette.RColor, Palette.RColor);
     private static readonly IBrush InfoFill = Gradient(Palette.ATintColor, Palette.ASoftColor);
 
     internal static IBrush Gradient(Color a, Color b) => new ImmutableLinearGradientBrush(
@@ -53,8 +54,8 @@ public sealed class ProgressPr : Avalonia.Controls.Control
     {
         var b = new Rect(Bounds.Size);
         if (b.Width < 2 || b.Height < 2) return;
-        // 白底 + 1 px line-2 边框（边框画在内侧）
-        context.DrawRectangle(Palette.BgCardBrush, Palette.Pen(Palette.Line2Color, 1), b.Deflate(0.5));
+        // 白底 + 1 px line-soft 细边框（边框画在内侧）
+        context.DrawRectangle(Palette.BgCardBrush, Palette.Pen(Palette.LineSoftColor, 1), b.Deflate(0.5));
         var inner = b.Deflate(1);
         var w = Math.Round(inner.Width * Math.Clamp(Value, 0, 1));   // 整像素（填充末端的 1 px 线不发虚）
         if (w <= 0) return;
@@ -62,8 +63,8 @@ public sealed class ProgressPr : Avalonia.Controls.Control
         context.DrawRectangle(Fill, null, fill);
         if (IsRunning && Tone == ProgressTone.Ok)
         {
-            // 末端 1 px g-dot-line（inset -1px 0 0）+ 呼吸
-            context.DrawRectangle(Palette.GDotLineBrush, null, new Rect(fill.Right - 1, fill.Y, 1, fill.Height));
+            // 末端 1 px a-d（inset -1px 0 0）+ 呼吸
+            context.DrawRectangle(Palette.ADBrush, null, new Rect(fill.Right - 1, fill.Y, 1, fill.Height));
             if (_pulsing) context.DrawRectangle(PulseClock.Overlay, null, fill);
         }
     }

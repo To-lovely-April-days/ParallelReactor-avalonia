@@ -4,7 +4,7 @@
         xmlns:vs="using:ParallelReactor.Control.Views.Shell"
         xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
         x:Class="ParallelReactor.Control.Views.MainWindow"
-        Title="HT 平行反应仪 · 控制软件"
+        Title="ALZK 平行反应仪控制软件"
         Width="1440" Height="900"
         Background="{StaticResource BgAppBrush}"
         FontFamily="{DynamicResource UiFont}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}"

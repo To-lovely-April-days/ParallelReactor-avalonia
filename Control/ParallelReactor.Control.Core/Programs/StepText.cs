@@ -77,8 +77,11 @@ public static class StepText
         _ => "program",
     };
 
-    /// <summary>步骤名（样稿 PR.sim.stepName）：null → '—'，结束步骤 '结束'，其余按类型。</summary>
-    public static string Name(ProgramStep? step) => step is null ? Fmt.Dash : step.Type == StepKind.End ? "结束" : KindName(step.Type);
+    /// <summary>
+    /// 步骤名（样稿 PR.sim.stepName）：null → '—'；步骤自己写了名字（<see cref="ProgramStep.Name"/>：融合版程序库「恒温反应」、HMI 程序的 name）用它；
+    /// 否则结束步骤 '结束'，其余按类型。
+    /// </summary>
+    public static string Name(ProgramStep? step) => step is null ? Fmt.Dash : step.Name is { Length: > 0 } nm ? nm : step.Type == StepKind.End ? "结束" : KindName(step.Type);
 
     /// <summary>
     /// 步骤摘要（样稿 PR.sim.stepText）：'120 ℃' / '降至 40 ℃' / '0.350 MPa · 气体 A' / '惰性气体 × 3' / '72 min' / '泄压 · 降温' / '保持密封'。

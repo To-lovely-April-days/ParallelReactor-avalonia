@@ -27,6 +27,21 @@ public partial class DialogHost : UserControl
         InitializeComponent();
         Scrim.PointerPressed += (_, e) => { (DataContext as ShellVm)?.Dialogs.Close(); e.Handled = true; };
         AddHandler(DialogFrame.CloseRequestedEvent, (_, e) => { (DataContext as ShellVm)?.Dialogs.Close(); e.Handled = true; });
+        SizeChanged += (_, _) => PlaceTop();
+        Holder.SizeChanged += (_, _) => PlaceTop();
+    }
+
+    /// <summary>
+    /// 对话框的竖直位置（融合版 F3，样稿 #dialog：离顶 14 % 的窗口高度 —— 1080 高时 152、768 高时 108）；放不下时往上挪，至少留 24。
+    /// </summary>
+    private void PlaceTop()
+    {
+        double h = Bounds.Height, dh = Holder.Bounds.Height;
+        if (h <= 0) return;
+        double top = Math.Round(h * 0.14);
+        if (top + dh > h - 24) top = Math.Max(24, Math.Round(h - dh - 24));
+        var m = new Thickness(24, top, 24, 24);
+        if (Holder.Margin != m) Holder.Margin = m;
     }
 
     protected override void OnDataContextChanged(EventArgs e)

@@ -8,6 +8,8 @@ using ParallelReactor.Control.Pages;
 using ParallelReactor.Control.Shell;
 using Xunit;
 
+using ParallelReactor.Control.Tests.Fakes;
+
 namespace ParallelReactor.Control.Tests;
 
 /// <summary>
@@ -16,16 +18,7 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class M5ReviewStepFlowTests
 {
-    internal static (ShellVm Shell, ReactorPageVm Page) Open(int k, int n, string query)
-    {
-        var p = DemoParams.Parse(query);
-        if (!p.Freeze) p = p with { Freeze = true };
-        var s = new ShellVm(FleetVm.CreateDemo(p));
-        s.Toasts.Frozen = true;
-        s.Layout.Update(new Avalonia.Size(1920, 1080));
-        s.ApplyDemoParams(p, Route.Reactor(k, n));
-        return (s, Assert.IsType<ReactorPageVm>(s.Page));
-    }
+    internal static (ShellVm Shell, ReactorParts Page) Open(int k, int n, string query) => ReactorParts.Open(k, n, query);
 
     [Fact]
     public void ProgramAndPreview_ChangeOnce_FilledBeforeTheSwap()

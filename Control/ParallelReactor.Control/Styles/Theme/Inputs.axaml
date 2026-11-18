@@ -3,8 +3,8 @@
                     xmlns:c="using:ParallelReactor.Control.Controls"
                     xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
                     xmlns:b="using:ParallelReactor.Control.Behaviors">
-  <!-- 输入（PORT-PLAN §4.6；样稿 base.css .pr-input / .pr-numbox / .pr-select / .pr-check / .pr-toggle）。
-       控件高 36、圆角 6、line 边框；悬停 line-strong；聚焦 a-line 边框 + 外侧 1 px a-line（合起来 2 px，样稿 box-shadow 0 0 0 1px）。
+  <!-- 输入（融合版 F1；样稿 main-fusion.html .inp / .unit / .gsel / .ck / .tgl，PAGES-REFINE 层）。
+       控件高 30、圆角 3、1 px line-2 细边、14 px 字；悬停 line-strong；聚焦品牌蓝边框 + 外侧 3 px 品牌蓝 × 0.12 的光晕（样稿 box-shadow 0 0 0 3px rgba(32,71,151,.12)）。
        只读 / 禁用：bg-sunken 底、t-3 字（禁用 t-dis）。选中文字用 a-soft 底（不用系统蓝）。 -->
 
   <!-- 文本输入：b:Pr.Unit 给单位后缀（右侧 14 px t-3） -->
@@ -12,13 +12,13 @@
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
     <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="Height" Value="{StaticResource CtlH}" />
-    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="Padding" Value="9,0" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="SelectionBrush" Value="{StaticResource ASoftBrush}" />
     <Setter Property="SelectionForegroundBrush" Value="{StaticResource T1Brush}" />
@@ -40,7 +40,7 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}" />
-          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+          <Border Name="PART_Ring" Margin="-3" BorderThickness="3" BorderBrush="{StaticResource FocusRingBrush}" CornerRadius="6"
                   IsVisible="False" IsHitTestVisible="False" />
           <Grid ColumnDefinitions="*,Auto" Margin="{TemplateBinding BorderThickness}">
             <ScrollViewer Name="PART_ScrollViewer" Theme="{StaticResource PrScrollViewer}"
@@ -75,8 +75,8 @@
               </Panel>
             </ScrollViewer>
             <TextBlock Name="PART_Unit" Grid.Column="1" Text="{TemplateBinding (b:Pr.Unit)}"
-                       FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
-                       Margin="0,0,12,0" VerticalAlignment="Center"
+                       FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"
+                       Margin="0,0,9,0" VerticalAlignment="Center"
                        IsVisible="{TemplateBinding (b:Pr.Unit), Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
           </Grid>
         </Panel>
@@ -86,7 +86,7 @@
       <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     </Style>
     <Style Selector="^:focus-within">
-      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:focus-within /template/ Border#PART_Ring">
       <Setter Property="IsVisible" Value="True" />
@@ -97,7 +97,7 @@
       <Setter Property="Cursor" Value="Arrow" />
     </Style>
     <Style Selector="^[IsReadOnly=True]:focus-within, ^:reason:focus-within">
-      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
     </Style>
     <Style Selector="^[IsReadOnly=True]:focus-within /template/ Border#PART_Ring, ^:reason:focus-within /template/ Border#PART_Ring">
       <Setter Property="IsVisible" Value="False" />
@@ -113,7 +113,7 @@
   <ControlTheme x:Key="PrNumInput" TargetType="TextBox">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="TextAlignment" Value="Right" />
     <Setter Property="Padding" Value="4,0,2,0" />
@@ -153,9 +153,9 @@
 
   <!-- 数值框的 −/+：32 宽、bg-head、t-3 图标 16；悬停 a-tint / a-d，按下 a-soft；禁用 t-dis -->
   <ControlTheme x:Key="PrNumStep" TargetType="Button">
-    <Setter Property="Width" Value="32" />
-    <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+    <Setter Property="Width" Value="28" />
+    <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
     <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
     <Setter Property="Focusable" Value="False" />
     <Setter Property="Cursor" Value="Hand" />
@@ -176,8 +176,8 @@
       </ControlTemplate>
     </Setter>
     <Style Selector="^:pointerover">
-      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+      <Setter Property="Background" Value="{StaticResource AWashBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:pressed">
       <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
@@ -194,12 +194,12 @@
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
     <Setter Property="Height" Value="{StaticResource CtlH}" />
     <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
     <Setter Property="ToolTip.ShowDelay" Value="400" />
     <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
@@ -219,7 +219,7 @@
                       IsVisible="{TemplateBinding ShowSteppers}" AutomationProperties.Name="增加" />
             </Grid>
           </Border>
-          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+          <Border Name="PART_Ring" Margin="-3" BorderThickness="3" BorderBrush="{StaticResource FocusRingBrush}" CornerRadius="6"
                   IsVisible="False" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
@@ -228,7 +228,7 @@
       <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     </Style>
     <Style Selector="^:focus-within /template/ Border#PART_Body">
-      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:focus-within /template/ Border#PART_Ring">
       <Setter Property="IsVisible" Value="True" />
@@ -244,11 +244,11 @@
 
   <!-- 下拉：高 36，右侧 16 px 的 ⌄（t-3）；弹层白底 line 边、圆角 6、ShadowPop，选项同菜单项（36 高、15 px） -->
   <ControlTheme x:Key="PrSelectItem" TargetType="ComboBoxItem">
-    <Setter Property="Height" Value="{StaticResource RowH}" />
-    <Setter Property="Padding" Value="12,0,16,0" />
+    <Setter Property="Height" Value="{StaticResource CtlH}" />
+    <Setter Property="Padding" Value="9,0,16,0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
@@ -276,8 +276,8 @@
       <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
     </Style>
     <Style Selector="^:selected">
-      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
@@ -292,13 +292,13 @@
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
     <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="Height" Value="{StaticResource CtlH}" />
-    <Setter Property="Padding" Value="12,0,34,0" />
+    <Setter Property="Padding" Value="9,0,28,0" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="MaxDropDownHeight" Value="320" />
@@ -320,7 +320,7 @@
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}"
                   CornerRadius="{TemplateBinding CornerRadius}" />
-          <Border Name="PART_Ring" Margin="-1" BorderThickness="1" BorderBrush="{StaticResource ALineBrush}" CornerRadius="7"
+          <Border Name="PART_Ring" Margin="-3" BorderThickness="3" BorderBrush="{StaticResource FocusRingBrush}" CornerRadius="6"
                   IsVisible="False" IsHitTestVisible="False" />
           <TextBlock Name="PART_Placeholder"
                      Text="{TemplateBinding PlaceholderText}"
@@ -368,7 +368,7 @@
       <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     </Style>
     <Style Selector="^:focus-visible, ^:dropdownopen">
-      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Ring, ^:dropdownopen /template/ Border#PART_Ring">
       <Setter Property="IsVisible" Value="True" />
@@ -382,16 +382,16 @@
   </ControlTheme>
 
   <!-- 复选框 / 开关（样稿 .pr-check 与 .pr-toggle 同一种外观：brief §5.8 不再用彩色拨动开关）：
-       18 px 方框、1.5 px line-strong 边、圆角 4；勾选时填 a + 白色 ✓（14 px，描边 2.2）；悬停边框 a-line；按下 a-tint / a 边（已勾选按下 a-d）；
-       文字 15 px t-2、间距 10、最小高 32；禁用 / 原因：t-dis 字、bg-sunken 方框。目标类型 ToggleButton：CheckBox 与普通开关都能用。 -->
+       16 px 方框（样稿 .ck input 16、accent-color 品牌蓝）、1 px line-firm 边、圆角 3；勾选时填 a + 白色 ✓（12 px，描边 2.2）；悬停边框 a；按下 a-wash / a 边（已勾选按下 a-d）；
+       文字 14 px t-2、间距 6、最小高 28；禁用 / 原因：t-dis 字、bg-sunken 方框。目标类型 ToggleButton：CheckBox 与普通开关都能用。 -->
   <ControlTheme x:Key="PrCheck" TargetType="ToggleButton">
     <!-- 不裁剪：焦点环 / 阴影画在控件外面（Avalonia 11.1 的模板控件默认 ClipToBounds=true） -->
     <Setter Property="ClipToBounds" Value="False" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="FontWeight" Value="Normal" />
-    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="MinHeight" Value="28" />
     <!-- 复选框 0；开关（样稿 .pr-toggle）左右 2：使用处设 Padding="2,0" -->
     <Setter Property="Padding" Value="0" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
@@ -403,14 +403,14 @@
       <ControlTemplate>
         <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}" Margin="{TemplateBinding Padding}">
           <Panel Width="{StaticResource CheckBoxSize}" Height="{StaticResource CheckBoxSize}" VerticalAlignment="Center">
-            <Border Name="PART_Box" BorderThickness="1.5" CornerRadius="{StaticResource RadiusS}"
-                    BorderBrush="{StaticResource LineStrongBrush}" Background="{StaticResource BgCardBrush}" />
-            <c:IconView Name="PART_Check" Icon="check" Size="14" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}"
+            <Border Name="PART_Box" BorderThickness="1" CornerRadius="{StaticResource RadiusS}"
+                    BorderBrush="{StaticResource LineFirmBrush}" Background="{StaticResource BgCardBrush}" />
+            <c:IconView Name="PART_Check" Icon="check" Size="12" StrokeWidth="2.2" Foreground="{StaticResource TInvBrush}"
                         HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="False" />
-            <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
+            <Border Name="PART_Focus" Margin="-3" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="6"
                     IsVisible="False" IsHitTestVisible="False" />
           </Panel>
-          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1" Margin="10,0,0,0"
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1" Margin="6,0,0,0"
                             Content="{TemplateBinding Content}"
                             ContentTemplate="{TemplateBinding ContentTemplate}"
                             Foreground="{TemplateBinding Foreground}"
@@ -421,10 +421,10 @@
       </ControlTemplate>
     </Setter>
     <Style Selector="^:pointerover /template/ Border#PART_Box">
-      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:pressed /template/ Border#PART_Box">
-      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="Background" Value="{StaticResource AWashBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
@@ -438,7 +438,7 @@
       <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
     </Style>
-    <!-- 勾选（写在禁用之后：同样稿，已勾选的禁用项仍是紫色方框） -->
+    <!-- 勾选（写在禁用之后：同样稿，已勾选的禁用项仍是品牌蓝方框） -->
     <Style Selector="^:checked /template/ Border#PART_Box">
       <Setter Property="Background" Value="{StaticResource ABrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
@@ -449,6 +449,63 @@
     <Style Selector="^:checked:pressed /template/ Border#PART_Box">
       <Setter Property="Background" Value="{StaticResource ADBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ADBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 拨动开关 PrSwitch（样稿 .tgl：搅拌开关等）：38 × 22、全圆；关 = toggle-off（line）底，开 = 品牌蓝底；16 px 白色圆钮（ShadowKnob），开时右移 16；
+       禁用 / 原因：整体 0.45 不透明；目标类型 ToggleButton（带原因的用 pr:PrToggle）。内容（如有）放在右边，13 px t-2、间距 8 -->
+  <ControlTheme x:Key="PrSwitch" TargetType="ToggleButton">
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="400" />
+    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*" Background="{TemplateBinding Background}">
+          <Panel Width="{StaticResource ToggleW}" Height="{StaticResource ToggleH}" VerticalAlignment="Center">
+            <Border Name="PART_Track" CornerRadius="11" Background="{StaticResource ToggleOffBrush}">
+              <Border.Transitions>
+                <Transitions>
+                  <BrushTransition Property="Background" Duration="0:0:0.12" />
+                </Transitions>
+              </Border.Transitions>
+            </Border>
+            <Border Name="PART_Knob" Width="{StaticResource ToggleKnob}" Height="{StaticResource ToggleKnob}" CornerRadius="8"
+                    Background="{StaticResource ToggleKnobBrush}" BoxShadow="{StaticResource ShadowKnob}"
+                    HorizontalAlignment="Left" VerticalAlignment="Center" Margin="3,0,0,0">
+              <Border.Transitions>
+                <Transitions>
+                  <ThicknessTransition Property="Margin" Duration="0:0:0.12" />
+                </Transitions>
+              </Border.Transitions>
+            </Border>
+            <Border Name="PART_Focus" Margin="-3" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="14"
+                    IsVisible="False" IsHitTestVisible="False" />
+          </Panel>
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1" Margin="8,0,0,0"
+                            Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                            IsVisible="{TemplateBinding Content, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:checked /template/ Border#PART_Track">
+      <Setter Property="Background" Value="{StaticResource ToggleOnBrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#PART_Knob">
+      <Setter Property="Margin" Value="19,0,0,0" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:disabled, ^:reason">
+      <Setter Property="Opacity" Value="0.45" />
+      <Setter Property="Cursor" Value="No" />
     </Style>
   </ControlTheme>
 </ResourceDictionary>

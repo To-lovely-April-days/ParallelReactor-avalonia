@@ -42,6 +42,8 @@ public class DialogTests
 
     private static string Text(IReadOnlyList<Controls.Pr.TextSeg> segs) => string.Concat(segs.Select(x => x.Text));
 
+    private static IEnumerable<string> Flat(IEnumerable<StopRow> rows) => rows.Select(r => r.Key + "：" + string.Concat(r.Value.Select(v => v.Text))).ToList();
+
     private static string? LastToast(ShellVm s) => s.Toasts.Items.LastOrDefault()?.Text;
 
     // ———————————————————— 急停 ————————————————————
@@ -51,22 +53,25 @@ public class DialogTests
     {
         var s = Shell();
         var d = Open<EstopDialogVm>(s, "estop");
-        Assert.Equal(("急停", "立即切断所选设备的加热、进气与搅拌，运行中的程序全部中止", "estop", true, 640d), (d.Title, d.Sub, d.Icon, d.IsDanger, d.Width));
+        // 融合版 F3：标题「急停 · 远程停机」、没有副标题和图标、518 宽（样稿 openEstop）
+        Assert.Equal(("急停 · 远程停机", (string?)null, (string?)null, true, 518d), (d.Title, d.Sub, d.Icon, d.IsDanger, d.Width));
+        Assert.Equal(Flat(StopTexts.Estop), Flat(d.StopRows));
+        Assert.Equal(StopTexts.LeadEstop, d.Lead);
         Assert.Equal("选择设备（已连接的默认全选）", d.Caption);
         Assert.Equal(new[] { "1号机", "2号机", "3号机" }, d.Rows.Select(r => r.Alias));
         Assert.All(d.Rows, r => Assert.True(r.IsOn));
-        Assert.Equal(("HT-PR8 · 现场 · 192.168.1.20", "运行 4/4 · 提醒 1", "远程控制"), (d.Rows[0].Sub, d.Rows[0].RunText, d.Rows[0].Badge.LeaseText));
+        Assert.Equal(("HT-PR8 · 现场 · 192.168.1.20", "运行 4/4", "远程控制"), (d.Rows[0].Sub, d.Rows[0].RunText, d.Rows[0].Badge.LeaseText));
         Assert.Equal("远程控制中", d.Rows[0].Badge.LeaseTip);
-        Assert.Equal("运行 11/16 · 报警 1", d.Rows[2].RunText);
-        Assert.Equal(("已选 3 台", "急停所选 3 台", FootKind.Danger, (string?)null), ((string)d.FooterLeft!, d.GoButton.Label, d.GoButton.Kind, d.GoButton.Reason));
+        Assert.Equal("运行 11/16", d.Rows[2].RunText);
+        Assert.Equal(("已选 3 台", "急停 3 台", FootKind.Danger, (string?)null), (d.PickedText, d.GoButton.Label, d.GoButton.Kind, d.GoButton.Reason));
         Assert.Equal("急停不需要控制权，连接正常就会发送。急停复位只能在设备触屏上操作，本机不能复位。", Text(d.Note));
         Assert.Equal(new[] { "不需要控制权", "复位只能在设备触屏上操作" }, d.Note.Where(x => x.Bold).Select(x => x.Text));
         // 全不选 → 原因；全选 → 回来
         d.NoneCommand.Execute(null);
-        Assert.Equal(("已选 0 台", "急停所选 0 台", "至少选择一台已连接的设备"), ((string)d.FooterLeft!, d.GoButton.Label, d.GoButton.Reason));
+        Assert.Equal(("已选 0 台", "急停 0 台", "至少选择一台已连接的设备"), (d.PickedText, d.GoButton.Label, d.GoButton.Reason));
         d.AllCommand.Execute(null);
         d.Rows[1].ToggleCommand.Execute(null);                                     // 去掉 2号机
-        Assert.Equal("已选 2 台", d.FooterLeft);
+        Assert.Equal("已选 2 台", d.PickedText);
         await ((IAsyncRelayCommand)d.GoButton.Command).ExecuteAsync(null);
         Assert.False(s.Dialogs.IsOpen);
         Assert.Equal("急停已发送到 2 台：1号机、3号机 · 复位需在触屏操作", LastToast(s));
@@ -81,7 +86,7 @@ public class DialogTests
         Assert.False(again.Rows[0].IsOn);
         again.Rows[0].ToggleCommand.Execute(null);                                 // 点了也勾不上
         Assert.False(again.Rows[0].IsOn);
-        Assert.Equal("已选 1 台", again.FooterLeft);
+        Assert.Equal("已选 1 台", again.PickedText);
         s.Dispose();
     }
 
@@ -97,7 +102,7 @@ public class DialogTests
         Assert.Equal("至少选择一台已连接的设备", d.GoButton.Reason);
         d.AllCommand.Execute(null);
         Assert.Equal("已预选 2号机 · 可再勾选其它设备", d.Caption);
-        Assert.Equal("急停所选 3 台", d.GoButton.Label);
+        Assert.Equal("急停 3 台", d.GoButton.Label);
         s.Dispose();
 
         // 只预选的那一台断线了 / 已在急停
@@ -107,7 +112,7 @@ public class DialogTests
         Assert.Equal(("连接中断 · 无法发送", "连接中断 · 无法发送", false), (e.Rows[3].Reason, e.Rows[3].RunText, e.Rows[3].IsOn));
         Assert.False(e.Rows[3].Badge.ShowLease);
         Assert.Equal("连接中断 · 重连中 12 s", e.Rows[3].Badge.ConnText);
-        Assert.Equal("已选 0 台", e.FooterLeft);
+        Assert.Equal("已选 0 台", e.PickedText);
         off.Dispose();
         var es = Shell("estop=1&freeze=1");
         Assert.Equal("1号机 已在急停 · 可勾选其它设备", Open<EstopDialogVm>(es, "estop", "1").Caption);
@@ -123,7 +128,7 @@ public class DialogTests
         s.ApplyDemoParams(DemoParams.Parse("offline=1&freeze=1"));                 // 开着对话框时 1号机断线（样稿每秒重画）
         Assert.Same(d, s.Dialogs.Current);
         Assert.Equal("1号机 连接中断 · 无法预选 · 可勾选其它设备", d.Caption);
-        Assert.Equal("已选 0 台", d.FooterLeft);
+        Assert.Equal("已选 0 台", d.PickedText);
         s.ApplyDemoParams(DemoParams.Parse("offline=none&freeze=1"));              // 重新连上：勾选还记着
         Assert.Equal("已预选 1号机 · 可再勾选其它设备", d.Caption);
         s.Dispose();
@@ -136,13 +141,14 @@ public class DialogTests
     {
         var s = Shell();
         var d = Open<StopAllDialogVm>(s, "stopall");
-        Assert.Equal(("全部停止", StopAllText.Sub(ControlOptions.StopAllStopsStirring), "stop", false), (d.Title, d.Sub, d.Icon, d.IsDanger));
+        Assert.Equal(("全部停止", (string?)null, (string?)null, false), (d.Title, d.Sub, d.Icon, d.IsDanger));
+        Assert.Equal(Flat(StopTexts.All(ControlOptions.StopAllStopsStirring)), Flat(d.StopRows));
         Assert.Equal("选择设备（已连接的默认全选）", d.Caption);
-        Assert.Equal("已选 3 台 · 共 18 个运行中的反应釜", d.FooterLeft);
-        Assert.Equal(("停止所选 3 台", FootKind.PrimaryStop, "stop", true), (d.GoButton.Label, d.GoButton.Kind, d.GoButton.Icon, d.GoButton.Large));
+        Assert.Equal("已选 3 台 · 共 18 个运行中的反应釜", d.PickedText);
+        Assert.Equal(("全部停止 3 台", FootKind.Primary, (string?)null, false), (d.GoButton.Label, d.GoButton.Kind, d.GoButton.Icon, d.GoButton.Large));
         Assert.Equal(StopAllText.Note(ControlOptions.StopAllStopsStirring), Text(d.Note));
         d.Rows[0].ToggleCommand.Execute(null);
-        Assert.Equal("已选 2 台 · 共 14 个运行中的反应釜", d.FooterLeft);
+        Assert.Equal("已选 2 台 · 共 14 个运行中的反应釜", d.PickedText);
         await ((IAsyncRelayCommand)d.GoButton.Command).ExecuteAsync(null);
         Assert.Equal(StopAllText.Sent(new[] { "2号机", "3号机" }, ControlOptions.StopAllStopsStirring), LastToast(s));
         Assert.Equal(ToastKind.Warn, s.Toasts.Items.Last().Kind);
@@ -482,7 +488,6 @@ public class DialogTests
         var f = LiveFleet.Create();
         var s = new ShellVm(f);
         s.Toasts.Frozen = true;
-        Assert.Contains(MenuModel.Items(s, "device"), m => m.Label == ClientNameDialogVm.MenuLabel);
         var d = Open<ClientNameDialogVm>(s, "client");
         Assert.Equal(("本机客户端名", "PC-测试", "monitor", ClientNameDialogVm.HintText), (d.Title, d.Value, d.Icon!, d.Hint));
         d.Value = "  ";
@@ -494,10 +499,10 @@ public class DialogTests
         d.SaveButton.Command.Execute(null);
         Assert.False(s.Dialogs.IsOpen);
         Assert.Equal("本机客户端名已改为 PC-工位9", LastToast(s));
-        Assert.Equal(("PC-工位9", "本机：PC-工位9", "PC-工位9"), (f.ClientName, s.ClientText, f.Config!.ClientName));
+        Assert.Equal(("PC-工位9", "PC-工位9", "PC-工位9"), (f.ClientName, s.ClientName, f.Config!.ClientName));
         // 添加设备的说明：真机写改名的入口（演示照样稿「在 设置 中修改」）
         var add = Open<AddDeviceDialogVm>(s, "add");
-        Assert.Equal("本机客户端名全局一个：PC-工位9（在「设备 › 本机客户端名…」中修改）。示例型号 · 参数为假设。", Text(add.Note!));
+        Assert.Equal("本机客户端名全局一个：PC-工位9（点深蓝条上的工位名修改）。示例型号 · 参数为假设。", Text(add.Note!));
         s.Dispose();
         await f.DisposeAsync();
     }
@@ -506,7 +511,6 @@ public class DialogTests
     public void ClientName_Demo_NoMenuItemNoDialog()
     {
         var s = Shell();
-        Assert.DoesNotContain(MenuModel.Items(s, "device"), m => m.Label == ClientNameDialogVm.MenuLabel);
         s.OpenDialog("client");
         Assert.False(s.Dialogs.IsOpen);
         Assert.Equal("演示数据不能改本机客户端名", s.Fleet.SetClientName("PC-x"));

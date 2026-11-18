@@ -1,178 +1,318 @@
 #!/usr/bin/env python3
-"""gen-tokens.py — 色板令牌：MOCK/css/base.css :root → Styles/Tokens.axaml + Theme/Palette.cs 的「生成区」。
+"""gen-tokens.py — 融合版设计令牌：tools/fusion-tokens.json → Styles/Tokens.axaml + Theme/Palette.cs 的「生成区」（F1）。
 
-只用 Python 标准库。规则（PORT-PLAN §4.1 / §4.2）：
-  · 颜色令牌 = :root 里值为 #rrggbb 的变量，必须与 js/core.js 的 PR.PALETTE 一一对应（67 个，名字和值都相同），否则报错退出；
-  · --demo-* 是原型工具（演示条）的颜色，不是产品，跳过；
-  · 键名：-- 后的 kebab 名转 PascalCase + Color / Brush（--bg-app → BgAppColor / BgAppBrush，--a-d → ADColor，--t-1 → T1Brush）；
-  · 值原样照抄 CSS 文本（小写 #rrggbb），杂项 rgba() 换成 #aarrggbb（alpha = round(a × 255)），阴影换成 Avalonia BoxShadow 文本。
-只改两个文件里 BEGIN GENERATED / END GENERATED 标记之间的内容；标记外的手写部分不动。
+只用 Python 标准库。来源与规则（research/fusion-port/PORT-PLAN §4 F1、notes/F1-handover.md）：
+  · fusion-tokens.json 是从样稿 research/main-fusion.html 抽出的最终值（10 层 :root 层叠之后 + 规则里写死的颜色）。
+    colors = 封闭色板（每个颜色一个 Color + Brush）；aliases = 新概念（面板、竖条、工具条、运行表、胶囊、报警弹窗 …）的语义画刷，只指向色板里的颜色；
+    misc = 色板外但合法的杂项（提示条、遮罩）；shadows = 阴影（CSS 写法）；focus = 焦点环；sizes = 字号 / 尺寸 / 圆角 / 过渡。
+  · 键名：kebab 名转 PascalCase + Color / Brush（bg-app → BgAppColor / BgAppBrush，a-d → ADBrush，t-1 → T1Brush，ch-7 → Ch7Brush）。
+  · 值原样照抄（小写 #rrggbb），rgba() 换成 #aarrggbb（alpha = round(a × 255)），阴影换成 Avalonia BoxShadows 文本（多层用逗号）。
+  · --check-mock（默认开，样稿不在时跳过）：每个颜色的值必须出现在样稿里；出处写了「:root --x」的，还要等于 --x 层叠之后的最终值；
+    misc / 阴影的 rgb 必须在样稿里出现过。核对不过就报错退出 —— 令牌不能凭空造。
+只改两个文件里 BEGIN GENERATED … / END GENERATED … 标记之间的内容；标记外的手写部分不动。
 
-用法：python3 Control/tools/gen-tokens.py [--mock <pc-v3 目录>] [--check]
-  --check：只比较，不写文件（有差异时退出码 1）。
+用法：python3 Control/tools/gen-tokens.py [--json <fusion-tokens.json>] [--mock <main-fusion.html>] [--no-mock] [--check] [--dump-root]
+  --check：只比较，不写文件（有差异时退出码 1）。--dump-root：打印样稿 :root 层叠之后的最终值（核对用）。
 """
 import argparse
+import json
 import os
 import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.normpath(os.path.join(HERE, '..', 'ParallelReactor.Control'))
-DEFAULT_MOCK = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'research', 'pc-v3'))
+DEFAULT_JSON = os.path.join(HERE, 'fusion-tokens.json')
+DEFAULT_MOCK = os.path.normpath(os.path.join(HERE, '..', '..', '..', 'research', 'main-fusion.html'))
 
-# 分组：与 MOCK js/pages/placeholder.js 的 #/gallery 色板分组一致（前缀匹配，按 PR.PALETTE 的顺序）
-GROUPS = [('底色', ('--bg-',)), ('线', ('--line',)), ('文字', ('--t-',)), ('强调色', ('--a', '--side-')), ('运行（浅绿）', ('--g-',)),
-          ('报警（暗红）', ('--r',)), ('中性状态', ('--n-',)), ('曲线', ('--ch-',)), ('釜体', ('--v-',))]
-# 杂项（PR.PALETTE_MISC + 阴影 pop；brief §2 Misc）
-MISC_COLORS = ['toast', 'overlay']
-SHADOWS = [('shadow-card', 'ShadowCard'), ('shadow-pop', 'ShadowPop'), ('shadow-dlg', 'ShadowDlg')]
+HEX6 = re.compile(r'#[0-9a-f]{6}')
 
 
 def pascal(name):
     return ''.join(p[:1].upper() + p[1:] for p in name.split('-'))
 
 
-def group_of(name):
-    # 与样稿相同的前缀规则：t.indexOf(prefix) === 0
-    for title, prefixes in GROUPS:
-        if any(('--' + name).startswith(p) for p in prefixes):
-            return title
-    raise SystemExit(f'令牌 --{name} 不属于任何分组')
-
-
 def strip_comments(s):
     return re.sub(r'/\*.*?\*/', '', s, flags=re.S)
 
 
-def parse_root(css):
-    m = re.search(r':root\s*\{(.*?)\n\}', css, flags=re.S)
-    if not m:
-        raise SystemExit('base.css 里找不到 :root { … }')
-    body = strip_comments(m.group(1))
-    out = []
-    for vm in re.finditer(r'--([a-z0-9-]+)\s*:\s*([^;]+);', body):
-        out.append((vm.group(1), vm.group(2).strip()))
-    return out
+def norm_hex(v):
+    """#abc / #aabbcc → #aabbcc（小写）；其它返回 None。"""
+    v = v.strip().lower()
+    if re.fullmatch(r'#[0-9a-f]{3}', v):
+        return '#' + ''.join(c * 2 for c in v[1:])
+    if re.fullmatch(r'#[0-9a-f]{6}', v):
+        return v
+    return None
 
 
-def parse_palette_js(js):
-    m = re.search(r'PR\.PALETTE\s*=\s*\{(.*?)\};', js, flags=re.S)
-    if not m:
-        raise SystemExit('core.js 里找不到 PR.PALETTE')
-    body = strip_comments(m.group(1))
-    return [(k, v) for k, v in re.findall(r"'--([a-z0-9-]+)'\s*:\s*'(#[0-9a-fA-F]{6})'", body)]
-
-
-def rgba_to_argb(v):
-    m = re.fullmatch(r'rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)', v)
+def parse_rgba(v):
+    m = re.fullmatch(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)', v.strip())
     if not m:
         raise SystemExit(f'无法解析颜色 {v}')
     r, g, b = (int(m.group(i)) for i in (1, 2, 3))
-    a = int(float(m.group(4)) * 255 + 0.5)
-    return '#%02x%02x%02x%02x' % (a, r, g, b), (r, g, b)
+    a = float(m.group(4)) if m.group(4) is not None else 1.0
+    return (r, g, b), a
 
 
-def shadow_to_avalonia(v):
-    # CSS「x y blur [spread] rgba(...)」→ Avalonia「x y blur spread #aarrggbb」
-    m = re.fullmatch(r'(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+([\d.]+)(?:px)?(?:\s+(-?[\d.]+)(?:px)?)?\s+(rgba\([^)]*\))', v.strip())
-    if not m:
-        raise SystemExit(f'无法解析阴影 {v}')
-    argb, rgb = rgba_to_argb(m.group(5))
-    spread = m.group(4) or '0'
-    return f'{m.group(1)} {m.group(2)} {m.group(3)} {spread} {argb}', rgb
+def argb(rgb, a):
+    return '#%02x%02x%02x%02x' % (int(a * 255 + 0.5), rgb[0], rgb[1], rgb[2])
 
 
-def build(mock):
-    css = open(os.path.join(mock, 'css', 'base.css'), encoding='utf-8').read()
-    js = open(os.path.join(mock, 'js', 'core.js'), encoding='utf-8').read()
-    root = parse_root(css)
-    rootd = dict(root)
-    colors = [(k, v) for k, v in root if re.fullmatch(r'#[0-9a-fA-F]{6}', v) and not k.startswith('demo-')]
-    pal = parse_palette_js(js)
-    if [k for k, _ in colors] != [k for k, _ in pal]:
-        raise SystemExit('base.css :root 的颜色令牌与 core.js PR.PALETTE 不一致（名字 / 顺序）：\n  css=%s\n  js =%s' % ([k for k, _ in colors], [k for k, _ in pal]))
-    for (k, v), (_, jv) in zip(colors, pal):
-        if v.lower() != jv.lower():
-            raise SystemExit(f'--{k}: base.css {v} ≠ PR.PALETTE {jv}')
-    if len(colors) != 67:
-        raise SystemExit(f'颜色令牌应为 67 个，实际 {len(colors)}')
-    focus = rootd.get('focus', '')
-    fm = re.fullmatch(r'var\(--([a-z0-9-]+)\)', focus)
-    if not fm:
-        raise SystemExit(f'--focus 不是 var(--…)：{focus}')
-    misc = [(k, rgba_to_argb(rootd[k])) for k in MISC_COLORS]
-    shadows = [(k, key, shadow_to_avalonia(rootd[k])) for k, key in SHADOWS]
-    return colors, misc, shadows, fm.group(1)
+def split_top(s):
+    """按不在括号里的逗号切开（多层阴影）。"""
+    out, depth, cur = [], 0, ''
+    for ch in s:
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        if ch == ',' and depth == 0:
+            out.append(cur)
+            cur = ''
+        else:
+            cur += ch
+    out.append(cur)
+    return [x.strip() for x in out if x.strip()]
 
 
-def gen_axaml(colors, misc, shadows, focus):
-    L = ['  <!-- BEGIN GENERATED COLORS（Control/tools/gen-tokens.py ← MOCK/css/base.css :root；不要手改，改样稿后重新生成） -->']
+def shadow_to_avalonia(css):
+    """CSS「x y blur [spread] rgba(...)」（可多层）→ Avalonia「x y blur spread #aarrggbb, …」；同时返回各层的 rgb。"""
+    parts, rgbs = [], []
+    for one in split_top(css):
+        m = re.fullmatch(r'(-?[\d.]+)(?:px)?\s+(-?[\d.]+)(?:px)?\s+([\d.]+)(?:px)?(?:\s+(-?[\d.]+)(?:px)?)?\s+(rgba?\([^)]*\))', one)
+        if not m:
+            raise SystemExit(f'无法解析阴影 {one}')
+        rgb, a = parse_rgba(m.group(5))
+        parts.append(f'{m.group(1)} {m.group(2)} {m.group(3)} {m.group(4) or "0"} {argb(rgb, a)}')
+        rgbs.append(rgb)
+    return ', '.join(parts), rgbs
+
+
+# ———————————————————— 样稿核对 ————————————————————
+
+def mock_root(html):
+    """样稿里所有 :root{…} 按出现顺序层叠，返回 --name → 最终值（后写的覆盖先写的；同一块里也一样）。"""
+    css = '\n'.join(re.findall(r'<style[^>]*>(.*?)</style>', html, flags=re.S))
+    css = strip_comments(css)
+    final = {}
+    for m in re.finditer(r':root\s*\{([^}]*)\}', css):
+        for vm in re.finditer(r'--([a-z0-9-]+)\s*:\s*([^;]+);?', m.group(1)):
+            final[vm.group(1)] = vm.group(2).strip()
+    return final
+
+
+def resolve(final, v, depth=0):
+    m = re.fullmatch(r'var\(--([a-z0-9-]+)\)', v.strip())
+    if m and depth < 8:
+        return resolve(final, final.get(m.group(1), ''), depth + 1)
+    return v
+
+
+def mock_colours(html):
+    """样稿里出现过的全部颜色：#rgb / #rrggbb → #rrggbb，rgb(a)() → (r,g,b)。"""
+    hexes = set()
+    for m in re.finditer(r'#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b', html):
+        h = norm_hex('#' + m.group(1))
+        if h:
+            hexes.add(h)
+    rgbs = set()
+    for m in re.finditer(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)', html):
+        rgbs.add(tuple(int(m.group(i)) for i in (1, 2, 3)))
+    return hexes, rgbs
+
+
+def to_rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+
+def check_mock(tok, html):
+    errs = []
+    final = mock_root(html)
+    hexes, rgbs = mock_colours(html)
+    for c in tok['colors']:
+        h = c['hex']
+        if h not in hexes and to_rgb(h) not in rgbs:
+            errs.append(f'--{c["name"]} {h}：样稿里没有这个颜色')
+        for var in re.findall(r':root\s+((?:--[a-z0-9-]+\s*/\s*)*--[a-z0-9-]+)', c.get('src', '')):
+            for name in re.findall(r'--([a-z0-9-]+)', var):
+                v = norm_hex(resolve(final, final.get(name, '')))
+                if v != h:
+                    errs.append(f'--{c["name"]} {h}：出处写的 :root --{name} 层叠之后是 {final.get(name, "（没有）")}')
+    for m in tok['misc']:
+        rgb, _ = parse_rgba(m['rgba'])
+        if rgb not in rgbs and '#%02x%02x%02x' % rgb not in hexes:
+            errs.append(f'misc {m["name"]} {m["rgba"]}：样稿里没有这个颜色')
+    for s in tok['shadows']:
+        _, srgbs = shadow_to_avalonia(s['css'])
+        for rgb in srgbs:
+            if rgb not in rgbs and '#%02x%02x%02x' % rgb not in hexes:
+                errs.append(f'shadow {s["name"]} rgb{rgb}：样稿里没有这个颜色')
+    return errs
+
+
+# ———————————————————— 校验 + 生成 ————————————————————
+
+def validate(tok):
+    names = [c['name'] for c in tok['colors']]
+    dup = sorted({n for n in names if names.count(n) > 1})
+    if dup:
+        raise SystemExit(f'颜色令牌重名：{dup}')
+    for c in tok['colors']:
+        if not re.fullmatch(r'[a-z][a-z0-9]*(-[a-z0-9]+)*', c['name']):
+            raise SystemExit(f'令牌名不合规则（kebab）：{c["name"]}')
+        if norm_hex(c['hex']) != c['hex']:
+            raise SystemExit(f'--{c["name"]} 的值必须是小写 #rrggbb：{c["hex"]}')
+    keys = {pascal(n) for n in names}
+    if len(keys) != len(names):
+        raise SystemExit('有两个令牌转成 PascalCase 后同名')
+    for a in tok['aliases']:
+        if a['to'] not in names:
+            raise SystemExit(f'别名 {a["name"]} 指向不存在的令牌 {a["to"]}')
+        if pascal(a['name']) in keys:
+            raise SystemExit(f'别名 {a["name"]} 与令牌同名')
+    if tok['focus']['brush'] not in names:
+        raise SystemExit('focus.brush 不是色板里的令牌')
+    skeys = [s['key'] for s in tok['sizes']]
+    dup = sorted({k for k in skeys if skeys.count(k) > 1})
+    if dup:
+        raise SystemExit(f'尺寸键重名：{dup}')
+
+
+def misc_list(tok):
+    """杂项颜色（审计时也算合法）：misc（Toast、Overlay）+ 阴影里的颜色（ShadowOnly，去重；与 misc 同色的不重复列）。"""
+    out = []
+    seen = set()
+    for m in tok['misc']:
+        rgb, a = parse_rgba(m['rgba'])
+        out.append((m['name'], pascal(m['name']), rgb, a, False))
+        seen.add(rgb)
+    for s in tok['shadows']:
+        _, rgbs = shadow_to_avalonia(s['css'])
+        for rgb in rgbs:
+            if rgb in seen:
+                continue
+            seen.add(rgb)
+            out.append((s['name'], pascal(s['name']), rgb, None, True))
+    return out
+
+
+def fmt_num(v):
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    return str(v)
+
+
+GEN_NOTE = 'Control/tools/gen-tokens.py ← tools/fusion-tokens.json（样稿 research/main-fusion.html）；不要手改，改 JSON 后重新生成'
+
+
+def gen_axaml_colours(tok):
+    L = [f'  <!-- BEGIN GENERATED COLORS（{GEN_NOTE}） -->']
     cur = None
-    for k, v in colors:
-        g = group_of(k)
-        if g != cur:
-            L.append(f'  <!-- {g} -->')
-            cur = g
-        P = pascal(k)
-        L.append(f'  <Color x:Key="{P}Color">{v}</Color>')
+    for c in tok['colors']:
+        if c['group'] != cur:
+            cur = c['group']
+            L.append(f'  <!-- {cur} -->')
+        P = pascal(c['name'])
+        L.append(f'  <Color x:Key="{P}Color">{c["hex"]}</Color>')
         L.append(f'  <SolidColorBrush x:Key="{P}Brush" Color="{{StaticResource {P}Color}}" />')
-    L.append('  <!-- 杂项（§2 Misc：rgba → #aarrggbb） -->')
-    for k, (argb, _) in misc:
-        P = pascal(k)
-        L.append(f'  <Color x:Key="{P}Color">{argb}</Color>')
+    L.append('  <!-- 杂项（rgba → #aarrggbb） -->')
+    for m in tok['misc']:
+        rgb, a = parse_rgba(m['rgba'])
+        P = pascal(m['name'])
+        L.append(f'  <Color x:Key="{P}Color">{argb(rgb, a)}</Color>')
         L.append(f'  <SolidColorBrush x:Key="{P}Brush" Color="{{StaticResource {P}Color}}" />')
-    L.append(f'  <!-- 焦点环 = focus = var({focus})：2 px，画在控件外侧（行类元素画在内侧） -->')
-    L.append(f'  <SolidColorBrush x:Key="FocusBrush" Color="{{StaticResource {pascal(focus)}Color}}" />')
-    L.append('  <!-- 阴影（CSS「x y blur rgba」→ Avalonia BoxShadow「x y blur spread #aarrggbb」） -->')
-    for k, key, (txt, _) in shadows:
-        L.append(f'  <BoxShadows x:Key="{key}">{txt}</BoxShadows>')
+    f = tok['focus']
+    FP = pascal(f['brush'])
+    L.append(f'  <!-- 焦点：边框 = {f["brush"]}；焦点环 = {f["brush"]} × {f["ringAlpha"]}（{f["src"].split("：")[0]}） -->')
+    L.append(f'  <SolidColorBrush x:Key="FocusBrush" Color="{{StaticResource {FP}Color}}" />')
+    L.append(f'  <SolidColorBrush x:Key="FocusRingBrush" Color="{{StaticResource {FP}Color}}" Opacity="{f["ringAlpha"]}" />')
+    L.append('  <!-- 语义画刷（新概念：面板、竖条、工具条、菜单栏、运行表、报警弹窗、开关、滚动条）：只指向色板里的颜色 -->')
+    cur = None
+    for a in tok['aliases']:
+        if a['group'] != cur:
+            cur = a['group']
+            L.append(f'  <!-- {cur} -->')
+        L.append(f'  <SolidColorBrush x:Key="{pascal(a["name"])}Brush" Color="{{StaticResource {pascal(a["to"])}Color}}" />')
+    L.append('  <!-- 阴影（CSS「x y blur rgba」→ Avalonia BoxShadows「x y blur spread #aarrggbb」，多层用逗号） -->')
+    for s in tok['shadows']:
+        txt, _ = shadow_to_avalonia(s['css'])
+        L.append(f'  <BoxShadows x:Key="{s["key"]}">{txt}</BoxShadows>')
+    ring = argb(to_rgb(next(c['hex'] for c in tok['colors'] if c['name'] == f['brush'])), f['ringAlpha'])
+    L.append(f'  <BoxShadows x:Key="FocusRingShadow">0 0 0 3 {ring}</BoxShadows>')
     L.append('  <!-- END GENERATED COLORS -->')
     return '\n'.join(L)
 
 
-def gen_cs(colors, misc, shadows, focus):
-    I = '    '
-    L = [I + '// BEGIN GENERATED COLORS（Control/tools/gen-tokens.py ← MOCK/css/base.css :root；不要手改，改样稿后重新生成）']
+def gen_axaml_sizes(tok):
+    L = [f'  <!-- BEGIN GENERATED SIZES（{GEN_NOTE}） -->']
     cur = None
-    for k, v in colors:
-        g = group_of(k)
-        if g != cur:
-            L.append(I + f'// {g}')
-            cur = g
-        P = pascal(k)
-        L.append(I + f'public static readonly Color {P}Color = Rgb(0x{v[1:].lower()});   // --{k}')
-    L.append(I + '// 杂项（§2 Misc：rgba → #aarrggbb）')
-    for k, (argb, _) in misc:
-        L.append(I + f'public static readonly Color {pascal(k)}Color = Argb(0x{argb[1:]});   // --{k}')
+    for s in tok['sizes']:
+        if s['group'] != cur:
+            cur = s['group']
+            L.append(f'  <!-- {cur} -->')
+        k, v, t = s['key'], s['value'], s['type']
+        tag = {'double': 'x:Double', 'thickness': 'Thickness', 'corner': 'CornerRadius', 'timespan': 'x:TimeSpan'}[t]
+        line = f'  <{tag} x:Key="{k}">{fmt_num(v)}</{tag}>'
+        if s.get('src'):
+            # XML 注释里不能有两个连续的短横
+            line += f'  <!-- {s["src"].replace("--", "")} -->'
+        L.append(line)
+    L.append('  <!-- END GENERATED SIZES -->')
+    return '\n'.join(L)
+
+
+def gen_cs(tok):
+    I = '    '
+    L = [I + f'// BEGIN GENERATED COLORS（{GEN_NOTE}）']
+    cur = None
+    for c in tok['colors']:
+        if c['group'] != cur:
+            cur = c['group']
+            L.append(I + f'// {cur}')
+        L.append(I + f'public static readonly Color {pascal(c["name"])}Color = Rgb(0x{c["hex"][1:]});   // --{c["name"]}')
+    L.append(I + '// 杂项（rgba → #aarrggbb）')
+    for m in tok['misc']:
+        rgb, a = parse_rgba(m['rgba'])
+        L.append(I + f'public static readonly Color {pascal(m["name"])}Color = Argb(0x{argb(rgb, a)[1:]});   // --{m["name"]}')
     L.append('')
-    for k, v in colors:
-        P = pascal(k)
+    for c in tok['colors']:
+        P = pascal(c['name'])
         L.append(I + f'public static readonly IImmutableSolidColorBrush {P}Brush = new ImmutableSolidColorBrush({P}Color);')
-    for k, _ in misc:
-        P = pascal(k)
+    for m in tok['misc']:
+        P = pascal(m['name'])
         L.append(I + f'public static readonly IImmutableSolidColorBrush {P}Brush = new ImmutableSolidColorBrush({P}Color);')
-    L.append(I + f'/// <summary>焦点环 = --focus = var(--{focus})。</summary>')
-    L.append(I + f'public static readonly IImmutableSolidColorBrush FocusBrush = {pascal(focus)}Brush;')
+    f = tok['focus']
+    FP = pascal(f['brush'])
+    L.append(I + f'/// <summary>焦点：边框 = --{f["brush"]}；焦点环 = --{f["brush"]} × {f["ringAlpha"]}。</summary>')
+    L.append(I + f'public static readonly IImmutableSolidColorBrush FocusBrush = {FP}Brush;')
+    L.append(I + f'public static readonly IImmutableSolidColorBrush FocusRingBrush = new ImmutableSolidColorBrush({FP}Color, {f["ringAlpha"]});')
     L.append('')
-    for k, key, (txt, _) in shadows:
-        L.append(I + f'public static readonly BoxShadows {key} = BoxShadows.Parse("{txt}");   // --{k}')
+    L.append(I + '// 语义画刷（新概念）：只指向色板里的颜色')
+    for a in tok['aliases']:
+        P, T = pascal(a['name']), pascal(a['to'])
+        L.append(I + f'public static readonly Color {P}Color = {T}Color;   // {a["group"]} · {a["src"]}')
+        L.append(I + f'public static readonly IImmutableSolidColorBrush {P}Brush = {T}Brush;')
     L.append('')
-    L.append(I + '/// <summary>67 个颜色令牌（与 PR.PALETTE 同序），分组同 MOCK #/gallery 的色板。</summary>')
+    for s in tok['shadows']:
+        txt, _ = shadow_to_avalonia(s['css'])
+        L.append(I + f'public static readonly BoxShadows {s["key"]} = BoxShadows.Parse("{txt}");   // --{s["name"]}')
+    ring = argb(to_rgb(next(c['hex'] for c in tok['colors'] if c['name'] == f['brush'])), f['ringAlpha'])
+    L.append(I + f'public static readonly BoxShadows FocusRingShadow = BoxShadows.Parse("0 0 0 3 {ring}");')
+    L.append('')
+    L.append(I + f'/// <summary>{len(tok["colors"])} 个颜色令牌（封闭色板，顺序同 fusion-tokens.json），分组同组件陈列页的色板。</summary>')
     L.append(I + 'public static readonly IReadOnlyList<Token> Tokens = new Token[]')
     L.append(I + '{')
-    for k, v in colors:
-        L.append(I + f'    new("--{k}", "{pascal(k)}", "{group_of(k)}", {pascal(k)}Color),')
+    for c in tok['colors']:
+        P = pascal(c['name'])
+        L.append(I + f'    new("--{c["name"]}", "{P}", "{c["group"]}", {P}Color),')
     L.append(I + '};')
     L.append('')
-    L.append(I + '/// <summary>杂项（PR.PALETTE_MISC）：审计时也算合法颜色；ShadowOnly = 只许出现在阴影里。</summary>')
+    L.append(I + '/// <summary>杂项：审计时也算合法颜色；ShadowOnly = 只许出现在阴影里。</summary>')
     L.append(I + 'public static readonly IReadOnlyList<Token> Misc = new Token[]')
     L.append(I + '{')
-    misc_js = [('toast', 'Toast', False), ('overlay', 'Overlay', False), ('shadow-card', 'ShadowCard', True), ('shadow-dlg', 'ShadowDlg', True)]
-    md = {k: v for k, v in misc}
-    sd = {k: v for k, _, v in shadows}
-    for k, P, shadow in misc_js:
-        rgb = md[k][1] if k in md else sd[k][1]
-        L.append(I + f'    new("--{k}", "{P}", "杂项", Color.FromRgb({rgb[0]}, {rgb[1]}, {rgb[2]}), ShadowOnly: {"true" if shadow else "false"}),')
+    for name, P, rgb, _, shadow in misc_list(tok):
+        L.append(I + f'    new("--{name}", "{P}", "杂项", Rgb(0x{rgb[0]:02x}{rgb[1]:02x}{rgb[2]:02x}), ShadowOnly: {"true" if shadow else "false"}),')
     L.append(I + '};')
     L.append(I + '// END GENERATED COLORS')
     return '\n'.join(L)
@@ -183,33 +323,53 @@ def splice(path, new_block, begin_marker, end_marker, check):
     b = text.find(begin_marker)
     e = text.find(end_marker)
     if b < 0 or e < 0:
-        raise SystemExit(f'{path}：找不到生成区标记')
+        raise SystemExit(f'{path}：找不到生成区标记 {begin_marker}')
     b = text.rfind('\n', 0, b) + 1
     e = text.find('\n', e)
     e = len(text) if e < 0 else e
     out = text[:b] + new_block + text[e:]
+    rel = os.path.relpath(path, APP)
     if out == text:
-        print(f'unchanged {os.path.relpath(path, APP)}')
+        print(f'unchanged {rel} [{begin_marker}]')
         return False
     if check:
-        print(f'DIFFERS   {os.path.relpath(path, APP)}')
+        print(f'DIFFERS   {rel} [{begin_marker}]')
         return True
     with open(path, 'w', encoding='utf-8', newline='\n') as f:
         f.write(out)
-    print(f'wrote     {os.path.relpath(path, APP)}')
+    print(f'wrote     {rel} [{begin_marker}]')
     return True
 
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument('--json', default=DEFAULT_JSON)
     ap.add_argument('--mock', default=DEFAULT_MOCK)
+    ap.add_argument('--no-mock', action='store_true')
     ap.add_argument('--check', action='store_true')
+    ap.add_argument('--dump-root', action='store_true')
     a = ap.parse_args()
-    colors, misc, shadows, focus = build(a.mock)
-    d1 = splice(os.path.join(APP, 'Styles', 'Tokens.axaml'), gen_axaml(colors, misc, shadows, focus), 'BEGIN GENERATED COLORS', 'END GENERATED COLORS', a.check)
-    d2 = splice(os.path.join(APP, 'Theme', 'Palette.cs'), gen_cs(colors, misc, shadows, focus), 'BEGIN GENERATED COLORS', 'END GENERATED COLORS', a.check)
-    print(f'{len(colors)} colour tokens + {len(misc)} misc colours + {len(shadows)} shadows')
-    if a.check and (d1 or d2):
+    tok = json.load(open(a.json, encoding='utf-8'))
+    validate(tok)
+    if not a.no_mock:
+        if os.path.exists(a.mock):
+            html = open(a.mock, encoding='utf-8').read()
+            if a.dump_root:
+                for k, v in sorted(mock_root(html).items()):
+                    print(f'--{k}: {v}')
+                return
+            errs = check_mock(tok, html)
+            if errs:
+                raise SystemExit('令牌与样稿对不上：\n  ' + '\n  '.join(errs))
+            print(f'mock ok   {os.path.relpath(a.mock, os.path.join(HERE, "..", "..", ".."))}')
+        else:
+            print(f'(样稿不在 {a.mock}，跳过核对)')
+    tokens = os.path.join(APP, 'Styles', 'Tokens.axaml')
+    d = [splice(tokens, gen_axaml_colours(tok), 'BEGIN GENERATED COLORS', 'END GENERATED COLORS', a.check),
+         splice(tokens, gen_axaml_sizes(tok), 'BEGIN GENERATED SIZES', 'END GENERATED SIZES', a.check),
+         splice(os.path.join(APP, 'Theme', 'Palette.cs'), gen_cs(tok), 'BEGIN GENERATED COLORS', 'END GENERATED COLORS', a.check)]
+    print(f'{len(tok["colors"])} colour tokens + {len(tok["aliases"])} aliases + {len(tok["misc"])} misc + {len(tok["shadows"])} shadows + {len(tok["sizes"])} sizes')
+    if a.check and any(d):
         sys.exit(1)
 
 

@@ -15,6 +15,8 @@ using ParallelReactor.Control.Pages;
 using ParallelReactor.Control.Shell;
 using Xunit;
 
+using ParallelReactor.Control.Tests.Fakes;
+
 namespace ParallelReactor.Control.Tests;
 
 /// <summary>
@@ -29,17 +31,7 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class ReactorVesselTests
 {
-    private static (ShellVm Shell, ReactorPageVm Page) Open(int k, int n, string query = "freeze=1")
-    {
-        var p = DemoParams.Parse(query);
-        if (!p.Freeze) p = p with { Freeze = true };
-        var s = new ShellVm(FleetVm.CreateDemo(p));
-        s.Toasts.Frozen = true;
-        s.Layout.Update(new Size(1920, 1080));
-        s.ApplyDemoParams(p, Route.Reactor(k, n));
-        var page = Assert.IsType<ReactorPageVm>(s.Page);
-        return (s, page);
-    }
+    private static (ShellVm Shell, ReactorParts Page) Open(int k, int n, string query = "freeze=1") => ReactorParts.Open(k, n, query);
 
     private static IReadOnlyDictionary<VesselCallout, CalloutContent> Contents(ReactorVesselVm v) => new Dictionary<VesselCallout, CalloutContent>
     {
@@ -315,10 +307,6 @@ public class ReactorVesselTests
         Assert.Equal("HT|加热|34|%|保温|flame||", Show(v.Ht));
         Assert.False(v.HasBadge);   // 有错误报警：顶部报警条已经写了，标题栏不再写状态
         Assert.False(v.ShowBadge);
-        // 临时的状态条：超压报警（程序在第 2/4 步暂停）
-        var a = Assert.Single(page.Alerts);
-        Assert.Equal(("超压报警", "RV11 超压 3.12 MPa ≥ 3.00 MPa · 已关闭 SV11 · 程序在第 2/4 步暂停", "10:09:42"), (a.Title, a.Text, a.Time));
-        Assert.True(a.IsErr);
     }
 
     [Fact]
@@ -330,7 +318,7 @@ public class ReactorVesselTests
         Assert.Equal(StateKey.Alarm, r.Own);
         // 报警清掉（alarm=3:0）：通道状态可以还是报警，压力标注不再写「上限」、也不算超限
         s.ApplyDemoParams(DemoParams.Parse("freeze=1&sel=3/11&alarm=3:0") with { Freeze = true });
-        page.Refresh(s.Fleet);
+        page.Refresh();
         Assert.DoesNotContain(page.D!.AlarmList, x => x.Ch == 11 && x.IsErr);
         Assert.False(page.Vessel.Pt.Err);
         Assert.DoesNotContain("上限", page.Vessel.Pt.Extra);
@@ -368,8 +356,7 @@ public class ReactorVesselTests
         s.Fleet.DemoData!.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
         s.Fleet.RefreshNow();
         var k = s.Fleet.Devices.Last().K;
-        s.Navigate(Route.Reactor(k, 1));
-        var v = Assert.IsType<ReactorPageVm>(s.Page).Vessel;
+        var v = new ReactorParts(s, k, 1).Vessel;
         Assert.Equal(Fmt.Dash, v.Tt.Value);
         Assert.Equal(Fmt.Dash, v.Ht.Sub);   // 从未连上：「—」（不写「断线前」）
         Assert.Equal(Fmt.Dash, v.Pt.Sub);
@@ -464,18 +451,4 @@ public class ReactorVesselTests
         Assert.True(v.IsPropsTab && !v.PropsOpen && v.Hidden.Count == 0 && v.ShownProps[0].Key == "pv");
     }
 
-    [Fact]
-    public void PageVm_GetsShell_AndRefreshesVessel()
-    {
-        var (s, page) = Open(1, 3);
-        Assert.Same(s, page.Shell);
-        Assert.Equal("1号机 › RV3", page.Crumb);
-        Assert.Equal(3, page.Vessel.N);
-        Assert.NotNull(page.Vessel.R);
-        Assert.Same(page.D!.Reactor(3), page.Vessel.R);
-        // 提醒（升温较慢）：一条中性的状态条
-        var a = Assert.Single(page.Alerts);
-        Assert.Equal(("提醒", ReactorAlertTone.Warn), (a.Title, a.Tone));
-        Assert.Matches(new Regex("^RV3 升温较慢"), a.Text);
-    }
 }

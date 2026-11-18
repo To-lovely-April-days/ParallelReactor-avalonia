@@ -5,11 +5,12 @@
                     xmlns:b="using:ParallelReactor.Control.Behaviors">
   <!-- 面板与属性卡片（样稿 base.css .pr-panel* / .pr-prop* / .pr-subhead）。 -->
 
-  <!-- 面板：标题栏 42（左 10 右 6、间距 8）+ 内容；标题栏 bg-head + 下边 line-2，内容区 bg-panel -->
+  <!-- 面板（融合版 F1；样稿 .board.pg .panel / .ph）：标题栏 42（左 14 右 8、间距 8）+ 内容；标题栏 pane-head + 下边 pane-head-line 细线，
+       标题 15 px 600 t-1、副标题 13 px t-3；内容区白底。外框（1 px pane-line、圆角 4、ShadowCard）由停靠区画（F2） -->
   <ControlTheme x:Key="{x:Type pr:PrPanel}" TargetType="pr:PrPanel">
-    <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+    <Setter Property="Background" Value="{StaticResource PaneBgBrush}" />
     <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Template">
       <ControlTemplate>
@@ -22,22 +23,22 @@
         <DockPanel Background="{TemplateBinding Background}">
           <!-- 标题栏的底色与间距写在下面的样式里（不写成模板里的本地值）：页面可以按类改（总览分区头：悬停 bg-hover、选中 a-tint、间距 10） -->
           <Border Name="PART_Head" DockPanel.Dock="Top" Height="{StaticResource HeadH}"
-                  BorderBrush="{StaticResource Line2Brush}" BorderThickness="0,0,0,1" Padding="10,0,6,0">
+                  BorderBrush="{StaticResource PaneHeadLineBrush}" BorderThickness="0,0,0,1" Padding="14,0,8,0">
             <pr:FlexRow Name="PART_HeadRow">
               <Border Name="PART_Grip" Width="20" Height="32" Background="Transparent" Cursor="SizeAll"
                       ToolTip.Tip="拖动停靠（第二阶段）" IsVisible="{TemplateBinding ShowGrip}">
                 <c:IconView Icon="move" Size="16" Foreground="{StaticResource TDisBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
               </Border>
-              <c:IconView Name="PART_Icon" Icon="{TemplateBinding Icon}" Size="18" Foreground="{StaticResource T3Brush}"
+              <c:IconView Name="PART_Icon" Icon="{TemplateBinding Icon}" Size="16" Foreground="{StaticResource T3Brush}"
                           IsVisible="{TemplateBinding Icon, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <Border Name="PART_TitleHost" Background="Transparent" ToolTip.Tip="{TemplateBinding ShownTitleTip}" pr:FlexRow.Shrink="1">
                 <ContentPresenter Name="PART_Title" Content="{TemplateBinding TitleContent}"
-                                  FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                  FontSize="{StaticResource FsPaneTitle}" FontWeight="SemiBold" Foreground="{StaticResource PaneTitleBrush}"
                                   VerticalAlignment="Center" />
               </Border>
               <!-- 副标题前的红点（设备页「报警与事件」：有未确认的错误报警，样稿 .device-rdot：8 px、右 6 —— 负外边距抵掉行间距的 2 px） -->
               <Ellipse Name="PART_SubDot" Width="8" Height="8" Margin="0,0,-2,0" Fill="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="False" />
-              <TextBlock Name="PART_Sub" Text="{TemplateBinding Sub}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}"
+              <TextBlock Name="PART_Sub" Text="{TemplateBinding Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"
                          TextTrimming="CharacterEllipsis" ToolTip.Tip="{TemplateBinding Sub}" pr:FlexRow.Shrink="100"
                          IsVisible="{TemplateBinding Sub, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               <StackPanel Name="PART_Actions" Orientation="Horizontal" Spacing="2" pr:FlexRow.PushRight="True">
@@ -59,7 +60,7 @@
       </ControlTemplate>
     </Setter>
     <Style Selector="^ /template/ Border#PART_Head">
-      <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
+      <Setter Property="Background" Value="{StaticResource PaneHeadBrush}" />
     </Style>
     <Style Selector="^ /template/ pr|FlexRow#PART_HeadRow">
       <Setter Property="Spacing" Value="8" />

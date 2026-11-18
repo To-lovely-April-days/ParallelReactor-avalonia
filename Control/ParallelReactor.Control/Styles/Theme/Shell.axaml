@@ -2,130 +2,308 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:c="using:ParallelReactor.Control.Controls"
                     xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+                    xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
                     xmlns:b="using:ParallelReactor.Control.Behaviors">
-  <!-- 外框专用的画刷与按钮（样稿 css/shell.css）：页签栏右端的「+」「›」、状态栏的报警项。其余外框部件用 Buttons / Tabs / Menus 里的通用主题。 -->
+  <!-- 外框专用的画刷与按钮（融合版 F2；样稿 main-fusion.html 的 .titlebar / .menubar / .cap / .gal / .prail / .dv / .status，数值取层叠后的计算值）。
+       其余外框部件用 Buttons / Tabs / Inputs 里的通用主题（工具条按钮 PrRibbonButton、胶囊 PrCapButton / PrCapEstop、下拉 PrSelect）。 -->
 
-  <!-- 图标栏：渐变上再盖 20 % side-line（让 14 px 白字 ≥ 4.5:1） -->
-  <SolidColorBrush x:Key="SideVeilBrush" Color="{StaticResource SideLineColor}" Opacity="0.2" />
-  <!-- 资源管理器浮层下面的浅遮罩：rgba(30, 30, 38, .08) = 遮罩色（.25）× 0.32 -->
-  <SolidColorBrush x:Key="XScrimBrush" Color="{StaticResource OverlayColor}" Opacity="0.32" />
+  <!-- 深蓝条上的半透明白：工位名小块（rgba(255,255,255,.16)）、文字按钮悬停（.14） -->
+  <SolidColorBrush x:Key="StripChipBrush" Color="{StaticResource TInvColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="StripHoverBrush" Color="{StaticResource TInvColor}" Opacity="0.14" />
+  <SolidColorBrush x:Key="StripChipHoverBrush" Color="{StaticResource TInvColor}" Opacity="0.24" />
 
-  <!-- 页签栏的「+」（新页签弹出框）/「›」（全部页签菜单）：宽 44、高 = 页签栏内高、透明、图标 t-3（+ 22 px，› 18 px）；
-       悬停 / 弹出中 bg-hover + t-1，按下 bg-press；焦点环画在内侧 1–3 px（样稿 outline-offset −3）。
-       计数（b:Pr.Count，「›」上未显示的页签数）：箭头左边一块 bg-press 底的 13 px 600 t-2 数字（高 20、圆角 10），这时按钮最小宽 52、左右 10 -->
-  <ControlTheme x:Key="PrTabBarButton" TargetType="Button">
-    <Setter Property="Width" Value="44" />
-    <Setter Property="Padding" Value="0" />
+  <!-- 深蓝条右端的文字按钮（样稿 .tb-link）：左右 7、上下 3、圆角 3，side-ink-2 字，图标 14 + 间距 5；悬停白 14 % 底 + 白字 -->
+  <ControlTheme x:Key="PrStripLink" TargetType="Button">
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
-    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Foreground" Value="{StaticResource SideInk2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Padding" Value="7,3" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="CornerRadius" Value="3" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
-    <Setter Property="ToolTip.ShowDelay" Value="400" />
-    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.12" />
-        <BrushTransition Property="Foreground" Duration="0:0:0.12" />
-      </Transitions>
-    </Setter>
     <Setter Property="Template">
       <ControlTemplate>
         <Panel>
-          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
-            <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center" VerticalAlignment="Center">
-              <Border Name="PART_Count" MinWidth="20" Height="20" Padding="6,0" CornerRadius="10" Background="{StaticResource BgPressBrush}"
-                      VerticalAlignment="Center"
-                      IsVisible="{TemplateBinding (b:Pr.Count), Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                <!-- pr:PrText（按前进宽度量、不加墨迹外伸）+ 等宽数字：哪个数字「›」都一样宽（以前 TextBlock 的「3」「4」多 1–2 px，页签区跟着变） -->
-                <pr:PrText Text="{TemplateBinding (b:Pr.Count)}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold"
-                           Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-              </Border>
-              <c:IconView Name="PART_Icon" Icon="{TemplateBinding (b:Pr.Icon)}" Foreground="{TemplateBinding Foreground}"
-                          VerticalAlignment="Center" />
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+              <c:IconView Icon="{TemplateBinding (b:Pr.Icon)}" Size="14" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+              <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
             </StackPanel>
           </Border>
-          <Border Name="PART_Focus" Margin="1" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+          <Border Name="PART_Focus" Margin="-2" BorderThickness="2" BorderBrush="{StaticResource TInvBrush}" CornerRadius="5" IsVisible="False" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^ /template/ c|IconView#PART_Icon">
-      <Setter Property="Size" Value="18" />
-    </Style>
-    <Style Selector="^.add /template/ c|IconView#PART_Icon">
-      <Setter Property="Size" Value="22" />
-    </Style>
-    <Style Selector="^.more">
-      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
-      <Setter Property="BorderThickness" Value="1,0,0,0" />
-    </Style>
-    <Style Selector="^.more.has-more">
-      <Setter Property="Width" Value="NaN" />
-      <Setter Property="MinWidth" Value="52" />
-      <Setter Property="Padding" Value="10,0" />
-    </Style>
-    <Style Selector="^:pointerover, ^:flyout-open">
-      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
-    </Style>
-    <Style Selector="^:pressed">
-      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource StripHoverBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
     </Style>
   </ControlTheme>
 
-  <!-- 状态栏的报警项（样稿 .pr-st-alarm）：高 26、左右 6（使用处外边距 −6，文字与相邻项对齐）、圆角 4、透明、14 px t-2；
-       可点时（有报警）悬停 bg-hover、按下 bg-press；没有可选的报警对象时（类 idle）不悬停、不按下，也不是 Tab 停靠点（IsTabStop 由使用处给）。
-       焦点环同样稿默认的 outline：外侧 2–4 px（圆角 8），上下两边被状态栏裁掉（StatusBarView 裁到上边框以内，同样稿 .pr-status overflow: hidden），只剩左右两段弧 -->
-  <ControlTheme x:Key="PrStatusButton" TargetType="Button">
-    <!-- 不裁剪：焦点环画在按钮外面（模板控件默认裁剪到自己的框）；裁掉上下两边的是状态栏 -->
-    <Setter Property="ClipToBounds" Value="False" />
-    <Setter Property="Height" Value="26" />
-    <Setter Property="Padding" Value="6,0" />
-    <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
-    <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
-    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+  <!-- 深蓝条上的工位名小块（样稿 .tb-chip）：白 16 % 底、左右 8 上下 2、圆角 3、白字 13 px；可点（改本机客户端名），悬停白 24 % -->
+  <ControlTheme x:Key="PrStripChip" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource StripChipBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="Height" Value="20" />
+    <Setter Property="CornerRadius" Value="3" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FocusAdorner" Value="{x:Null}" />
-    <Setter Property="ToolTip.ShowDelay" Value="400" />
-    <Setter Property="ToolTip.BetweenShowDelay" Value="300" />
-    <Setter Property="Transitions">
-      <Transitions>
-        <BrushTransition Property="Background" Duration="0:0:0.12" />
-      </Transitions>
-    </Setter>
     <Setter Property="Template">
       <ControlTemplate>
         <Panel>
-          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}"
-                  Padding="{TemplateBinding Padding}">
-            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}"
-                              ContentTemplate="{TemplateBinding ContentTemplate}" Foreground="{TemplateBinding Foreground}"
-                              VerticalAlignment="Center" />
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
           </Border>
-          <Border Name="PART_Focus" Margin="-4" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="8"
-                  IsVisible="False" IsHitTestVisible="False" />
+          <Border Name="PART_Focus" Margin="-2" BorderThickness="2" BorderBrush="{StaticResource TInvBrush}" CornerRadius="5" IsVisible="False" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
     </Setter>
-    <Style Selector="^:pointerover">
-      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
-    </Style>
-    <Style Selector="^:pressed">
-      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    <Style Selector="^:pointerover /template/ Border#PART_Body">
+      <Setter Property="Background" Value="{StaticResource StripChipHoverBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
     </Style>
-    <Style Selector="^.idle">
-      <Setter Property="Cursor" Value="Arrow" />
+  </ControlTheme>
+
+  <!-- 菜单栏的页面（样稿 .mi）：高 = 菜单栏内高、左右 12（窄屏 9，外面的样式改）、24 px 细体 gbg-menu（样稿字距 .02em 不加，见 MenuBarView）；悬停品牌蓝；当前页（类 on）品牌蓝常规字重。
+       徽标（b:Pr.Count，「报警」的未确认数）：右上角 top 7 / right 2、高 20 最小宽 20、圆角 10、menu-badge 红底白字 13/600；有徽标时右边留 26 -->
+  <ControlTheme x:Key="PrMenuPage" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource MenuInkBrush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsMenu}" />
+    <Setter Property="FontWeight" Value="Light" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="VerticalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" Margin="{TemplateBinding Padding}"
+                            Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" HorizontalAlignment="Left" />
+          <Border Name="PART_Badge" MinWidth="20" Height="20" CornerRadius="10" Padding="6,0" Background="{StaticResource MenuBadgeBrush}"
+                  HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,7,2,0"
+                  IsVisible="{TemplateBinding (b:Pr.Count), Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+            <TextBlock Text="{TemplateBinding (b:Pr.Count)}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold" LetterSpacing="0"
+                       Foreground="{StaticResource TInvBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Name="PART_Focus" Margin="2,10" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="3" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource MenuOnBrush}" />
     </Style>
-    <Style Selector="^.idle:pointerover, ^.idle:pressed">
-      <Setter Property="Background" Value="Transparent" />
+    <Style Selector="^.on">
+      <Setter Property="Foreground" Value="{StaticResource MenuOnBrush}" />
+      <Setter Property="FontWeight" Value="Normal" />
+    </Style>
+    <Style Selector="^.badge">
+      <Setter Property="Padding" Value="12,0,26,0" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 报警摘要按钮（样稿 .gal.almsum）：高 46、左 10 右 12、圆角 4、透明 1 px 边、间距 9；铃铛 24（gbg-icon）放在 30 × 30 里，红色气泡 20 在右上（top −3 right −7）；
+       两行字：上「报警 n · 提醒 m」14/600 t-1，下「未确认 k」13 px（有未确认：r-ink 600）。悬停 / 打开：bg-bar 底 + line-menu 边 -->
+  <ControlTheme x:Key="PrAlarmSummary" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="Height" Value="{StaticResource CapH}" />
+    <Setter Property="Padding" Value="10,0,12,0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-1" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="5" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover, ^.open">
+      <Setter Property="Background" Value="{StaticResource BgBarBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineMenuBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 停靠面板竖条上的开关（样稿 .rt）：上面 18 圆（1.2 px t-icon 圈、10 px 箭头），下面竖排的名字（14 px、字距 .14em），间距 10、下留 6；
+       字 rail-ink；悬停品牌蓝（字、圈、箭头）。箭头方向（b:Pr.Icon 不用；PART_Chev 的旋转由外面的类 col / right 决定，见 DockPane 的样式） -->
+  <ControlTheme x:Key="PrRailToggle" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource RailInkBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource RailBtnBrush}" />
+    <Setter Property="Padding" Value="0,0,0,6" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel Background="{TemplateBinding Background}">
+          <StackPanel Spacing="10" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center">
+            <Border Name="PART_Ring" Width="{StaticResource RailBtn}" Height="{StaticResource RailBtn}" CornerRadius="9" BorderThickness="1.2"
+                    BorderBrush="{TemplateBinding BorderBrush}" HorizontalAlignment="Center">
+              <c:IconView Name="PART_Chev" Icon="f-chev-r" Size="10" Foreground="{TemplateBinding Foreground}"
+                          HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" />
+            </Border>
+            <cs:VerticalText Name="PART_Text" Text="{TemplateBinding Content}" FontSize="{StaticResource FsRail}" Spacing="1.96"
+                             Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" />
+          </StackPanel>
+          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="3" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <!-- 箭头方向（DockPane 把 col / float / right 类同步到这个按钮上）：左面板展开时朝左、收起 / 浮出朝右；右面板反过来 -->
+    <Style Selector="^ /template/ c|IconView#PART_Chev">
+      <Setter Property="RenderTransform" Value="rotate(180deg)" />
+    </Style>
+    <Style Selector="^.col /template/ c|IconView#PART_Chev, ^.float /template/ c|IconView#PART_Chev, ^.right /template/ c|IconView#PART_Chev">
+      <Setter Property="RenderTransform" Value="none" />
+    </Style>
+    <Style Selector="^.right.col /template/ c|IconView#PART_Chev, ^.right.float /template/ c|IconView#PART_Chev">
+      <Setter Property="RenderTransform" Value="rotate(180deg)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 收起的设备面板竖条上的设备号小方块（样稿 .rdv）：24 × 24、line-sep 边、圆角 2、白底、13/600 t-2；选中（类 on）品牌蓝边 + 字 + a-soft 底；
+       右下角 9 px 状态点（1.5 px bg-panel 圈，外伸 4）由内容画 -->
+  <ControlTheme x:Key="PrRailDev" TargetType="Button">
+    <Setter Property="Width" Value="24" />
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineSepBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="ClipToBounds" Value="False" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Border Name="PART_Focus" Margin="-3" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="4" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="^.on">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 设备面板的一行（样稿 .dv）：bg-side 底、圆角 4、下边距 3；悬停 bg-press；选中（类 on）白底 + 1 px a-line 内圈。内容（色条、名字…）由行模板画 -->
+  <ControlTheme x:Key="PrDevRow" TargetType="Button">
+    <Setter Property="Background" Value="{StaticResource BgSideBrush}" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Margin" Value="0,0,0,3" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Body" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+          </Border>
+          <Border Name="PART_Ring" CornerRadius="{TemplateBinding CornerRadius}" BorderThickness="1" BorderBrush="Transparent" IsHitTestVisible="False" />
+          <Border Name="PART_Focus" Margin="1" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" CornerRadius="4" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource BgPressBrush}" />
+    </Style>
+    <Style Selector="^.on">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="^.on /template/ Border#PART_Ring">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 停靠面板（样稿 .pane > .pwrap + .prail）：白底、1 px pane-line 边、圆角 4、ShadowCard、内容裁在圆角里；左侧 28 竖条（rail-bg、右边 rail-line；收起时没有右边线），
+       竖条上 9 起：开关（PrRailToggle）+ 间距 8 + 收起时的附加内容（RailExtra：设备号小方块）。箭头：左面板展开时朝左（收起），收起 / 浮出时朝右；右面板（类 right）反过来。
+       浮出（类 float）：ShadowFloat。 -->
+  <ControlTheme x:Key="{x:Type cs:DockPane}" TargetType="cs:DockPane">
+    <Setter Property="Background" Value="{StaticResource PaneBgBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource PaneLineBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Wrap" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}" BoxShadow="{StaticResource ShadowCard}" ClipToBounds="True">
+          <DockPanel>
+            <Border Name="PART_Rail" DockPanel.Dock="Left" Width="{StaticResource RailW}" Background="{StaticResource RailBgBrush}"
+                    BorderBrush="{StaticResource RailLineBrush}" BorderThickness="0,0,1,0">
+              <StackPanel Spacing="8" Margin="0,9,0,0">
+                <Button Name="PART_Toggle" Theme="{StaticResource PrRailToggle}" Content="{TemplateBinding Title}"
+                        Command="{TemplateBinding ToggleCommand}" ToolTip.Tip="{TemplateBinding ToggleTip}" />
+                <ContentPresenter Name="PART_RailExtra" Content="{TemplateBinding RailExtra}" HorizontalAlignment="Center" IsVisible="False" ClipToBounds="False" />
+              </StackPanel>
+            </Border>
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+          </DockPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^.col /template/ Border#PART_Rail">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="^.col /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="^.col /template/ ContentPresenter#PART_RailExtra">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.float /template/ Border#PART_Wrap">
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowFloat}" />
     </Style>
   </ControlTheme>
 </ResourceDictionary>

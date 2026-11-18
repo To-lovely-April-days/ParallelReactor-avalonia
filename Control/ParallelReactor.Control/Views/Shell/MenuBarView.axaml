@@ -1,20 +1,91 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
              xmlns:sh="using:ParallelReactor.Control.Shell"
              x:Class="ParallelReactor.Control.Views.Shell.MenuBarView"
              x:DataType="sh:ShellVm">
-  <!-- 菜单栏 34 px（样稿 .pr-menubar）：白底 + 下方 1 px line-menu 深线，左右 8；菜单栏项（PrMenuBarItem：高 28、左右 12、15 px）；
-       右端「本机：PC-测试工位1」（monitor 图标 17 + 14 px t-3，间距 8，右 8）。菜单项由 Shell/MenuModel 在每次打开时生成（MenuBarView.axaml.cs）。
-       每个菜单是一个 Tab 停靠点（样稿七个 button；11.1 的 Menu 默认整条只停一次）。键盘、刷新见 Views/Shell/PopupMenus。 -->
-  <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1" Padding="8,0">
+  <!-- 菜单栏（融合版 F2；样稿 .menubar）：高 54、白底、下边 line-menu、左右 12、间距 10。
+       左：六个页面（PrMenuPage：24 px 细体 gbg-menu、左右 12、字距 .02em；当前页品牌蓝常规字重；「报警」带未确认数徽标）——窄屏 22 px、左右 9。
+       右：运行胶囊（.cap：46 高、cap-bg、圆角 8、左 20 右 8、间距 8：设备名 20 px 白 + 启动 / 全部停止 / 记录三个 34 圆钮 + 红色「急停」）·
+           报警摘要按钮（.gal）· 本机（.user：电脑图标 26 + 「本机」/ 工位名两行 13 px，窄屏只剩图标）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.estop-ring">
+      <Setter Property="Margin" Value="2,-2,-2,-2" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="CornerRadius" Value="19" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1" Padding="12,0">
     <DockPanel>
-      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" Margin="0,0,8,0" VerticalAlignment="Center">
-        <c:IconView Icon="monitor" Size="17" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
-        <pr:PrText Text="{Binding ClientText}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" Margin="10,0,0,0">
+        <!-- 运行胶囊 -->
+        <Border Name="Cap" Height="{StaticResource CapH}" CornerRadius="{StaticResource RadiusCap}" Background="{StaticResource CapBgBrush}" Padding="20,0,8,0">
+          <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <pr:PrText Text="{Binding Capsule.Label}" FontSize="{StaticResource FsCap}" Foreground="{StaticResource TInvBrush}" LetterSpacing="0.4"
+                       Margin="0,0,6,0" VerticalAlignment="Center" />
+            <Button Name="CapStart" Theme="{StaticResource PrCapButton}" Classes="go" b:Pr.Icon="f-play" AutomationProperties.Name="启动"
+                    b:Pr.Reason="{Binding Capsule.StartReason}" ToolTip.Tip="{Binding Capsule.StartTip}" Command="{Binding Capsule.StartCommand}" />
+            <Button Name="CapStop" Theme="{StaticResource PrCapButton}" b:Pr.Icon="f-stop" AutomationProperties.Name="全部停止"
+                    b:Pr.Reason="{Binding Capsule.StopReason}" ToolTip.Tip="{x:Static sh:CapsuleVm.StopAllTip}" Command="{Binding Capsule.StopAllCommand}" />
+            <Button Name="CapRec" Theme="{StaticResource PrCapButton}" b:Pr.Icon="f-rec" AutomationProperties.Name="开始记录"
+                    b:Pr.Reason="{Binding Capsule.RecordReason}" ToolTip.Tip="{Binding Capsule.RecordTip}" Command="{Binding Capsule.RecordCommand}" />
+            <Panel>
+              <Border Classes="estop-ring" IsVisible="{Binding Capsule.AnyEstop}" />
+              <Button Name="CapEstop" Theme="{StaticResource PrCapEstop}" b:Pr.Icon="f-power" Margin="4,0,0,0" AutomationProperties.Name="急停"
+                      b:Pr.Reason="{Binding Capsule.StopReason}" ToolTip.Tip="{x:Static sh:CapsuleVm.EstopTip}" Command="{Binding Capsule.EstopCommand}">
+                <pr:PrText Text="急停" />
+              </Button>
+            </Panel>
+          </StackPanel>
+        </Border>
+        <!-- 报警摘要按钮 -->
+        <Button Name="AlarmButton" Theme="{StaticResource PrAlarmSummary}" Classes.open="{Binding Alarms.IsOpen}"
+                Command="{Binding Alarms.ToggleCommand}" ToolTip.Tip="{Binding Alarms.Tip}" AutomationProperties.Name="{Binding Alarms.Tip}">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Panel Width="30" Height="30">
+              <c:IconView Icon="f-bell" Size="24" Foreground="{StaticResource GbgIconBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <Border MinWidth="20" Height="20" CornerRadius="10" Padding="5,0" Background="{StaticResource RBrush}"
+                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-7,0" IsVisible="{Binding Alarms.HasUnacked}" Classes="audit-layer">
+                <TextBlock Text="{Binding Alarms.Unacked}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold"
+                           Foreground="{StaticResource TInvBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              </Border>
+            </Panel>
+            <StackPanel VerticalAlignment="Center">
+              <pr:PrText Text="{Binding Alarms.CountText}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="17" />
+              <pr:PrText Name="AckLine" Text="{Binding Alarms.AckText}" FontSize="{StaticResource FsBase}" LineHeight="17"
+                         Classes.ua="{Binding Alarms.HasUnacked}" />
+            </StackPanel>
+          </StackPanel>
+        </Button>
+        <!-- 本机 -->
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,0,4,0" VerticalAlignment="Center" ToolTip.Tip="{Binding ClientName, StringFormat='本机：{0}'}">
+          <c:IconView Icon="f-pc" Size="26" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
+          <StackPanel Name="UserText" VerticalAlignment="Center">
+            <pr:PrText Text="本机" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="17" />
+            <pr:PrText Text="{Binding ClientName}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" LineHeight="17" />
+          </StackPanel>
+        </StackPanel>
       </StackPanel>
-      <Menu Name="Bar" VerticalAlignment="Center" HorizontalAlignment="Left" KeyboardNavigation.TabNavigation="Continue" />
+      <ItemsControl Name="Menu" ItemsSource="{Binding Menubar.Pages}" VerticalAlignment="Stretch">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="sh:MenuPageVm">
+            <Button Theme="{StaticResource PrMenuPage}" Classes="mi" Classes.on="{Binding IsOn}"
+                    Classes.badge="{Binding Badge, Converter={x:Static ObjectConverters.IsNotNull}}" b:Pr.Count="{Binding Badge}"
+                    Command="{Binding GoCommand}" Height="53" AutomationProperties.Name="{Binding Title}">
+              <pr:PrText Text="{Binding Title}" />
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
     </DockPanel>
   </Border>
 </UserControl>

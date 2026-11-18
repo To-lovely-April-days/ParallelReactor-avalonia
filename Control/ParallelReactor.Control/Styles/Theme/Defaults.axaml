@@ -8,7 +8,7 @@
 
   <ControlTheme x:Key="{x:Type Button}" TargetType="Button" BasedOn="{StaticResource PrButton}" />
 
-  <!-- 普通 ToggleButton（新界面的切换类都显式用 PrSegItem / PrPTab / PrChip / PrSideItem / PrDocTab / PrCheck）：
+  <!-- 普通 ToggleButton（新界面的切换类都显式用 PrSegItem / PrPTab / PrChip / PrCheck）：
        次要按钮的样子，按下状态 = 芯片「开」的颜色（a-soft 底 + a-line 边 + a-ink 字） -->
   <ControlTheme x:Key="PrToggleButton" TargetType="ToggleButton" BasedOn="{StaticResource PrButton}">
     <Style Selector="^:checked">

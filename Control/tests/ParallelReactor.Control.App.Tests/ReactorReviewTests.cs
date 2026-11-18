@@ -17,36 +17,6 @@ namespace ParallelReactor.Control.Tests;
 /// </summary>
 public class ReactorReviewTests
 {
-    /// <summary>
-    /// 面板网格的边按「.5 进位」取整（ReactorGridPanel.Snap）：任何网格宽高下，程序栏与右栏之间、釜体与曲线之间（宽版式还有釜体与属性查看器之间）
-    /// 都正好 1 px 的分隔线 —— 银行家舍入在 563.5 / 564.5 这种边上会把分隔线吃掉（复核：窗口宽 1889 → 网格 1225）。
-    /// </summary>
-    [Fact]
-    public void GridSnap_KeepsTheOnePixelDivider_AtEveryWidth()
-    {
-        var bad = new List<string>();
-        foreach (double h in new[] { 600.0, 641.5, 700.25, 752.0, 752.5, 913.5, 1100.0 })
-            for (double w = 900; w <= 2600; w += 0.25)
-            {
-                var g = ReactorPageLayout.Compute(w, h);
-                var p = Snap(g[ReactorPanel.Program]!.Value);
-                var v = Snap(g[ReactorPanel.Vessel]!.Value);
-                var c = Snap(g[ReactorPanel.Curves]!.Value);
-                if (v.X - p.Right != 1) bad.Add($"{w}×{h}：程序 | 右栏 {v.X - p.Right} px");
-                if (c.Y - v.Bottom != 1) bad.Add($"{w}×{h}：釜体 / 曲线 {c.Y - v.Bottom} px");
-                if (g.Wide && g[ReactorPanel.Props] is { } sp && Snap(sp).X - v.Right != 1) bad.Add($"{w}×{h}：釜体 | 属性 {Snap(sp).X - v.Right} px");
-                if (p.Right > Math.Floor(w + 0.5) || c.Right > Math.Floor(w + 0.5)) bad.Add($"{w}×{h}：超出网格");
-                if (bad.Count > 8) break;
-            }
-        Assert.True(bad.Count == 0, string.Join("\n", bad));
-        Assert.Equal(new Rect(0, 0, 564, 672), ReactorGridPanel.Snap(new Rect(0, 0, 563.5, 671.5)));
-        Assert.Equal(565, ReactorGridPanel.Snap(new Rect(564.5, 0, 660.5, 10)).X);
-        Assert.Equal(564, ReactorGridPanel.Edge(563.4999999999999));
-        Assert.Equal(565, ReactorGridPanel.Edge(564.5000000000001));
-    }
-
-    private static Rect Snap(FlowRect r) => ReactorGridPanel.Snap(new Rect(r.X, r.Y, r.W, r.H));
-
     /// <summary>组件陈列的条件框（样稿 ui.stepCond）一律是普通的浅灰框：当前步 / 报警暂停 / 中止的样式类只在反应釜页上。</summary>
     [Fact]
     public void GalleryCondition_IsAlwaysPlain()

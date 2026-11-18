@@ -1,0 +1,164 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:g="using:ParallelReactor.Control.Views.Pages.Gallery"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             x:Class="ParallelReactor.Control.Views.Pages.Gallery.RunTableSection">
+  <!-- 运行表（融合版 F1，样稿 main-fusion.html .rtab）：表头 PrTableHead（40、白底、13/500 t-3、单位小字 t-4）+ 行 PrTableRow（44、14 px、行线 line-faint）。
+       行：选中（左侧 3 px 品牌蓝 + a-tint 底）、报警（类 err：左侧 3 px 红 + r-bg 底、状态红字 600）、普通、停用（t-dis）。
+       分段进度 6 px：已完成 a-done、当前 a-track 轨道 + 品牌蓝进度、未到 bg-press。F3 的运行表用同样的令牌和行主题。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.u">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource RunSubBrush}" />
+    </Style>
+    <Style Selector="Border.seg">
+      <Setter Property="Height" Value="{StaticResource RunStepBarH}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="{StaticResource RunStepNextBrush}" />
+    </Style>
+    <Style Selector="Border.seg.done">
+      <Setter Property="Background" Value="{StaticResource RunStepDoneBrush}" />
+    </Style>
+    <Style Selector="Border.seg.cur">
+      <Setter Property="Background" Value="{StaticResource RunStepTrackBrush}" />
+    </Style>
+    <Style Selector="Border.seg.err">
+      <Setter Property="Background" Value="{StaticResource RTrackBrush}" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel Grid.IsSharedSizeScope="True" MaxWidth="1200" HorizontalAlignment="Left">
+    <ContentControl Theme="{StaticResource PrTableHead}">
+      <Grid ColumnDefinitions="90,110,*,110,150,130">
+        <TextBlock Margin="14,0" Text="通道" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="1" Margin="14,0" Text="状态" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="2" Margin="14,0" Text="程序 · 当前步骤" VerticalAlignment="Center" />
+        <TextBlock Grid.Column="3" Margin="14,0" Text="本步剩余" TextAlignment="Right" VerticalAlignment="Center" />
+        <StackPanel Grid.Column="4" Margin="14,0" VerticalAlignment="Center">
+          <TextBlock Text="温度 °C" TextAlignment="Right" />
+          <TextBlock Text="实测 · 设定" TextAlignment="Right" FontWeight="Normal" Foreground="{StaticResource RunSubBrush}" />
+        </StackPanel>
+        <StackPanel Grid.Column="5" Margin="14,0" VerticalAlignment="Center">
+          <TextBlock Text="压力 MPa" TextAlignment="Right" />
+          <TextBlock Text="实测 · 设定" TextAlignment="Right" FontWeight="Normal" Foreground="{StaticResource RunSubBrush}" />
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+    <ListBox Theme="{StaticResource PrListBox}" SelectedIndex="0">
+      <!-- 选中的一行 -->
+      <ListBoxItem Theme="{StaticResource PrTableRow}">
+        <Grid ColumnDefinitions="90,110,*,110,150,130">
+          <StackPanel Orientation="Horizontal" Margin="14,0" Spacing="9" VerticalAlignment="Center">
+            <Border Width="3" Height="16" CornerRadius="2" Background="{StaticResource Ch1Brush}" />
+            <TextBlock Text="RV1" FontWeight="SemiBold" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,0" Spacing="7" VerticalAlignment="Center">
+            <Ellipse Width="{StaticResource DotSize}" Height="{StaticResource DotSize}" Fill="{StaticResource GDotBrush}" />
+            <TextBlock Text="反应中" Foreground="{StaticResource T2Brush}" />
+          </StackPanel>
+          <Grid Grid.Column="2" Margin="14,0" ColumnDefinitions="112,*" VerticalAlignment="Center">
+            <TextBlock><Run Text="恒温反应 " /><Run Text="3/4" FontSize="{StaticResource FsBase}" Foreground="{StaticResource RunSubBrush}" /></TextBlock>
+            <Grid Grid.Column="1" ColumnDefinitions="*,3,*,3,*,3,*" VerticalAlignment="Center">
+              <Border Classes="seg done" />
+              <Border Grid.Column="2" Classes="seg done" />
+              <Border Grid.Column="4" Classes="seg cur">
+                <Border Width="40" HorizontalAlignment="Left" CornerRadius="3" Background="{StaticResource RunStepFillBrush}" />
+              </Border>
+              <Border Grid.Column="6" Classes="seg" />
+            </Grid>
+          </Grid>
+          <TextBlock Grid.Column="3" Margin="14,0" TextAlignment="Right" VerticalAlignment="Center"><Run Text="27" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" /><Run Text=" min" FontSize="{StaticResource FsBase}" Foreground="{StaticResource RunSubBrush}" /></TextBlock>
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="145.2" /><TextBlock Classes="u num" Text="/ 150.0" VerticalAlignment="Bottom" />
+          </StackPanel>
+          <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="2.35" /><TextBlock Classes="u num" Text="/ 2.50" VerticalAlignment="Bottom" />
+          </StackPanel>
+        </Grid>
+      </ListBoxItem>
+      <!-- 普通 -->
+      <ListBoxItem Theme="{StaticResource PrTableRow}">
+        <Grid ColumnDefinitions="90,110,*,110,150,130">
+          <StackPanel Orientation="Horizontal" Margin="14,0" Spacing="9" VerticalAlignment="Center">
+            <Border Width="3" Height="16" CornerRadius="2" Background="{StaticResource Ch2Brush}" />
+            <TextBlock Text="RV2" FontWeight="SemiBold" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,0" Spacing="7" VerticalAlignment="Center">
+            <Ellipse Width="{StaticResource DotSize}" Height="{StaticResource DotSize}" Fill="{StaticResource GDotBrush}" />
+            <TextBlock Text="升温中" Foreground="{StaticResource T2Brush}" />
+          </StackPanel>
+          <Grid Grid.Column="2" Margin="14,0" ColumnDefinitions="112,*" VerticalAlignment="Center">
+            <TextBlock><Run Text="升温 " /><Run Text="1/4" FontSize="{StaticResource FsBase}" Foreground="{StaticResource RunSubBrush}" /></TextBlock>
+            <Grid Grid.Column="1" ColumnDefinitions="*,3,*,3,*,3,*" VerticalAlignment="Center">
+              <Border Classes="seg cur">
+                <Border Width="70" HorizontalAlignment="Left" CornerRadius="3" Background="{StaticResource RunStepFillBrush}" />
+              </Border>
+              <Border Grid.Column="2" Classes="seg" />
+              <Border Grid.Column="4" Classes="seg" />
+              <Border Grid.Column="6" Classes="seg" />
+            </Grid>
+          </Grid>
+          <TextBlock Grid.Column="3" Margin="14,0" TextAlignment="Right" VerticalAlignment="Center"><Run Text="7" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" /><Run Text=" min" FontSize="{StaticResource FsBase}" Foreground="{StaticResource RunSubBrush}" /></TextBlock>
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="96.8" /><TextBlock Classes="u num" Text="/ 120.0" VerticalAlignment="Bottom" />
+          </StackPanel>
+          <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="1.10" /><TextBlock Classes="u num" Text="/ 2.50" VerticalAlignment="Bottom" />
+          </StackPanel>
+        </Grid>
+      </ListBoxItem>
+      <!-- 报警行 -->
+      <ListBoxItem Theme="{StaticResource PrTableRow}" Classes="err">
+        <Grid ColumnDefinitions="90,110,*,110,150,130">
+          <StackPanel Orientation="Horizontal" Margin="14,0" Spacing="9" VerticalAlignment="Center">
+            <Border Width="3" Height="16" CornerRadius="2" Background="{StaticResource Ch4Brush}" />
+            <TextBlock Text="RV4" FontWeight="SemiBold" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,0" Spacing="7" VerticalAlignment="Center">
+            <Ellipse Width="{StaticResource DotSize}" Height="{StaticResource DotSize}" Fill="{StaticResource RBrush}" />
+            <TextBlock Text="压力超限" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" />
+          </StackPanel>
+          <Grid Grid.Column="2" Margin="14,0" ColumnDefinitions="112,*" VerticalAlignment="Center">
+            <TextBlock><Run Text="恒温反应 " /><Run Text="3/4" FontSize="{StaticResource FsBase}" Foreground="{StaticResource RunSubBrush}" /></TextBlock>
+            <Grid Grid.Column="1" ColumnDefinitions="*,3,*,3,*,3,*" VerticalAlignment="Center">
+              <Border Classes="seg done" />
+              <Border Grid.Column="2" Classes="seg done" />
+              <Border Grid.Column="4" Classes="seg err">
+                <Border Width="30" HorizontalAlignment="Left" CornerRadius="3" Background="{StaticResource RBrush}" />
+              </Border>
+              <Border Grid.Column="6" Classes="seg" />
+            </Grid>
+          </Grid>
+          <TextBlock Grid.Column="3" Margin="14,0" Text="已暂停" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" TextAlignment="Right" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="4" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="158.4" /><TextBlock Classes="u num" Text="/ 160.0" VerticalAlignment="Bottom" />
+          </StackPanel>
+          <StackPanel Grid.Column="5" Orientation="Horizontal" Margin="14,0" Spacing="8" HorizontalAlignment="Right" VerticalAlignment="Center">
+            <TextBlock Classes="v num" Text="3.55" Foreground="{StaticResource RInkBrush}" /><TextBlock Classes="u num" Text="/ 2.50" VerticalAlignment="Bottom" />
+          </StackPanel>
+        </Grid>
+      </ListBoxItem>
+      <!-- 停用 -->
+      <ListBoxItem Theme="{StaticResource PrTableRow}" Foreground="{StaticResource TDisBrush}">
+        <Grid ColumnDefinitions="90,110,*,110,150,130">
+          <StackPanel Orientation="Horizontal" Margin="14,0" Spacing="9" VerticalAlignment="Center">
+            <Border Width="3" Height="16" CornerRadius="2" Background="{StaticResource Ch7Brush}" />
+            <TextBlock Text="RV7" FontWeight="SemiBold" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="14,0" Spacing="7" VerticalAlignment="Center">
+            <Ellipse Width="{StaticResource DotSize}" Height="{StaticResource DotSize}" Fill="{StaticResource NDotBrush}" />
+            <TextBlock Text="停用" />
+          </StackPanel>
+          <TextBlock Grid.Column="2" Margin="14,0" Text="已停用" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="3" Margin="14,0" Text="—" Foreground="{StaticResource TNoneBrush}" TextAlignment="Right" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="4" Margin="14,0" Text="—" Foreground="{StaticResource TNoneBrush}" TextAlignment="Right" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="5" Margin="14,0" Text="—" Foreground="{StaticResource TNoneBrush}" TextAlignment="Right" VerticalAlignment="Center" />
+        </Grid>
+      </ListBoxItem>
+    </ListBox>
+  </StackPanel>
+</UserControl>

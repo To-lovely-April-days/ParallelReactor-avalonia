@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shots.sh — 演示模式截图 + 审计 + 左右对照（PORT-PLAN §5 M1「截图工具」、§5.9）。
+# shots.sh — 演示模式截图 + 审计 + 左右对照（pc-v3 PORT-PLAN §5 M1「截图工具」；融合版 F1 起默认计划 = Shot/ShotPlan.cs 的 Fusion，参照 = research/fusion-port/ref）。
 #
 # 先构建一次 Debug（截图代码 Shot/* 只在 Debug 里；连同引用的 Core / Client / Contracts 一起构建，干净的检出也能跑，
 # 改了 Core 也不会拿旧 DLL 截图），再按尺寸各起一个无头进程：
@@ -10,14 +10,14 @@
 # 开跑前删掉输出目录里上一次留下的 *.audit.txt、error*.txt、shot*.log（旧结果不能让这次失败或误导）。
 #
 # 用法：Control/tools/shots.sh [输出目录] [尺寸 ...]
-#   输出目录默认 $PR_SHOTS_OUT，否则 ./shots-out；尺寸默认 $PR_SHOTS_SIZES，否则外壳的三个尺寸（1920x1080 1600x900 1366x768：
-#   overview、device1、reactor11）加组件陈列页的三个（1920x5100 1600x4200 1366x4200：gallery）。
+#   输出目录默认 $PR_SHOTS_OUT，否则 ./shots-out；尺寸默认 $PR_SHOTS_SIZES，否则外壳的两个尺寸（1920x1080 1366x768：F2 的 home-* / page-* / frame-*，F3 起再加）
+#   加组件陈列页的三个（1920x6400 1600x7600 1366x7600：gallery）。
 #   PR_CONTROL_SHOT_NAMES=gallery,…  只跑这些截图（任意尺寸）。
 #   PR_CONTROL_TREE_DUMP=1           每张截图另写 <name>-<w>.tree.txt（可视树：类型、名字、类、矩形、文字、字号、实际字体）。
-#   PR_CONTROL_SHOT_REF=<目录>        参照图目录（final-<name>-<w>.png）；默认用样稿的 research/pc-v3/shots。
+#   PR_CONTROL_SHOT_REF=<目录>        参照图目录（final-<name>-<w>.png）；默认 research/fusion-port/ref（tools/snap-fusion-refs.sh 现拍）。
 #   PR_CONTROL_CONFIG / PR_CONTROL_DATA 可覆盖（默认 <输出目录>/cfg、<输出目录>/data；PR_CONTROL_CONFIG 以 .json 结尾时是 devices.json 文件本身，只建它所在的目录）。
 #   PR_SHOTS_ALT_FONT=<字体栈>        第二遍审计的字体栈（macOS 默认 Theme/UiFonts.MacSystemStack；none = 不跑第二遍）。
-#   PR_SHOTS_FAKE2=0                  不跑场景 fake2（默认：外壳的三个尺寸各跑一次 —— 四台进程内的假 HMI 经真 ReactorConnection 连接，
+#   PR_SHOTS_FAKE2=1                  跑场景 fake2（融合版 F1 起默认不跑：那几张是 pc-v3 外壳的状态，F2 换外壳后重写；跑的话外壳的三个尺寸各一次 —— 四台进程内的假 HMI 经真 ReactorConnection 连接，
 #                                     fake2-overview / fake2-device1 / fake2-reactor11 / fake2-device3 / fake2-device4 / fake2-devices /
 #                                     fake2-client / fake2-exit（真机才有的两个对话框：本机客户端名、退出确认）；
 #                                     只给了 PR_CONTROL_SHOT_NAMES 时，名字里有 fake2 才跑）。
@@ -31,8 +31,8 @@ DOTNET="${DOTNET:-$HOME/.dotnet/dotnet}"
 OUT="${1:-${PR_SHOTS_OUT:-$PWD/shots-out}}"
 shift $(( $# > 0 ? 1 : 0 ))
 SIZES=("$@")
-if [ ${#SIZES[@]} -eq 0 ]; then read -r -a SIZES <<< "${PR_SHOTS_SIZES:-1920x1080 1600x900 1366x768 1920x5100 1600x4200 1366x4200}"; fi
-REF="${PR_CONTROL_SHOT_REF:-$(cd "$HERE/../../.." && pwd)/research/pc-v3/shots}"
+if [ ${#SIZES[@]} -eq 0 ]; then read -r -a SIZES <<< "${PR_SHOTS_SIZES:-1920x1080 1366x768 1920x6400 1600x7600 1366x7600}"; fi
+REF="${PR_CONTROL_SHOT_REF:-$(cd "$HERE/../../.." && pwd)/research/fusion-port/ref}"
 ALT_FONT="${PR_SHOTS_ALT_FONT:-}"
 if [ -z "$ALT_FONT" ] && [ "$(uname -s)" = "Darwin" ]; then ALT_FONT=".AppleSystemUIFont, PingFang SC, fonts:Inter#Inter"; fi
 [ "$ALT_FONT" = "none" ] && ALT_FONT=""
@@ -86,7 +86,7 @@ clean_size() {   # clean_size <尺寸>
 # 场景 fake2（Shot/ShotRunner.Fake2.cs）：外壳的三个尺寸；不是演示模式（PR_CONTROL_DEMO=0），数据来自进程内的假 HMI
 FAKE2_NAMES="fake2-overview fake2-device1 fake2-reactor11 fake2-device3 fake2-device4 fake2-devices fake2-client fake2-exit"
 fake2_wanted() {   # fake2_wanted <尺寸>
-  [ "${PR_SHOTS_FAKE2:-1}" = "0" ] && return 1
+  [ "${PR_SHOTS_FAKE2:-0}" = "0" ] && return 1
   case "$1" in 1920x1080|1600x900|1366x768) ;; *) return 1 ;; esac
   [ -z "$NAMES" ] && return 0
   echo "$NAMES" | tr ',' '\n' | tr -d ' ' | grep -q '^fake2'

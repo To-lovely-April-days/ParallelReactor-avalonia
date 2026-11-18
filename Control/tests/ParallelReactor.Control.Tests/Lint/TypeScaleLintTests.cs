@@ -9,7 +9,7 @@ using Xunit;
 namespace ParallelReactor.Control.Tests.Lint;
 
 /// <summary>
-/// 字号下限的源码检查（PORT-PLAN §4.7 第 3 条；RESTYLE-BRIEF §3：任何文字 ≥ 13 px，中文 ≥ 14 px —— 中文的下限由运行时 ShotAudit 查）。
+/// 字号下限的源码检查（pc-v3 PORT-PLAN §4.7 第 3 条；融合版样稿：字号 ≥ 13 px，中文同样 ≥ 13 —— 运行时由 ShotAudit 查）。
 /// .axaml 里 FontSize 的字面量（属性、Setter、x:Double 的 Fs* 令牌）必须 ≥ 13，或者引用 Fs* 资源 / 绑定；
 /// .cs 里写死的字号（FontSize = n、FontSizeProperty, n、fontSize: n、emSize: n、["…FontSize"] = n）&lt; 13 即失败；
 /// 自绘文字（M4 / M5 的曲线、釜体会用）：new FormattedText(…) 的 emSize、new TextLayout(…) / new GenericTextRunProperties(…) 的字号参数是 &lt; 13 的字面量即失败
@@ -143,7 +143,7 @@ public class TypeScaleLintTests
                 bad.Add($"{rel}:{line} 字号 {size.ToString(CultureInfo.InvariantCulture)} < 13：{(t.Length > 120 ? t[..120] + "…" : t)}");
         }
         Assert.True(scanned > 50, $"只扫到 {scanned} 个文件（目录 {AppSource.Dir} 不对？）");
-        Assert.True(bad.Count == 0, "字号小于 13 px（任何文字 ≥ 13，中文 ≥ 14；请用 Fs* 令牌）：\n" + string.Join("\n", bad));
+        Assert.True(bad.Count == 0, "字号小于 13 px（任何文字 ≥ 13；请用 Fs* 令牌）：\n" + string.Join("\n", bad));
     }
 
     /// <summary>字号资源（新令牌 Fs* 与旧令牌 Fs6–Fs20）的值：引用小于 13 的旧字号资源同样算违规。</summary>
@@ -198,17 +198,22 @@ public class TypeScaleLintTests
         Assert.True(stale.Count == 0, "这些文件已经没有小于 13 px 的字号了，从允许名单里删掉：" + string.Join(", ", stale));
     }
 
+    /// <summary>Fs* 令牌 = tools/fusion-tokens.json 的字号（gen-tokens.py 生成）：沿用 pc-v3 的类型阶梯键名 + 融合版的语义字号，全部 ≥ 13。</summary>
     [Fact]
-    public void FontSizeTokens_AreTheBriefScale()
+    public void FontSizeTokens_AreTheJsonScale()
     {
         var tokens = new Regex(@"<x:Double\s+x:Key=""(Fs\w*)"">\s*" + Num + @"\s*</x:Double>").Matches(AppSource.Read("Styles/Tokens.axaml"))
             .ToDictionary(m => m.Groups[1].Value, m => double.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture));
-        var expected = new Dictionary<string, double>
-        {
-            ["FsNum"] = 13, ["Fs2"] = 14, ["FsBody"] = 15, ["FsTitle"] = 16, ["FsHead"] = 18,
-            ["FsReadS"] = 20, ["FsRead24"] = 24, ["FsRead"] = 26, ["FsRead28"] = 28, ["FsRead30"] = 30,
-        };
+        using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(TokenParityTests.JsonPath));
+        var expected = doc.RootElement.GetProperty("sizes").EnumerateArray()
+            .Where(e => e.GetProperty("key").GetString()!.StartsWith("Fs", StringComparison.Ordinal))
+            .ToDictionary(e => e.GetProperty("key").GetString()!, e => e.GetProperty("value").GetDouble());
         Assert.Equal(expected.OrderBy(k => k.Key), tokens.OrderBy(k => k.Key));
+        // pc-v3 的类型阶梯（键名不变，现有视图照常编译）与融合版的正文 13 / 单元格 14 / 读数 15 / 菜单 24
+        foreach (var (k, v) in new Dictionary<string, double> { ["FsNum"] = 13, ["Fs2"] = 14, ["FsBody"] = 15, ["FsTitle"] = 16, ["FsHead"] = 18, ["FsReadS"] = 20,
+                     ["FsRead24"] = 24, ["FsRead"] = 26, ["FsRead28"] = 28, ["FsRead30"] = 30, ["FsBase"] = 13, ["FsCell"] = 14, ["FsValue"] = 15, ["FsMenu"] = 24 })
+            Assert.Equal(v, tokens[k]);
+        Assert.All(tokens.Values, v => Assert.True(v >= Min, $"字号令牌 {v} < 13"));
     }
 
     [Theory]

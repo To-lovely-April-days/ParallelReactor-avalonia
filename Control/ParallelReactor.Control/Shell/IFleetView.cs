@@ -6,7 +6,7 @@ using ParallelReactor.Control.Core.State;
 namespace ParallelReactor.Control.Shell;
 
 /// <summary>
-/// 外框需要的设备数据（M2：菜单、页签、图标栏、状态栏、全局停止格、资源管理器 / 检查器 / 时间轴的标题栏、新页签弹出框）。
+/// 外框需要的设备数据（融合版 F2：菜单栏、运行胶囊、报警摘要、工具条、设备面板、状态栏、检查器）。
 /// 只读、扁平；每次数据变化后 <see cref="Changed"/>（UI 线程上、合并过的）—— 外框就地刷新文字和标记，不重建集合。
 /// 实现：Fleet/FleetVm（演示 = Core 的 DemoFleet，实时 = LiveDeviceSource）；设备是 Fleet/DeviceVm，反应釜是 Fleet/ReactorVm。
 /// </summary>

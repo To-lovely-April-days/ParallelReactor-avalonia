@@ -1,0 +1,221 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.ResPaneView"
+             x:DataType="h:ResPaneVm">
+  <!-- 共用资源（样稿 resPane / .res 最终层叠）：内边距 4 14 12；各节上下 10、节间 line-faint 细线（矮屏上下 6，最近事件不显示）。
+       气路：h6 13/600 t-1 + 状态 13 t-3（占用时品牌蓝 600）；阀门小块 26 高、圆角 13、line-soft 边、13 px t-2，开 = g-1 底 g-line 边 g-ink 600 + 绿点，未接虚线 t-dis。
+       搅拌：「搅拌」13/500 t-2 · 转速框 28 高 line-2 边 圆角 3（14/600 + 「rpm」13 t-3）· 开关 38 × 22 · 电流 13 t-3 ·「全部釜共用」13 t-3。
+       工具：维护模式（只读，触屏操作）· 看气路图 · 右侧会话「● 记录中 · PT-…」13 t-2。最近事件：7 px 圆点 + 1 px 竖线、时刻 40 宽 t-4、来源 600 t-1 + 标题 t-2、行高 18、行距 9。 -->
+  <UserControl.Styles>
+    <Style Selector="StackPanel#Body">
+      <Setter Property="Margin" Value="14,4,14,12" />
+    </Style>
+    <Style Selector="StackPanel.h6row">
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <!-- 矮屏（样稿 @media max-height 820）：.res 内边距 6 12 8、section 上下 6、h6 下 5、最近事件不显示 -->
+    <Style Selector="StackPanel#Body.short">
+      <Setter Property="Margin" Value="12,6,12,8" />
+    </Style>
+    <Style Selector="StackPanel#Body.short StackPanel.h6row">
+      <Setter Property="Margin" Value="0,0,0,5" />
+    </Style>
+    <Style Selector="StackPanel#Body.short Border.sec">
+      <Setter Property="Padding" Value="0,6" />
+    </Style>
+    <Style Selector="StackPanel#Body.short Border#Rev">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="StackPanel#Body.short Border#Tools">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="Border.sec">
+      <Setter Property="Padding" Value="0,10" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.sec.last">
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.h6">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.st">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.st.busy">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.vp">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="Margin" Value="0,0,6,6" />
+    </Style>
+    <Style Selector="Border.vp.on">
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource G1Brush}" />
+    </Style>
+    <Style Selector="Border.vp.na">
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Border.vp Rectangle.dash">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Border.vp.na Rectangle.dash">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="Border.vp TextBlock.vn">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.vp.on TextBlock.vn">
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.vp.na TextBlock.vn, Border.vp.na TextBlock.vg">
+      <Setter Property="Foreground" Value="{StaticResource TDisBrush}" />
+    </Style>
+    <Style Selector="Border.vp TextBlock.vg">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T4Brush}" />
+    </Style>
+    <Style Selector="Border.vp.on TextBlock.vg">
+      <Setter Property="Foreground" Value="{StaticResource GInk2Brush}" />
+    </Style>
+    <Style Selector="Border.vdot">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="CornerRadius" Value="3.5" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="BorderBrush" Value="{StaticResource NDotLineBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.vp.on Border.vdot">
+      <Setter Property="BorderBrush" Value="{StaticResource GDotBrush}" />
+      <Setter Property="Background" Value="{StaticResource GDotBrush}" />
+    </Style>
+    <Style Selector="Border.rpm">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.rpm.dis">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    </Style>
+    <Style Selector="Ellipse.edot">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="Fill" Value="{StaticResource TSepBrush}" />
+    </Style>
+    <Style Selector="Ellipse.edot.err">
+      <Setter Property="Fill" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="Ellipse.edot.warn">
+      <Setter Property="Fill" Value="{StaticResource AmbDotBrush}" />
+    </Style>
+  </UserControl.Styles>
+  <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Name="Body" Classes.short="{Binding IsShort}">
+      <!-- 气路 -->
+      <Border Classes="sec">
+        <StackPanel>
+          <StackPanel Classes="h6row" Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="h6" Text="气路" />
+            <TextBlock Classes="st" Classes.busy="{Binding GasBusy}" Text="{Binding GasState}" />
+          </StackPanel>
+          <ItemsControl ItemsSource="{Binding Valves}" Margin="0,0,0,-6">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:ValvePillVm">
+                <Border Classes="vp" Classes.on="{Binding IsOn}" Classes.na="{Binding IsNa}" ToolTip.Tip="{Binding Tip}">
+                  <Panel>
+                  <Rectangle Classes="dash" Margin="-10,-1" RadiusX="13" RadiusY="13" Stroke="{StaticResource LineSoftBrush}" StrokeThickness="1" StrokeDashArray="3,2" />
+                  <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Border Classes="vdot" />
+                    <pr:PrText Classes="vn" Text="{Binding Name}" VerticalAlignment="Center" />
+                    <pr:PrText Classes="vg" Text="{Binding Gas}" VerticalAlignment="Center" IsVisible="{Binding Gas, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+      <!-- 共用搅拌 -->
+      <Border Classes="sec" IsVisible="{Binding HasStir}">
+        <StackPanel Orientation="Horizontal" Spacing="8" ToolTip.Tip="全部反应釜共用一台搅拌电机：同开同关、同一转速（釜转速）">
+          <TextBlock Text="搅拌" FontSize="{StaticResource FsBase}" FontWeight="Medium" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          <Border Classes="rpm" Classes.dis="{Binding StirReason, Converter={x:Static ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding RpmTip}">
+            <StackPanel Orientation="Horizontal" Spacing="3" VerticalAlignment="Center">
+              <TextBox Name="RpmIn" Text="{Binding RpmText}" Width="34" Padding="0" MinHeight="0" Height="26" Background="Transparent" BorderThickness="0"
+                       FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" TextAlignment="Right"
+                       VerticalContentAlignment="Center" IsEnabled="{Binding StirReason, Converter={x:Static ObjectConverters.IsNull}}" Classes="num rpmin" />
+              <TextBlock Text="rpm" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+          <pr:PrToggle Theme="{StaticResource PrSwitch}" IsChecked="{Binding StirOn, Mode=OneWay}" Command="{Binding StirToggleCommand}"
+                       b:Pr.Reason="{Binding ToggleReason}" ToolTip.Tip="{Binding StirTip}" AutomationProperties.Name="搅拌开关" VerticalAlignment="Center" />
+          <TextBlock Classes="num" Text="{Binding AmpText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+          <TextBlock Text="全部釜共用" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        </StackPanel>
+      </Border>
+      <!-- 维护模式 · 看气路图 · 会话 -->
+      <Border Classes="sec" Name="Tools">
+        <DockPanel Name="ToolsRow">
+          <StackPanel Name="Sess" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding SessTip}" Margin="8,0,0,0">
+            <Ellipse Width="7" Height="7" Fill="{StaticResource GDotBrush}" VerticalAlignment="Center" IsVisible="{Binding Recording}" />
+            <TextBlock Text="{Binding SessText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="sm maint" b:Pr.Icon="f-wrench" Content="维护模式" Foreground="{StaticResource TDisBrush}" Command="{Binding MaintCommand}"
+                    ToolTip.Tip="{Binding MaintTip}" />
+            <Button Classes="sm" b:Pr.Icon="f-grid" Content="看气路图" Command="{Binding ShowGasCommand}" ToolTip.Tip="切到气路图：阀门、管路和手动操作" />
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <!-- 最近事件 -->
+      <Border Classes="sec last" Name="Rev">
+        <StackPanel>
+          <DockPanel Margin="0,0,0,8">
+            <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Content="全部" Command="{Binding AllEventsCommand}" MinHeight="0" Padding="0"
+                    ToolTip.Tip="报警页：全部报警与事件" />
+            <TextBlock Classes="h6" Text="最近事件" />
+          </DockPanel>
+          <ItemsControl ItemsSource="{Binding Events}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="h:ResEventVm">
+                <Grid ColumnDefinitions="14,40,10,*" Margin="2,0,0,9">
+                  <Ellipse Classes="edot" Classes.err="{Binding IsErr}" Classes.warn="{Binding IsWarn}" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,5,0,0" />
+                  <TextBlock Grid.Column="1" Classes="num" Text="{Binding Time}" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T4Brush}" />
+                  <TextBlock Grid.Column="3" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap">
+                    <Run Text="{Binding Src}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="  " /><Run Text="{Binding Title}" />
+                  </TextBlock>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -149,31 +149,33 @@ public static class ThemeSheet
         }
         root.Children.Add(tg);
 
-        // 文档页签 + 图标栏
-        root.Children.Add(Head("文档页签（固定 / 当前 / 悬停 / 红点）· 图标栏（设备 / 当前 / 悬停 / 按下）"));
-        var tabs = new StackPanel { Orientation = Orientation.Horizontal, Height = 44, Background = Palette.BgHeadBrush };
-        var close = new CommunityToolkit.Mvvm.Input.RelayCommand(() => { });
-        foreach (var (label, icon, mode) in new[] { ("总览", "overview", 0), ("1号机", "machine", 1), ("1号机 · RV1", "flask", 2), ("2号机", "machine", 3) })
+        // 融合版外框（F2）：菜单栏页面（普通 / 当前 / 悬停 / 徽标）· 停靠面板竖条开关（展开 / 收起 / 悬停）· 竖条上的设备号小方块（普通 / 选中 / 悬停）
+        root.Children.Add(Head("菜单栏页面（普通 / 当前 / 悬停 / 徽标）· 竖条开关（展开 / 收起 / 悬停）· 设备号小方块（普通 / 选中 / 悬停）"));
+        var menuBar = new StackPanel { Orientation = Orientation.Horizontal, Height = 53, Background = Palette.BgCardBrush };
+        foreach (var (label, mode) in new[] { ("程序", 0), ("主页", 1), ("曲线", 2), ("报警", 3) })
         {
-            var t = new ToggleButton { Theme = T("PrDocTab"), Content = label };
-            Pr.SetIcon(t, icon);
-            if (mode == 0) t.Classes.Add("pinned"); else Pr.SetCloseCommand(t, close);
-            if (mode == 1) t.IsChecked = true;
+            var t = new Button { Theme = T("PrMenuPage"), Content = label, Classes = { "mi" } };
+            if (mode == 1) t.Classes.Add("on");
             if (mode == 2) Pseudo(t, ":pointerover");
-            if (mode == 3) Pr.SetDot(t, true);
-            tabs.Children.Add(t);
+            if (mode == 3) { t.Classes.Add("badge"); Pr.SetCount(t, "3"); }
+            menuBar.Children.Add(t);
         }
-        var side = new StackPanel { Width = 64, Background = (IBrush)Application.Current!.FindResource("SideGradientBrush")! };
-        foreach (var (label, icon, mode) in new[] { ("设备", "devices", 0), ("总览", "overview", 1), ("程序", "program", 2), ("报警", "bell", 3) })
+        var rail = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Background = Palette.BgPanelBrush };
+        foreach (var (label, mode) in new[] { ("设备", 0), ("检查器", 1), ("曲线", 2) })
         {
-            var t = new ToggleButton { Theme = T("PrSideItem"), Content = label };
-            Pr.SetIcon(t, icon);
-            if (mode == 1) t.IsChecked = true;
+            var t = new Button { Theme = T("PrRailToggle"), Content = label, Width = 28 };
+            if (mode == 1) { t.Classes.Add("col"); t.Classes.Add("right"); }
             if (mode == 2) Pseudo(t, ":pointerover");
-            if (mode == 3) { Pseudo(t, ":pointerover"); Press(t); }
-            side.Children.Add(t);
+            rail.Children.Add(t);
         }
-        root.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Children = { new Border { VerticalAlignment = VerticalAlignment.Top, BorderBrush = Palette.LineStrongBrush, BorderThickness = new Thickness(0, 0, 0, 1), Child = tabs }, side } });
+        foreach (var mode in new[] { 0, 1, 2 })
+        {
+            var t = new Button { Theme = T("PrRailDev"), Content = (mode + 1).ToString(System.Globalization.CultureInfo.InvariantCulture), VerticalAlignment = VerticalAlignment.Top };
+            if (mode == 1) t.Classes.Add("on");
+            if (mode == 2) Pseudo(t, ":pointerover");
+            rail.Children.Add(t);
+        }
+        root.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 24, Children = { new Border { VerticalAlignment = VerticalAlignment.Top, BorderBrush = Palette.LineMenuBrush, BorderThickness = new Thickness(0, 0, 0, 1), Child = menuBar }, rail } });
 
         // ---------------- 输入状态 ----------------
         root.Children.Add(Head("输入：默认 / 悬停 / 聚焦 / 只读 / 禁用 · 数值框聚焦 · 下拉（展开态 / 禁用）"));

@@ -1,41 +1,26 @@
 using System;
-using System.Linq;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.VisualTree;
 using ParallelReactor.Control.Shell;
-using ParallelReactor.Control.Views.Shell;
 
 namespace ParallelReactor.Control.Views;
 
 /// <summary>
-/// 主窗口：新外壳（ShellVm）。窗口尺寸变化时交给 ShellLayout（外框各区域只看窗口尺寸）；
-/// Esc 依次（样稿 keydown，一次只做一步）：打开着的菜单 / 弹出框（Views/Shell/PopupMenus 在隧道阶段先关掉它、焦点回到打开它的按钮，到此为止）→
-/// 关对话框 → 还原放大的面板 → 收起资源管理器浮层。文件 › 退出 = 关窗（走正常的关闭流程）。
+/// 主窗口（融合版 F2）：系统标题栏 + 外框（ShellVm → ShellView）。窗口尺寸变化时交给 DockLayout（外框只看窗口尺寸）。
+/// 键盘：Esc 一次一步（对话框 → 报警列表 → 浮出的面板，ShellVm.Escape）；Ctrl+1…6 换到菜单栏的第 1…6 个页面；F11 全屏。
+/// 退出（ShellVm.Exit）= 关窗（走正常的关闭流程）。
 /// </summary>
 public partial class MainWindow : Window
 {
     private ShellVm? _shell;
+    private WindowState _beforeFull = WindowState.Normal;
 
     public MainWindow()
     {
         InitializeComponent();
         KeyDown += OnKeyDown;
-        PopupMenus.Attach(this);
-        // 在 PopupMenus 之后登记：打开着的菜单先接方向键（从外面 ↓ / ↑ 进菜单）
-        AddHandler(KeyDownEvent, OnArrowWithoutFocus, Avalonia.Interactivity.RoutingStrategies.Tunnel);
-    }
-
-    /// <summary>
-    /// 没有焦点时方向键什么也不做（样稿：焦点在 body 上，方向键只滚动页面）。Avalonia 11.1 这时会把焦点挪到窗口里的第一个控件
-    /// （菜单「文件」，带焦点环），接着 Enter 就打开了它。
-    /// </summary>
-    private void OnArrowWithoutFocus(object? sender, KeyEventArgs e)
-    {
-        if (e.Handled || e.Key is not (Key.Up or Key.Down or Key.Left or Key.Right)) return;
-        var focused = FocusManager?.GetFocusedElement();
-        if (focused is null || ReferenceEquals(focused, this)) e.Handled = true;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -47,31 +32,37 @@ public partial class MainWindow : Window
     protected override void OnDataContextChanged(EventArgs e)
     {
         base.OnDataContextChanged(e);
-        if (_shell != null) _shell.ExitRequested -= OnExit;
+        if (_shell != null) { _shell.ExitRequested -= OnExit; _shell.PropertyChanged -= OnShell; }
         _shell = DataContext as ShellVm;
         Host.Content = DataContext;
-        PopupMenus.Watch(_shell);
         if (_shell != null)
         {
             Title = _shell.WindowTitle;
             _shell.ExitRequested += OnExit;
+            _shell.PropertyChanged += OnShell;
             _shell.Layout.Update(ClientSize);
         }
     }
 
-    protected override void OnClosed(EventArgs e)
+    private void OnShell(object? sender, PropertyChangedEventArgs e)
     {
-        base.OnClosed(e);
-        if (_shell != null) PopupMenus.Unwatch(_shell);
+        if (e.PropertyName != nameof(ShellVm.IsFullScreen) || _shell == null) return;
+        if (_shell.IsFullScreen) { _beforeFull = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState; WindowState = WindowState.FullScreen; }
+        else WindowState = _beforeFull;
     }
 
     private void OnExit(object? sender, EventArgs e) => Close();
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key != Key.Escape || DataContext is not ShellVm vm) return;
-        if (vm.Dialogs.IsOpen) { vm.Dialogs.Close(); e.Handled = true; return; }
-        if (this.GetVisualDescendants().OfType<PageHost>().FirstOrDefault()?.Escape() == true) { e.Handled = true; return; }
-        e.Handled = vm.Escape();
+        if (DataContext is not ShellVm vm || e.Handled) return;
+        if (e.Key == Key.Escape) { e.Handled = vm.Escape(); return; }
+        if (e.Key == Key.F11) { vm.ToggleFullScreen(); e.Handled = true; return; }
+        // Ctrl+1…6（macOS 上 ⌘ 也行）
+        if (e.KeyModifiers is KeyModifiers.Control or KeyModifiers.Meta && e.Key >= Key.D1 && e.Key <= Key.D6 && !vm.Dialogs.IsOpen)
+        {
+            vm.Go(AppPages.Menu[e.Key - Key.D1].Page);
+            e.Handled = true;
+        }
     }
 }

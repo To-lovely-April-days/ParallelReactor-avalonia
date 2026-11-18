@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.RibbonView"
+             x:DataType="sh:ShellVm">
+  <!-- 工具条（融合版 F2；样稿 .tbar）：高 46、白底、下边 ribbon-line、左右 12。
+       左（.scope，间距 8）：「设备：」· 设备下拉（.gsel：28 高、最小宽 190（窄屏 150）、line-firm 边、圆角 2、13 px；第一项按页面范围是「总览 · 全部设备」/「全部设备」/ 没有）·
+           「8 通道 · 量程 …」（窄屏不写）· 竖线（1 × 22 line-sep、左右 4）·「控制权：」· 控制权小块（.lz：26 高、左右 9、圆角 2、图标 14；远程 = a-soft 底 a-tab 边品牌蓝 600）+ 按钮（释放 / 取消申请 / 申请控制）。
+       右（.acts，间距 6）：当前页面的按钮组（PrRibbonButton：30 高、左右 11（窄屏 9）、line-strong 边、圆角 2、GBG 灰图标 16），组间竖线（左右 4）；
+           窄屏时「文件 / 导出 / 报告 / 配置 / 视图」组只剩图标（30 × 30）。 -->
+  <UserControl.Styles>
+    <Style Selector="ComboBox.gsel">
+      <Setter Property="Height" Value="{StaticResource RibbonSelH}" />
+      <Setter Property="MinWidth" Value="{StaticResource RibbonSelW}" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFirmBrush}" />
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Padding" Value="8,0,26,0" />
+    </Style>
+    <Style Selector="ComboBox.gsel /template/ c|IconView#PART_Caret">
+      <Setter Property="Icon" Value="down" />
+      <Setter Property="Size" Value="16" />
+      <Setter Property="StrokeWidth" Value="1.4" />
+      <Setter Property="Foreground" Value="{StaticResource GbgIconBrush}" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="Border.tsep">
+      <Setter Property="Width" Value="1" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Margin" Value="4,0" />
+      <Setter Property="Background" Value="{StaticResource RibbonSepBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.lz">
+      <Setter Property="Height" Value="{StaticResource PillH}" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSepBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.lz.on">
+      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ATabBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+    </Style>
+  </UserControl.Styles>
+  <Border Background="{StaticResource RibbonBgBrush}" BorderBrush="{StaticResource RibbonLineBrush}" BorderThickness="0,0,0,1" Padding="12,0"
+          TextElement.FontSize="{StaticResource FsBase}">
+    <DockPanel>
+      <ItemsControl Name="Acts" DockPanel.Dock="Right" ItemsSource="{Binding Ribbon.Groups}" VerticalAlignment="Center" Margin="10,0,0,0">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="6" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="sh:RibbonGroupView">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="tsep" IsVisible="{Binding !First}" />
+              <ItemsControl ItemsSource="{Binding Tools}" Classes.compact="{Binding Compact}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sh:RibbonTool">
+                    <Button Theme="{StaticResource PrRibbonButton}" Classes="rb" Classes.pri="{Binding IsPrimary}" b:Pr.Icon="{Binding Icon}"
+                            b:Pr.Reason="{Binding Reason}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Label}"
+                            Command="{Binding Command}" Content="{Binding Label}" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" ClipToBounds="True">
+        <pr:PrText Text="设备：" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+        <ComboBox Name="DevSel" Classes="gsel" ItemsSource="{Binding Ribbon.Options}" SelectedItem="{Binding Ribbon.Selected}"
+                  ToolTip.Tip="切换设备" AutomationProperties.Name="设备" VerticalAlignment="Center" />
+        <pr:PrText Name="ModelText" Text="{Binding Ribbon.ModelText}" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center"
+                   IsVisible="{Binding Ribbon.ShowModel}" />
+        <Border Classes="tsep" IsVisible="{Binding Ribbon.HasDevice}" />
+        <pr:PrText Text="控制权：" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" IsVisible="{Binding Ribbon.HasDevice}" />
+        <Border Classes="lz" Classes.on="{Binding Ribbon.IsRemote}" ToolTip.Tip="{Binding Ribbon.LeaseTip}" IsVisible="{Binding Ribbon.HasDevice}">
+          <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <c:IconView Icon="{Binding Ribbon.LeaseIcon}" Size="14" VerticalAlignment="Center" />
+            <pr:PrText Text="{Binding Ribbon.LeaseText}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+        <Button Classes="sm" b:Pr.Icon="f-lock" Content="释放" IsVisible="{Binding Ribbon.ShowRelease}" VerticalAlignment="Center"
+                b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.ReleaseCommand}" />
+        <Button Classes="sm" b:Pr.Icon="f-x" Content="取消申请" IsVisible="{Binding Ribbon.ShowCancel}" VerticalAlignment="Center"
+                b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.CancelCommand}" />
+        <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="f-unlock" Content="申请控制" IsVisible="{Binding Ribbon.ShowRequest}" VerticalAlignment="Center"
+                b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.RequestCommand}" />
+      </StackPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

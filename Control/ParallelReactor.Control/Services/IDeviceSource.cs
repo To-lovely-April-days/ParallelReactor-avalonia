@@ -123,6 +123,52 @@ public interface IDeviceSource : IAsyncDisposable
     bool GasOpen(string key);
     /// <summary>守卫的输入（一次刷新取一次，再问各个按钮）。</summary>
     GuardFacts Facts();
+
+    /// <summary>
+    /// 融合版 F3：主页要的整机数据（共用资源面板、运行表、检查器、报警弹窗、断线横条）—— 压力报警上限、搅拌釜转速上限与电流、
+    /// 共用气路的占用与排队、容积（吸气量的气相体积）、断线时设备怎么做。见 <see cref="PlantInfo"/>。
+    /// </summary>
+    PlantInfo Plant { get; }
+}
+
+/// <summary>
+/// 一台设备的整机数据（融合版 F3，两种来源都给；不知道的为 null）：
+/// <list type="bullet">
+/// <item><see cref="OverPressureMPa"/> / <see cref="OverTempC"/>：报警上限（真机 = 设置 alarms.overPressurePsi → MPa / overTempC）。</item>
+/// <item><see cref="RpmMax"/>：搅拌转速上限（釜里的转速；接口里的转速一律是釜转速，真机按型号表，默认 450）。<see cref="StirCurrentA"/>：搅拌电机电流（真机帧 stir.motorCurrentA）。</item>
+/// <item><see cref="GasHolder"/> / <see cref="GasQueue"/>：共用气路此刻的占用者与排队顺序（真机帧 programs.gasHolder / waitingGas[]）。</item>
+/// <item><see cref="Volume"/>：容积（真机设置 volume.*，只读；标定只能在触屏做）。</item>
+/// <item><see cref="OnRemoteLost"/>：PC 断开时设备怎么做（真机 GET /control 的 onRemoteLost：keep / stopHeat / estop）。</item>
+/// <item><see cref="StirGearRatio"/>：搅拌传动比（电机转速 ÷ 釜转速，真机设置 stir.stirGearRatio，只读）。</item>
+/// </list>
+/// </summary>
+public sealed record PlantInfo(
+    double? OverPressureMPa = null,
+    double? OverTempC = null,
+    double? RpmMax = null,
+    double? StirCurrentA = null,
+    int? GasHolder = null,
+    IReadOnlyList<int>? GasQueue = null,
+    VolumeInfo? Volume = null,
+    string? OnRemoteLost = null,
+    double? StirGearRatio = null)
+{
+    public static readonly PlantInfo Empty = new();
+}
+
+/// <summary>
+/// 吸气量计算用的容积（mL；真机设置 volume.*）：<see cref="VesselMl"/> 釜容积、<see cref="LineMl"/> 管路死体积（未标定通道用）、
+/// <see cref="EffectiveMl"/>[n−1] 标定的有效容积（未标定 null）、<see cref="CalibratedAt"/>[n−1] 标定时刻（本地时间；未标定 null）。
+/// 气相体积：标定过 = 有效容积 − 溶液；未标定 = 釜容积 − 溶液 + 管路（<see cref="GasVolume"/>）。
+/// </summary>
+public sealed record VolumeInfo(double VesselMl, double LineMl, IReadOnlyList<double?> EffectiveMl, IReadOnlyList<DateTime?> CalibratedAt, double? ManifoldMl = null)
+{
+    /// <summary>第 n 路标定过（有有效容积）。</summary>
+    public bool Calibrated(int n) => n >= 1 && n <= EffectiveMl.Count && EffectiveMl[n - 1] is > 0;
+
+    /// <summary>第 n 路的气相体积 mL；不知道溶液体积为 null。</summary>
+    public double? GasVolume(int n, double? solutionMl) => solutionMl is not double v ? null
+        : Calibrated(n) ? EffectiveMl[n - 1]!.Value - v : VesselMl - v + LineMl;
 }
 
 /// <summary>
@@ -259,6 +305,8 @@ public sealed record ActionOutcome(bool Ok, string Message, ToastKind Tone, IRea
 /// <see cref="Key"/> / <see cref="Word"/> = 界面上的状态（未安装、设备断线「离线」/ 从未连上「未连接」、或反应釜自己的状态）；
 /// <see cref="Own"/> / <see cref="OwnWord"/> = 反应釜自己的状态（断线时是断线前的，提示「离线 · 断线前 反应中」用）。
 /// 读数：未安装 / 从未连上为 null；断线时是最后的值（界面另标「数据停在 …」）。压力一律 MPa（真机 psi ÷ 145.037738）。
+/// 融合版 F3 追加（末尾、带默认值）：<see cref="GasMmol"/> = 吸气量 mmol（设备计算：真机快照 gasConsumed，演示 = 演示值）；
+/// <see cref="GasRate"/> = 最近 1 min 平均吸气速率 mmol/min（真机 gasRate，未在计量为 null）；<see cref="SolutionMl"/> = 溶液体积 mL（真机 solutionVolume）。
 /// </summary>
 public sealed record ChannelReading(
     int N, bool Installed,
@@ -266,7 +314,8 @@ public sealed record ChannelReading(
     StateKey Own, string OwnWord, AlarmCause Cause,
     double? TempC, double? SpC, double? PressureMPa, double? PTargetMPa, double? HeaterPct, double? Rpm,
     bool Heating, bool Valve,
-    HmiProgram? Hmi = null)
+    HmiProgram? Hmi = null,
+    double? GasMmol = null, double? GasRate = null, double? SolutionMl = null)
 {
     /// <summary>未安装的位置。</summary>
     public static ChannelReading Uninstalled(int n) => new(n, false, StateKey.Uninstalled, StateKeys.Word(StateKey.Uninstalled),

@@ -33,8 +33,10 @@ public sealed partial class InspectorVm : ObservableObject
         _shell = shell;
         OpenCommand = new RelayCommand(() =>
         {
+            // 「在主页查看」：主页选中这台设备（和这一路）
             if (shell.SelectedDevice is not { } d) return;
-            shell.Navigate(shell.SelectedRv is { } n ? Route.Reactor(d.K, n) : Route.Device(d.K));
+            shell.Go(AppPage.Home);
+            shell.Select(d.K, shell.SelectedRv);
         });
         BackCommand = new RelayCommand(() => { if (_back.K > 0) shell.Select(_back.K, _back.N > 0 ? _back.N : null); });
     }
@@ -74,24 +76,17 @@ public sealed partial class InspectorVm : ObservableObject
 
     internal void RequestFocus(string name) => FocusRequested?.Invoke(this, name);
 
-    /// <summary>当前页签的对象（样稿 pageObj：设备页 = (k, 0)，反应釜页 = (k, n)，其它页面 null）。</summary>
-    private Route? PageObj()
-    {
-        var r = _shell.Route;
-        return r.Page switch
-        {
-            PageKind.Device when _shell.Fleet.Device(r.K) != null => r,
-            PageKind.Reactor when _shell.Fleet.Device(r.K)?.Reactor(r.N) != null => r,
-            _ => null,
-        };
-    }
+    /// <summary>
+    /// 页面上的对象（融合版：检查器的对象就是路由选中的设备 / 通道，不会出现 pc-v3 那种「不是当前页签」—— 一律 null，提示条不出现）。
+    /// </summary>
+    private (int K, int N)? PageObj() => null;
 
     internal void Refresh()
     {
         var d = _shell.SelectedDevice;
         int? n = _shell.SelectedRv;
         var r = n is int nn ? d?.Reactor(nn) : null;
-        Narrow = _shell.Layout.IsInspectorNarrow;
+        Narrow = false;   // 融合版的检查器停靠 340 / 浮出 400，都不窄（pc-v3 的 300 才窄）
 
         HasSelection = d != null;
         PathAlias = d == null ? "" : "/" + d.Alias;
@@ -111,22 +106,22 @@ public sealed partial class InspectorVm : ObservableObject
         IsEmpty = false;
 
         var page = PageObj();
-        bool other = page != null && (page.K != d.K || (page.Page == PageKind.Reactor && page.N != (r?.N ?? 0)));
+        bool other = page != null && (page.Value.K != d.K || (page.Value.N > 0 && page.Value.N != (r?.N ?? 0)));
         HasOther = other;
         if (other)
         {
-            var pd = _shell.Fleet.Device(page!.K)!;
+            var pd = _shell.Fleet.Device(page!.Value.K)!;
             OtherName = d.Alias + (r != null ? " · RV" + r.N : "");
-            OtherBack = "回到 " + pd.Alias + (page.Page == PageKind.Reactor ? " · RV" + page.N : "");
+            OtherBack = "回到 " + pd.Alias + (page.Value.N > 0 ? " · RV" + page.Value.N : "");
             if (OtherSegments.Count != 3 || OtherSegments[1].Text != OtherName)
                 OtherSegments = new[] { new TextSeg("检查器："), new TextSeg(OtherName, Bold: true), new TextSeg("（不是当前页签）") };
-            _back = (page.K, page.Page == PageKind.Reactor ? page.N : 0);
+            _back = (page.Value.K, page.Value.N);
         }
 
         var owned = _shell.Page?.OwnedAlarms ?? PageVm.NoOwnedAlarms;
-        var ctx = new InspCtx(_shell, d, d.Facts, owned, page, Narrow, _shell.Fleet.Now);
+        var ctx = new InspCtx(_shell, d, d.Facts, owned, _shell.Nav.Page == AppPage.Home && _shell.Nav.DeviceK > 0 ? _shell.Nav.DeviceK : null, Narrow, _shell.Fleet.Now);
         // 设备页打开着这台设备、页面上有「报警与事件」：检查器不再放报警 / 事件列表（样稿 inspDevice 的 o.page === 'device'）
-        bool showLog = !(!other && page?.Page == PageKind.Device && _shell.Page is { } pg && pg.ShowsAlarmLog);
+        bool showLog = !(!other && _shell.Nav.DeviceK == d.K && _shell.Page is { } pg && pg.ShowsAlarmLog);
         string key;
         object body;
         if (r != null && !r.Installed)
@@ -143,7 +138,7 @@ public sealed partial class InspectorVm : ObservableObject
             if (!_reactors.TryGetValue((d.K, r.N), out var rv) || !ReferenceEquals(rv.R, r)) _reactors[(d.K, r.N)] = rv = new ReactorInspectorVm(_shell, d, r);
             if (key != BodyKey) rv.ResetInputs();
             // 打开的页签就是这个反应釜：报警条（含唯一的「确认」）在页面顶部，页面声明了的报警不再列在标题下面
-            bool pageOwnsTop = !other && page?.Page == PageKind.Reactor && page.K == d.K && page.N == r.N;
+            bool pageOwnsTop = false;
             rv.Refresh(ctx, pageOwnsTop);
             body = rv;
         }

@@ -39,7 +39,7 @@ public sealed partial class AliasFieldVm : ObservableObject
     /// <summary>说明或错误那一行。</summary>
     [ObservableProperty] private string _hint = "";
 
-    public const string HintText = "最多 8 个汉字或 16 个字母 · 页签、列表、时间轴都靠别名区分设备";
+    public const string HintText = "最多 8 个汉字或 16 个字母 · 设备面板、运行胶囊、报警列表都靠别名区分设备";
 
     partial void OnAliasChanged(string value) => Validate();
 
@@ -213,11 +213,11 @@ public sealed partial class AddDeviceDialogVm : DeviceFormVm
         AddButton = new FootButton("添加并连接", new RelayCommand(Add), FootKind.Primary, "plus", large: true);
         Footer = new FootBar(CancelButton, AddButton);
         // 样稿：本机客户端名全局一个：<b>PC-测试工位1</b>（在 设置 中修改）。示例型号 · 参数为假设。
-        // 真机：设置页在第二阶段（占位），改名的入口是「设备 › 本机客户端名…」—— 括号里照实写（M3 复核）；演示照样稿
+        // 真机：设置页在第二阶段（占位），改名的入口是深蓝条上的工位名（F2）—— 括号里照实写（M3 复核）；演示照样稿
         Note = new[]
         {
             new TextSeg("本机客户端名全局一个："), new TextSeg(shell.Fleet.ClientName, Bold: true),
-            new TextSeg((shell.Fleet.IsDemo ? "（在 设置 中修改）。" : "（在「设备 › " + ClientNameDialogVm.MenuLabel + "」中修改）。") + DialogText.SampleNote + "。"),
+            new TextSeg((shell.Fleet.IsDemo ? "（在 设置 中修改）。" : "（点深蓝条上的工位名修改）。") + DialogText.SampleNote + "。"),
         };
         Validate();
     }

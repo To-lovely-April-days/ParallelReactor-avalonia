@@ -342,4 +342,42 @@ public class DemoFleetTests
         Assert.Equal("报警 1 · 提醒 1", f.Device(1)!.AlarmText(all: true));
         Assert.Equal("提醒 1", f.Device(1)!.AlarmText());   // 急停那条不计
     }
+
+    /// <summary>融合版 F3：溶液体积（0.1 mL）—— 改通道的 VolumeMl、记事件、提示「1号机 · RV2 溶液体积 → 5.1 mL」；程序运行中 / 本地只读时守卫拦下。</summary>
+    [Fact]
+    public void SetVolume_RoundsToTenth_LogsAndToasts()
+    {
+        var f = new DemoFleet(DemoParams.Parse("freeze=1"));
+        var toasts = new List<string>();
+        f.Toast += (_, e) => toasts.Add(e.Text);
+        var d = f.Device(1)!;
+        Assert.Equal(LeaseStatus.Remote, d.Lease.State);
+        // 没在执行程序的反应釜（都在执行时先中止一个）
+        var ch = d.Channels.FirstOrDefault(c => c.Installed && c.Program is not { Status: ProgramStatus.Running or ProgramStatus.Held });
+        if (ch is null)
+        {
+            ch = d.Channels.Last(c => c.Installed);
+            Assert.True(f.Act(d, DeviceAction.ProgAbort, ActionPayload.Ch(ch.N), quiet: true).Ok);
+        }
+        var r = f.Act(d, DeviceAction.SetVolume, new ActionPayload(N: ch.N, Ml: 5.07));
+        Assert.True(r.Ok);
+        Assert.Equal(5.1, ch.VolumeMl);
+        Assert.Equal(5.1, d.Reading(ch, DemoReading.VolumeMl));
+        Assert.Equal("RV" + ch.N + " 溶液体积 → 5.1 mL", r.Message);
+        Assert.Equal("1号机 · RV" + ch.N + " 溶液体积 → 5.1 mL", toasts[^1]);
+        Assert.Equal(r.Message, d.Events[0].Text);
+        // 程序运行中的反应釜：HMI 拒绝改体积，守卫先拦下，体积不变
+        if (d.Channels.FirstOrDefault(c => c.Installed && c.Program is { Status: ProgramStatus.Running }) is { } busy)
+        {
+            double before = busy.VolumeMl;
+            var b = f.Act(d, DeviceAction.SetVolume, new ActionPayload(N: busy.N, Ml: 1), quiet: true);
+            Assert.False(b.Ok);
+            Assert.Equal("RV" + busy.N + " 程序运行中", b.Message);
+            Assert.Equal(before, busy.VolumeMl);
+        }
+        // 本地只读的设备：控制类
+        var d3 = f.Device(3)!;
+        var l = f.Act(d3, DeviceAction.SetVolume, new ActionPayload(N: d3.Channels.First(c => c.Installed).N, Ml: 3), quiet: true);
+        Assert.Equal("3号机为本地只读 · 先申请控制权", l.Message);
+    }
 }

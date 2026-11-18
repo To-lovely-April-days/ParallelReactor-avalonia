@@ -40,7 +40,7 @@ public sealed partial class LegacyProgramPageVm : PageVm, ILegacyPage
     private readonly ShellVm _shell;
     private readonly ProgramDraftStore _drafts = new();
 
-    public LegacyProgramPageVm(ShellVm shell) : base(Route.Placeholder("program"))
+    public LegacyProgramPageVm(ShellVm shell) : base(AppPage.Program)
     {
         _shell = shell;
         Plan.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(PlanEditorVm.IsEditing)) OnPropertyChanged(nameof(EditButtonText)); };
@@ -226,7 +226,7 @@ public sealed partial class PerfPageVm : PageVm, IPerfHost, ILegacyPage
     private TelemetrySnapshot? _lastFrame;
     private DeviceInfoDto? _lastInfo;
 
-    public PerfPageVm(ShellVm shell) : base(Route.Placeholder("perf"))
+    public PerfPageVm(ShellVm shell) : base(AppPage.Perf)
     {
         _shell = shell;
         Perf = new PerfViewModel(this, LoadPlanSafe());

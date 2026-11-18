@@ -1,0 +1,150 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:hc="using:ParallelReactor.Control.Controls.Home"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.AlarmPopView"
+             x:DataType="sh:AlarmPopVm"
+             Classes="audit-layer">
+  <!-- 报警弹窗（样稿 .apop-bg / .apop）：遮罩 overlay；框 560 宽、圆角 6、顶边 4 px 红、ShadowDlg。
+       头：上 18 右 14 下 14 左 20；红圈 36（r-soft 底 + 22 px 实心 ⓘ）· 标题 20/600 行高 26 + 说明 13 t-3 · 翻页（28 圆钮 + 「1 / 2」13 t-2）· × 32。
+       正文：左右 20、下 16；读数块 3 列间距 8（内边距 10 12、line-soft 边、圆角 4、bg-head；报警那块 r-bg 底 r-line 边、值 r-ink）；
+       小趋势（上 12，内边距 10 12 8，line-soft 边）；自动处理（上 12，a-wash 底，14 px 行高 21）；建议（上 10，14 px 行高 22）。
+       底栏：内边距 12 20、bg-head 底、上边 bg-press 线；按钮 34 高、左右 13。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.tile">
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource ApopBoxLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource ApopBoxBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="Border.tile.bad">
+      <Setter Property="BorderBrush" Value="{StaticResource ApopBadLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource ApopBadBrush}" />
+    </Style>
+    <Style Selector="TextBlock.tv">
+      <Setter Property="FontSize" Value="{StaticResource FsPopValue}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="30" />
+    </Style>
+    <Style Selector="Border.tile.bad TextBlock.tv">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="hc|MiniTrend">
+      <Setter Property="Height" Value="96" />
+    </Style>
+    <Style Selector="Button.af">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="Padding" Value="13,0" />
+    </Style>
+    <!-- 「上一个」：右箭头转 180°（Fluent 图标里没有左箭头） -->
+    <Style Selector="Button.flip /template/ c|IconView#PART_Icon">
+      <Setter Property="RenderTransform" Value="rotate(180deg)" />
+    </Style>
+  </UserControl.Styles>
+  <Panel IsVisible="{Binding IsOpen}">
+    <Border Background="{StaticResource OverlayBrush}" />
+    <Border Width="{StaticResource AlarmPopW}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16"
+            Background="{StaticResource BgCardBrush}" CornerRadius="{StaticResource RadiusDlg}" BoxShadow="{StaticResource ShadowDlg}"
+            BorderBrush="{StaticResource ApopEdgeBrush}" BorderThickness="0,4,0,0" ClipToBounds="True"
+            AutomationProperties.Name="报警">
+      <StackPanel>
+        <!-- 头 -->
+        <DockPanel Margin="20,18,14,14">
+          <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="18" Background="{StaticResource ApopIconBgBrush}" VerticalAlignment="Top" Margin="0,0,12,0">
+            <c:IconView Icon="f-err-f" Size="22" Foreground="{StaticResource RBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="f-x" Width="32" Height="32" Margin="4,0,0,0" VerticalAlignment="Top"
+                  Command="{Binding LaterCommand}" ToolTip.Tip="稍后处理（Esc）" />
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Top" IsVisible="{Binding Paged}" Margin="0,0,0,0">
+            <Button Theme="{StaticResource PrIconButtonS}" Classes="flip" b:Pr.Icon="f-chev-r" Width="28" Height="28" Command="{Binding PrevCommand}" IsEnabled="{Binding CanPrev}" ToolTip.Tip="上一条" />
+            <pr:PrText Classes="num" Text="{Binding PageText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" Margin="4,0" />
+            <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-chev-r" Width="28" Height="28" Command="{Binding NextCommand}" IsEnabled="{Binding CanNext}" ToolTip.Tip="下一条" />
+          </StackPanel>
+          <StackPanel>
+            <pr:PrText Text="{Binding Title}" FontSize="{StaticResource FsPopTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="26"
+                       TextTrimming="CharacterEllipsis" />
+            <pr:PrText Text="{Binding Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </DockPanel>
+        <!-- 正文 -->
+        <StackPanel Margin="20,0,20,16">
+          <ItemsControl ItemsSource="{Binding Tiles}" Margin="0,0,-8,0">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sh:PopTile">
+                <Border Classes="tile" Classes.bad="{Binding Bad}">
+                  <StackPanel>
+                    <pr:PrText Text="{Binding Label}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock Classes="tv num" Text="{Binding Value}" />
+                      <TextBlock Text="{Binding Unit}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T4Brush}" Margin="4,0,0,0" VerticalAlignment="Bottom"
+                                 Padding="0,0,0,5" />
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Border Margin="0,12,0,0" Padding="12,10,12,8" BorderThickness="1" BorderBrush="{StaticResource ApopBoxLineBrush}" CornerRadius="4" IsVisible="{Binding HasTrend}">
+            <StackPanel>
+              <DockPanel Margin="0,0,0,4">
+                <pr:PrText DockPanel.Dock="Right" Text="{Binding TrendRange}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
+                <pr:PrText Text="{Binding TrendCap}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" />
+              </DockPanel>
+              <hc:MiniTrend Name="Trend" Data="{Binding Trend}" />
+              <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,4,0,0">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Line StartPoint="0,0" EndPoint="16,0" Stroke="{StaticResource ABrush}" StrokeThickness="2" VerticalAlignment="Center" />
+                  <pr:PrText Text="实测" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Line StartPoint="0,0" EndPoint="16,0" Stroke="{StaticResource RBrush}" StrokeThickness="2" StrokeDashArray="2,1" VerticalAlignment="Center" />
+                  <pr:PrText Text="报警上限" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasSp}">
+                  <Line StartPoint="0,0" EndPoint="16,0" Stroke="{StaticResource TIconBrush}" StrokeThickness="2" StrokeDashArray="1,1" VerticalAlignment="Center" />
+                  <pr:PrText Text="设定" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" />
+                </StackPanel>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="4" Background="{StaticResource ApopInfoBrush}">
+            <DockPanel>
+              <c:IconView DockPanel.Dock="Left" Icon="f-check" Size="18" Foreground="{StaticResource ABrush}" VerticalAlignment="Top" Margin="0,2,10,0" />
+              <StackPanel>
+                <pr:PrText Text="设备已自动处理" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="21" />
+                <TextBlock Text="{Binding AutoText}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" LineHeight="21" TextWrapping="Wrap" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+          <TextBlock Margin="0,10,0,0" FontSize="{StaticResource FsCell}" LineHeight="22" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap"
+                     IsVisible="{Binding Tip, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <Run Text="建议" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="  " /><Run Text="{Binding Tip}" />
+          </TextBlock>
+        </StackPanel>
+        <!-- 底栏 -->
+        <Border Padding="20,12" Background="{StaticResource ApopFootBrush}" BorderBrush="{StaticResource BgPressBrush}" BorderThickness="0,1,0,0">
+          <DockPanel>
+            <pr:PrCheckBox DockPanel.Dock="Left" Theme="{StaticResource PrCheck}" Content="报警声音" IsChecked="{Binding SoundOn}" VerticalAlignment="Center"
+                           ToolTip.Tip="有未确认的报警时每 30 s 响一次" />
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+              <Button Classes="af" Content="稍后处理" Command="{Binding LaterCommand}" ToolTip.Tip="这一条先不弹（Esc）· 报警列表里仍可确认" />
+              <Button Classes="af" b:Pr.Icon="f-locate" Content="{Binding LocateLabel}" Command="{Binding LocateCommand}" IsVisible="{Binding HasCh}" />
+              <Button Classes="af" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="{Binding StopLabel}" Command="{Binding StopCommand}"
+                      b:Pr.Reason="{Binding StopReason}" IsVisible="{Binding HasCh}" ToolTip.Tip="停加热、关进气阀 · 不需要控制权" />
+              <Button Classes="af" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-check" Content="确认报警" Command="{Binding AckCommand}" b:Pr.Reason="{Binding AckReason}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+  </Panel>
+</UserControl>

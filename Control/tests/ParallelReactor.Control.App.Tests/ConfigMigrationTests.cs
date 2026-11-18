@@ -206,7 +206,7 @@ public class ConfigMigrationTests
         var cfg = Load(t);
         Assert.Equal(ControlConfig.MachineClientName(), cfg.ClientName);
         if (cfg.ClientName != ControlConfig.DefaultClientName)
-            Assert.Contains("本机客户端名改为「" + cfg.ClientName + "」· 可在「设备 › 本机客户端名…」中修改", cfg.LoadNotes);
+            Assert.Contains("本机客户端名改为「" + cfg.ClientName + "」· 点深蓝条上的工位名可以修改", cfg.LoadNotes);
     }
 
     [Fact]

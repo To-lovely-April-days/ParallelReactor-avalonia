@@ -32,15 +32,13 @@ namespace ParallelReactor.Control.Shot;
 ///  · PR_CONTROL_ICON_SHEET=1：图标核对表（icon-sheet-&lt;w&gt;.png，与样稿同样排布的 snap 参照对照）。
 ///  · PR_CONTROL_VESSEL_SHEET=1：釜体核对表（Shot/VesselSheet：全部状态 × 尺寸 × 角标阈值 × 液位 × 小图标）→ vessel-sheet-&lt;w&gt;.{png,audit.txt}
 ///    + vessel-sheet.js（在样稿页面里画同一张表，snap 拍参照）；审计有问题退出码 1。PR_CONTROL_VESSEL_ANIM=1：不冻结，截动画中的一帧。
-///  · PR_CONTROL_SHELL_CHECKS=1：新外壳的行为核对（Shot/ShellChecks：区域尺寸、菜单、资源管理器开关、页签、新页签弹出框、溢出、原因 toast、
-///    对话框宿主、面板放大 / 关闭 / 重置）→ shell-checks-&lt;w&gt;.txt + shell-popup-*.png 等；有 FAIL 时退出码 5。
 ///  · PR_CONTROL_THEME_SHEET=1：主题核对表（Shot/ThemeSheet：各主题的悬停 / 按下 / 焦点 / 禁用 / 原因状态、菜单、弹出、列表、页签、对话框、
 ///    BarFitPanel / FitText / SizeClasses / Keep 断行）+ 审计 + 无头点击的行为核对（theme-sheet-&lt;w&gt;.{png,audit.txt,checks.txt}，
 ///    真正弹出的下拉 / 子菜单 / 提示框另存 theme-popup-*.png）；有 FAIL 时退出码 4。
-///  · 没有 PR_CONTROL_SHOT：打开新外壳的主窗口（演示数据，路由 PR_CONTROL_ROUTE = 「路径?参数」，默认总览；不冻结时每秒推进），交互走查用；
+///  · 没有 PR_CONTROL_SHOT：打开外壳的主窗口（演示数据，PR_CONTROL_ROUTE = 「页面?参数」，如 main?dev=1；默认主页 · 1号机；不冻结时每秒推进），交互走查用；
 ///    旁边是「演示控制」工具窗口（Views/Demo，样稿的演示条：运行时改控制权、断线、报警、急停、设备组合、冻结、重置）。
-/// 截图路由（overview、device/1、reactor/1/1、gallery …）都在新外壳里显示（Views/MainWindow + Shell/ShellVm + Fleet/FleetVm，数据 = Core 的 DemoFleet）；
-/// 路由参数同样稿（README「常用查询参数」：devs、sel、lease、offline、alarm、estop、explorer、tl、stress、dialog …），截图一律 freeze=1
+/// 截图（ShotPlan：page=main / prog …）都在外壳里显示（Views/MainWindow + Shell/ShellVm + Fleet/FleetVm，数据 = Core 的 DemoFleet）；
+/// 参数同样稿（dev、ch、po / pc、alm，以及 devs、lease、offline、alarm、estop、stress、dialog …），截图一律 freeze=1
 /// （同样稿的参照图 ?bare=1&amp;freeze=1）。截图时窗口带 frozen（Theme/Frozen.cs）：没有过渡和动画，toast 不自动消失。
 /// </summary>
 public static partial class ShotRunner
@@ -77,7 +75,7 @@ public static partial class ShotRunner
         {
             // 演示数据（Core 的 DemoFleet，样稿 sim.js 的移植）：截图时冻结在 2026-11-08 10:12:00；交互走查时每秒推进（UiTicker）
             var (startRoute, startQuery) = SplitRoute(Environment.GetEnvironmentVariable("PR_CONTROL_ROUTE"));
-            var p0 = DemoParams.Parse(startQuery);
+            var p0 = FusionByDefault(DemoParams.Parse(startQuery), startQuery);
             if (shot) p0 = p0 with { Freeze = true };
             var fleet = FleetVm.CreateDemo(p0, App.PostToUi);
             var shellVm = new ShellVm(fleet);
@@ -90,7 +88,7 @@ public static partial class ShotRunner
             window.Closed += (_, _) => { ticker.Dispose(); shellVm.Dispose(); };
             if (!shot)
             {
-                shellVm.ApplyStartParams(p0, Shell.Route.Parse(startRoute));
+                shellVm.ApplyStartParams(FusionByDefault(DemoParams.Parse((startRoute is { Length: > 0 } sr ? "page=" + sr + "&" : "") + (startQuery ?? "")), startQuery));
                 // 交互走查：freeze=1 同样稿，桨、气泡、进度条的呼吸与过渡也停（截图时由 Show 冻结）；toast 照常消失。
                 // 旁边开「演示控制」工具窗口（样稿的演示条：控制权、断线、报警、急停、设备组合、冻结、重置；Views/Demo）
                 Frozen.Apply(main, p0.Freeze);
@@ -174,17 +172,6 @@ public static partial class ShotRunner
                 return;
             }
 
-            if (Flag("PR_CONTROL_SHELL_CHECKS") && window.DataContext is ShellVm svm)
-            {
-                svm.Layout.Update(new Size(size.Width, size.Height));
-                Frozen.Apply(window);
-                await SettleAsync();
-                var (fails, lines) = await ShellChecks.RunAsync(window, svm, dir, size.Width);
-                File.WriteAllText(Path.Combine(dir, $"shell-checks-{size.Width}.txt"), string.Join("\n", lines) + "\n");
-                log.AppendLine($"shell checks {size.Width}: {fails} fail(s)");
-                code = fails > 0 ? 5 : 0;
-                return;
-            }
 
             var specs = ShotPlan.Select(size, ShotPlan.NamesFromEnv());
             if (specs.Count == 0) throw new InvalidOperationException($"截图计划里没有 {size.Width}x{size.Height} 的条目（用 PR_CONTROL_SHOT_NAMES 指定名字）");
@@ -240,66 +227,33 @@ public static partial class ShotRunner
     }
 
     /// <summary>
-    /// 按路由显示截图内容（新外壳）：样稿的地址参数（devs、lease、offline、alarm、estop、stress、explorer、tl、sel、dialog …）一律加 freeze=1，
-    /// 交给 ShellVm.ApplyDemoParams（数据 → FleetVm，外框 → ShellLayout，再导航、选中、打开对话框）。整个窗口冻结。
+    /// 按截图计划显示（融合版外框）：每张都从头生成演示数据、回到刚打开的样子（ShellVm.ResetView），再套用 page=… + 参数（一律加 freeze=1）。整个窗口冻结。
     /// </summary>
     internal static void Show(Window window, ShotPlan.Spec spec, PixelSize size)
     {
-        if (window.DataContext is not ShellVm vm) throw new InvalidOperationException("截图窗口不是新外壳（ShellVm）");
-        var route = Shell.Route.Parse(spec.Route) ?? throw new NotSupportedException($"演示路由「{spec.Route}」不认识（overview、device/k、reactor/k/n、placeholder/名字、gallery）");
+        if (window.DataContext is not ShellVm vm) throw new InvalidOperationException("截图窗口不是外壳（ShellVm）");
+        if (Shell.AppPages.Parse(spec.Route) == null) throw new NotSupportedException($"截图页面「{spec.Route}」不认识（main、prog、curve、alarm、test、rec、set、gallery）");
+        var p = FusionByDefault(DemoParams.Parse(spec.FullQuery), spec.Query) with { Freeze = true };
         vm.Layout.Update(new Size(size.Width, size.Height));
-        vm.Fleet.ResetDemo(DemoParams.Parse(spec.Query) with { Freeze = true });   // 每张都从头生成演示数据（上一张的急停 / 断线不留下来）
-        vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true });
+        vm.Fleet.ResetDemo(p);                            // 每张都从头生成演示数据（上一张的急停 / 断线不留下来）
         if (spec.Setup == "nodevices" && vm.Fleet.DemoData is { } demo)
         {
-            // 空状态：移除全部演示设备（同样稿「移除…」；下一张截图 ResetDemo 时重新生成）
             foreach (var d in demo.Devices.ToList()) demo.Act(d, Core.Guard.DeviceAction.Remove, null, quiet: true);
             vm.Fleet.RefreshNow();
         }
-        else if (spec.Setup == "adddevice" && vm.Fleet.DemoData is { } demo2)
-        {
-            // 从未连上的新设备（同样稿「添加设备」：5号机 HT-PR8 192.168.1.50，正在连接；冻结时一直停在正在连接）：设备页只有一条说明
-            demo2.AddDevice(new DemoNewDevice(Host: "192.168.1.50", Port: 8080, Token: "x", Alias: "5号机", AutoConnect: true, ModelKey: "PR8"));
-            vm.Fleet.RefreshNow();
-        }
-        else if (spec.Setup != null && spec.Setup.StartsWith("m6g", StringComparison.Ordinal))
-            M6Pre(window, vm, spec);                      // M6 各组的截图准备（ShotRunner.M6G*.cs）
-        else if (spec.Setup != null && spec.Setup is not ("rvprops" or "rvprogx" or "rvzoom1" or "rvzoom2" or "rvmaxprog"))
-            throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices、adddevice、rvprops、rvprogx、rvzoom1、rvzoom2、rvmaxprog、m6g*-…）");
+        else if (spec.Setup != null) throw new NotSupportedException($"截图准备「{spec.Setup}」不认识（nodevices）");
         vm.ResetView();                                   // 每张都像新开的页面（同样稿的参照图）
-        vm.ApplyDemoParams(DemoParams.Parse(spec.Query) with { Freeze = true }, route);
-        // 反应釜页：「釜体 / 属性查看器」从头来（rvprops = 点了「属性查看器」页签，同 snap 参照的 js 参数）；曲线回到近 30 min
-        if (vm.Page is Pages.ReactorPageVm rp)
-        {
-            rp.Vessel.ResetView(spec.Setup == "rvprops" ? Pages.ReactorVesselVm.PropsTabValue : Pages.ReactorVesselVm.VesselTabValue);
-            rp.Curves.ResetView();
-            rp.ResetView();
-            // 「程序」面板的交互（同 snap 参照的 js 参数）：放大画布一档 / 两档、关掉面板（提示「已关闭「程序 · …」」）、放大面板。
-            // 先排一遍：刚建的页面视图（UserControl 的模板在测量时才套上）这时还不在可视树里、画布也还不知道宽度（放大档要它）——
-            // 不排的话这几张截图的结果取决于前一张是不是同一个反应釜（截图计划的顺序）
-            if (spec.Setup is "rvprogx" or "rvzoom1" or "rvzoom2" or "rvmaxprog") window.UpdateLayout();
-            if (spec.Setup is "rvzoom1" or "rvzoom2")
-            {
-                rp.Program.ZoomInCommand.Execute(null);
-                if (spec.Setup == "rvzoom2") rp.Program.ZoomInCommand.Execute(null);
-            }
-            if (spec.Setup is "rvprogx" or "rvmaxprog"
-                && window.GetVisualDescendants().OfType<Views.Pages.Reactor.ReactorProgramPanel>().FirstOrDefault(p => ReferenceEquals(p.DataContext, rp.Program)) is { } prog)
-            {
-                var frame = prog.PanelControl;
-                if (spec.Setup == "rvmaxprog") frame.IsMaximized = true;
-                else
-                {
-                    frame.IsClosed = true;
-                    frame.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Controls.Pr.PrPanel.ClosedEvent));
-                }
-            }
-        }
-        if (spec.Setup != null && spec.Setup.StartsWith("m6g", StringComparison.Ordinal)) M6Post(window, vm, spec);
+        vm.ApplyDemoParams(p);
         Frozen.Apply(window);
     }
 
-    /// <summary>「reactor/3/11?sel=3/11」→（路径, 查询串）。</summary>
+    /// <summary>
+    /// 融合版的演示数据（Core 的 DemoFusion：样稿 main-fusion 的 3 台设备、2026-11-15 14:30:07）是外壳演示与截图的默认；地址参数写了 fusion=0 时用旧数据（pc-v3 样稿 sim.js）。
+    /// </summary>
+    internal static DemoParams FusionByDefault(DemoParams p, string? query) =>
+        query != null && ShotPlan.ParseQuery(query).ContainsKey(DemoParams.FusionKey) ? p : p with { Fusion = true };
+
+    /// <summary>「main?dev=1&amp;ch=3」→（页面, 查询串）。</summary>
     private static (string? Route, string? Query) SplitRoute(string? s)
     {
         if (string.IsNullOrWhiteSpace(s)) return (null, null);

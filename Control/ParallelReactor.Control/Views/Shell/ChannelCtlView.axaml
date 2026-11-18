@@ -1,0 +1,280 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             x:Class="ParallelReactor.Control.Views.Shell.ChannelCtlView"
+             x:DataType="sh:ChannelCtlVm">
+  <!-- 读数块的单位写在小标题行的右端（「温度　°C」）、「气体消耗」写成「吸气」：样稿把单位接在数字后面，340 宽的检查器里三块放不下（会溢出），这里改成标题带单位。 -->
+  <!-- 主页检查器（样稿 ctlHTML + #ctlPop.insp 最终层叠）：头 58（左 16 右 12，下边 line-menu）：「RV1」24 细体 gbg-title + 状态小块（24 高、line 边、圆角 2、13/500 t-2；报警 r-line 边 r-ink 600）+ 上一路 / 下一路；
+       说明 13 t-3 行高 18（上下 8、左右 16，下边 line-faint）；只读条（bg-bar，13 t-2）/ 急停条（r-soft，r-ink）；
+       正文左右 16、下 16：分区标题 15 品牌蓝 + 1.5 px 品牌蓝下线（下边距 10、下内边距 6），分区上 14 下 6；
+       读数块 3 列间距 8（line 边、圆角 2、内边距 8 10：13 t-3 / 22/600 行高 28 + 单位 13 t-3）；
+       行（最小高 40、间距 12、下 10）：名 14/500 t-1 + 说明 13 t-3 行高 18；步进框 34 高（± 34 宽，值 16/600 最小宽 84）；两个按钮一行（34 高、14 px、间距 8）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.sec">
+      <Setter Property="Padding" Value="0,14,0,6" />
+    </Style>
+    <Style Selector="Border.h4">
+      <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1.5" />
+      <Setter Property="Padding" Value="0,0,0,6" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="Border.h4 > TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Border.pv">
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="Padding" Value="8,8" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="Border.pv.hot">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="TextBlock.pk">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.pvv">
+      <Setter Property="FontSize" Value="{StaticResource FsKpi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="LineHeight" Value="28" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.pv.hot TextBlock.pvv">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.pu">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Margin" Value="3,0,0,4" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+    </Style>
+    <Style Selector="DockPanel.fr">
+      <Setter Property="MinHeight" Value="40" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="TextBlock.fb">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.fs">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="Border.stp">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="ClipToBounds" Value="True" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="12,0,0,0" />
+    </Style>
+    <Style Selector="Border.stp Button">
+      <Setter Property="Width" Value="34" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Border.val">
+      <Setter Property="MinWidth" Value="84" />
+      <Setter Property="Padding" Value="6,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1,0" />
+    </Style>
+    <Style Selector="Button.wide">
+      <Setter Property="Height" Value="34" />
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cst">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cst.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+    </Style>
+    <Style Selector="Border.cst TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Medium" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.cst.err TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+    </Style>
+    <Style Selector="Border.sdot">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Background" Value="{StaticResource NDotBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.sdot.run">
+      <Setter Property="Background" Value="{StaticResource GDotBrush}" />
+    </Style>
+    <Style Selector="Border.sdot.err">
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <!-- 「上一个」：右箭头转 180°（Fluent 图标里没有左箭头） -->
+    <Style Selector="Button.flip /template/ c|IconView#PART_Icon">
+      <Setter Property="RenderTransform" Value="rotate(180deg)" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel IsVisible="{Binding HasChannel}">
+    <!-- 头 -->
+    <Border DockPanel.Dock="Top" Height="58" Padding="16,0,12,0" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <Button Theme="{StaticResource PrRoundButton}" Classes="flip" b:Pr.Icon="f-chev-r" Command="{Binding PrevCommand}" ToolTip.Tip="上一路" />
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-chev-r" Command="{Binding NextCommand}" ToolTip.Tip="下一路" />
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+          <pr:PrText Text="{Binding Title}" FontSize="{StaticResource FsInspTitle}" FontWeight="Light" Foreground="{StaticResource GbgTitleBrush}" VerticalAlignment="Center" />
+          <Border Classes="cst" Classes.err="{Binding IsErr}">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Border Classes="sdot" Classes.run="{Binding Dot, Converter={x:Static h:HomeConverters.IsRunDot}}" Classes.err="{Binding Dot, Converter={x:Static h:HomeConverters.IsErrDot}}" />
+              <pr:PrText Text="{Binding Word}" VerticalAlignment="Center" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+    <!-- 说明 + 只读条 -->
+    <Border DockPanel.Dock="Top" Padding="16,8" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+      <StackPanel>
+        <TextBlock Text="{Binding Sub1}" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Sub2}" FontSize="{StaticResource FsBase}" LineHeight="18" Foreground="{StaticResource T3Brush}" IsVisible="{Binding HasSub2}" />
+      </StackPanel>
+    </Border>
+    <Border DockPanel.Dock="Top" Padding="16,8" Background="{StaticResource BgBarBrush}" IsVisible="{Binding Bar, Converter={x:Static ObjectConverters.IsNotNull}}">
+      <StackPanel Orientation="Horizontal" Spacing="8">
+        <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        <TextBlock Text="{Binding Bar}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+    <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+      <StackPanel Margin="16,0,16,16">
+        <!-- 测量值 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <Border Classes="h4"><TextBlock Text="测量值" /></Border>
+            <Grid ColumnDefinitions="*,*,*" Margin="0,0,-6,10">
+              <Border Classes="pv">
+                <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="°C" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="温度" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding TempText}" /></StackPanel>
+              </Border>
+              <Border Grid.Column="1" Classes="pv" Classes.hot="{Binding PressHot}">
+                <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="MPa" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="压力" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding PressText}" /></StackPanel>
+              </Border>
+              <Border Grid.Column="2" Classes="pv" ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}">
+                <StackPanel><DockPanel><TextBlock DockPanel.Dock="Right" Classes="pk" Text="mmol" Foreground="{StaticResource T4Brush}" /><TextBlock Classes="pk" Text="吸气" /></DockPanel><TextBlock Classes="pvv num" Text="{Binding GasText}" /></StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </Border>
+        <!-- 温度控制 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <Border Classes="h4"><TextBlock Text="温度控制" /></Border>
+            <DockPanel Classes="fr">
+              <pr:SegControl DockPanel.Dock="Right" Value="fixed" VerticalAlignment="Center" Margin="12,0,0,0">
+                <pr:SegOption Value="fixed" Label="定值" />
+                <pr:SegOption Value="curve" Label="曲线" Reason="曲线升温（最多 16 段）在程序页编辑（F6）" />
+              </pr:SegControl>
+              <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="升温方式" /><TextBlock Classes="fs" Text="曲线：最多 16 段，按段线性变化" /></StackPanel>
+            </DockPanel>
+            <DockPanel Margin="0,-2,0,10" IsVisible="{Binding ProgNote}">
+              <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+              <TextBlock Classes="fs" Text="程序运行中 · 这里改的设定只到本步结束，下一步按程序走" />
+            </DockPanel>
+            <DockPanel Classes="fr">
+              <Border DockPanel.Dock="Right" Classes="stp">
+                <StackPanel Orientation="Horizontal">
+                  <Button b:Pr.Icon="f-subtract" Theme="{StaticResource PrIconButton}" Command="{Binding SpDownCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="减 1 °C" />
+                  <Border Classes="val">
+                    <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Classes="num" Text="{Binding SpText}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                      <TextBlock Text="°C" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                    </StackPanel>
+                  </Border>
+                  <Button b:Pr.Icon="f-plus" Theme="{StaticResource PrIconButton}" Command="{Binding SpUpCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="加 1 °C" />
+                </StackPanel>
+              </Border>
+              <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="温度 SP" /><TextBlock Classes="fs" Text="{Binding SpHint}" /></StackPanel>
+            </DockPanel>
+            <Grid ColumnDefinitions="*,8,*" Margin="0,0,0,10">
+              <Button Classes="wide" b:Pr.Icon="f-play" Content="启动加热" Command="{Binding HeatStartCommand}" b:Pr.Reason="{Binding HeatStartReason}" />
+              <Button Grid.Column="2" Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="停止加热" Command="{Binding HeatStopCommand}" b:Pr.Reason="{Binding HeatStopReason}" />
+            </Grid>
+            <DockPanel Margin="0,-2,0,10">
+              <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+              <TextBlock Classes="fs" Text="设温度不等于启动加热；开机后所有通道默认不加热" />
+            </DockPanel>
+          </StackPanel>
+        </Border>
+        <!-- 反应配置 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <Border Classes="h4"><TextBlock Text="反应配置" /></Border>
+            <DockPanel Classes="fr">
+              <Border DockPanel.Dock="Right" Classes="stp">
+                <StackPanel Orientation="Horizontal">
+                  <Button b:Pr.Icon="f-subtract" Theme="{StaticResource PrIconButton}" Command="{Binding VolDownCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="减 0.1 mL" />
+                  <Border Classes="val">
+                    <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Classes="num" Text="{Binding VolText}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                      <TextBlock Text="mL" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
+                    </StackPanel>
+                  </Border>
+                  <Button b:Pr.Icon="f-plus" Theme="{StaticResource PrIconButton}" Command="{Binding VolUpCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="加 0.1 mL" />
+                </StackPanel>
+              </Border>
+              <StackPanel VerticalAlignment="Center" ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}"><TextBlock Classes="fb" Text="溶液体积" /><TextBlock Classes="fs" Text="{Binding VolHint}" /></StackPanel>
+            </DockPanel>
+            <DockPanel Classes="fr">
+              <TextBlock DockPanel.Dock="Right" Classes="num" Text="{Binding StirText}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" Margin="12,0,0,0" />
+              <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="搅拌" /><TextBlock Classes="fs" Text="全部釜共用一台电机 · 在共用资源面板调节" /></StackPanel>
+            </DockPanel>
+          </StackPanel>
+        </Border>
+        <!-- 阀门 -->
+        <Border Classes="sec">
+          <StackPanel>
+            <Border Classes="h4"><TextBlock Text="阀门" /></Border>
+            <DockPanel Classes="fr">
+              <pr:PrToggle DockPanel.Dock="Right" Theme="{StaticResource PrSwitch}" IsChecked="{Binding SvOpen, Mode=OneWay}" b:Pr.Reason="{Binding SvHint}"
+                           AutomationProperties.Name="{Binding SvTitle}" VerticalAlignment="Center" Margin="12,0,0,0" />
+              <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="{Binding SvTitle}" /><TextBlock Classes="fs" Text="{Binding SvHint}" /></StackPanel>
+            </DockPanel>
+          </StackPanel>
+        </Border>
+        <!-- 操作 -->
+        <Border Classes="sec">
+          <StackPanel Spacing="8">
+            <Border Classes="h4" Margin="0,0,0,2"><TextBlock Text="操作" /></Border>
+            <Button Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="停止该通道" Command="{Binding StopChCommand}" b:Pr.Reason="{Binding StopReason}"
+                    IsVisible="{Binding Running}" ToolTip.Tip="停止该通道：中止程序、停加热、关进气阀 · 不放空" />
+            <Button Classes="wide" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="启动该通道" Command="{Binding StartChCommand}" b:Pr.Reason="{Binding StartReason}"
+                    IsVisible="{Binding !Running}" />
+            <Button Classes="wide" Content="{Binding EnableLabel}" Command="{Binding EnableCommand}" b:Pr.Reason="{Binding EnableReason}" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</UserControl>

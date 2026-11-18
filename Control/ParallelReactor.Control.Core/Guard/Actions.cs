@@ -12,6 +12,8 @@ public enum DeviceAction
     StirOn, StirOff, StirSet, ChStirOn, ChStirOff, ChStirSet,
     RunAll, StopAll, Estop, SessionStart, SessionMark, SessionEnd, AlarmAck,
     LeaseRequest, LeaseCancel, LeaseRelease, Disconnect, Reconnect, Rename, Remove,
+    /// <summary>溶液体积（融合版 F3，样稿没有；PUT /channels/{id}/volume）。追加在最后：前面的顺序与样稿 ACTIONS 一致。</summary>
+    SetVolume,
 }
 
 /// <summary>
@@ -29,9 +31,10 @@ public enum GuardKind { None, Conn, Safe, Control }
 public sealed record ActionSpec(DeviceAction Action, string Code, string Label, GuardKind Kind, bool PerChannel);
 
 /// <summary>
-/// 操作的参数（样稿 payload）：N = 反应釜号；Sp = 设定温度 ℃；Rpm = 转速；Id = 程序 id（下发）或报警 id（确认）；Alias = 新名称（重命名）；Text = 标记文字。
+/// 操作的参数（样稿 payload）：N = 反应釜号；Sp = 设定温度 ℃；Rpm = 转速；Id = 程序 id（下发）或报警 id（确认）；Alias = 新名称（重命名）；Text = 标记文字；
+/// Ml = 溶液体积 mL（融合版 F3，<see cref="DeviceAction.SetVolume"/>）。
 /// </summary>
-public sealed record ActionPayload(int? N = null, double? Sp = null, double? Rpm = null, string? Id = null, string? Alias = null, string? Text = null)
+public sealed record ActionPayload(int? N = null, double? Sp = null, double? Rpm = null, string? Id = null, string? Alias = null, string? Text = null, double? Ml = null)
 {
     public static readonly ActionPayload Empty = new();
 
@@ -74,6 +77,8 @@ public static class DeviceActions
         new(DeviceAction.Reconnect, "reconnect", "重连", GuardKind.None, false),
         new(DeviceAction.Rename, "rename", "重命名", GuardKind.None, false),
         new(DeviceAction.Remove, "remove", "移除", GuardKind.None, false),
+        // 融合版 F3（样稿没有）
+        new(DeviceAction.SetVolume, "setVolume", "溶液体积", GuardKind.Control, true),
     };
 
     private static readonly Dictionary<string, ActionSpec> ByCode = BuildIndex();
@@ -112,6 +117,15 @@ public static class DeviceActions
         action = default;
         return false;
     }
+
+    /// <summary>溶液体积的分辨率（mL）：界面输入与发给 HMI 的值都按 0.1 mL 取整。</summary>
+    public const double VolumeStepMl = 0.1;
+
+    /// <summary>溶液体积取整到 0.1 mL（远离零取整，同 HMI 的 ValueRules.RoundVolume 的写法）。</summary>
+    public static double RoundVolume(double ml) => Math.Round(ml, 1, MidpointRounding.AwayFromZero);
+
+    /// <summary>设置溶液体积的结果文字（真机 / 演示共用）：「RV1 溶液体积 → 5.1 mL」。</summary>
+    public static string VolumeText(int n, double ml) => "RV" + n + " 溶液体积 → " + Format.JsNumber.ToString(RoundVolume(ml)) + " mL";
 
     /// <summary>类别的样稿代码：'none' / 'conn' / 'safe' / 'control'。</summary>
     public static string KindCode(GuardKind kind) => kind switch

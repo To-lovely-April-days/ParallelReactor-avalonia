@@ -55,6 +55,8 @@ public sealed record MarkerResult(int Id, string Text, DateTime Ts, long Seq, st
 public sealed record ProgramRunResult(int Rv, int Steps);
 /// <summary>PUT /channels/{id}/temperature/setpoint 的 result。</summary>
 public sealed record SetpointResult(int Channel, double TempSpC, bool Applied, bool Coalesced, bool ApproachReplanned);
+/// <summary>PUT /channels/{id}/volume 的 result（v0.6）：通道、存下的溶液体积 mL、由它算出的气相体积 mL。</summary>
+public sealed record VolumeResult(int Channel, double Ml, double GasVolumeMl);
 /// <summary>POST /leak-tests 的 result。</summary>
 public sealed record LeakTestStartResult(string RunId);
 /// <summary>POST /control/release 的 result。</summary>

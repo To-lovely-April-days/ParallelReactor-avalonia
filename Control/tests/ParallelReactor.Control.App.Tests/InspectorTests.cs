@@ -37,7 +37,7 @@ public class InspectorTests
     public void RecentEvents_AfterADemoRebuild_AreTheNewData()
     {
         var s = Shell("devs=PR16,PR4&sel=2&freeze=1");
-        s.ApplyDemoParams(DemoParams.Parse("devs=PR16,PR4&sel=2&freeze=1"), Route.Overview);
+        s.ApplyDemoParams(DemoParams.Parse("devs=PR16,PR4&sel=2&freeze=1"));
         s.Select(1);
         var a = Assert.IsType<DeviceInspectorVm>(s.Inspector.Body);
         Assert.NotEmpty(a.Events);
@@ -45,7 +45,7 @@ public class InspectorTests
         s.Fleet.ResetDemo(q);
         s.ApplyDemoParams(q);
         s.ResetView();
-        s.ApplyDemoParams(q, Route.Overview);
+        s.ApplyDemoParams(q);
         var b = Assert.IsType<DeviceInspectorVm>(s.Inspector.Body);
         var d = s.Fleet.Device(b.D.K)!;
         var want = d.Source.Events.Take(5).Select(e => Core.Format.Fmt.Time(e.At) + " " + e.Text).ToList();
@@ -96,10 +96,10 @@ public class InspectorTests
         Assert.False(lb.HasCta);
         Assert.Equal("PC-测试工位1 · 心跳正常", lb.Note);
         Assert.True(lb.ShowKey);
-        s.Layout.Update(new Size(1600, 900));
+        s.Layout.Update(new Size(1366, 768));
         s.RefreshChrome();
-        Assert.False(lb.ShowKey);   // 检查器 300 px：不写「控制权」
-        Assert.True(s.Inspector.Narrow);
+        Assert.True(lb.ShowKey);    // 融合版的检查器停靠 340 / 浮出 400，都写「控制权」（pc-v3 的 300 才不写）
+        Assert.False(s.Inspector.Narrow);
     }
 
     [Fact]
@@ -192,30 +192,6 @@ public class InspectorTests
     }
 
     [Fact]
-    public void Offline_ConnBadge_Reconnect_NotOnItsOwnPage()
-    {
-        var s = Shell("offline=1&freeze=1");
-        var d = (DeviceInspectorVm)s.Inspector.Body!;
-        Assert.False(d.Online);
-        Assert.Equal("离线", d.OffWord);
-        Assert.False(d.Lease.ShowLease);
-        Assert.Equal(ConnState.Offline, d.Lease.ConnState);
-        Assert.Equal("立即重连", d.Lease.BtnLabel);
-        Assert.Matches(@"^重连中 \d+ s · 数据停在 \d\d:\d\d:\d\d\n", d.Lease.Note);
-        Assert.StartsWith("断线前运行 ", d.RunMeta);
-        // 打开的页签就是这台设备：设备页（M4）有断线说明条，「立即重连」只在页面上（一个动作只放一个地方，样稿 shell.js leaseBox）——
-        // 检查器的控制权卡不再放第二个
-        s.Navigate(Route.Device(1));
-        Assert.True(s.Page!.ShowsReconnect);
-        var page = Assert.IsType<DevicePageVm>(s.Page);
-        Assert.Equal((true, "立即重连"), (page.HasOffBar, page.OffButton));
-        Assert.Null(((DeviceInspectorVm)s.Inspector.Body!).Lease.BtnLabel);
-        // 换到别的页面（总览）：按钮回到检查器
-        s.Navigate(Route.Overview);
-        Assert.Equal("立即重连", ((DeviceInspectorVm)s.Inspector.Body!).Lease.BtnLabel);
-    }
-
-    [Fact]
     public void Estop_RedBox_NoSingleEstopButton_AlarmsCountedRight()
     {
         var s = Shell("estop=1&freeze=1");
@@ -229,70 +205,6 @@ public class InspectorTests
         Assert.Equal(2, d.Alarms.Count);
         Assert.Contains(d.Alarms, a => a.A.Code == "ESTOP" && a.IsErrCard);
         Assert.False(d.AllRunning);
-    }
-
-    [Fact]
-    public void OneAckPerAlarm_PageOwned_ShowsWhereInsteadOfButton()
-    {
-        var s = Shell();
-        var dev = s.Fleet.Device(3)!;
-        var alarm = dev.Alarms.First(a => a.IsErr);
-        var owned = new Dictionary<string, string> { ["3:" + alarm.Id] = "顶部报警条" };
-        var card = new InspAlarmVm(alarm);
-        card.Refresh(new InspCtx(s, dev, dev.Source.Facts(), owned, null, false, s.Fleet.Now));
-        Assert.False(card.ShowAck);
-        Assert.Equal("确认在顶部报警条", card.WhereText);
-        Assert.True(card.IsErr);          // 红色只剩图标
-        Assert.False(card.IsErrCard);     // 卡片中性
-        card.Refresh(new InspCtx(s, dev, dev.Source.Facts(), new Dictionary<string, string>(), null, false, s.Fleet.Now));
-        Assert.True(card.ShowAck);
-        Assert.Null(card.WhereText);
-        Assert.True(card.IsErrCard);
-
-        // 反应釜页（M5）：顶部报警条上有这条报警唯一的「确认」（页面拥有它）—— 反应釜检查器不再在标题下面重复它（样稿 final-reactor311）
-        s.Navigate(Route.Reactor(3, 11));
-        var r = (ReactorInspectorVm)s.Inspector.Body!;
-        Assert.Empty(r.TopAlarms);
-        Assert.True(r.RunCellHeld);
-        Assert.Equal("报警暂停", r.RunCellText);
-        Assert.Equal("报警暂停", r.ProgCellText);
-        // 同一页上选中整台设备：设备检查器照样列出这条报警，但不放第二个「确认」（中性卡片，写「确认在顶部报警条」）
-        s.Select(3);
-        var dv = (DeviceInspectorVm)s.Inspector.Body!;
-        var c = dv.Alarms.Single(a => a.A.Id == alarm.Id);
-        Assert.False(c.ShowAck);
-        Assert.Equal("确认在顶部报警条", c.WhereText);
-        // 别的页面（没有报警条）：反应釜检查器照常带「确认」
-        s.Navigate(Route.Device(1));
-        s.Select(3, 11);
-        r = (ReactorInspectorVm)s.Inspector.Body!;
-        Assert.Single(r.TopAlarms);
-        Assert.True(r.TopAlarms[0].ShowAck);
-    }
-
-    [Fact]
-    public void OtherTabStrip_WhenInspectorObjectIsNotTheTab()
-    {
-        var s = Shell();
-        s.Navigate(Route.Reactor(1, 1));
-        Assert.False(s.Inspector.HasOther);
-        s.Select(3, 11);
-        Assert.True(s.Inspector.HasOther);
-        Assert.Equal("3号机 · RV11", s.Inspector.OtherName);
-        Assert.Equal("回到 1号机 · RV1", s.Inspector.OtherBack);
-        s.Select(1);   // 反应釜页上选中设备本身：也不是页签的对象
-        Assert.True(s.Inspector.HasOther);
-        s.Inspector.BackCommand.Execute(null);
-        Assert.Equal(1, s.Selection.K);
-        Assert.Equal(1, s.Selection.N);
-        Assert.False(s.Inspector.HasOther);
-
-        s.Navigate(Route.Device(1));
-        s.Select(1, 2);   // 设备页上选中它的反应釜：同一台，不提示
-        Assert.False(s.Inspector.HasOther);
-        s.Select(2);
-        Assert.True(s.Inspector.HasOther);
-        Assert.Equal("回到 1号机", s.Inspector.OtherBack);
     }
 
     [Fact]

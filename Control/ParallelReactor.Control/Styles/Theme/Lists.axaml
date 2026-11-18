@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <!-- 列表行（PORT-PLAN §4.6；样稿 shell.css .pr-xrow / .pr-xhd 的树行与 base.css .pr-table）。
        资源管理器树行 PrTreeRow：高 36，悬停 bg-hover、按下 bg-press，选中 a-tint + 左侧 3 px a-tab 条，焦点环画在内侧；
-       表格行 PrTableRow：高 44、下边 line-faint，悬停 bg-hover，选中 a-soft；表头 PrTableHead：高 40、bg-head、下边 line-2、14 px 600 t-3。
+       表格行 PrTableRow（融合版 F1，样稿 .rtab / .board.pg .tbl）：高 44、14 px t-1、下边 line-faint 细线，悬停 bg-hover，选中 a-tint + 左侧 3 px 品牌蓝；类 err = 报警行（r-bg 底 + 左侧 3 px 红，选中 r-soft）；
+       表头 PrTableHead：高 40、白底、下边 line-soft、13 px 500 t-3。
        列表本身 PrListBox：透明、无边框、细滚动条。 -->
 
   <ControlTheme x:Key="PrListBox" TargetType="ListBox">
@@ -97,13 +98,13 @@
   </ControlTheme>
 
   <ControlTheme x:Key="PrTableRow" TargetType="ListBoxItem">
-    <Setter Property="Height" Value="44" />
+    <Setter Property="Height" Value="{StaticResource RunRowH}" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
-    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource FsBody}" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
     <Setter Property="HorizontalContentAlignment" Value="Stretch" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Cursor" Value="Hand" />
@@ -121,6 +122,7 @@
                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
           </Border>
+          <Border Name="PART_Mark" Width="3" HorizontalAlignment="Left" Background="{StaticResource ABrush}" IsVisible="False" IsHitTestVisible="False" />
           <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
         </Panel>
       </ControlTemplate>
@@ -129,7 +131,73 @@
       <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
     </Style>
     <Style Selector="^:selected">
-      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource RunRowSelBrush}" />
+    </Style>
+    <Style Selector="^:selected /template/ Border#PART_Mark">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.err">
+      <Setter Property="Background" Value="{StaticResource RunRowErrBrush}" />
+    </Style>
+    <Style Selector="^.err /template/ Border#PART_Mark">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^.err:selected">
+      <Setter Property="Background" Value="{StaticResource RunRowErrSelBrush}" />
+    </Style>
+    <Style Selector="^:focus-visible /template/ Border#PART_Focus">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 运行表的一行（融合版 F3，样稿 .rtab tbody tr）：按钮（点一下 = 选中这一路并打开检查器）。行线 line-faint；悬停 bg-hover；
+       选中 a-tint + 左侧 3 px 品牌蓝（样稿 tr.on td:first-child inset 3 px）；报警行 r-bg + 左侧 3 px 红，报警且选中 r-soft；焦点环画在内侧。 -->
+  <ControlTheme x:Key="PrRunRow" TargetType="Button">
+    <Setter Property="Height" Value="{StaticResource RunRowH}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderBrush" Value="{StaticResource RunRowLineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+    <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="ToolTip.ShowDelay" Value="600" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                              Foreground="{TemplateBinding Foreground}" Padding="{TemplateBinding Padding}"
+                              HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+          </Border>
+          <Border Name="PART_Mark" Width="3" HorizontalAlignment="Left" Background="{StaticResource ABrush}" IsVisible="False" IsHitTestVisible="False" />
+          <Border Name="PART_Focus" BorderThickness="2" BorderBrush="{StaticResource FocusBrush}" IsVisible="False" IsHitTestVisible="False" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource RunRowHoverBrush}" />
+    </Style>
+    <Style Selector="^.on">
+      <Setter Property="Background" Value="{StaticResource RunRowSelBrush}" />
+    </Style>
+    <Style Selector="^.on /template/ Border#PART_Mark">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^.err">
+      <Setter Property="Background" Value="{StaticResource RunRowErrBrush}" />
+    </Style>
+    <Style Selector="^.err /template/ Border#PART_Mark">
+      <Setter Property="IsVisible" Value="True" />
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="^.err.on">
+      <Setter Property="Background" Value="{StaticResource RunRowErrSelBrush}" />
     </Style>
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
@@ -138,13 +206,13 @@
 
   <!-- 表头（ContentControl，内容一般是与行同列宽的 Grid） -->
   <ControlTheme x:Key="PrTableHead" TargetType="ContentControl">
-    <Setter Property="Height" Value="40" />
-    <Setter Property="Background" Value="{StaticResource BgHeadBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+    <Setter Property="Height" Value="{StaticResource RunHeadH}" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
     <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Template">
       <ControlTemplate>

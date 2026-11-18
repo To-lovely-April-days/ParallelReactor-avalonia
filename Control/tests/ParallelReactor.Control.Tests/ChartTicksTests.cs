@@ -451,58 +451,6 @@ public class ChartTicksTests
 
     private static readonly Lazy<JsonDocument> Rv = new(() => JsonDocument.Parse(ReactorMockVectors.Json));
 
-    public static IEnumerable<object[]> Trends() => Rv.Value.RootElement.GetProperty("trend").EnumerateArray().Select(v => new object[] { v.GetProperty("name").GetString()! });
-
-    [Theory]
-    [MemberData(nameof(Trends))]
-    public void OverviewTrend_MatchesMock(string name)
-    {
-        var v = Rv.Value.RootElement.GetProperty("trend").EnumerateArray().First(x => x.GetProperty("name").GetString() == name);
-        var p = v.GetProperty("probe");
-        Assert.True(p.GetProperty("shown").GetBoolean(), name + "：样稿没有画趋势");
-        string route = v.GetProperty("route").GetString()!;
-        var f = new DemoFleet(DemoParams.Parse(route[(route.IndexOf('?') + 1)..]));
-        int? sel = p.GetProperty("sel").ValueKind == JsonValueKind.Number ? p.GetProperty("sel").GetInt32() : null;
-        var t = OverviewTrendOptions.FromDemo(f, sel);
-        Assert.Equal(OverviewTrendOptions.Title, p.GetProperty("title").GetString());
-        Assert.Equal(OverviewTrendOptions.Sub, p.GetProperty("sub").GetString());
-        var groups = p.GetProperty("groups").EnumerateArray().ToArray();
-        Assert.Single(groups);
-        Assert.Equal(groups[0].GetProperty("alias").GetString(), t.Device!.Alias);
-        var items = groups[0].GetProperty("items").EnumerateArray().ToArray();
-        Assert.Equal(items.Select(i => i[0].GetString() + "|" + i[1].GetString() + "|" + (i[2].ValueKind == JsonValueKind.Null ? "-" : i[2].GetString())).ToArray(),
-            t.Legend.Select(i => i.Label + "|" + Hex(i.Color) + "|" + (i.SampleDash ?? "-")).ToArray());
-        var more = p.GetProperty("more");
-        Assert.Equal(more.ValueKind == JsonValueKind.Null ? null : more[0].GetString(), t.MoreText);
-        Assert.Equal(more.ValueKind == JsonValueKind.Null ? null : more[1].GetString(), t.MoreTip);
-        var size = p.GetProperty("size");
-        var g = ChartLayout.Compute(t.Options, size[0].GetDouble(), size[1].GetDouble(), ChartLayout.EstimateWidth);
-        var mine = Svg(g, t.Options);
-        var theirs = ParseSvg(p.GetProperty("svg").GetString()!);
-        for (int i = 0; i < Math.Max(mine.Count, theirs.Count); i++)
-            Assert.True(i < mine.Count && i < theirs.Count && mine[i] == theirs[i],
-                $"{name} 第 {i} 个元素：\n  C#  {(i < mine.Count ? mine[i] : "（无）")}\n  样稿 {(i < theirs.Count ? theirs[i] : "（无）")}");
-    }
-
-    [Fact]
-    public void OverviewTrend_RulesAndGalleryMulti()
-    {
-        Assert.True(OverviewTrendOptions.InTrend(true, true, null));
-        Assert.True(OverviewTrendOptions.InTrend(true, false, Core.Programs.ProgramStatus.Done));
-        Assert.False(OverviewTrendOptions.InTrend(true, false, Core.Programs.ProgramStatus.Aborted));
-        Assert.False(OverviewTrendOptions.InTrend(false, true, null));
-        Assert.Equal("4 2", OverviewTrendOptions.SampleDash("7 4"));
-        Assert.Equal("1 1", OverviewTrendOptions.SampleDash("2 1"));
-        Assert.Null(OverviewTrendOptions.SampleDash(null));
-        var empty = OverviewTrendOptions.Build(Array.Empty<TrendDevice>(), null, DemoFleet.T0, (k, n) => Array.Empty<ChartPoint>());
-        Assert.Empty(empty.Options.Series);
-        Assert.Equal("没有运行中的反应釜", ChartLayout.Compute(empty.Options, 600, 200).EmptyText);
-        Assert.Null(empty.MoreText);
-        // 组件陈列的第三张图：与样稿同一组选项（版面在 layouts 的 gallery-multi 里核对过）
-        var multi = OverviewTrendOptions.GalleryMulti(new DemoFleet(DemoParams.Parse("freeze=1")));
-        Assert.Equal(new[] { "1号机 · RV1", "1号机 · RV2", "1号机 · RV3" }, multi.Series.Select(s => s.Name).ToArray());
-        Assert.Equal(new string?[] { null, "7 4", "2 3" }, multi.Series.Select(s => s.Dash).ToArray());
-    }
 
     // ———————————————————— 直接断言（可读的事实） ————————————————————
 

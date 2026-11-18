@@ -59,7 +59,6 @@ public sealed class M6ReasonsUiTests
             Assert.Equal(PlacementMode.Bottom, ToolTip.GetPlacement(c));
             Assert.Equal(0, ToolTip.GetVerticalOffset(c));
         }
-        Assert.Equal(PlacementMode.Pointer, ToolTip.GetPlacement(new TimelineTrack()));   // 按指针下的那一段给提示
         var tip = new ToolTip();
         Assert.Equal(default, tip.Margin);                                                // 外边距只给放在控件下面的提示（打开时，TipPlacement）
         Assert.False(tip.IsHitTestVisible);

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # snap-refs.sh — 现拍样稿的参照图（PORT-PLAN §5.0「其它状态的配色参照用 snap 工具现拍」、§5.9；doc §9）。
 #
+# 融合版 F1 起：这是 pc-v3 样稿的旧工具，截图计划（PR_CONTROL_SHOT_PLAN=1）默认只打印融合版的条目，下面的前缀一个也对不上；
+# 融合版的参照图用 tools/snap-fusion-refs.sh（research/main-fusion.html 的地址参数）。F2 删 pc-v3 页面时一起删掉本脚本。
+#
 # 按截图计划（PR_CONTROL_SHOT_PLAN=1 打印的「名字 路由 尺寸,尺寸 参数」）给样稿没有 final 图的截图（对话框 dlg-*、状态集 st-*、总览 ov-*、设备页 dv-*、
 # 反应釜页 reactor*（冻结的 final 图之外的尺寸）/ rv-* / rvp*）各拍一张：
 #   snap <样稿 index.html> <输出目录>/final-<名字>-<宽>.png <宽> <高> "/<路由>?bare=1&freeze=1&<参数>" 1300 "0"

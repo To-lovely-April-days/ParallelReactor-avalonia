@@ -1,0 +1,115 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.AlarmPopover"
+             x:DataType="sh:ShellVm">
+  <!-- 报警列表（融合版 F2；样稿 renderAlarm / #almPop）：菜单栏下 4 px、右 8、停靠区底边上 8；宽 470（窄屏 440）；白底、1 px line-strong 边、圆角 2、ShadowPop。
+       头（.dh：50 高、左 16 右 6、下边 line）：「报警」20 px 细体 + 关闭（32 方）。
+       统计（.ds：上下 10 左右 16、下边 line-faint、间距 16）：「活动 n」「未确认 n」13 px t-3，数字 15/700（未确认 &gt; 0 时 r-ink-2）+ 筛选分段（全部 / 未确认 / 报警 / 提醒）。
+       行（.arow：上 12 左右 16 下 10、下边 line-faint、左侧 3 px 色边：报警 r、提醒 amb-edge；间距 12）：等级图标 20（报警 r-btn 实心圆 !、提醒 amb 三角）·
+         设备 · RV 14/700 + 时间 13 t-3 ·（上 4）报警名 14 px t-2 ·（上 2）说明 13 t-3 ·（上 8）「未确认」13/600 r-ink-2 / 「已确认」t-3 + 定位 / 确认（28 高）。
+       底（.df：上下 12 左右 16、上边 line）：全部确认（n）主要按钮 + 「报警历史」链接（→ 报警页）。 -->
+  <UserControl.Styles>
+    <Style Selector="Border.arow">
+      <Setter Property="Padding" Value="16,12,16,10" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.edge">
+      <Setter Property="Width" Value="3" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Background" Value="{StaticResource AmbEdgeBrush}" />
+    </Style>
+    <Style Selector="Border.edge.err">
+      <Setter Property="Background" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBlock.big">
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <Border Name="AlarmBox" Width="{StaticResource AlarmListW}" Background="{StaticResource BgCardBrush}" BorderBrush="{StaticResource LineStrongBrush}" BorderThickness="1"
+          CornerRadius="{StaticResource RadiusStep}" BoxShadow="{StaticResource ShadowPop}" ClipToBounds="True"
+          TextElement.FontSize="{StaticResource FsBase}" TextElement.Foreground="{StaticResource T1Brush}">
+    <DockPanel>
+      <Border DockPanel.Dock="Top" Height="50" Padding="16,0,6,0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="f-x" Width="32" Height="32" CornerRadius="2"
+                  ToolTip.Tip="关闭" Command="{Binding Alarms.CloseCommand}" VerticalAlignment="Center" />
+          <pr:PrText Text="报警" FontSize="{StaticResource FsDlgTitle}" FontWeight="Light" VerticalAlignment="Center" />
+        </DockPanel>
+      </Border>
+      <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+        <DockPanel>
+          <pr:SegControl DockPanel.Dock="Right" Value="{Binding Alarms.Filter, Mode=TwoWay}" VerticalAlignment="Center">
+            <pr:SegOption Value="all" Label="全部" />
+            <pr:SegOption Value="ua" Label="未确认" />
+            <pr:SegOption Value="hi" Label="报警" />
+            <pr:SegOption Value="lo" Label="提醒" />
+          </pr:SegControl>
+          <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+            <TextBlock Foreground="{StaticResource T3Brush}" VerticalAlignment="Center">
+              <Run Text="活动 " /><Run Text="{Binding Alarms.Active}" FontSize="{StaticResource FsValue}" FontWeight="Bold" Foreground="{StaticResource T1Brush}" />
+            </TextBlock>
+            <TextBlock Foreground="{StaticResource T3Brush}" VerticalAlignment="Center">
+              <Run Text="未确认 " /><Run Text="{Binding Alarms.Unacked}" FontSize="{StaticResource FsValue}" FontWeight="Bold"
+                                          Foreground="{Binding Alarms.HasUnacked, Converter={x:Static sh:ShellConverters.RedIfTrue}}" />
+            </TextBlock>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+      <Border DockPanel.Dock="Bottom" Padding="16,12" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,1,0,0">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Content="报警历史" FontSize="{StaticResource Fs2}" VerticalAlignment="Center"
+                  Command="{Binding Alarms.HistoryCommand}" ToolTip.Tip="报警页：按时间、设备、优先级筛选和导出" />
+          <Button Theme="{StaticResource PrPrimary}" Content="{Binding Alarms.AckAllText}" Command="{Binding Alarms.AckAllCommand}" HorizontalAlignment="Left"
+                  IsEnabled="{Binding Alarms.HasUnacked}" />
+        </DockPanel>
+      </Border>
+      <Panel>
+        <pr:PrText Text="没有符合条件的报警" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" Margin="0,24,0,0" VerticalAlignment="Top"
+                   IsVisible="{Binding Alarms.IsEmpty}" />
+        <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Alarms.Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sh:AlarmRowVm">
+                <Panel>
+                  <Border Classes="arow">
+                    <DockPanel>
+                      <Panel DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Top">
+                        <c:IconView Icon="f-err-f" Size="20" Foreground="{StaticResource RBtnBrush}" IsVisible="{Binding IsErr}" />
+                        <c:IconView Icon="f-warn-f" Size="20" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding !IsErr}" />
+                      </Panel>
+                      <StackPanel>
+                        <DockPanel>
+                          <pr:PrText DockPanel.Dock="Right" Classes="num" Text="{Binding Time}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          <pr:PrText Text="{Binding Where}" FontSize="{StaticResource Fs2}" FontWeight="Bold" VerticalAlignment="Center" />
+                        </DockPanel>
+                        <TextBlock Text="{Binding Name}" FontSize="{StaticResource Fs2}" Foreground="{StaticResource T2Brush}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding More}" Foreground="{StaticResource T3Brush}" Margin="0,2,0,0" TextWrapping="Wrap" IsVisible="{Binding HasMore}" />
+                        <DockPanel Margin="0,8,0,0" Height="28">
+                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
+                            <Button Classes="sm" b:Pr.Icon="f-locate" Content="定位" Command="{Binding LocateCommand}" ToolTip.Tip="在主页选中这一路" />
+                            <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="f-check" Content="确认" Command="{Binding AckCommand}"
+                                    b:Pr.Reason="{Binding AckReason}" IsVisible="{Binding !Acked}" ToolTip.Tip="确认这条报警 · 不需要控制权" />
+                          </StackPanel>
+                          <pr:PrText Text="未确认" FontWeight="SemiBold" Foreground="{StaticResource RInk2Brush}" VerticalAlignment="Center" IsVisible="{Binding !Acked}" />
+                          <pr:PrText Text="已确认" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding Acked}" />
+                        </DockPanel>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                  <Border Classes="edge" Classes.err="{Binding IsErr}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Panel>
+    </DockPanel>
+  </Border>
+</UserControl>

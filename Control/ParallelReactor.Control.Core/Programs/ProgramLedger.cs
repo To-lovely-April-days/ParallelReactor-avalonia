@@ -688,10 +688,23 @@ public sealed class ProgramLedger
         if (m.Kind == LedgerMatchKind.Loaded)
             return rec with { Status = ProgramStatus.Loaded, StepIndex = 0, Steps = EtaEstimator.Plan(steps, ch?.TempC, Format.Units.PsiToMpa(ch?.PressurePsi), rates) };
 
-        var run = Tracker.TrackOf(n, hmi, bootId);
-        int idx = Math.Clamp(hmi!.StepIndex, 0, steps.Count - 1);
+        return RunRecord(rec, ch!, Tracker.TrackOf(n, hmi, bootId), frame!.Ts, history, rates);
+    }
+
+    /// <summary>
+    /// 一次执行（运行中 / 已结束）的程序记录：<paramref name="rec"/>（程序名、步骤、来源…）+ HMI 报的状态 / 当前步（<paramref name="ch"/>.Program，不能为 null、要有开始时刻）
+    /// + 步骤计时（<paramref name="run"/>：已完成的步骤、当前步的开始 / 第一次看到）+ 剩余时间估算（<see cref="EtaEstimator"/>，估算时刻 <paramref name="nowUtc"/> = 最新一帧的时刻）。
+    /// 台账（<see cref="ProgramOf"/>）与设备上的程序（<see cref="HmiRunPrograms"/>）共用，两种记录的计时与估算完全一样。
+    /// </summary>
+    public static ProgramRecord RunRecord(ProgramRecord rec, ChannelSnap ch, RunTrack? run, DateTime nowUtc, ChannelHistory? history, EtaRates? rates)
+    {
+        ArgumentNullException.ThrowIfNull(rec);
+        ArgumentNullException.ThrowIfNull(ch);
+        var hmi = ch.Program ?? throw new ArgumentException("通道没有 program", nameof(ch));
+        var steps = rec.Steps;
+        int idx = Math.Clamp(hmi.StepIndex, 0, steps.Count - 1);
         var status = StatusOf(hmi);
-        var startedAt = Utc(hmi.StartedAt!.Value);
+        var startedAt = Utc(hmi.StartedAt ?? throw new ArgumentException("program 没有开始时刻", nameof(ch)));
         var log = new List<StepLogEntry>();
         if (run is not null)
         {
@@ -712,8 +725,8 @@ public sealed class ProgramLedger
             EndedAt = run?.EndedAt?.ToLocalTime(),
             Log = log.AsReadOnly(),
         };
-        var now = frame!.Ts;
-        var reading = new EtaReading(ch!.TempC, Format.Units.PsiToMpa(ch.PressurePsi),
+        var now = nowUtc;
+        var reading = new EtaReading(ch.TempC, Format.Units.PsiToMpa(ch.PressurePsi),
             EtaEstimator.ObservedRate(history, HistoryField.TempC, now), EtaEstimator.ObservedRate(history, HistoryField.PressureMPa, now), ch.Profile);
         if (rec.IsActive)
             return EtaEstimator.Apply(rec, now, run?.StartOf(idx), run?.FirstSeenOf(idx), hmi.Message, reading, rates);

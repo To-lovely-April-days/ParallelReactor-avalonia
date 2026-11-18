@@ -51,7 +51,7 @@ public class M5ReviewLibraryPickTests
                     Assert.True(load.IsVisible);
                     Assert.Equal(inner - 10 - load.Bounds.Width, pick.Bounds.Width, 0.01);
                     Assert.Equal(pick.Bounds.Right + 10, load.Bounds.Left, 0.01);
-                    Assert.Equal(422.17, pick.Bounds.Width, 1.0);
+                    Assert.Equal(433, pick.Bounds.Width, 1.0);   // 融合版 F1：「下发」按钮 13 px、左右 9（pc-v3 时 422.17）
                 }
                 else
                 {

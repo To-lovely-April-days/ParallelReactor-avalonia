@@ -84,8 +84,8 @@ public static class SvgChart
             foreach (var m in markers)
             {
                 double x = X(m.Sec);
-                sb.Append($"<line x1=\"{F(x)}\" y1=\"{F(T)}\" x2=\"{F(x)}\" y2=\"{F(B)}\" stroke=\"#765cc5\" stroke-width=\"0.8\" stroke-dasharray=\"2 2\"/>");
-                sb.Append($"<text x=\"{F(x + 2)}\" y=\"{F(B - 3)}\" fill=\"#765cc5\" font-size=\"6\">{Html.Esc(m.Label)}</text>");
+                sb.Append($"<line x1=\"{F(x)}\" y1=\"{F(T)}\" x2=\"{F(x)}\" y2=\"{F(B)}\" stroke=\"#204797\" stroke-width=\"0.8\" stroke-dasharray=\"2 2\"/>");
+                sb.Append($"<text x=\"{F(x + 2)}\" y=\"{F(B - 3)}\" fill=\"#204797\" font-size=\"6\">{Html.Esc(m.Label)}</text>");
             }
         // 轴标签 + 图例
         sb.Append($"<text x=\"{F((L + R) / 2)}\" y=\"184\" text-anchor=\"middle\" fill=\"{Label}\">{Html.Esc(xLabel)}</text>");

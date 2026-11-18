@@ -2,19 +2,20 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:c="using:ParallelReactor.Control.Controls"
                     xmlns:pr="using:ParallelReactor.Control.Controls.Pr">
-  <!-- 徽标与状态（样稿 base.css .pr-badge* · pr-lease 与 pr-conn 的各状态 · .pr-dot / .pr-stword / .pr-devtag）。
-       全部中性：报警 = 红点，提醒 = 描边 ⚠，运行 = 浅绿点；状态靠字区分，不靠色相。 -->
+  <!-- 徽标与状态（融合版 F1：样稿 main-fusion.html .tag / .board.pg .tag.* / .lz 控制权小块；pc-v3 的 .pr-dot / .pr-stword / .pr-devtag 照旧）。
+       标签：白底 1 px line 细边、圆角 3、高 22、13 px 500；色调只表示状态：运行 = 浅绿（g-1 / g-line / g-ink），提醒 = 琥珀（amb-*，只给提醒），
+       报警 = 浅红（r-bg / r-line / r-ink 600），品牌 = 浅蓝（a-tint / a-line / a）；状态仍然要写成字，不只靠色相。 -->
 
-  <!-- 徽标：高 26、左右 9、圆角 4、bg-sunken 底、14 px 500 t-3；8 px 点 / 15 px 图标，间距 6 -->
+  <!-- 徽标（样稿 .tag）：高 22、左右 8、圆角 3、白底 + 1 px line、13 px 500 t-2；8 px 点 / 13 px 图标，间距 5 -->
   <ControlTheme x:Key="{x:Type pr:Badge}" TargetType="pr:Badge">
     <Setter Property="Height" Value="{StaticResource BadgeH}" />
-    <Setter Property="Padding" Value="9,0" />
-    <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
-    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Padding" Value="8,0" />
+    <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
-    <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
-    <Setter Property="FontSize" Value="{StaticResource Fs2}" />
+    <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    <Setter Property="FontSize" Value="{StaticResource FsBase}" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="HorizontalAlignment" Value="Left" />
     <Setter Property="VerticalAlignment" Value="Center" />
@@ -24,9 +25,9 @@
                 BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}"
                 Padding="{TemplateBinding Padding}">
           <!-- pr:BadgeRow = 横排 StackPanel，徽标被外面挤窄时字按剩下的宽度省略（第 5 种控制权「其他客户端 PC-工位2」这类长字）；样式照旧按 StackPanel 匹配 -->
-          <pr:BadgeRow Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+          <pr:BadgeRow Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
             <Ellipse Name="PART_Dot" Width="8" Height="8" Fill="{StaticResource NDotBrush}" VerticalAlignment="Center" IsVisible="False" />
-            <c:IconView Name="PART_Icon" Icon="{TemplateBinding ShownIcon}" Size="15" Foreground="{TemplateBinding Foreground}"
+            <c:IconView Name="PART_Icon" Icon="{TemplateBinding ShownIcon}" Size="13" Foreground="{TemplateBinding Foreground}"
                         VerticalAlignment="Center" IsVisible="False" />
             <!-- 字用 pr:PrText（按 WebKit 量宽：不加 11.1 的墨迹外伸，中文徽标不再每个宽 2 px；样式照旧按 TextBlock 匹配） -->
             <pr:PrText Name="PART_Text" Text="{TemplateBinding ShownText}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -41,20 +42,26 @@
       <Setter Property="IsVisible" Value="True" />
     </Style>
     <Style Selector="^:ok">
-      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="Background" Value="{StaticResource G1Brush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource GInkBrush}" />
     </Style>
     <Style Selector="^:ok /template/ Ellipse#PART_Dot">
       <Setter Property="Fill" Value="{StaticResource GDotBrush}" />
     </Style>
     <Style Selector="^:warn">
-      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AmbLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="^:warn /template/ c|IconView#PART_Icon">
+      <Setter Property="Foreground" Value="{StaticResource AmbBrush}" />
     </Style>
     <Style Selector="^:err">
       <Setter Property="Background" Value="{StaticResource RBgBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
       <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="^:err /template/ Ellipse#PART_Dot">
       <Setter Property="Fill" Value="{StaticResource RBrush}" />
@@ -63,37 +70,41 @@
       <Setter Property="Foreground" Value="{StaticResource RBrush}" />
     </Style>
     <Style Selector="^:info">
-      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:info /template/ Ellipse#PART_Dot">
       <Setter Property="Fill" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:info /template/ c|IconView#PART_Icon">
-      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
   </ControlTheme>
 
-  <!-- 控制权：远程 a-soft + 钥匙 a-d；本地只读 灰 + 锁 t-3；申请中 白底 a-line 边 + 时钟 a-d；宽限 红；其他客户端（真机第 5 种）灰 + 人形 -->
+  <!-- 控制权（样稿 .lz）：远程 = a-soft 底 + a-tab 边 + 品牌蓝 600（「远程控制中」）；本地只读 白底灰边 + 锁 t-3；申请中 白底 a-line 边 + 时钟品牌蓝；宽限 红；其他客户端（真机第 5 种）白底 + 人形 -->
   <ControlTheme x:Key="{x:Type pr:LeaseBadge}" TargetType="pr:LeaseBadge" BasedOn="{StaticResource {x:Type pr:Badge}}">
     <Style Selector="^:remote">
       <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ATabBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style Selector="^:remote /template/ c|IconView#PART_Icon">
-      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:local">
-      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSepBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
     </Style>
     <Style Selector="^:requested">
       <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
       <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
-      <Setter Property="Foreground" Value="{StaticResource AInkBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:requested /template/ c|IconView#PART_Icon">
-      <Setter Property="Foreground" Value="{StaticResource ADBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
     </Style>
     <Style Selector="^:lost">
       <Setter Property="Background" Value="{StaticResource RBgBrush}" />
@@ -105,7 +116,7 @@
     </Style>
     <!-- 第 5 种（真机）：被其他客户端持有 —— 灰底 + 人形 t-3 + t-2 字（中性：不是本机的控制权，也不是故障） -->
     <Style Selector="^:other">
-      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
       <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
     </Style>
     <Style Selector="^:other /template/ c|IconView#PART_Icon">
@@ -116,7 +127,7 @@
   <!-- 连接：已连接 / 已断开 灰；正在连接 白底 line 边 t-2；连接中断 红 -->
   <ControlTheme x:Key="{x:Type pr:ConnBadge}" TargetType="pr:ConnBadge" BasedOn="{StaticResource {x:Type pr:Badge}}">
     <Style Selector="^:online, ^:disconnected">
-      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
       <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
     </Style>
     <Style Selector="^:connecting">

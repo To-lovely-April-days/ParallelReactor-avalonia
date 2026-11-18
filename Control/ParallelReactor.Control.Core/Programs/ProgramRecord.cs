@@ -49,6 +49,8 @@ public sealed record ProgramStep(StepKind Type)
     public StepEnd? End { get; init; }
     /// <summary>预估分钟数（时间轴分段、剩余时间）；0 = 未知。</summary>
     public double EstMin { get; init; }
+    /// <summary>步骤名（融合版：程序库里用户起的名字「恒温反应」、HMI 程序步骤的 name）；null = 按类型（StepText.Name）。</summary>
+    public string? Name { get; init; }
     /// <summary>HMI heat.mode = curve（曲线升温）。</summary>
     public bool HeatCurve { get; init; }
     /// <summary>HMI press.regulate：true = 稳压保持，false = 到目标后保持；null = 样稿步骤（写「到压后保持」）。</summary>
@@ -61,8 +63,11 @@ public readonly record struct StepLogEntry(int I, DateTime T0, DateTime T1);
 /// <summary>程序库里的一条（样稿 ProgramDef：id、名称、说明、步骤）。</summary>
 public sealed record ProgramDef(string Id, string Name, string Note, IReadOnlyList<ProgramStep> Steps);
 
-/// <summary>程序记录的来源：演示数据 / PC 端程序台账（本机下发并匹配上的程序，M5）。</summary>
-public enum ProgramSource { Demo, Ledger }
+/// <summary>
+/// 程序记录的来源：演示数据 / PC 端程序台账（本机下发并匹配上的程序，M5）/ 设备上的程序（融合版 F3：不是本机下发的，
+/// 步骤取自 HMI 的 GET /channels/{id}/program/run —— 下发时冻结的步骤，与帧里这一次执行的启动号 + 开始时刻对得上才用，见 HmiRunPrograms）。
+/// </summary>
+public enum ProgramSource { Demo, Ledger, Hmi }
 
 /// <summary>
 /// 一个反应釜上的程序及其进度（样稿 API.md §3.1 Program）：程序 + 步骤 + 当前步 + 计时。不可变：状态变化时整条换掉（<c>with</c>）。

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using ParallelReactor.Api;
 using ParallelReactor.Client;
 using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Models;
@@ -28,62 +29,90 @@ public static class ProgramDocs
     {
         if (doc is null) throw new ArgumentNullException(nameof(doc));
         var list = new List<ProgramStep>(doc.Steps.Count);
-        double? lastTemp = null, lastPres = null;
-        string? lastGas = null;
+        var st = new Carry();
         foreach (var s in doc.Steps)
-        {
-            switch (s.Type)
-            {
-                case "heat":
-                {
-                    double temp = Num(s, "temp", 150), wait = Num(s, "wait", 15);
-                    lastTemp = temp;
-                    list.Add(new ProgramStep(StepKind.Heat) { Sp = temp, End = new StepEnd(EndKind.Time, wait), EstMin = wait, HeatCurve = Sel(s, "mode", "fixed") == "curve" });
-                    break;
-                }
-                case "press":
-                {
-                    double mpa = Units.PsiToMpa(Num(s, "pres", 50));
-                    string gas = GasKey(model, Sel(s, "gas", "A"));
-                    lastPres = mpa;
-                    lastGas = gas;
-                    list.Add(new ProgramStep(StepKind.Press) { Sp = lastTemp, Target = mpa, Gas = gas, End = new StepEnd(EndKind.Press, mpa, "≥"), Regulate = Sel(s, "regulate", "on") == "on" });
-                    break;
-                }
-                case "react":
-                {
-                    double time = Num(s, "time", 120);
-                    list.Add(new ProgramStep(StepKind.React) { Sp = lastTemp, Target = lastPres, Gas = lastGas, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time });
-                    break;
-                }
-                case "wait":
-                {
-                    double time = Num(s, "time", 30);
-                    list.Add(new ProgramStep(StepKind.Wait) { Sp = lastTemp, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time });
-                    break;
-                }
-                case "stir":
-                {
-                    double dur = Num(s, "dur", 5);
-                    list.Add(new ProgramStep(StepKind.Stir) { Sp = lastTemp, Rpm = Num(s, "rpm", 1000), Minutes = dur, End = new StepEnd(EndKind.Time, dur), EstMin = dur });
-                    break;
-                }
-                case "purge":
-                {
-                    double cycles = Num(s, "cycles", 10);
-                    double min = Math.Round(cycles * (Num(s, "fill", 3) + Num(s, "vent", 5) + 1) / 60.0 * 10, MidpointRounding.AwayFromZero) / 10;
-                    list.Add(new ProgramStep(StepKind.Purge) { Sp = lastTemp, Gas = GasKey(model, Sel(s, "gas", "inert")), Cycles = (int)Math.Round(cycles), End = new StepEnd(EndKind.Time, min), EstMin = min });
-                    break;
-                }
-                case "end":
-                {
-                    double cool = Num(s, "cool", 40);
-                    list.Add(new ProgramStep(StepKind.End) { CoolTo = cool, Vent = Sel(s, "mode", "seal") == "vent", End = new StepEnd(EndKind.Temp, cool, "<") });
-                    break;
-                }
-            }
-        }
+            if (ToStep(s, model, ref st) is { } step) list.Add(step);
         return list;
+    }
+
+    /// <summary>
+    /// 设备上正在执行 / 最近执行的程序（GET /channels/{id}/program/run 的 steps，§6.9 格式 + 只读的中文名称）→ 步骤，参数与默认值同 <see cref="ToSteps"/>，
+    /// 每一步的 <see cref="ProgramStep.Name"/> = HMI 给的名称（空时为 null，按类型显示）。预估分钟数同样只是定时步骤的时长（EtaEstimator 再估）。
+    /// 有不认识的步骤类型（较新的 HMI）时返回 null：步骤序号会对不上，调用方降级显示（同台账的规则）。
+    /// </summary>
+    public static IReadOnlyList<ProgramStep>? FromRun(IReadOnlyList<ProgramStepDto>? steps, ModelProfile? model)
+    {
+        if (steps is null) return null;
+        var list = new ProgramStep[steps.Count];
+        var st = new Carry();
+        for (int i = 0; i < steps.Count; i++)
+        {
+            var d = steps[i];
+            if (d is null || string.IsNullOrEmpty(d.Type)) return null;
+            var doc = new ProgramStepDoc(d.Type);
+            if (d.Params.ValueKind == JsonValueKind.Object)
+                foreach (var p in d.Params.EnumerateObject()) doc.Params[p.Name] = p.Value.Clone();
+            if (ToStep(doc, model, ref st) is not { } step) return null;
+            list[i] = string.IsNullOrWhiteSpace(d.Name) ? step : step with { Name = d.Name.Trim() };
+        }
+        return Array.AsReadOnly(list);
+    }
+
+    /// <summary>前面步骤留下的温度 / 压力 / 气路（「保持上一步」的步骤用）。</summary>
+    private struct Carry
+    {
+        public double? Temp, Pres;
+        public string? Gas;
+    }
+
+    /// <summary>一步；不认识的类型为 null。</summary>
+    private static ProgramStep? ToStep(ProgramStepDoc s, ModelProfile? model, ref Carry c)
+    {
+        switch (s.Type)
+        {
+            case "heat":
+            {
+                double temp = Num(s, "temp", 150), wait = Num(s, "wait", 15);
+                c.Temp = temp;
+                return new ProgramStep(StepKind.Heat) { Sp = temp, End = new StepEnd(EndKind.Time, wait), EstMin = wait, HeatCurve = Sel(s, "mode", "fixed") == "curve" };
+            }
+            case "press":
+            {
+                double mpa = Units.PsiToMpa(Num(s, "pres", 50));
+                string gas = GasKey(model, Sel(s, "gas", "A"));
+                c.Pres = mpa;
+                c.Gas = gas;
+                return new ProgramStep(StepKind.Press) { Sp = c.Temp, Target = mpa, Gas = gas, End = new StepEnd(EndKind.Press, mpa, "≥"), Regulate = Sel(s, "regulate", "on") == "on" };
+            }
+            case "react":
+            {
+                double time = Num(s, "time", 120);
+                return new ProgramStep(StepKind.React) { Sp = c.Temp, Target = c.Pres, Gas = c.Gas, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time };
+            }
+            case "wait":
+            {
+                double time = Num(s, "time", 30);
+                return new ProgramStep(StepKind.Wait) { Sp = c.Temp, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time };
+            }
+            case "stir":
+            {
+                double dur = Num(s, "dur", 5);
+                return new ProgramStep(StepKind.Stir) { Sp = c.Temp, Rpm = Num(s, "rpm", 1000), Minutes = dur, End = new StepEnd(EndKind.Time, dur), EstMin = dur };
+            }
+            case "purge":
+            {
+                double cycles = Num(s, "cycles", 10);
+                double min = Math.Round(cycles * (Num(s, "fill", 3) + Num(s, "vent", 5) + 1) / 60.0 * 10, MidpointRounding.AwayFromZero) / 10;
+                return new ProgramStep(StepKind.Purge) { Sp = c.Temp, Gas = GasKey(model, Sel(s, "gas", "inert")), Cycles = (int)Math.Round(cycles), End = new StepEnd(EndKind.Time, min), EstMin = min };
+            }
+            case "end":
+            {
+                double cool = Num(s, "cool", 40);
+                return new ProgramStep(StepKind.End) { CoolTo = cool, Vent = Sel(s, "mode", "seal") == "vent", End = new StepEnd(EndKind.Temp, cool, "<") };
+            }
+            default:
+                return null;
+        }
     }
 
     /// <summary>转换成程序库条目（名称取 doc.Name）。</summary>

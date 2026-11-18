@@ -53,7 +53,17 @@ internal static class AppSource
 
     public static string Read(string rel) => File.ReadAllText(Path.Combine(Dir, rel));
 
-    /// <summary>样稿目录（research/pc-v3，仓库旁边）；不存在时返回 null（可选的交叉核对）。</summary>
+    /// <summary>融合版样稿（research/main-fusion.html，仓库旁边；令牌的来源）；不存在时返回 null（可选的交叉核对）。</summary>
+    public static string? FusionMock
+    {
+        get
+        {
+            var f = Path.GetFullPath(Path.Combine(Repo, "..", "research", "main-fusion.html"));
+            return File.Exists(f) ? f : null;
+        }
+    }
+
+    /// <summary>pc-v3 样稿目录（research/pc-v3，仓库旁边；图标的来源）；不存在时返回 null（可选的交叉核对）。</summary>
     public static string? MockDir
     {
         get

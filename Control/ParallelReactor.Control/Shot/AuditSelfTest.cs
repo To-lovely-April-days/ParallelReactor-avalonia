@@ -25,7 +25,7 @@ public static class AuditSelfTest
 {
     // 故意的坏值：由常量算出（不是字面量，源码扫描 TypeScaleLintTests 不会把它们当成产品代码里的违规）
     private static readonly double Px11 = ShotAudit.MinText - 2;
-    private static readonly double Px13 = ShotAudit.MinCjk - 1;
+    private static readonly double Px13 = ShotAudit.MinCjk - 1;   // 融合版中文下限 13 → 12 px
     private static readonly Color OffRed = new(255, 255, 0, 0);
     private static readonly Color OffGreen = new(255, 0, 255, 0);
     private static readonly Color OffBlue = new(255, 0, 0, 255);
@@ -36,9 +36,9 @@ public static class AuditSelfTest
     public static readonly (string What, string Needle)[] Expected =
     {
         ("11 px 文字", "font 11.0px < 13px"),
-        ("13 px 中文", "CJK font 13.0px < 14px"),
+        ("12 px 中文（融合版中文下限 = MinCjk = 13）", "\"中文 12 px"),
         ("缩放 0.8 后的 14 px 中文（× 外框缩放）", "font 11.2px < 13px"),
-        ("13 px 的中文标点「」", "「标点」『』"),
+        ("12 px 的中文标点「」", "「标点」『』"),
         ("输入框里的 11 px 字", "control font 11.0px < 13px"),
         ("输入框的文字比框宽", "[audit] input text clipped"),
         ("色板外的红色边框", "[palette] " + Hex(OffRed)),
@@ -131,7 +131,7 @@ public static class AuditSelfTest
 
         At(T("合法正文 15 px"), 20, 10);
         At(T("坏字号 11 px", Px11), 20, 40);
-        At(T("中文 13 px", Px13), 20, 70);
+        At(T("中文 12 px", Px13), 20, 70);
         At(new LayoutTransformControl { LayoutTransform = new ScaleTransform(0.8, 0.8), Child = T("缩放后的中文", 14) }, 20, 100);
         At(T("「标点」『』", Px13), 200, 70);
         At(new Border { Width = 120, Height = 30, BorderBrush = new SolidColorBrush(OffRed), BorderThickness = new Thickness(2) }, 20, 130);

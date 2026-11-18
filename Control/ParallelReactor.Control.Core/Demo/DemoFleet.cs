@@ -15,7 +15,7 @@ namespace ParallelReactor.Control.Core.Demo;
 /// <list type="bullet">
 /// <item>构造：<c>new DemoFleet(DemoParams.Parse("devs=4&amp;freeze=1&amp;lease=2:requested"))</c>；参数语法同样稿 README（<see cref="DemoParams"/>）。
 ///   之后可以再 <see cref="Apply"/> 新参数：同样稿 applyParams 按差异套用（换 devs / stress 才重建全部数据）。</item>
-/// <item>时钟从 2026-11-08 10:12:00（<see cref="T0"/>）开始；freeze=1 时 <see cref="Tick"/> 不推进（截图）。不冻结时由 App 的 1 s 定时器调 Tick。</item>
+/// <item>时钟从 2026-11-08 10:12:00（<see cref="T0"/>）开始（fusion=1 的融合版数据从 2026-11-15 14:30:07，<see cref="FusionT0"/>）；freeze=1 时 <see cref="Tick"/> 不推进（截图）。不冻结时由 App 的 1 s 定时器调 Tick。</item>
 /// <item>读：<see cref="Devices"/> / <see cref="Device"/> / DemoDevice 的帮助方法（读数、状态字、进度、守卫）。</item>
 /// <item>改：<see cref="Apply"/>、<see cref="Tick"/>、<see cref="Act"/> / <see cref="ActMany"/>、<see cref="AddDevice"/>、<see cref="EditDevice"/>；
 ///   每次改完触发 <see cref="Changed"/>，要给用户的提示走 <see cref="Toast"/>。</item>
@@ -73,6 +73,9 @@ public sealed partial class DemoFleet
     /// <summary>压力测试数据的级别：0 / 1 / 2。</summary>
     public int Stress { get; private set; }
 
+    /// <summary>融合版样稿的数据（fusion=1，见 DemoFleet.Fusion.cs）。</summary>
+    public bool Fusion { get; private set; }
+
     /// <summary>最后一次 <see cref="Apply"/> 的参数。</summary>
     public DemoParams Params { get; private set; } = DemoParams.Default;
 
@@ -122,6 +125,7 @@ public sealed partial class DemoFleet
     {
         public string Devs = "";
         public int Stress;
+        public bool Fusion;
         public string? Lease, Alarm;
         public IReadOnlyList<string>? Offline;
         public bool OfflineGiven;
@@ -130,7 +134,7 @@ public sealed partial class DemoFleet
     }
 
     /// <summary>
-    /// 套用参数（样稿 applyParams）：devs 或 stress 变了 → 重建全部数据（再套覆盖参数）；否则只按差异改控制权、断线、报警、急停（顺序同样稿）。
+    /// 套用参数（样稿 applyParams）：devs、stress 或 fusion 变了 → 重建全部数据（再套覆盖参数）；否则只按差异改控制权、断线、报警、急停（顺序同样稿）。
     /// </summary>
     public void Apply(DemoParams p) => Apply(p, raise: true);
 
@@ -145,9 +149,9 @@ public sealed partial class DemoFleet
     {
         if (p is null) throw new ArgumentNullException(nameof(p));
         bool rebuilt = false;
-        if (_applied is null || (p.Devs ?? "") != _applied.Devs || p.Stress != _applied.Stress)
+        if (_applied is null || (p.Devs ?? "") != _applied.Devs || p.Stress != _applied.Stress || p.Fusion != _applied.Fusion)
         {
-            Init(p.Devs ?? "", p.Freeze, p.Stress);
+            Init(p.Devs ?? "", p.Freeze, p.Stress, p.Fusion);
             rebuilt = true;
         }
         var ap = _applied!;
@@ -224,22 +228,27 @@ public sealed partial class DemoFleet
         return ap.Offline!.OrderBy(x => x, StringComparer.Ordinal).SequenceEqual(b.OrderBy(x => x, StringComparer.Ordinal));
     }
 
-    /// <summary>样稿 init：重建全部设备（种子、序号、时钟复位）。</summary>
-    private void Init(string devs, bool frozen, int stress)
+    /// <summary>样稿 init：重建全部设备（种子、序号、时钟复位）。<paramref name="fusion"/> = 融合版样稿的 3 台（devs 不看）。</summary>
+    private void Init(string devs, bool frozen, int stress, bool fusion = false)
     {
         _alarmSeq = 1;
         _eventSeq = 1;
         _liveRand = new DemoRng(LiveSeed);
         _noise = new DemoRng(NoiseSeed);
-        Now = T0;
+        Fusion = fusion;
+        Now = fusion ? FusionT0 : T0;
         Frozen = frozen;
         TickCount = 0;
         Stress = stress is 1 or 2 ? stress : 0;
         _devices.Clear();
-        var keys = new DemoParams { Devs = devs.Length == 0 ? null : devs }.DeviceModels(Models);
-        for (int i = 0; i < keys.Count; i++) _devices.Add(MakeDevice(i + 1, keys[i], 11, null));
+        if (fusion) BuildFusion();
+        else
+        {
+            var keys = new DemoParams { Devs = devs.Length == 0 ? null : devs }.DeviceModels(Models);
+            for (int i = 0; i < keys.Count; i++) _devices.Add(MakeDevice(i + 1, keys[i], 11, null));
+        }
         if (Stress != 0) foreach (var d in _devices) StressDevice(d, Stress);
-        _applied = new Applied { Devs = devs, Stress = Stress };
+        _applied = new Applied { Devs = devs, Stress = Stress, Fusion = fusion };
     }
 
     // ———————————————————— 设备构建（样稿 makeDevice / makeChannel / makeProgram / seedEvents） ————————————————————
@@ -492,6 +501,11 @@ public sealed partial class DemoFleet
     private void SetOffline(DemoDevice dev, bool off)
     {
         var c = dev.Conn;
+        if (off && Fusion && dev.Plant != null)
+        {
+            if (c.State != ConnStatus.Offline) FusionOffline(dev);
+            return;
+        }
         if (off)
         {
             if (c.State == ConnStatus.Offline) return;
@@ -576,6 +590,7 @@ public sealed partial class DemoFleet
     {
         ClearAlarms(dev);
         if (Stress != 0) { StressAlarms(dev); return; }   // 压力测试数据：恢复的是它自己的报警
+        if (Fusion && dev.Plant != null) { FusionAlarms(dev, restore: true); return; }
         var sc = DemoScenario.Scenario(dev.ModelKey == "PR8-4" ? "PR8-4" : dev.ModelKey);
         foreach (var a in sc.Alarms)
         {

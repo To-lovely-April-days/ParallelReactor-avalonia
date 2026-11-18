@@ -93,6 +93,16 @@ public sealed class ReactorApiClient : IDisposable
     public Task<SessionDetailDto> SessionAsync(string id, CancellationToken ct) => GetAsync<SessionDetailDto>($"sessions/{Uri.EscapeDataString(id)}", ct);
     public Task<ControlStateDto> ControlAsync(CancellationToken ct) => GetAsync<ControlStateDto>("control", ct);
 
+    /// <summary>
+    /// GET /channels/{id}/program/run（v0.6，§7.9）：该通道正在执行 / 本次开机以来最近一次执行的程序（下发时冻结的步骤 + 当前步序 / 阶段 / 发起者）。
+    /// 本次开机以来没有执行过程序（404 NOT_FOUND）返回 null；通道不存在（404 CHANNEL_NOT_FOUND）等其它错误照常抛 <see cref="ApiException"/>。
+    /// </summary>
+    public async Task<ProgramRunDto?> ProgramRunAsync(int id, CancellationToken ct)
+    {
+        try { return await GetAsync<ProgramRunDto>($"channels/{id}/program/run", ct).ConfigureAwait(false); }
+        catch (ApiException ex) when (ex.Status == 404 && ex.Code == OpCodes.NotFound) { return null; }
+    }
+
     /// <summary>GET /sessions/current；没有活动会话（404）返回 null。</summary>
     public async Task<SessionDetailDto?> SessionCurrentAsync(CancellationToken ct)
     {
@@ -179,6 +189,9 @@ public sealed class ReactorApiClient : IDisposable
         => CommandAsync<JsonElement>(HttpMethod.Post, $"channels/{id}/heat/start", tempC == null ? null : new { tempC }, lease, NewKey(), ct);
     public Task<CommandResult<SetpointResult>> SetSetpointAsync(string lease, int id, double tempC, CancellationToken ct)
         => CommandAsync<SetpointResult>(HttpMethod.Put, $"channels/{id}/temperature/setpoint", new { tempC }, lease, NewKey(), ct);
+    /// <summary>PUT /channels/{id}/volume {ml}（v0.6）：溶液体积 mL（HMI 存 0.01 mL、界面按 0.1 mL；参与吸气量的气相体积计算）。程序执行中的通道 HMI 拒绝（CHANNEL_PROGRAM_OWNED）。</summary>
+    public Task<CommandResult<VolumeResult>> SetVolumeAsync(string lease, int id, double ml, CancellationToken ct)
+        => CommandAsync<VolumeResult>(HttpMethod.Put, $"channels/{id}/volume", new { ml }, lease, NewKey(), ct);
     /// <summary>PUT /channels/{id}/temperature/mode {spMode: fixed|curve}。</summary>
     public Task<CommandResult<JsonElement>> SetSpModeAsync(string lease, int id, string spMode, CancellationToken ct)
         => CommandAsync<JsonElement>(HttpMethod.Put, $"channels/{id}/temperature/mode", new { spMode }, lease, NewKey(), ct);

@@ -23,7 +23,7 @@ namespace ParallelReactor.Control.Shot;
 
 /// <summary>
 /// 截图后的运行时审计（PORT-PLAN §4.7 第 4 条；对应 MOCK core.js 的 PR.debug.audit / overlaps / palette）。遍历窗口的可视树，报告：
-///  · [audit] 文字 &lt; 13 px、含中文（含「」、。等中文标点）&lt; 14 px（字号 × 外框缩放，取每段文字的实际字号）；输入框里的文字同样查（control font）；
+///  · [audit] 文字 &lt; 13 px、含中文（含「」、。等中文标点）&lt; MinCjk（融合版 13 px）（字号 × 外框缩放，取每段文字的实际字号）；输入框里的文字同样查（control font）；
 ///  · [audit] missing glyph：画成方块（.notdef）的字（字体缺字，或连接符引起的回退缺陷，见 Theme/UiText）；
 ///  · [audit] font weight：某段文字实际用的字体字重与要求的差一档以上；或几段中文要求了常规 + 粗体、画出来只有一种
 ///    （Avalonia 11.1 回退沿用上一段字重的缺陷，见 Theme/UiFonts、Behaviors/CjkRuns.cs）；
@@ -54,8 +54,8 @@ namespace ParallelReactor.Control.Shot;
 /// </summary>
 public static class ShotAudit
 {
-    /// <summary>任何文字 ≥ 13 px，中文 ≥ 14 px（RESTYLE-BRIEF §3）。</summary>
-    public const double MinText = 13, MinCjk = 14;
+    /// <summary>任何文字 ≥ 13 px；融合版样稿（main-fusion.html「字号 ≥ 13 px」）里中文同样 ≥ 13（pc-v3 时是 14）。</summary>
+    public const double MinText = 13, MinCjk = 13;
 
     /// <summary>MOCK core.js 的 CJK 正则 [㐀-鿿！-～]，再加中文标点 U+3000–303F（「」『』、。〔〕…）、假名、兼容表意文字。</summary>
     private static readonly Regex Cjk = new("[　-ヿ㐀-鿿豈-﫿！-～]", RegexOptions.Compiled);
@@ -162,7 +162,7 @@ public static class ShotAudit
     {
         if (text.Trim().Length == 0) return false;
         if (px < MinText - 0.05) { ctx.Issues.Add($"[audit] {what}font {Px(px)}px < 13px: {Describe(v)} \"{Snip(all)}\""); return true; }
-        if (px < MinCjk - 0.05 && Cjk.IsMatch(text)) { ctx.Issues.Add($"[audit] CJK {what}font {Px(px)}px < 14px: {Describe(v)} \"{Snip(all)}\""); return true; }
+        if (px < MinCjk - 0.05 && Cjk.IsMatch(text)) { ctx.Issues.Add($"[audit] CJK {what}font {Px(px)}px < {Px(MinCjk)}px: {Describe(v)} \"{Snip(all)}\""); return true; }
         return false;
     }
 

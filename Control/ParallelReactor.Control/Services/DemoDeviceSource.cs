@@ -75,6 +75,27 @@ public sealed class DemoDeviceSource : IDeviceSource
     public StirInfo? Stir => Device.Stir is { } s ? new StirInfo(s.On, s.Rpm) : null;
     public IChannelHistory History => _history;
 
+    /// <summary>
+    /// 整机数据（融合版 F3）：融合版演示数据（fusion=1，DemoDevice.Plant）给全：报警上限、转速上限、搅拌电流、气路占用 / 排队（按此刻的反应釜状态）、
+    /// 容积、断线策略、传动比；旧演示数据只有转速上限（型号表），其余 null。气路占用 / 排队不变时返回同一个实例。
+    /// </summary>
+    public PlantInfo Plant
+    {
+        get
+        {
+            var p = Device.Plant;
+            if (p is null) return _plant ??= new PlantInfo(RpmMax: Device.Model.Limits.RpmMax);
+            int? holder = Device.GasHolder;
+            var queue = Device.GasQueue;
+            if (_plant is { } cur && cur.GasHolder == holder && cur.GasQueue is { } q && q.SequenceEqual(queue)) return cur;
+            _volume ??= new VolumeInfo(p.VesselMl, p.LineMl, p.EffectiveMl, p.CalibratedAt);
+            return _plant = new PlantInfo(p.OverPressureMPa, p.OverTempC, p.RpmMax, p.StirCurrentA, holder, queue, _volume, p.OnRemoteLost, p.StirGearRatio);
+        }
+    }
+
+    private PlantInfo? _plant;
+    private VolumeInfo? _volume;
+
     public SessionInfo? Session => Device.Session is { } s ? new SessionInfo(s.Active, s.Id, s.StartAt, s.Markers.Count) : null;
 
     /// <summary>

@@ -1,0 +1,1893 @@
+{
+  "about": "融合版设计令牌（F1）：从样稿 research/main-fusion.html 抽出的最终值（10 层 :root 层叠之后的结果 + 规则里写死的颜色）。tools/gen-tokens.py 读这个文件生成 Styles/Tokens.axaml 与 Theme/Palette.cs 的生成区；--check-mock 核对每个值确实出现在样稿里（var 来源的核对 :root 最终值）。改值先改样稿，再改这里，再重新生成。src = 样稿里的出处（选择器或 :root 变量）。",
+  "mock": "research/main-fusion.html",
+  "colors": [
+    {
+      "group": "底色",
+      "name": "bg-app",
+      "hex": "#eceef1",
+      "src": ":root --bg（细节打磨）· .dock 面板之间的底"
+    },
+    {
+      "group": "底色",
+      "name": "bg-panel",
+      "hex": "#f7f8f9",
+      "src": ":root --band · .prail 竖条底、单位后缀底"
+    },
+    {
+      "group": "底色",
+      "name": "bg-head",
+      "hex": "#fbfbfc",
+      "src": ".ptool / .ph 面板工具条（灰带）；也代替 #fafbfc（对话框底栏、指标块、表尾）"
+    },
+    {
+      "group": "底色",
+      "name": "bg-card",
+      "hex": "#ffffff",
+      "src": ".pwrap 面板体、工具条、菜单栏"
+    },
+    {
+      "group": "底色",
+      "name": "bg-side",
+      "hex": "#f3f4f6",
+      "src": ".dv 设备列表的卡底"
+    },
+    {
+      "group": "底色",
+      "name": "bg-sunken",
+      "hex": "#f6f7f9",
+      "src": ".mxt .mxi 行内输入的底"
+    },
+    {
+      "group": "底色",
+      "name": "bg-hover",
+      "hex": "#f7f9fc",
+      "src": ".rtab / .tbl 行悬停"
+    },
+    {
+      "group": "底色",
+      "name": "bg-press",
+      "hex": "#eceef1",
+      "src": ".ph button:hover 图标按钮悬停 / 按下；.ty 类型小块"
+    },
+    {
+      "group": "底色",
+      "name": "bg-bar",
+      "hex": "#f0f0f0",
+      "src": ".status 状态栏、滚动条轨道；也代替 #f3f3f3（对话框底栏 .dlg-f）"
+    },
+    {
+      "group": "线",
+      "name": "line-strong",
+      "hex": "#b9b9b9",
+      "src": ":root --line-2 · .rb 工具条按钮边框、对话框 / 提示框边框"
+    },
+    {
+      "group": "线",
+      "name": "line",
+      "hex": "#d9dce1",
+      "src": ":root --line · .pwrap 面板边框；开关关闭的底 #d5dae2"
+    },
+    {
+      "group": "线",
+      "name": "line-2",
+      "hex": "#c9ced6",
+      "src": ".btn / .inp / .segs2 控件边框、曲线零线"
+    },
+    {
+      "group": "线",
+      "name": "line-soft",
+      "hex": "#e3e5e9",
+      "src": ".rtab th 表头下线、.tbar 下线；也代替 #e6e8eb（.prail / .ptool 细线）"
+    },
+    {
+      "group": "线",
+      "name": "line-faint",
+      "hex": "#f0f1f3",
+      "src": ".rtab td 行线、曲线网格"
+    },
+    {
+      "group": "线",
+      "name": "line-menu",
+      "hex": "#dedede",
+      "src": ".menubar 下边线（只用于菜单栏下的 1 px 线）"
+    },
+    {
+      "group": "线",
+      "name": "line-firm",
+      "hex": "#a8a8a8",
+      "src": ".gsel 设备下拉框边框、滚动条滑块悬停"
+    },
+    {
+      "group": "线",
+      "name": "line-sep",
+      "hex": "#cfcfcf",
+      "src": ".tsep / .status .sep 竖分隔、滚动条滑块"
+    },
+    {
+      "group": "线",
+      "name": "line-grey",
+      "hex": "#d6d6d6",
+      "src": ".status 上边线（GBG 灰）"
+    },
+    {
+      "group": "文字",
+      "name": "t-1",
+      "hex": "#1f2329",
+      "src": ":root --ink"
+    },
+    {
+      "group": "文字",
+      "name": "t-2",
+      "hex": "#4a505a",
+      "src": ":root --ink-2"
+    },
+    {
+      "group": "文字",
+      "name": "t-3",
+      "hex": "#6b7280",
+      "src": ":root --muted"
+    },
+    {
+      "group": "文字",
+      "name": "t-4",
+      "hex": "#9097a1",
+      "src": ".rtab u / small 单位、副标题"
+    },
+    {
+      "group": "文字",
+      "name": "t-dis",
+      "hex": "#9aa1ac",
+      "src": ".rtab tr.off 停用行、禁用字"
+    },
+    {
+      "group": "文字",
+      "name": "t-inv",
+      "hex": "#ffffff",
+      "src": "深底上的字"
+    },
+    {
+      "group": "文字",
+      "name": "t-icon",
+      "hex": "#8a909a",
+      "src": ".rx 圆圈、.ph button 图标、设定值点线"
+    },
+    {
+      "group": "文字",
+      "name": "t-none",
+      "hex": "#b4bac3",
+      "src": ".rtab .none 缺值「—」、矩阵里不参加的格"
+    },
+    {
+      "group": "文字",
+      "name": "t-sep",
+      "hex": "#c3c8cf",
+      "src": ".rtab .spv::before「/」、事件时间线的点"
+    },
+    {
+      "group": "GBG 框架",
+      "name": "gbg-ink",
+      "hex": "#2b2b2b",
+      "src": "曲线标题 / 十字线、提示条底、甘特「现在」线"
+    },
+    {
+      "group": "GBG 框架",
+      "name": "gbg-title",
+      "hex": "#2f2f2f",
+      "src": ".dv .nm 设备名、检查器标题（浅字大号）"
+    },
+    {
+      "group": "GBG 框架",
+      "name": "gbg-menu",
+      "hex": "#3b3b3b",
+      "src": ".mi 菜单栏项"
+    },
+    {
+      "group": "GBG 框架",
+      "name": "gbg-icon",
+      "hex": "#4a4a4a",
+      "src": ".rbt 圆形工具按钮边、.rb .ic 工具条图标"
+    },
+    {
+      "group": "GBG 框架",
+      "name": "gbg-tick",
+      "hex": "#6a6a6a",
+      "src": "叠加曲线刻度字"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a",
+      "hex": "#204797",
+      "src": ":root --brand · ALZK 品牌蓝：当前页、主要按钮、选中"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-d",
+      "hex": "#173a7e",
+      "src": ":root --brand-d · 主要按钮悬停"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-ink",
+      "hex": "#24427f",
+      "src": ".gb 甘特条字（深品牌蓝字）"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-soft",
+      "hex": "#e5ecf7",
+      "src": ":root --sel-bg · .lz.on 控制权「远程控制中」"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-tint",
+      "hex": "#eef3fb",
+      "src": ".rtab tr.on / .li.on 选中行、.lgc.on 图例"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-line",
+      "hex": "#c9d4ea",
+      "src": ".lgc.on / .dv.on / .tag.brand 选中边框"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-tab",
+      "hex": "#8fa7d4",
+      "src": ":root --sel-line · .lz.on 边框"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-wash",
+      "hex": "#f3f6fb",
+      "src": ".apop .aauto / .lockbar 说明块；也代替 #f2f6fc（.btn / .rb 悬停底）"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-done",
+      "hex": "#b9c7e2",
+      "src": ".rtab .pgb i.done 已完成的步"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-track",
+      "hex": "#dde4f2",
+      "src": ".rtab .pgb i.cur 当前步的轨道"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "a-mute",
+      "hex": "#9fb3da",
+      "src": ":root --brand-line · .vpg i.done 卡片视图已完成的步"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "side-1",
+      "hex": "#1f3c7c",
+      "src": ":root --tb-a · 标题条渐变上端"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "side-2",
+      "hex": "#172f62",
+      "src": ":root --tb-b · 标题条渐变下端"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "side-line",
+      "hex": "#172f62",
+      "src": "标题条下边线（同 --tb-b）"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "side-ink",
+      "hex": "#eef2fa",
+      "src": ".tb-title 标题条文字"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "side-ink-2",
+      "hex": "#e3e9f6",
+      "src": ".tb-link 标题条链接"
+    },
+    {
+      "group": "品牌蓝",
+      "name": "brand-orange",
+      "hex": "#ec681e",
+      "src": ".tb-app 应用图标圆点（ALZK 橙，只此一处）"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-1",
+      "hex": "#f2faf3",
+      "src": ".vp.on / .tag.run / .mxck .ok 运行标签底"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-2",
+      "hex": "#eef7ef",
+      "src": ".netbar.back 恢复连接条底"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-3",
+      "hex": "#bfe0c2",
+      "src": "气路图有气的竖管 i.ln.gf"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-4",
+      "hex": "#9fcfa4",
+      "src": "气路图有气的总管 i.hdr.gf"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-line",
+      "hex": "#b9dcbf",
+      "src": ".vp.on / .tag.run 运行标签边"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-edge",
+      "hex": "#b7d9b9",
+      "src": ".netbar.back 恢复连接条边"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-dot",
+      "hex": "#2e8b3e",
+      "src": ":root --run · 运行点、设备色条"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-dot-line",
+      "hex": "#2e8b3e",
+      "src": ":root --st-run · 运行点描边 / 光晕（α .14）"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-ink",
+      "hex": "#1f5f28",
+      "src": ".vp.on / .tag.run 运行标签字"
+    },
+    {
+      "group": "运行（绿）",
+      "name": "g-ink-2",
+      "hex": "#3c7a45",
+      "src": ".vp.on small 运行标签小字"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r",
+      "hex": "#c62828",
+      "src": ":root --red / --st-err · 报警点、报警色条、报警弹窗顶边"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-ink",
+      "hex": "#b71c1c",
+      "src": ".sts.s-err / b.hot 报警字"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-ink-2",
+      "hex": "#b4232f",
+      "src": "报警列表的数值 .val / 未确认"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-bg",
+      "hex": "#fff6f6",
+      "src": ".rtab tr.e 报警行底、.avs .bad 坏读数块"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-soft",
+      "hex": "#fdecec",
+      "src": ".apop .ai 报警图标底；也代替 #fcecec（报警行选中）"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-line",
+      "hex": "#f0c6c6",
+      "src": ".avs .bad / .kpi.err / .tag.err 边框"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-track",
+      "hex": "#f6d6d6",
+      "src": ".rtab .pgb i.cur.err 报警通道当前步的轨道"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-btn",
+      "hex": "#c50f1f",
+      "src": ".btn.estop 急停对话框的确认按钮（唯一的红色实心对话框按钮）"
+    },
+    {
+      "group": "报警（红）",
+      "name": "r-btn-d",
+      "hex": "#d63a43",
+      "src": ".btn.estop:hover"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb",
+      "hex": "#c98a00",
+      "src": ":root --st-warn · 提醒图标 / 提醒左边线"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-dot",
+      "hex": "#d6a000",
+      "src": ".res .rev li.lo::before 事件时间线的提醒点"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-ink",
+      "hex": "#8a5a00",
+      "src": ".dvn 偏差 / .tag.warn / small.busy 提醒字"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-ink-2",
+      "hex": "#6b4a00",
+      "src": ".lockbar.amb / .mxck .no 提醒说明字"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-bg",
+      "hex": "#fff8e6",
+      "src": ".tag.warn / .netbar.lost / .mxck .no 底"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-soft",
+      "hex": "#fff4dc",
+      "src": ".rtab .dvn 偏差小块底"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-line",
+      "hex": "#ecd59a",
+      "src": ".tag.warn / .kpi.warn 边"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-line-2",
+      "hex": "#e0b252",
+      "src": ":root --amb-line · 输入超限边 .mxt td.bad"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-note-line",
+      "hex": "#f0d9a6",
+      "src": ".stopn 停止对话框说明框边"
+    },
+    {
+      "group": "提醒（琥珀）",
+      "name": "amb-edge",
+      "hex": "#d4a017",
+      "src": ".netbar.lost 断线条左边线"
+    },
+    {
+      "group": "中性状态",
+      "name": "n-dot",
+      "hex": "#b8bec8",
+      "src": ".rtab .sts i 空闲 / 就绪的点"
+    },
+    {
+      "group": "中性状态",
+      "name": "n-dot-line",
+      "hex": "#aab1bb",
+      "src": ".res .vp i 空心点边、.dv .bar 空闲色条（#a9b0ba）"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-bg",
+      "hex": "#151515",
+      "src": ".cap 菜单栏右侧的黑色运行控制条"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-btn",
+      "hex": "#4d4d4d",
+      "src": ".rbtn 圆形按钮（全部停止 / 记录）"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-btn-off",
+      "hex": "#333333",
+      "src": ".rbtn:disabled"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-sub",
+      "hex": "#a9b4c8",
+      "src": ".cap .cl small 胶囊里的小字"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-go",
+      "hex": "#28a745",
+      "src": ".rbtn.go「启动」"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-es",
+      "hex": "#d32f2f",
+      "src": ".cap-es「急停」"
+    },
+    {
+      "group": "运行胶囊",
+      "name": "cap-es-hover",
+      "hex": "#e53935",
+      "src": ".cap-es:hover"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-bg",
+      "hex": "#ffffff",
+      "src": "曲线底（白）"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-grid",
+      "hex": "#f0f1f3",
+      "src": "drawOv 网格线"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-axis",
+      "hex": "#c9ced6",
+      "src": "drawOv 零线"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-tick",
+      "hex": "#6a6a6a",
+      "src": "drawOv 刻度字"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-title",
+      "hex": "#2b2b2b",
+      "src": "drawOv 坐标名、十字线"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-t",
+      "hex": "#d9662b",
+      "src": ":root --t（精简配色）· 温度"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-t-sp",
+      "hex": "#8e9299",
+      "src": ":root --sp · 设定值"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-p",
+      "hex": "#204797",
+      "src": ":root --p · 压力"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-p-sp",
+      "hex": "#8e9299",
+      "src": ":root --sp · 压力设定值"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-s1",
+      "hex": "#4a505a",
+      "src": "其它曲线（深灰）"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-s2",
+      "hex": "#8a909a",
+      "src": "其它曲线（中灰）· 报警弹窗设定值点线"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-s3",
+      "hex": "#b4bac3",
+      "src": "其它曲线（浅灰）"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-mark",
+      "hex": "#2b2b2b",
+      "src": "标记 / 「现在」线"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-limit",
+      "hex": "#c62828",
+      "src": "drawOv 上限虚线（α .6）"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-1",
+      "hex": "#2a78d6",
+      "src": "CH_COL[0] · RV1 / RV9"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-2",
+      "hex": "#eb6834",
+      "src": "CH_COL[1] · RV2 / RV10"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-3",
+      "hex": "#1baf7a",
+      "src": "CH_COL[2] · RV3 / RV11"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-4",
+      "hex": "#eda100",
+      "src": "CH_COL[3] · RV4 / RV12"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-5",
+      "hex": "#e87ba4",
+      "src": "CH_COL[4] · RV5 / RV13"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-6",
+      "hex": "#008300",
+      "src": "CH_COL[5] · RV6 / RV14"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-7",
+      "hex": "#6250d6",
+      "src": "CH_COL[6] · RV7 / RV15（偏紫，待用户确认）"
+    },
+    {
+      "group": "曲线",
+      "name": "ch-8",
+      "hex": "#a0612b",
+      "src": "CH_COL[7] · RV8 / RV16"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-line",
+      "hex": "#aab4c2",
+      "src": ".vsl .bo 釜体轮廓"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-detail",
+      "hex": "#b3bcc8",
+      "src": ".vsl .lid / .mt 釜盖、电机"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-liq",
+      "hex": "#dbe8f8",
+      "src": "gLiq 液体渐变上端"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-liq-2",
+      "hex": "#afcbee",
+      "src": "gLiq 液体渐变下端"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-liq-run",
+      "hex": "#dbe8f8",
+      "src": "液体不按状态着色（运行靠文字和点）"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-liq-run-line",
+      "hex": "#93b4e0",
+      "src": ".vsl .sf 液面线"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-liq-alarm",
+      "hex": "#fdecec",
+      "src": "报警的液体（同 r-soft）"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-line-alarm",
+      "hex": "#c62828",
+      "src": ".vsl.err .bo 报警轮廓（--st-err）"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-shaft",
+      "hex": "#7d8898",
+      "src": ".vsl .sh / .imp 搅拌轴、桨"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-cap",
+      "hex": "#c3cad4",
+      "src": ".vsl .cp 釜盖块"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-tb",
+      "hex": "#eef1f5",
+      "src": ".vsl .tb 温度探头底"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-tb-line",
+      "hex": "#d6dce4",
+      "src": ".vsl .tb 温度探头边"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-sensor",
+      "hex": "#2b3646",
+      "src": ".vsl .tsa / .tsp 探头芯"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "v-bub",
+      "hex": "#8fb0de",
+      "src": ".vsl .bub 气泡"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "pipe",
+      "hex": "#c3cbd6",
+      "src": ":root --pipe · 气路图竖管"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "pipe-hdr",
+      "hex": "#9aa5b4",
+      "src": ":root --hdr · 气路图总管"
+    },
+    {
+      "group": "釜体 · 气路",
+      "name": "sym",
+      "hex": "#8d98a8",
+      "src": ":root --sym · 阀门符号"
+    }
+  ],
+  "misc": [
+    {
+      "name": "toast",
+      "rgba": "rgba(43,43,43,1)",
+      "src": ".toast 底 #2b2b2b（实心）"
+    },
+    {
+      "name": "overlay",
+      "rgba": "rgba(17,24,39,.32)",
+      "src": ".apop-bg 弹窗遮罩；对话框遮罩 rgba(20,20,40,.25) 同色系"
+    }
+  ],
+  "shadows": [
+    {
+      "name": "shadow-card",
+      "key": "ShadowCard",
+      "css": "0 1px 2px rgba(16,24,40,.04)",
+      "src": ".pane > .pwrap 面板（细节打磨）"
+    },
+    {
+      "name": "shadow-card-hover",
+      "key": "ShadowCardHover",
+      "css": "0 2px 10px rgba(16,24,40,.11)",
+      "src": "卡片悬停 / 选中（旧页面用；颜色同面板阴影）"
+    },
+    {
+      "name": "shadow-step",
+      "key": "ShadowStep",
+      "css": "0 1px 5px rgba(16,24,40,.07)",
+      "src": "步骤卡片（旧页面用；颜色同面板阴影）"
+    },
+    {
+      "name": "shadow-pop",
+      "key": "ShadowPop",
+      "css": "0 10px 30px rgba(0,0,0,.2)",
+      "src": "#almPop 报警列表、下拉弹层"
+    },
+    {
+      "name": "shadow-dlg",
+      "key": "ShadowDlg",
+      "css": "0 24px 60px rgba(17,24,39,.28), 0 2px 8px rgba(17,24,39,.12)",
+      "src": ".apop 报警弹窗 / 对话框"
+    },
+    {
+      "name": "shadow-modal",
+      "key": "ShadowModal",
+      "css": "0 10px 30px rgba(20,32,50,.22)",
+      "src": ".dialog 对话框（仪器软件层的阴影，GBG 层只改了圆角和边框）"
+    },
+    {
+      "name": "shadow-float",
+      "key": "ShadowFloat",
+      "css": "0 10px 32px rgba(0,0,0,.22)",
+      "src": ".pane.float > .pwrap 窄屏浮出的设备面板 / 检查器"
+    },
+    {
+      "name": "shadow-tip",
+      "key": "ShadowTip",
+      "css": "0 4px 14px rgba(0,0,0,.14)",
+      "src": ".ctip 十字光标读数 / 悬停提示"
+    },
+    {
+      "name": "shadow-toast",
+      "key": "ShadowToast",
+      "css": "0 6px 18px rgba(20,32,50,.16)",
+      "src": ".toast"
+    },
+    {
+      "name": "shadow-knob",
+      "key": "ShadowKnob",
+      "css": "0 1px 2px rgba(0,0,0,.2)",
+      "src": ".tgl::after 开关圆钮"
+    },
+    {
+      "name": "shadow-dot-run",
+      "key": "ShadowDotRun",
+      "css": "0 0 0 3px rgba(46,139,62,.14)",
+      "src": ".rtab .sts.s-run i 运行表运行中的状态点光圈"
+    },
+    {
+      "name": "shadow-dot-err",
+      "key": "ShadowDotErr",
+      "css": "0 0 0 3px rgba(198,40,40,.16)",
+      "src": ".rtab .sts.s-err i 运行表报警的状态点光圈"
+    }
+  ],
+  "focus": {
+    "brush": "a",
+    "ringAlpha": 0.12,
+    "src": ".inp:focus：边框 brand + 0 0 0 3px rgba(32,71,151,.12)"
+  },
+  "aliases": [
+    {
+      "group": "面板",
+      "name": "pane-bg",
+      "to": "bg-card",
+      "src": ".pwrap 底"
+    },
+    {
+      "group": "面板",
+      "name": "pane-line",
+      "to": "line",
+      "src": ".pwrap 边框 1 px、圆角 4"
+    },
+    {
+      "group": "面板",
+      "name": "pane-head",
+      "to": "bg-head",
+      "src": ".ptool / .ph 面板工具条"
+    },
+    {
+      "group": "面板",
+      "name": "pane-head-line",
+      "to": "line-soft",
+      "src": ".ptool 下边线"
+    },
+    {
+      "group": "面板",
+      "name": "pane-title",
+      "to": "t-1",
+      "src": ".ph .pt 面板标题 15/600"
+    },
+    {
+      "group": "面板",
+      "name": "dock-bg",
+      "to": "bg-app",
+      "src": ".dock 停靠区底"
+    },
+    {
+      "group": "竖条",
+      "name": "rail-bg",
+      "to": "bg-panel",
+      "src": ".prail 面板左侧竖条"
+    },
+    {
+      "group": "竖条",
+      "name": "rail-line",
+      "to": "line-soft",
+      "src": ".prail 右边线"
+    },
+    {
+      "group": "竖条",
+      "name": "rail-ink",
+      "to": "t-2",
+      "src": ".rt / .rl 竖排面板名"
+    },
+    {
+      "group": "竖条",
+      "name": "rail-btn",
+      "to": "t-icon",
+      "src": ".rx 折叠圆钮的圈"
+    },
+    {
+      "group": "工具条",
+      "name": "ribbon-bg",
+      "to": "bg-card",
+      "src": ".tbar 工具条底（细节打磨改白）"
+    },
+    {
+      "group": "工具条",
+      "name": "ribbon-line",
+      "to": "line-soft",
+      "src": ".tbar 下边线"
+    },
+    {
+      "group": "工具条",
+      "name": "ribbon-btn-line",
+      "to": "line-strong",
+      "src": ".rb 工具条按钮边框"
+    },
+    {
+      "group": "工具条",
+      "name": "ribbon-sep",
+      "to": "line-sep",
+      "src": ".tsep / .rsep 竖分隔"
+    },
+    {
+      "group": "工具条",
+      "name": "ribbon-icon",
+      "to": "gbg-icon",
+      "src": ".rb .ic 工具条图标"
+    },
+    {
+      "group": "标题条",
+      "name": "strip-ink",
+      "to": "side-ink",
+      "src": ".tb-title 窗口内深蓝条的文字"
+    },
+    {
+      "group": "菜单栏",
+      "name": "menu-ink",
+      "to": "gbg-menu",
+      "src": ".mi 菜单项 24/300"
+    },
+    {
+      "group": "菜单栏",
+      "name": "menu-on",
+      "to": "a",
+      "src": ".mi.on 当前页"
+    },
+    {
+      "group": "菜单栏",
+      "name": "menu-badge",
+      "to": "r",
+      "src": ".mi .mb 报警数徽标"
+    },
+    {
+      "group": "运行表",
+      "name": "run-head-ink",
+      "to": "t-3",
+      "src": ".rtab th 13/500"
+    },
+    {
+      "group": "运行表",
+      "name": "run-sub",
+      "to": "t-4",
+      "src": ".rtab th small / u 单位"
+    },
+    {
+      "group": "运行表",
+      "name": "run-row-line",
+      "to": "line-faint",
+      "src": ".rtab td 行线"
+    },
+    {
+      "group": "运行表",
+      "name": "run-row-hover",
+      "to": "bg-hover",
+      "src": ".rtab tr:hover"
+    },
+    {
+      "group": "运行表",
+      "name": "run-row-sel",
+      "to": "a-tint",
+      "src": ".rtab tr.on + 左侧 3 px 品牌蓝"
+    },
+    {
+      "group": "运行表",
+      "name": "run-row-err",
+      "to": "r-bg",
+      "src": ".rtab tr.e + 左侧 3 px 红"
+    },
+    {
+      "group": "运行表",
+      "name": "run-row-err-sel",
+      "to": "r-soft",
+      "src": ".rtab tr.e.on"
+    },
+    {
+      "group": "运行表",
+      "name": "run-step-done",
+      "to": "a-done",
+      "src": ".pgb i.done"
+    },
+    {
+      "group": "运行表",
+      "name": "run-step-track",
+      "to": "a-track",
+      "src": ".pgb i.cur 轨道"
+    },
+    {
+      "group": "运行表",
+      "name": "run-step-next",
+      "to": "bg-press",
+      "src": ".pgb i 未到的步"
+    },
+    {
+      "group": "运行表",
+      "name": "run-step-fill",
+      "to": "a",
+      "src": ".pgb i.cur b 进度"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-edge",
+      "to": "r",
+      "src": ".apop 顶边 4 px"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-icon-bg",
+      "to": "r-soft",
+      "src": ".apop .ai"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-box",
+      "to": "bg-head",
+      "src": ".apop .avs > div 读数块底 #fafbfc"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-box-line",
+      "to": "line-soft",
+      "src": ".apop .avs > div 边 #e6e8eb"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-bad",
+      "to": "r-bg",
+      "src": ".apop .avs .bad 底"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-bad-line",
+      "to": "r-line",
+      "src": ".apop .avs .bad 边"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-info",
+      "to": "a-wash",
+      "src": ".apop .aauto 自动处理说明块"
+    },
+    {
+      "group": "报警弹窗",
+      "name": "apop-foot",
+      "to": "bg-head",
+      "src": ".apop .af 底栏"
+    },
+    {
+      "group": "开关",
+      "name": "toggle-off",
+      "to": "line",
+      "src": ".tgl 关 #d5dae2"
+    },
+    {
+      "group": "开关",
+      "name": "toggle-on",
+      "to": "a",
+      "src": ".tgl.on"
+    },
+    {
+      "group": "开关",
+      "name": "toggle-knob",
+      "to": "bg-card",
+      "src": ".tgl::after 圆钮"
+    },
+    {
+      "group": "滚动条",
+      "name": "scroll-track",
+      "to": "bg-bar",
+      "src": "::-webkit-scrollbar #f0f0f0"
+    },
+    {
+      "group": "滚动条",
+      "name": "scroll-thumb",
+      "to": "line-sep",
+      "src": "::-webkit-scrollbar-thumb #cdcdcd"
+    },
+    {
+      "group": "滚动条",
+      "name": "scroll-thumb-hover",
+      "to": "line-firm",
+      "src": "::-webkit-scrollbar-thumb:hover #a6a6a6"
+    }
+  ],
+  "sizes": [
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsNum",
+      "type": "double",
+      "value": 13,
+      "src": "数字、单位、刻度、时间"
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "Fs2",
+      "type": "double",
+      "value": 14
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsBody",
+      "type": "double",
+      "value": 15,
+      "src": "旧页面的正文；融合版正文是 FsBase 13"
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsTitle",
+      "type": "double",
+      "value": 16
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsHead",
+      "type": "double",
+      "value": 18
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsReadS",
+      "type": "double",
+      "value": 20
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsRead24",
+      "type": "double",
+      "value": 24
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsRead",
+      "type": "double",
+      "value": 26
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsRead28",
+      "type": "double",
+      "value": 28
+    },
+    {
+      "group": "字号（类型阶梯，沿用 pc-v3 的键名）",
+      "key": "FsRead30",
+      "type": "double",
+      "value": 30
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsBase",
+      "type": "double",
+      "value": 13,
+      "src": "body 13px：正文、标签、按钮、工具条、状态栏（字号 ≥ 13，中文同）"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsCell",
+      "type": "double",
+      "value": 14,
+      "src": ".rtab / .tbl 单元格、.inp 输入框"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsValue",
+      "type": "double",
+      "value": 15,
+      "src": ".rtab td b 读数 15/600"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsPaneTitle",
+      "type": "double",
+      "value": 15,
+      "src": ".board.pg .ph .pt 面板标题 15/600"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsSection",
+      "type": "double",
+      "value": 15,
+      "src": "检查器 / 设备信息分节标题 15/400 品牌蓝 + 1.5 px 下划线"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsRail",
+      "type": "double",
+      "value": 14,
+      "src": ".rl 竖排面板名（字距 .14em）"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsMenu",
+      "type": "double",
+      "value": 24,
+      "src": ".mi 菜单栏项 24/300（当前页 400）"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsMenuNarrow",
+      "type": "double",
+      "value": 22,
+      "src": "宽 < 1600 时 .mi 22"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsCap",
+      "type": "double",
+      "value": 20,
+      "src": ".cap .cl 胶囊里的设备名"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsCapEs",
+      "type": "double",
+      "value": 15,
+      "src": ".cap-es「急停」15/600"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsDevName",
+      "type": "double",
+      "value": 20,
+      "src": ".dv .nm 设备名 20/300"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsDevAll",
+      "type": "double",
+      "value": 17,
+      "src": ".dv.all .nm「总览」17"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsInspTitle",
+      "type": "double",
+      "value": 24,
+      "src": "检查器标题 24/300"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsDlgTitle",
+      "type": "double",
+      "value": 20,
+      "src": ".dlg-h 对话框标题 20/300"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsPopTitle",
+      "type": "double",
+      "value": 20,
+      "src": ".apop .at 报警弹窗标题 20/600"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsPopValue",
+      "type": "double",
+      "value": 24,
+      "src": ".apop .avs b 报警读数 24/600"
+    },
+    {
+      "group": "字号（融合版）",
+      "key": "FsKpi",
+      "type": "double",
+      "value": 22,
+      "src": ".board.pg .kpi .v 指标 22/600"
+    },
+    {
+      "group": "行高",
+      "key": "LhNum",
+      "type": "double",
+      "value": 18
+    },
+    {
+      "group": "行高",
+      "key": "Lh2",
+      "type": "double",
+      "value": 20
+    },
+    {
+      "group": "行高",
+      "key": "LhBody",
+      "type": "double",
+      "value": 21
+    },
+    {
+      "group": "行高",
+      "key": "LhTitle",
+      "type": "double",
+      "value": 23
+    },
+    {
+      "group": "行高",
+      "key": "LhHead",
+      "type": "double",
+      "value": 26
+    },
+    {
+      "group": "行高",
+      "key": "LhBase",
+      "type": "double",
+      "value": 18,
+      "src": ".dvi .kv / .rev li 13 px 的行 18"
+    },
+    {
+      "group": "行高",
+      "key": "LhPopTitle",
+      "type": "double",
+      "value": 26,
+      "src": ".apop .at"
+    },
+    {
+      "group": "行高",
+      "key": "LhPopValue",
+      "type": "double",
+      "value": 30,
+      "src": ".apop .avs b"
+    },
+    {
+      "group": "融合版外框",
+      "key": "StripH",
+      "type": "double",
+      "value": 30,
+      "src": ".titlebar → 窗口内的深蓝条（系统标题栏之下）"
+    },
+    {
+      "group": "融合版外框",
+      "key": "MenubarH",
+      "type": "double",
+      "value": 54,
+      "src": ".menubar"
+    },
+    {
+      "group": "融合版外框",
+      "key": "MenuItemPad",
+      "type": "double",
+      "value": 12,
+      "src": ".mi 左右内边距（宽 < 1600 时 9）"
+    },
+    {
+      "group": "融合版外框",
+      "key": "MenuItemPadNarrow",
+      "type": "double",
+      "value": 9
+    },
+    {
+      "group": "融合版外框",
+      "key": "MenuItemPadding",
+      "type": "thickness",
+      "value": "12,0",
+      "src": ".mi padding 0 12px"
+    },
+    {
+      "group": "融合版外框",
+      "key": "CapH",
+      "type": "double",
+      "value": 46,
+      "src": ".cap 运行胶囊"
+    },
+    {
+      "group": "融合版外框",
+      "key": "CapBtn",
+      "type": "double",
+      "value": 34,
+      "src": ".rbtn 圆形按钮 / .cap-es 高"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RibbonH",
+      "type": "double",
+      "value": 46,
+      "src": ".tbar 工具条"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RibbonBtnH",
+      "type": "double",
+      "value": 30,
+      "src": ".rb 工具条按钮"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RibbonSelH",
+      "type": "double",
+      "value": 28,
+      "src": ".gsel 设备下拉"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RibbonSelW",
+      "type": "double",
+      "value": 190,
+      "src": ".gsel 最小宽（宽 < 1600 时 150）"
+    },
+    {
+      "group": "融合版外框",
+      "key": "PillH",
+      "type": "double",
+      "value": 26,
+      "src": ".lz 控制权小块"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DockGap",
+      "type": "double",
+      "value": 8,
+      "src": ".dock gap"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DockPad",
+      "type": "double",
+      "value": 8,
+      "src": ".dock padding"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DockPadding",
+      "type": "thickness",
+      "value": "8"
+    },
+    {
+      "group": "融合版外框",
+      "key": "PaneHeadH",
+      "type": "double",
+      "value": 42,
+      "src": ".ptool / .ph 面板工具条"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RailW",
+      "type": "double",
+      "value": 28,
+      "src": ".prail 竖条宽"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RailColW",
+      "type": "double",
+      "value": 30,
+      "src": ".pane.col 收起后的宽"
+    },
+    {
+      "group": "融合版外框",
+      "key": "RailBtn",
+      "type": "double",
+      "value": 18,
+      "src": ".rx 折叠圆钮"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DevPaneW",
+      "type": "double",
+      "value": 296,
+      "src": "#pDev 设备面板"
+    },
+    {
+      "group": "融合版外框",
+      "key": "InspPaneW",
+      "type": "double",
+      "value": 340,
+      "src": "#pInsp 检查器"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DevFloatW",
+      "type": "double",
+      "value": 330,
+      "src": ".pane.float 设备面板浮出宽"
+    },
+    {
+      "group": "融合版外框",
+      "key": "InspFloatW",
+      "type": "double",
+      "value": 400,
+      "src": ".pane.right.float 检查器浮出宽"
+    },
+    {
+      "group": "融合版外框",
+      "key": "StatusBarH",
+      "type": "double",
+      "value": 26,
+      "src": ".status 状态栏"
+    },
+    {
+      "group": "融合版外框",
+      "key": "DlgHeadH",
+      "type": "double",
+      "value": 52,
+      "src": ".dlg-h"
+    },
+    {
+      "group": "融合版外框",
+      "key": "AlarmPopW",
+      "type": "double",
+      "value": 560,
+      "src": ".apop 报警弹窗"
+    },
+    {
+      "group": "融合版外框",
+      "key": "AlarmListW",
+      "type": "double",
+      "value": 470,
+      "src": "#almPop 报警列表"
+    },
+    {
+      "group": "运行表",
+      "key": "RunHeadH",
+      "type": "double",
+      "value": 40,
+      "src": ".rtab th（矮屏 34）"
+    },
+    {
+      "group": "运行表",
+      "key": "RunHeadHShort",
+      "type": "double",
+      "value": 34
+    },
+    {
+      "group": "运行表",
+      "key": "RunRowH",
+      "type": "double",
+      "value": 44,
+      "src": ".rtab td（最后一层 44）"
+    },
+    {
+      "group": "运行表",
+      "key": "RunRowH16",
+      "type": "double",
+      "value": 32,
+      "src": ".rtab.c16 td（16 路）"
+    },
+    {
+      "group": "运行表",
+      "key": "RunRowHShort",
+      "type": "double",
+      "value": 30,
+      "src": "高 ≤ 820 时 .rtab td"
+    },
+    {
+      "group": "运行表",
+      "key": "RunCellPad",
+      "type": "double",
+      "value": 14,
+      "src": ".rtab td 左右内边距（宽 < 1600 时 10）"
+    },
+    {
+      "group": "运行表",
+      "key": "RunStepBarH",
+      "type": "double",
+      "value": 6,
+      "src": ".pgb 分段进度条高"
+    },
+    {
+      "group": "运行表",
+      "key": "TableHeadH",
+      "type": "double",
+      "value": 38,
+      "src": ".board.pg .tbl th"
+    },
+    {
+      "group": "控件",
+      "key": "HeadH",
+      "type": "double",
+      "value": 42,
+      "src": "面板标题条（= PaneHeadH）"
+    },
+    {
+      "group": "控件",
+      "key": "RowH",
+      "type": "double",
+      "value": 36,
+      "src": ".mxt td 表格行"
+    },
+    {
+      "group": "控件",
+      "key": "CtlH",
+      "type": "double",
+      "value": 30,
+      "src": ".inp 输入框 / 下拉"
+    },
+    {
+      "group": "控件",
+      "key": "CtlHS",
+      "type": "double",
+      "value": 28,
+      "src": ".btn 按钮"
+    },
+    {
+      "group": "控件",
+      "key": "BtnLg",
+      "type": "double",
+      "value": 34,
+      "src": ".apop .af .btn 对话框按钮"
+    },
+    {
+      "group": "控件",
+      "key": "IconBtnSize",
+      "type": "double",
+      "value": 28,
+      "src": ".ph button / .ibtn 图标按钮"
+    },
+    {
+      "group": "控件",
+      "key": "IconBtnSSize",
+      "type": "double",
+      "value": 26,
+      "src": ".ibtn.sm"
+    },
+    {
+      "group": "控件",
+      "key": "BadgeH",
+      "type": "double",
+      "value": 22,
+      "src": ".tag 标签"
+    },
+    {
+      "group": "控件",
+      "key": "ChipH",
+      "type": "double",
+      "value": 26,
+      "src": ".res .vp 气源小块（圆角 13）"
+    },
+    {
+      "group": "控件",
+      "key": "LegendChipH",
+      "type": "double",
+      "value": 24,
+      "src": "#pCurve .lgc 图例（圆角 12）"
+    },
+    {
+      "group": "控件",
+      "key": "SegH",
+      "type": "double",
+      "value": 28,
+      "src": ".segs2 分段开关"
+    },
+    {
+      "group": "控件",
+      "key": "CheckBoxSize",
+      "type": "double",
+      "value": 16,
+      "src": ".ck input"
+    },
+    {
+      "group": "控件",
+      "key": "ToggleW",
+      "type": "double",
+      "value": 38,
+      "src": ".tgl"
+    },
+    {
+      "group": "控件",
+      "key": "ToggleH",
+      "type": "double",
+      "value": 22
+    },
+    {
+      "group": "控件",
+      "key": "ToggleKnob",
+      "type": "double",
+      "value": 16
+    },
+    {
+      "group": "控件",
+      "key": "DotSize",
+      "type": "double",
+      "value": 8,
+      "src": ".rtab .sts i 状态点"
+    },
+    {
+      "group": "控件",
+      "key": "DotSlot",
+      "type": "double",
+      "value": 13
+    },
+    {
+      "group": "控件",
+      "key": "IconSize",
+      "type": "double",
+      "value": 16,
+      "src": ".rb .ic 工具条图标"
+    },
+    {
+      "group": "控件",
+      "key": "IconStroke",
+      "type": "double",
+      "value": 1.6
+    },
+    {
+      "group": "控件",
+      "key": "ScrollBarW",
+      "type": "double",
+      "value": 12,
+      "src": "::-webkit-scrollbar 12（滑块内缩 3）"
+    },
+    {
+      "group": "控件",
+      "key": "ScrollBarWThin",
+      "type": "double",
+      "value": 8,
+      "src": ".devs 设备列表 8（内缩 2）"
+    },
+    {
+      "group": "间距",
+      "key": "Gap",
+      "type": "double",
+      "value": 8,
+      "src": "8 px 网格"
+    },
+    {
+      "group": "间距",
+      "key": "PanelPad",
+      "type": "double",
+      "value": 16,
+      "src": ".board.pg .pbody.pad 16"
+    },
+    {
+      "group": "间距",
+      "key": "CardPad",
+      "type": "double",
+      "value": 14,
+      "src": ".res / .ptool 14"
+    },
+    {
+      "group": "间距",
+      "key": "CardGap",
+      "type": "double",
+      "value": 8,
+      "src": "面板间距 8"
+    },
+    {
+      "group": "间距",
+      "key": "PanelPadding",
+      "type": "thickness",
+      "value": "16"
+    },
+    {
+      "group": "间距",
+      "key": "CardPadding",
+      "type": "thickness",
+      "value": "14"
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepW",
+      "type": "double",
+      "value": 248
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepWMin",
+      "type": "double",
+      "value": 214
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepWMax",
+      "type": "double",
+      "value": 280
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepWSingle",
+      "type": "double",
+      "value": 300
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "ArrowW",
+      "type": "double",
+      "value": 56
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "CondOffset",
+      "type": "double",
+      "value": 22
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "CondH",
+      "type": "double",
+      "value": 44
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepTitleH",
+      "type": "double",
+      "value": 44
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepZoom1",
+      "type": "double",
+      "value": 1
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepZoom2",
+      "type": "double",
+      "value": 1.15
+    },
+    {
+      "group": "步骤画布（旧页面）",
+      "key": "StepZoom3",
+      "type": "double",
+      "value": 1.3
+    },
+    {
+      "group": "圆角",
+      "key": "Radius",
+      "type": "corner",
+      "value": "4",
+      "src": ".pane > .pwrap 面板、.kpi、.dv"
+    },
+    {
+      "group": "圆角",
+      "key": "RadiusS",
+      "type": "corner",
+      "value": "3",
+      "src": ".btn / .inp / .tag / .segs2 控件"
+    },
+    {
+      "group": "圆角",
+      "key": "RadiusDlg",
+      "type": "corner",
+      "value": "6",
+      "src": ".apop 报警弹窗"
+    },
+    {
+      "group": "圆角",
+      "key": "RadiusStep",
+      "type": "corner",
+      "value": "2",
+      "src": "GBG 直角：.rb / .gsel / .lz / 对话框（.dialog 2）"
+    },
+    {
+      "group": "圆角",
+      "key": "RadiusCap",
+      "type": "corner",
+      "value": "8",
+      "src": ".cap 运行胶囊"
+    },
+    {
+      "group": "圆角",
+      "key": "RadiusChip",
+      "type": "corner",
+      "value": "13",
+      "src": ".res .vp 气源小块（全圆）"
+    },
+    {
+      "group": "过渡",
+      "key": "Ease",
+      "type": "timespan",
+      "value": "0:0:0.12",
+      "src": "transition .12s"
+    }
+  ]
+}

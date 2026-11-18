@@ -22,6 +22,8 @@ public readonly record struct DemoSelection(int K, int? N = null)
 /// <item>lease=&lt;k&gt;:&lt;local|requested|remote|lost&gt;[,…]；alarm=&lt;k&gt;:1（加一条超压报警）| &lt;k&gt;:0（清除）| 其它值（恢复场景默认）。</item>
 /// <item>offline=&lt;k&gt;[,…] | none（不给 = 默认：4 号位断线；none / 0 / 空 = 全部在线）；estop=&lt;k&gt;[,…]。</item>
 /// <item>stress=1 | 2（压力测试数据）；dialog=name[:arg]；scroll=end（截图把总览滚到底，样稿由截图脚本处理）。</item>
+/// <item>fusion=1：融合版样稿（research/main-fusion.html）的演示数据 —— 1号机 HT-PR8（8 路）、2号机 HT-PR4、3号机 HT-PR16，时钟 2026-11-15 14:30:07（见 DemoFleet.Fusion）；
+///   其它值 = 旧样稿（pc-v3）的数据。可与 offline=1 合用（1号机断线：数据停在 14:28:41）。</item>
 /// </list>
 /// 设备键保留原文（'01' 不等于 1 号机，同样稿按字符串比较）。不认识的参数原样留在 <see cref="Extra"/>（例如截图计划的 frame=workspace）。
 /// <see cref="ToString"/> 写出规范的查询串（键顺序固定），<c>Parse(p.ToString())</c> 与 p 相等（值相等语义，见 <see cref="Equals(DemoParams?)"/>）。
@@ -45,7 +47,10 @@ public sealed record DemoParams
     /// <summary>样稿 PR.route.GLOBAL_KEYS（导航时保留的参数）。</summary>
     public static readonly IReadOnlyList<string> GlobalKeys = new[] { "devs", "bare", "freeze", "res", "lease", "offline", "alarm", "estop", "explorer", "tl", "sel", "stress" };
 
-    private static readonly string[] KnownKeys = GlobalKeys.Concat(new[] { "dialog", "scroll" }).ToArray();
+    /// <summary>融合版数据集的参数名（fusion=1）。不在 <see cref="GlobalKeys"/> 里（那张表照抄 pc-v3 样稿、有测试钉住）；导航时要保留就和 GlobalKeys 一起带上。</summary>
+    public const string FusionKey = "fusion";
+
+    private static readonly string[] KnownKeys = GlobalKeys.Concat(new[] { FusionKey, "dialog", "scroll" }).ToArray();
 
     public static readonly DemoParams Default = new();
 
@@ -70,6 +75,8 @@ public sealed record DemoParams
     public IReadOnlyList<string> Estop { get; init; } = Array.Empty<string>();
     /// <summary>0 = 演示数据；1 = 最坏值 + 8 个汉字的别名；2 = 最坏值 + 16 个字母的别名。</summary>
     public int Stress { get; init; }
+    /// <summary>fusion=1：融合版样稿的演示数据（3 台、2026-11-15 14:30:07）；false = 旧样稿的数据（默认）。</summary>
+    public bool Fusion { get; init; }
     /// <summary>对话框原文：'add' / 'lease:2' …（页面参数，导航时丢弃）。</summary>
     public string? Dialog { get; init; }
     /// <summary>滚动位置原文（'end'）。</summary>
@@ -166,6 +173,7 @@ public sealed record DemoParams
             Alarm = ParseMap(Get("alarm")),
             Estop = ParseSet(Get("estop")) ?? Array.Empty<string>(),
             Stress = Get("stress") switch { "1" => 1, "2" => 2, _ => 0 },
+            Fusion = Get(FusionKey) == "1",
             Dialog = NullIfEmpty(Get("dialog")),
             Scroll = NullIfEmpty(Get("scroll")),
             Extra = map.Where(kv => !KnownKeys.Contains(kv.Key)).ToArray(),
@@ -217,7 +225,7 @@ public sealed record DemoParams
 
     // ———————————————————— 写出 ————————————————————
 
-    /// <summary>键值对（规范顺序：GLOBAL_KEYS、dialog、scroll、其它；默认值不写）。</summary>
+    /// <summary>键值对（规范顺序：GLOBAL_KEYS、fusion、dialog、scroll、其它；默认值不写）。</summary>
     public IReadOnlyList<KeyValuePair<string, string>> ToPairs()
     {
         var list = new List<KeyValuePair<string, string>>();
@@ -234,6 +242,7 @@ public sealed record DemoParams
         if (TimelineCollapsed is bool t) Add("tl", t ? "0" : "1");
         Add("sel", Sel?.ToString());
         if (Stress != 0) Add("stress", Stress.ToString(CultureInfo.InvariantCulture));
+        if (Fusion) Add(FusionKey, "1");
         Add("dialog", Dialog);
         Add("scroll", Scroll);
         foreach (var kv in Extra) list.Add(kv);

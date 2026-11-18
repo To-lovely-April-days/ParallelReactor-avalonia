@@ -1,0 +1,32 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.StopInfoView">
+  <!-- 停止类对话框的共用部分（样稿 .stopl / .stopt / .stopn）：开头一句 14 t-1 行高 1.6；表（上 10 下 4，13.5 px：左列 92 宽 600 t-2 bg-panel，右列 t-1 行高 1.55，行线 bg-press）；
+       琥珀说明（上 10：amb-bg 底、amb-note-line 边、圆角 4、内边距 7 10，13 px amb-ink-2 行高 1.55，ⓘ 15）。DataContext = 一个有 Lead / StopRows / StopNote 的对话框。 -->
+  <StackPanel>
+    <pr:SegText Name="LeadText" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T1Brush}" LineHeight="22" TextWrapping="Wrap" />
+    <ItemsControl Name="Table" Margin="0,10,0,4" BorderBrush="{StaticResource BgPressBrush}" BorderThickness="0,1,0,0">
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="dlg:StopRow">
+          <Border BorderBrush="{StaticResource BgPressBrush}" BorderThickness="0,0,0,1">
+            <Grid ColumnDefinitions="92,*">
+              <Border Background="{StaticResource BgPanelBrush}" Padding="10,6">
+                <pr:PrText Text="{Binding Key}" FontSize="13.5" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" />
+              </Border>
+              <pr:SegText Grid.Column="1" Segments="{Binding Value}" Margin="10,6" FontSize="13.5" Foreground="{StaticResource T1Brush}" LineHeight="21" TextWrapping="Wrap" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <Border Margin="0,10,0,0" Padding="10,7" CornerRadius="4" Background="{StaticResource AmbBgBrush}" BorderBrush="{StaticResource AmbNoteLineBrush}" BorderThickness="1">
+      <DockPanel>
+        <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource AmbInk2Brush}" VerticalAlignment="Top" Margin="0,2,6,0" />
+        <pr:SegText Name="NoteText" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInk2Brush}" LineHeight="20" TextWrapping="Wrap" />
+      </DockPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

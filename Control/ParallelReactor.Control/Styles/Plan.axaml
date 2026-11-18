@@ -23,7 +23,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource GreenCardLine}" />
   </Style>
   <Style Selector="Border.step-card.editing">
-    <Setter Property="BoxShadow" Value="0 0 0 1 #a999da, 0 2 8 0 #213c2d64" />
+    <Setter Property="BoxShadow" Value="0 0 0 1 #c9d4ea, 0 2 8 0 #21101828" />
   </Style>
   <Style Selector="Border.step-card.current">
     <Setter Property="BorderBrush" Value="{DynamicResource DotCurLine}" />

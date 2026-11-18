@@ -753,7 +753,7 @@
             <ContentControl Content="{Binding Inspector.Body}" />
           </StackPanel>
         </ScrollViewer>
-        <pr:Empty Icon="devices" Title="没有选中对象" Text="在左侧资源管理器选择设备或反应釜" VerticalAlignment="Top" Margin="16,16,16,0"
+        <pr:Empty Icon="devices" Title="没有选中对象" Text="在左侧设备面板选择设备" VerticalAlignment="Top" Margin="16,16,16,0"
                   IsVisible="{Binding Inspector.IsEmpty}" />
       </Panel>
     </DockPanel>

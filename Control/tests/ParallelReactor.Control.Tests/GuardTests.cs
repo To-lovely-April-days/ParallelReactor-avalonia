@@ -85,8 +85,10 @@ public class GuardTests
             ["sessionStart"] = "safe", ["sessionMark"] = "safe", ["sessionEnd"] = "safe", ["alarmAck"] = "safe", ["leaseRequest"] = "conn", ["leaseCancel"] = "none",
             ["leaseRelease"] = "none", ["disconnect"] = "none", ["reconnect"] = "none", ["rename"] = "none", ["remove"] = "none",
         };
-        Assert.Equal(expected.Keys, DeviceActions.All.Select(s => s.Code));
-        foreach (var s in DeviceActions.All)
+        // 融合版 F3 追加的「溶液体积」样稿没有（不在样稿向量里）：只从这一条对照里排除，单独断言
+        var mock = DeviceActions.All.Where(s => s.Action != DeviceAction.SetVolume).ToArray();
+        Assert.Equal(expected.Keys, mock.Select(s => s.Code));
+        foreach (var s in mock)
         {
             Assert.Equal(expected[s.Code], DeviceActions.KindCode(ActionGuard.KindOf(s.Action)));
             Assert.Equal(s.Kind == GuardKind.Control, ActionGuard.NeedsLease(s.Action));
@@ -94,6 +96,30 @@ public class GuardTests
         }
         Assert.Equal("启动加热", DeviceActions.Label(DeviceAction.HeatStart));
         Assert.True(DeviceActions.IsStopClass(DeviceAction.AlarmAck));
+        // 追加的一行：在表的最后（前面的顺序 = 样稿 ACTIONS）、控制类、针对某个反应釜
+        var v = DeviceActions.All[^1];
+        Assert.Equal((DeviceAction.SetVolume, "setVolume", "溶液体积", GuardKind.Control, true), (v.Action, v.Code, v.Label, v.Kind, v.PerChannel));
+        Assert.Equal(v, DeviceActions.Spec(DeviceAction.SetVolume));
+        Assert.True(DeviceActions.TryParse("setVolume", out var sv) && sv == DeviceAction.SetVolume);
+        Assert.Equal(TokenPermission.Control, TokenRole.PermissionOf(DeviceAction.SetVolume));
+    }
+
+    [Fact]
+    public void SetVolume_Checks()
+    {
+        var f = F();
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 2, Ml: 5.1)));
+        Assert.Equal("", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 2, Ml: 0)));
+        Assert.Equal("请输入溶液体积", ActionGuard.Why(f, DeviceAction.SetVolume, ActionPayload.Ch(2)));
+        Assert.Equal("请输入溶液体积", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 2, Ml: double.NaN)));
+        Assert.Equal("溶液体积不能为负", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 2, Ml: -0.1)));
+        Assert.Equal("RV1 程序运行中", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 1, Ml: 1)));   // HMI 同样拒绝（CHANNEL_PROGRAM_OWNED）
+        Assert.Equal("RV5 未安装", ActionGuard.Why(f, DeviceAction.SetVolume, new ActionPayload(N: 5, Ml: 1)));
+        Assert.Equal("1号机为本地只读 · 先申请控制权", ActionGuard.Why(F(LeaseStatus.Local), DeviceAction.SetVolume, new ActionPayload(N: 2, Ml: 1)));
+        Assert.Equal("RV1 溶液体积 → 5.1 mL", DeviceActions.VolumeText(1, 5.08));
+        Assert.Equal(5.1, DeviceActions.RoundVolume(5.06));
+        Assert.Equal(5.0, DeviceActions.RoundVolume(5.04));
+        Assert.Equal(12, DeviceActions.RoundVolume(11.96));
     }
 
     // ———————————————————— 离线只剩 none 类 ————————————————————

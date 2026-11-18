@@ -38,18 +38,19 @@ public static partial class ShotRunner
     public static bool IsFake2 => (Environment.GetEnvironmentVariable("PR_CONTROL_SCENARIO") ?? "").Trim() == "fake2";
 
     /// <summary>fake2 的截图：名字、路由、要打开的对话框。</summary>
-    private static readonly (string Name, Route Route, string? Dialog)[] Fake2Shots =
+    /// <summary>（截图名, 主页选中的设备 0 = 总览, 打开检查器的通道 0 = 不开, 对话框）。</summary>
+    private static readonly (string Name, int K, int N, string? Dialog)[] Fake2Shots =
     {
-        ("fake2-overview", Route.Overview, null),
-        ("fake2-device1", Route.Device(1), null),
-        ("fake2-reactor11", Route.Reactor(1, 1), null),
+        ("fake2-overview", 0, 0, null),
+        ("fake2-device1", 1, 0, null),
+        ("fake2-reactor11", 1, 1, null),
         // 选中断线的两台：检查器的连接卡（从未连上「正在连接 …」/ 连上过「重连中 N s · 数据停在 …」+「立即重连」）、资源管理器滚到这台
-        ("fake2-device3", Route.Device(3), null),
-        ("fake2-device4", Route.Device(4), null),
+        ("fake2-device3", 3, 0, null),
+        ("fake2-device4", 4, 0, null),
         // M6：选中被其他客户端持有的 2号机（第 5 种控制权）：检查器控制权卡的长徽标「远程控制中（其他客户端 PC-工位2）」—— 那一行放不下时换行、
         // 一整行都放不下时换短的「其他客户端 PC-工位2」（悬停全文），不再压出卡片；设备页 2 的头部是完整的徽标
-        ("fake2-device2", Route.Device(2), null),
-        ("fake2-devices", Route.Overview, "devices"),
+        ("fake2-device2", 2, 0, null),
+        ("fake2-devices", 0, 0, "devices"),
     };
 
     public static void StartFake2(IClassicDesktopStyleApplicationLifetime desktop)
@@ -138,10 +139,11 @@ public static partial class ShotRunner
             await SettleAsync();
             await Fake2DriveAsync(shell, fleet, hmis, log);
 
-            async Task ShotAsync(string name, Route route, Action? open)
+            async Task ShotAsync(string name, int k, int n, Action? open)
             {
-                shell.ResetView();                       // 每张都像新开的窗口：默认布局与页签、选中第一台
-                shell.Navigate(route);
+                shell.ResetView();                       // 每张都像新开的窗口：默认布局、主页 · 1号机
+                shell.SelectDevice(k);
+                if (n > 0) shell.OpenChannel(k, n);
                 open?.Invoke();
                 fleet.OnTick(true);                      // 倒计时按此刻刷新
                 shell.Toasts.Clear();                    // 提示记在 shot.log 里，不留在截图上（参照图没有提示）
@@ -157,17 +159,17 @@ public static partial class ShotRunner
                 if (Flag("PR_CONTROL_TREE_DUMP")) File.WriteAllText(Path.Combine(dir, stem + ".tree.txt"), TreeDump(window));
             }
 
-            foreach (var (name, route, dialog) in Fake2Shots)
-                await ShotAsync(name, route, dialog == null ? null : () => shell.OpenDialog(dialog));
+            foreach (var (name, k, n, dialog) in Fake2Shots)
+                await ShotAsync(name, k, n, dialog == null ? null : () => shell.OpenDialog(dialog));
 
             // M3 复核新加的两个真机对话框（样稿没有，没有参照图，只审计）：本机客户端名；退出确认 —— 1号机释放控制权、改成要触屏确认、再申请 → 申请中 → 退出前先问
-            await ShotAsync("fake2-client", Route.Overview, () => shell.OpenDialog("client"));
+            await ShotAsync("fake2-client", 0, 0, () => shell.OpenDialog("client"));
             var rel = await fleet.Device(1)!.Actions.RunAsync(DeviceAction.LeaseRelease, quiet: true);
             hmis[0].AutoGrant = false;
             var req = await fleet.Device(1)!.Actions.RunAsync(DeviceAction.LeaseRequest, quiet: true);
             log.AppendLine("lease 1 again: " + rel.Message + " · " + req.Message);
             await Until(() => fleet.Device(1)!.LeaseStatus == LeaseStatus.Requested && shell.PendingLeaseRequests.Count == 1, 8000, "1号机申请中", fleet);
-            await ShotAsync("fake2-exit", Route.Overview, () => shell.TryExit());
+            await ShotAsync("fake2-exit", 0, 0, () => shell.TryExit());
             shell.Dialogs.Close();
             log.AppendLine("toasts:");
             foreach (var t in toasts) log.AppendLine("  " + t);

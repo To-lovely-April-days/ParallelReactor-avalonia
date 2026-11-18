@@ -4,7 +4,7 @@
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:b="using:ParallelReactor.Control.Behaviors"
              x:Class="ParallelReactor.Control.Views.Pages.Gallery.InputsSection">
-  <!-- 输入（MOCK #/gallery「输入」）：3 列表单项（标签 14/500 t-3、间距 6、提示 14 t-3）+ 复选 / 开关 / 分段 / 芯片一行 + 面板页签一行 -->
+  <!-- 输入（融合版 F1，样稿 .inp / .unit / .ck / .tgl / .segs2 / .vp / .ctabs）：3 列表单项（标签 13/500 t-3、间距 6、提示 13 t-3）+ 复选 / 开关 / 分段 / 芯片一行 + 面板页签一行 -->
   <StackPanel>
     <g:GalleryGrid Columns="3" ColumnGap="24" RowGap="16">
       <StackPanel Spacing="6">
@@ -43,7 +43,9 @@
       <!-- 带原因的复选框用 pr:PrCheckBox（Toggle() 里检查原因，UI 自动化 / HotKey 也翻不动） -->
       <pr:PrCheckBox Theme="{StaticResource PrCheck}" Content="禁用" b:Pr.Reason="不可用" />
       <ToggleButton Theme="{StaticResource PrCheck}" Padding="2,0" Content="显示设定值" IsChecked="True" />
-      <ToggleButton Theme="{StaticResource PrCheck}" Padding="2,0" Content="显示标记" />
+      <ToggleButton Theme="{StaticResource PrSwitch}" Content="搅拌" IsChecked="True" />
+      <ToggleButton Theme="{StaticResource PrSwitch}" Content="声音" />
+      <pr:PrToggle Theme="{StaticResource PrSwitch}" Content="禁用" b:Pr.Reason="先申请控制权" />
       <pr:SegControl Value="30">
         <pr:SegOption Value="10" Label="10" />
         <pr:SegOption Value="30" Label="30" />

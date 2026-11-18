@@ -51,6 +51,21 @@ public sealed class DemoStir
     public double Rpm { get; internal set; }
 }
 
+/// <summary>
+/// 一台设备的整机参数（融合版样稿 DEVS / VV / DEADV / CALD / ONLOST / DEV_NET，演示用；真机来自 /settings、/control）：
+/// <list type="bullet">
+/// <item><see cref="OverPressureMPa"/> 超压报警上限（样稿 plim）、<see cref="OverTempC"/> 超温上限（样稿 tmax）、<see cref="RpmMax"/> 釜转速上限、
+///   <see cref="StirCurrentA"/> 搅拌电机电流（样稿 stir.amp）、<see cref="StirGearRatio"/> 传动比。</item>
+/// <item>容积：<see cref="VesselMl"/> 釜容积（样稿 VV）、<see cref="LineMl"/> 未标定通道用的管路死体积、<see cref="EffectiveMl"/>[n−1] 标定的有效容积
+///   （= 釜容积 + 该路管路死体积，样稿 DEADV；未标定 null）、<see cref="CalibratedAt"/>[n−1] 标定日期（样稿 CALD）。</item>
+/// <item><see cref="OnRemoteLost"/> PC 断开时设备怎么做（keep / stopHeat / estop，样稿 ONLOST）；<see cref="HostName"/> 设备主机名（样稿 DEV_NET）。</item>
+/// </list>
+/// </summary>
+public sealed record DemoPlant(
+    double OverPressureMPa, double OverTempC, double RpmMax, double StirCurrentA, double StirGearRatio,
+    double VesselMl, double LineMl, IReadOnlyList<double?> EffectiveMl, IReadOnlyList<DateTime?> CalibratedAt,
+    string OnRemoteLost, string HostName);
+
 /// <summary>会话标记：时刻、文字、反应釜号（没有为 null）。</summary>
 public sealed record DemoMarker(DateTime At, string Text, int? N);
 
@@ -106,8 +121,8 @@ public sealed class DemoComm
 /// <summary>曲线采样（样稿 Sample，每 10 s 一个）：时刻、温度、压力（MPa）、加热输出 %、转速、耗气 mmol、温度设定值（加热 / 冷却时）、目标压力。</summary>
 public readonly record struct DemoSample(DateTime T, double TempC, double PressureMPa, double HeaterPct, double Rpm, double? Mmol, double? SpC, double? PTargetMPa);
 
-/// <summary>可读的量（样稿 reading(dev, ch, key) / series(dev, n, key) 的 key）。</summary>
-public enum DemoReading { TempC, PressureMPa, HeaterPct, Rpm, Mmol, VolumeMl, SpC, PTargetMPa }
+/// <summary>可读的量（样稿 reading(dev, ch, key) / series(dev, n, key) 的 key）。Rate = 吸气速率 mmol/min（融合版；没有历史曲线）。</summary>
+public enum DemoReading { TempC, PressureMPa, HeaterPct, Rpm, Mmol, VolumeMl, SpC, PTargetMPa, Rate }
 
 /// <summary>
 /// 一个反应釜（样稿 Channel）。状态 <see cref="State"/> 是反应釜自己的状态（不按设备断线改写；显示用 DemoDevice.StateKeyOf）。
@@ -142,6 +157,17 @@ public sealed class DemoChannel
     public double PRate { get; internal set; }
     public ProgramRecord? Program { get; internal set; }
     public bool Alarm { get; internal set; }
+    /// <summary>吸气速率 mmol/min（融合版样稿 rate：最近 1 min 平均；不在计量为 null）。旧样稿的数据恒为 null。</summary>
+    public double? Rate { get; internal set; }
+
+    /// <summary>融合版：停用时不采集（样稿 off：读数全是「—」）。</summary>
+    internal bool BlankWhenIdle { get; set; }
+
+    /// <summary>
+    /// 没有读数（融合版样稿里停用的通道：已安装，但温度 / 压力 / 吸气量 / 溶液都是「—」）：DemoDevice.Reading 全部给 null，也不记历史。
+    /// 只在停用（Idle）时成立 —— 启用后照常有读数。旧样稿的数据恒为 false。
+    /// </summary>
+    public bool NoData => BlankWhenIdle && State == StateKey.Idle;
 
     /// <summary>60 min 预生成 + 每 10 s 追加的历史（保留 4 h），最旧在前。未安装为空。</summary>
     public IReadOnlyList<DemoSample> History { get; }

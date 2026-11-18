@@ -206,6 +206,7 @@ public sealed class ControlledWrites
     public Task<CommandResult<JsonElement>> ResetGasCounterAsync(int id, CancellationToken ct) => Run(l => _c.Rest.ResetGasCounterAsync(l, id, ct));
     public Task<CommandResult<JsonElement>> StartHeatAsync(int id, double? tempC, CancellationToken ct) => Run(l => _c.Rest.StartHeatAsync(l, id, tempC, ct));
     public Task<CommandResult<SetpointResult>> SetSetpointAsync(int id, double tempC, CancellationToken ct) => Run(l => _c.Rest.SetSetpointAsync(l, id, tempC, ct));
+    public Task<CommandResult<VolumeResult>> SetVolumeAsync(int id, double ml, CancellationToken ct) => Run(l => _c.Rest.SetVolumeAsync(l, id, ml, ct));
     public Task<CommandResult<JsonElement>> SetSpModeAsync(int id, string spMode, CancellationToken ct) => Run(l => _c.Rest.SetSpModeAsync(l, id, spMode, ct));
     public Task<CommandResult<JsonElement>> ReplaceProfileAsync(int id, IEnumerable<(double TempC, double Minutes)> segs, CancellationToken ct) => Run(l => _c.Rest.ReplaceProfileAsync(l, id, segs, ct));
     public Task<CommandResult<JsonElement>> StartProfileAsync(int id, CancellationToken ct) => Run(l => _c.Rest.StartProfileAsync(l, id, ct));

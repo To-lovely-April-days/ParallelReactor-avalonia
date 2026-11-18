@@ -15,6 +15,8 @@ namespace ParallelReactor.Control.Controls;
 ///    按 <see cref="Size"/>（默认 18，= 24 网格的边长；logo 的 viewBox 24×28 按比例更高）缩放几何本身，不缩放画布，
 ///    所以描边恒为 <see cref="StrokeWidth"/> px（默认 1.6，round cap / join，样稿的 non-scaling-stroke）。
 ///    <see cref="Fill"/>=true 时把描边图形也填实（停止类按钮的深灰方块：样稿 fill: currentColor + stroke-width 1）。
+///  · 融合版（F2）：<c>Icon="f-bell"</c> → 资源 Icon.f-bell（Styles/FluentIcons.axaml，样稿 main-fusion.html 内嵌的 Fluent 图标，tools/gen-fluent-icons.py 生成）：
+///    20 网格、<b>只填充</b>（currentColor），按 <see cref="Size"/> 缩放（Size = 20 网格的边长，同样稿 .ic 的 width / height）。
 ///  · 旧：<c>Geometry="{StaticResource IcoX}"</c> → 与 M1 之前完全相同（按 Size/24 缩放画布，<see cref="Stroke"/> 是 viewBox 单位的描边宽，默认 1.45），
 ///    旧视图外观不变。M7 删除。
 /// 颜色继承 Foreground（currentColor）。不设置 Cursor：指针由可点击的父控件决定。
@@ -51,6 +53,9 @@ public sealed class IconView : Avalonia.Controls.Control
 
     private bool IsNamed => !string.IsNullOrEmpty(Icon);
 
+    /// <summary>融合版的 Fluent 图标（名字以「f-」开头）：20 网格、只填充。</summary>
+    private bool IsFluent => Icon is { } n && n.StartsWith("f-", System.StringComparison.Ordinal);
+
     // ---- 新用法：几何按名字取资源，缩放后的副本按（几何, 比例）缓存 ----
     private Geometry? _stroke, _fill;
     private string? _resolvedFor;
@@ -79,13 +84,16 @@ public sealed class IconView : Avalonia.Controls.Control
     }
 
     private (double X, double Y, double W, double H) ViewBox
-        => Icon is { } n && IconSet.ViewBoxes.TryGetValue(n, out var vb) ? vb : (0, 0, 24, 24);
+        => IsFluent ? (0, 0, 20, 20) : Icon is { } n && IconSet.ViewBoxes.TryGetValue(n, out var vb) ? vb : (0, 0, 24, 24);
+
+    /// <summary>网格边长：Fluent 20，pc-v3 线描 24。</summary>
+    private double Grid => IsFluent ? 20.0 : 24.0;
 
     protected override Size MeasureOverride(Size availableSize)
     {
         if (!IsNamed) return new(Size, Size);
         var vb = ViewBox;
-        var s = Size / 24.0;
+        var s = Size / Grid;
         return new(vb.W * s, vb.H * s);
     }
 
@@ -102,9 +110,16 @@ public sealed class IconView : Avalonia.Controls.Control
         Resolve();
         if (_stroke == null && _fill == null) return;
         var vb = ViewBox;
-        var s = Size / 24.0;
+        var s = Size / Grid;
         var ox = (Bounds.Width - vb.W * s) / 2 - vb.X * s;
         var oy = (Bounds.Height - vb.H * s) / 2 - vb.Y * s;
+        if (IsFluent)
+        {
+            // Fluent：只填充（样稿 fill="currentColor"，没有描边）
+            using (context.PushTransform(Matrix.CreateTranslation(ox, oy)))
+                if (_stroke != null) context.DrawGeometry(brush, null, Scaled(_stroke, s));
+            return;
+        }
         var pen = PenFor(brush, StrokeWidth);
         using (context.PushTransform(Matrix.CreateTranslation(ox, oy)))
         {

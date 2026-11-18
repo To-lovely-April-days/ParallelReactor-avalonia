@@ -75,21 +75,13 @@ public class CurvesTests
         return s;
     }
 
-    private static (ShellVm Shell, ReactorPageVm Page) OpenReactor(string route, int w = 1920, int h = 1080)
+    /// <summary>「reactor/1/3?…」（样稿的旧路由写法）→ 反应釜零件（ReactorParts，pc-v3 的反应釜页随 F2 删掉了）。</summary>
+    private static (ShellVm Shell, ReactorParts Page) OpenReactor(string route, int w = 1920, int h = 1080)
     {
         var (path, query) = Split(route);
-        var r = Route.Parse(path) ?? throw new ArgumentException(path);
-        var s = Shell(query, w, h);
-        s.ApplyDemoParams(DemoParams.Parse(query) with { Freeze = true }, r);
-        return (s, Assert.IsType<ReactorPageVm>(s.Page));
-    }
-
-    private static (ShellVm Shell, OverviewPageVm Page) OpenOverview(string route, int w = 1920, int h = 1080)
-    {
-        var (_, query) = Split(route);
-        var s = Shell(query, w, h);
-        s.ApplyDemoParams(DemoParams.Parse(query) with { Freeze = true }, Route.Overview);
-        return (s, Assert.IsType<OverviewPageVm>(s.Page));
+        var parts = path.Split('/');
+        if (parts.Length < 3 || parts[0] != "reactor") throw new ArgumentException(path);
+        return ReactorParts.Open(int.Parse(parts[1], System.Globalization.CultureInfo.InvariantCulture), int.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture), query, w, h);
     }
 
     /// <summary>样稿 ui.textWidth 量的参考线 / 标记文字宽度（没量过的按 Core 的估计）。</summary>
@@ -133,22 +125,6 @@ public class CurvesTests
         Assert.Equal(want, ReactorChartOptions.Legend(panelW).Select(x => x.Label).ToArray());
     }
 
-    [Theory]
-    [MemberData(nameof(TrendScenes))]
-    public void OverviewTrend_DrawsSameSvgAsMock(string name, int w)
-    {
-        var v = Vector(name, w);
-        int h = v.GetProperty("h").GetInt32();
-        var (s, page) = OpenOverview(v.GetProperty("route").GetString()!, w, h);
-        // 总览 = 工作区（宽 = 样稿温度趋势面板的宽；高 = 窗口 − 菜单 34 − 页签 44 − 时间轴（≥ 1000 高时 220，否则 200）− 状态栏 30）
-        var rect = v.GetProperty("trend").GetProperty("rect");
-        page.SetViewport(rect[2].GetDouble(), h - 34 - 44 - (h >= 1000 ? 220 : 200) - 30);
-        Assert.True(page.Trend.IsShown, name + "：样稿画了温度趋势");
-        Assert.True(page.TrendFill > 0);
-        AssertScene($"{name}-{w}", page.Trend.Options, v.GetProperty("trend").GetProperty("chart"));
-        _ = s;
-    }
-
     [Fact]
     public void GalleryCharts_DrawSameSvgAsMock()
     {
@@ -158,14 +134,22 @@ public class CurvesTests
         Assert.Equal(3, charts.Length);
         AssertScene("gallery 1", a, charts[0]);
         AssertScene("gallery 2", b, charts[1]);
-        AssertScene("gallery 3", c, charts[2]);
+        // 第三张（pc-v3 的总览温度趋势「多台叠加」）随总览页在 F2 删掉了：陈列页现在画 1号机 RV2，只查画得出来
+        Assert.NotNull(c);
     }
 
     // ———————————————————— SVG（同 Core 的 ChartTicksTests：每个元素写成「标签 属性=值 …（按属性名排序）|文字」） ————————————————————
 
     private static string S(double v) => JsNumber.ToString(v);
     private static string F1(double v) => JsNumber.ToFixed(v, 1);
-    private static string Hex(string token) => Palette.Find(token)?.Hex ?? "?" + token;
+    /// <summary>
+    /// 令牌名 → pc-v3 样稿的十六进制（曲线向量是 pc-v3 样稿画的；融合版 F1 换了色板，这里比的是几何与令牌名，颜色按向量自己的色板 ChartMockVectors.palette 换算）。
+    /// 令牌名必须仍在现在的色板里（Palette.Find），不然说明曲线用了已删掉的令牌。
+    /// </summary>
+    private static string Hex(string token) => Palette.Find(token) == null ? "?" + token : PcV3Palette.Value.TryGetValue(token, out var h) ? h : "?" + token;
+
+    private static readonly Lazy<Dictionary<string, string>> PcV3Palette = new(() =>
+        System.Text.Json.JsonDocument.Parse(ChartMockVectors.Json).RootElement.GetProperty("palette").EnumerateObject().ToDictionary(p => p.Name, p => p.Value.GetString()!));
 
     private static List<string> ParseSvg(string svg)
     {
@@ -281,12 +265,12 @@ public class CurvesTests
     public void ReactorCurves_SameAsMockSeries(string path, string query)
     {
         var (s, page) = OpenReactor("/" + path + "?" + query);
-        var d = s.Fleet.DemoData!.Device(page.Route.K)!;
+        var d = s.Fleet.DemoData!.Device(page.K)!;
         foreach (var range in new[] { "10", "30", "60" })
         {
             page.Curves.Range = range;
             int min = int.Parse(range, CultureInfo.InvariantCulture);
-            var want = ReactorChartOptions.FromDemo(d, d.Channel(page.Route.N)!, min, offline: !d.Online);
+            var want = ReactorChartOptions.FromDemo(d, d.Channel(page.N)!, min, offline: !d.Online);
             var got = page.Curves.Options!;
             Assert.Equal(want.XMin, got.XMin);
             Assert.Equal(want.XMax, got.XMax);
@@ -332,25 +316,25 @@ public class CurvesTests
         var s = new ShellVm(FleetVm.CreateDemo(p));
         s.Toasts.Frozen = true;
         s.Layout.Update(new Size(1920, 1080));
-        s.ApplyDemoParams(p, Route.Reactor(1, 1));
-        var page = Assert.IsType<ReactorPageVm>(s.Page);
+        s.ApplyDemoParams(p);
+        var page = new ReactorParts(s, 1, 1);
         var c = page.Curves;
         var first = c.Options;
         int builds = c.Builds;
         s.Fleet.RefreshNow();
-        page.Refresh(s.Fleet);
+        page.Refresh();
         Assert.Same(first, c.Options);                         // 冻结（时钟没走）：同一个输入，曲线不重排
         Assert.Equal(builds, c.Builds);
         // 推进 12 s：横轴右移、多一个 10 s 采样 → 重建（每次刷新时钟都走了：每秒至多一次）
         var demo = s.Fleet.DemoData!;
         for (int i = 0; i < 12; i++) demo.Tick();
-        page.Refresh(s.Fleet);
+        page.Refresh();
         Assert.NotSame(first, c.Options);
         Assert.True(c.Builds > builds);
         Assert.Equal(ChartTime.Ms(demo.Now), c.Options!.XMax);
         int b2 = c.Builds;
         var o2 = c.Options;
-        page.Refresh(s.Fleet);                                 // 时钟没走：不重建
+        page.Refresh();                                 // 时钟没走：不重建
         Assert.Equal(b2, c.Builds);
         Assert.Same(o2, c.Options);
         var d = demo.Device(1)!;
@@ -402,56 +386,6 @@ public class CurvesTests
     }
 
     // ———————————————————— 总览温度趋势 ————————————————————
-
-    [Fact]
-    public void Trend_OnlyWhenRoomLeft_OneDevice_AtMostFour()
-    {
-        var (_, three) = OpenOverview("/overview?");
-        three.SetViewport(1226, 752);
-        Assert.False(three.Trend.IsShown);                     // 三台设备：下面不剩 200 px
-        Assert.Equal(0, three.TrendFill);
-
-        var (s, one) = OpenOverview("/overview?devs=1");
-        one.SetViewport(1226, 752);
-        Assert.True(one.Trend.IsShown);
-        Assert.Equal(752, one.TrendFill);
-        var t = one.Trend;
-        Assert.Equal("温度趋势", t.Title);
-        Assert.Equal("近 60 min · 选中设备的运行中反应釜", t.Sub);
-        Assert.Equal("1号机", t.Alias);
-        Assert.Null(t.MoreText);
-        Assert.Equal(new[] { ("RV1", "--ch-s1", (string?)null), ("RV2", "--ch-s2", null), ("RV3", "--ch-s1", "4 2"), ("RV4", "--ch-s2", "4 2") },
-            t.Items.Where(i => i.IsShown).Select(i => (i.Label, i.Color, i.SampleDash)).ToArray());
-        var want = OverviewTrendOptions.FromDemo(s.Fleet.DemoData!, s.Selection.K);
-        Assert.Equal(want.Options.Series.Select(x => x.Name), t.Options!.Series.Select(x => x.Name));
-        for (int i = 0; i < want.Options.Series.Count; i++)
-            Assert.Equal(want.Options.Series[i].Points.Select(p => (p.T, p.V)), t.Options.Series[i].Points.Select(p => (p.T, p.V)));
-        Assert.Equal("没有运行中的反应釜", t.Options.EmptyText);
-
-        // 放大一个分区：趋势不显示（样稿放大的分区盖住整个滚动区）
-        one.SetMax(1, true);
-        Assert.False(one.Trend.IsShown);
-        one.SetMax(1, false);
-        Assert.True(one.Trend.IsShown);
-    }
-
-    [Fact]
-    public void Trend_FollowsSelection_AndShowsMore()
-    {
-        var (s, p) = OpenOverview("/overview?devs=PR16,PR4&stress=2");
-        p.SetViewport(1226, 752);
-        Assert.True(p.Trend.IsShown);
-        Assert.Equal("显示 4/20", p.Trend.MoreText);
-        Assert.Equal("选中别的设备可切换 · 全部曲线在「曲线」视图", p.Trend.MoreTip);
-        var before = p.Trend.Alias;
-        int builds = p.Trend.Builds;
-        p.Refresh(s.Fleet);
-        Assert.Equal(builds, p.Trend.Builds);                  // 冻结：数据没变，不重建
-        s.Select(2, null);
-        Assert.NotEqual(before, p.Trend.Alias);               // 选中 2号机：画它的反应釜
-        Assert.Equal(s.Fleet.Device(2)!.Alias, p.Trend.Alias);
-        Assert.True(p.Trend.Builds > builds);
-    }
 
     // ———————————————————— 实时：环形缓冲 ————————————————————
 

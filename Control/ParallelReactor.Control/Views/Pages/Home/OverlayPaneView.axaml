@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:hc="using:ParallelReactor.Control.Controls.Home"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.OverlayPaneView"
+             x:DataType="h:OverlayVm">
+  <!-- 曲线面板（样稿 #pCurve）：灰带 = 分段「吸气量 / 温度 / 压力」+ 说明「8 路叠加 · 13:00 – 现在 · ⓘ设备按压降计算」（窄屏不写）+ 右侧芯片；
+       下面是叠加曲线（Controls/Home/OverlayChart）。芯片（样稿最终层叠：24 高、左右 9、圆角 12、10 px 圆点；选中 a-line 边 + a-tint 底 + t-1 600）。 -->
+  <UserControl.Styles>
+    <Style Selector="Button.lgc">
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="9,0" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.lgc:pointerover">
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Button.lgc.on">
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="ItemsControl#Chips.off, StackPanel#Opt.off">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+  </UserControl.Styles>
+  <DockPanel>
+    <Border DockPanel.Dock="Top" Height="{StaticResource PaneHeadH}" Background="{StaticResource PaneHeadBrush}" BorderBrush="{StaticResource PaneHeadLineBrush}"
+            BorderThickness="0,0,0,1" Padding="14,0,8,0">
+      <DockPanel Name="Head">
+        <pr:SegControl Name="Seg" DockPanel.Dock="Left" Value="{Binding ModeKey}" VerticalAlignment="Center" ToolTip.Tip="显示哪个量">
+          <pr:SegOption Value="G" Label="吸气量" />
+          <pr:SegOption Value="T" Label="温度" />
+          <pr:SegOption Value="P" Label="压力" />
+        </pr:SegControl>
+        <StackPanel Name="Opt" DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+          <pr:PrText Text="{Binding OptText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+          <StackPanel Orientation="Horizontal" IsVisible="{Binding IsUptake}" VerticalAlignment="Center" Background="Transparent"
+                      ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}" Cursor="Help">
+            <pr:PrText Text=" · " FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+            <c:IconView Icon="f-info" Size="13" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,3,0" />
+            <pr:PrText Text="设备按压降计算" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+          </StackPanel>
+        </StackPanel>
+        <pr:PrText Name="C16" DockPanel.Dock="Right" Text="RV1–8 实线 · RV9–16 同色虚线" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"
+                   VerticalAlignment="Center" IsVisible="{Binding IsC16}" />
+        <ItemsControl Name="Chips" ItemsSource="{Binding Chips}" HorizontalAlignment="Right" VerticalAlignment="Center" ClipToBounds="True">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="4" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="h:OverlayChipVm">
+              <Button Classes="lgc" Classes.on="{Binding IsOn}" Command="{Binding PickCommand}" ToolTip.Tip="{Binding Label, StringFormat='{}{0} · 点击选中'}">
+                <StackPanel Orientation="Horizontal" Spacing="5">
+                  <Ellipse Width="10" Height="10" Fill="{Binding Brush}" VerticalAlignment="Center" />
+                  <pr:PrText Text="{Binding Label}" VerticalAlignment="Center" />
+                </StackPanel>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </DockPanel>
+    </Border>
+    <hc:OverlayChart Data="{Binding Data}" />
+  </DockPanel>
+</UserControl>

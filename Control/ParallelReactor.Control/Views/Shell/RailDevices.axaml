@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.RailDevices" ClipToBounds="False"
+             x:DataType="sh:ShellVm">
+  <!-- 收起的设备面板竖条上的设备号小方块（样稿 .rdv，间距 8）：选中的品牌蓝；右下角 9 px 状态点（报警红 / 运行绿 / 其余不画），1.5 px bg-panel 圈、外伸 4 -->
+  <ItemsControl ItemsSource="{Binding Devices.Minis}" ClipToBounds="False">
+    <ItemsControl.ItemsPanel>
+      <ItemsPanelTemplate>
+        <StackPanel Spacing="8" ClipToBounds="False" />
+      </ItemsPanelTemplate>
+    </ItemsControl.ItemsPanel>
+    <ItemsControl.ItemTemplate>
+      <DataTemplate x:DataType="sh:DeviceRowVm">
+        <Panel Width="24" Height="24" ClipToBounds="False">
+          <Button Theme="{StaticResource PrRailDev}" Classes.on="{Binding IsOn}" Content="{Binding KText}" Command="{Binding SelectCommand}"
+                  ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Name}" />
+          <Ellipse Width="9" Height="9" StrokeThickness="1.5" Stroke="{StaticResource BgPanelBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Margin="0,0,-4,-4" IsHitTestVisible="False" Fill="{StaticResource RBrush}" IsVisible="{Binding BarErr}" />
+          <Ellipse Width="9" Height="9" StrokeThickness="1.5" Stroke="{StaticResource BgPanelBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Margin="0,0,-4,-4" IsHitTestVisible="False" Fill="{StaticResource GDotBrush}" IsVisible="{Binding BarRun}" />
+        </Panel>
+      </DataTemplate>
+    </ItemsControl.ItemTemplate>
+  </ItemsControl>
+</UserControl>

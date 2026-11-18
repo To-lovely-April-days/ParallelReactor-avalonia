@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.StripView"
+             x:DataType="sh:ShellVm">
+  <!-- 深蓝条（融合版 F2；样稿 .titlebar，用户决定：系统标题栏之下的窗口内深蓝条，不自绘窗口按钮）：高 30、side-1 → side-2 竖向渐变、左 8、间距 10、13 px 白字。
+       左：应用标志（18 圆、品牌橙、白色粗体 A）· 工位名小块（白 16 % 底、左右 8 上下 2、圆角 3）· 产品名（side-ink、字距 0.2，窄屏不写）；
+       右：关于 / 设置 / 帮助 / 工具（PrStripLink：图标 14 + 字，side-ink-2，悬停白 14 % 底）。右边留 8（样稿右边是窗口按钮，这里没有）。 -->
+  <Border Background="{StaticResource SideGradientBrush}" Padding="8,0,8,0" TextElement.FontSize="{StaticResource FsBase}">
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-info" Content="关于" Command="{Binding AboutCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-gear" Content="设置" Command="{Binding SettingsCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-help" Content="帮助" Command="{Binding HelpCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-wrench" Content="工具" Command="{Binding ToolsCommand}" />
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource BrandOrangeBrush}" ToolTip.Tip="ALZK">
+          <TextBlock Text="A" FontSize="{StaticResource FsBase}" FontWeight="Bold" Foreground="{StaticResource TInvBrush}"
+                     HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+        <Button Theme="{StaticResource PrStripChip}" Content="{Binding ClientName}" Command="{Binding ClientCommand}" ToolTip.Tip="本机工位名 · 点击修改"
+                AutomationProperties.Name="本机工位名" />
+        <pr:PrText Name="StripTitle" Text="{Binding StripTitle}" Foreground="{StaticResource StripInkBrush}" LetterSpacing="0.2" VerticalAlignment="Center"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+    </DockPanel>
+  </Border>
+</UserControl>

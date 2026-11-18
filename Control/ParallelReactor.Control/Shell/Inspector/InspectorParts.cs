@@ -17,7 +17,7 @@ namespace ParallelReactor.Control.Shell;
 /// 页面上已经有「确认」的报警（样稿 pageOwned()：键 = 「k:报警 id」，值 = 位置，如「顶部报警条」）、当前页签的对象（样稿 pageObj()）、
 /// 检查器是否 300 px（样稿 .insp-n）。
 /// </summary>
-public sealed record InspCtx(ShellVm Shell, DeviceVm D, GuardFacts F, IReadOnlyDictionary<string, string> Owned, Route? PageObj, bool Narrow, DateTime Now)
+public sealed record InspCtx(ShellVm Shell, DeviceVm D, GuardFacts F, IReadOnlyDictionary<string, string> Owned, int? PageK, bool Narrow, DateTime Now)
 {
     /// <summary>这个操作现在为什么不能做；能做返回 null（绑定 b:Pr.Reason）。</summary>
     public string? Why(DeviceAction action, ActionPayload? payload = null) => Nz(ActionGuard.Why(F, action, payload));
@@ -165,7 +165,7 @@ public sealed partial class LeaseBoxVm : ObservableObject
         {
             // 打开的页签就是这台设备（设备页 / 它的反应釜页）、页面上有断线说明条时，「立即重连」在页面上 —— 一个动作只放一个地方
             // （PageVm.ShowsReconnect：设备页 M4 起有说明条；反应釜页的说明条在 M5，之前按钮留在这里）
-            if (!(c.PageObj is { } po && po.K == d.K && c.Shell.Page is { ShowsReconnect: true }))
+            if (!(c.PageK == d.K && c.Shell.Page is { ShowsReconnect: true }))
             {
                 btn = conn.State == ConnStatus.Disconnected ? "连接" : "立即重连";
                 btnIcon = "refresh";

@@ -77,6 +77,17 @@ public sealed class DemoDevice
     /// <summary>最后收到数据的时刻（断线时停住；从未连上为 null）。</summary>
     public DateTime? DataAt { get; internal set; }
 
+    /// <summary>整机参数（融合版样稿：报警上限、搅拌电流、容积、断线策略……）；旧样稿的数据为 null。</summary>
+    public DemoPlant? Plant { get; internal set; }
+
+    /// <summary>共用气路此刻的占用者：第一个在升压的反应釜（融合版样稿 3号机 RV9）；没有为 null。</summary>
+    public int? GasHolder => ChannelList.FirstOrDefault(c => c.Installed && c.State == StateKey.Press)?.N;
+
+    /// <summary>排队等共用气路的反应釜（在等进气、当前步要进气），按通道号；不含占用者。</summary>
+    public IReadOnlyList<int> GasQueue => ChannelList
+        .Where(c => c.Installed && c.State == StateKey.Wait && !string.IsNullOrEmpty(c.Program?.CurrentStep?.Gas) && c.N != GasHolder)
+        .Select(c => c.N).ToArray();
+
     /// <summary>默认控制权（样稿 SLOTS[k].lease）与默认是否断线（4 号位）；参数覆盖取消时恢复到它。</summary>
     internal LeaseStatus DefaultLease { get; set; }
     internal bool DefaultOffline { get; set; }
@@ -117,7 +128,7 @@ public sealed class DemoDevice
     /// <summary>显示用的读数（样稿 reading）：未安装 / 从未连上 / 没有数据为 null；断线时是最后的值（界面另标 <see cref="DataText"/>）。</summary>
     public double? Reading(DemoChannel? ch, DemoReading key)
     {
-        if (ch is null || !ch.Installed || !Conn.EverOnline || DataAt is null) return null;
+        if (ch is null || !ch.Installed || !Conn.EverOnline || DataAt is null || ch.NoData) return null;
         return key switch
         {
             DemoReading.TempC => ch.TempC,
@@ -128,6 +139,7 @@ public sealed class DemoDevice
             DemoReading.VolumeMl => ch.VolumeMl,
             DemoReading.SpC => ch.SpC,
             DemoReading.PTargetMPa => ch.PTargetMPa,
+            DemoReading.Rate => ch.Rate,
             _ => null,
         };
     }

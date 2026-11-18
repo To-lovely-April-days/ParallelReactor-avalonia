@@ -264,7 +264,7 @@ public class DeviceActionsTests
         Assert.Equal("1号机正在重连 · 稍候", d.Actions.Why(DeviceAction.HeatStart, new ActionPayload(N: 1, Sp: 60)));
         Assert.Equal("1号机正在重连 · 稍候", d.Why("leaseRequest"));
         shell.RefreshChrome();
-        Assert.Null(shell.StopCell.Reason);                                        // 全局停止格照常可点
+        Assert.Null(shell.Capsule.StopReason);                                        // 全局停止格照常可点
         shell.Select(1);
         var insp = Assert.IsType<DeviceInspectorVm>(shell.Inspector.Body);
         Assert.Null(insp.StopAll.Reason);                                          // 检查器的全部停止、急停照常可用
@@ -287,7 +287,7 @@ public class DeviceActionsTests
         Assert.False(d.CanStop);
         Assert.Equal("1号机已断开 · 先连接", d.Actions.Why(DeviceAction.Estop));
         shell.RefreshChrome();
-        Assert.Equal("没有已连接的设备", shell.StopCell.Reason);
+        Assert.Equal("没有已连接的设备", shell.Capsule.StopReason);
         Assert.EndsWith("断线时只能查看，不能操作", insp.Lease.Note);
         shell.Dispose();
         await f.DisposeAsync();

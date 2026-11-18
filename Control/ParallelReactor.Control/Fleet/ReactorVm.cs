@@ -63,6 +63,13 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
     /// </summary>
     [ObservableProperty] private double _vesselLevel = double.NaN;
 
+    /// <summary>吸气量 mmol（融合版 F3：设备计算，真机快照 gasConsumed；演示 = 演示值）；没有为 null。</summary>
+    [ObservableProperty] private double? _gasMmol;
+    /// <summary>吸气速率 mmol/min（真机 gasRate：最近 1 min 平均；未在计量为 null）。</summary>
+    [ObservableProperty] private double? _gasRate;
+    /// <summary>溶液体积 mL（真机 solutionVolume；演示 = 演示值）；不知道为 null。</summary>
+    [ObservableProperty] private double? _solutionMl;
+
     /// <summary>温度数值文字（'119.8' / '—'）。</summary>
     [ObservableProperty] private string _tempText = Fmt.Dash;
     /// <summary>温度没有读数（画 t-dis 的「—」、不带单位）。</summary>
@@ -118,6 +125,9 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
         Extras = extras;
         Cooling = extras?.Cooling ?? false;
         Stirring = (r.Rpm ?? 0) > 0;
+        GasMmol = r.GasMmol ?? extras?.Mmol;
+        GasRate = r.GasRate;
+        SolutionMl = r.SolutionMl ?? extras?.VolumeMl;
         VesselLevel = r.Installed ? VesselAnchors.Level(extras?.VolumeMl, model) : double.NaN;
 
         var t = Fmt.Temp(r.TempC);

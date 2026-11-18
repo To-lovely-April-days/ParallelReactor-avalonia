@@ -32,7 +32,7 @@ public class M6DemoControlTests
         var s = new ShellVm(FleetVm.CreateDemo(p));
         s.Toasts.Frozen = true;   // 测试里没有 UI 线程：toast 不定时消失
         s.Layout.Update(new Size(1920, 1080));
-        s.ApplyStartParams(p, null);
+        s.ApplyStartParams(p);
         var calls = new List<bool>();
         return (s, new DemoControlVm(s, calls.Add), calls);
     }
@@ -104,19 +104,19 @@ public class M6DemoControlTests
     }
 
     [Fact]
-    public void Devs_ClearTheOverrides_ResetTheTabs_AndKeepAValidTarget()
+    public void Devs_ClearTheOverrides_KeepTheSelectedDeviceIfItIsStillThere_AndAValidTarget()
     {
         var (s, vm, _) = Open("freeze=1&lease=2:requested&estop=3");
-        s.Navigate(Route.Device(3));
+        s.SelectDevice(3);
         vm.SelectTarget(3);
         vm.SetDevs("4");
         Assert.Equal(4, s.Fleet.Devices.Count);
         Assert.Equal("devs=4&freeze=1", s.Fleet.Params!.ToString());
         Assert.Equal(Dump(Replay("freeze=1&devs=4")), Dump(s.Fleet.DemoData!));
-        Assert.Equal("device/3", s.Route.Id);       // 当前页面还在：留在原地
+        Assert.Equal((AppPage.Home, 3), (s.Nav.Page, s.Nav.DeviceK));   // 选中的设备还在：留在原地
         vm.SetDevs("1");
         Assert.Single(s.Fleet.Devices);
-        Assert.Equal("overview", s.Route.Id);       // 3号机没了：回到总览
+        Assert.Equal((AppPage.Home, 0), (s.Nav.Page, s.Nav.DeviceK));   // 3号机没了：回到总览
         Assert.Equal(1, vm.TargetK);                // 目标没了：回到第一台
         Assert.Equal("1", vm.Combo);
         vm.SetDevs("3");
@@ -176,11 +176,11 @@ public class M6DemoControlTests
 
         // 重置：参数全部默认（冻结也去掉）、回到总览、提示「演示数据已重置」
         vm.ToggleAlarm();
-        s.Navigate(Route.Reactor(3, 11));
+        s.OpenChannel(3, 11);
         s.Toasts.Frozen = true;
         vm.Reset();
         Assert.Equal(DemoParams.Default, s.Fleet.Params);
-        Assert.Equal("overview", s.Route.Id);
+        Assert.Equal(AppPage.Home, s.Nav.Page);
         Assert.False(vm.Frozen);
         Assert.False(calls[^1]);
         Assert.Contains(s.Toasts.Items, t => t.Text == "演示数据已重置" && t.Kind == ToastKind.Info);
@@ -197,13 +197,13 @@ public class M6DemoControlTests
     {
         var (s, vm, _) = Open();
         vm.SelectTarget(3);
-        s.Navigate(Route.Device(2));
+        s.SelectDevice(2);
         s.Select(3, 11);
         s.Toast("之前的提示", ToastKind.Info);
         vm.Reset();
         Assert.Equal(1, vm.TargetK);
         Assert.Equal((3, (int?)11), (s.Selection.K, s.Selection.N));
-        Assert.Equal("overview", s.Route.Id);
+        Assert.Equal((AppPage.Home, 3, 11), (s.Nav.Page, s.Nav.DeviceK, s.Nav.Channel));   // 路由跟着选中的对象（主页 · 3号机 · RV11）
         Assert.Equal(new[] { "之前的提示", "演示数据已重置" }, s.Toasts.Items.Select(t => t.Text));
 
         // 4 台时选中 4号机 · RV2：重置回到 3 台，它不在了 → 第一台（样稿 pruneSel）
@@ -245,22 +245,5 @@ public class M6DemoControlTests
         Assert.Equal("1号机的令牌只能读取 · 需要 operator 令牌\n停止需要 operator 令牌或急停权限", LeaseBoxVm.LocalNote("1号机", new TokenRole(true, true)));
     }
 
-    /// <summary>「不是当前页签」提示条是一整句（名字加粗），名字变了才换新的一段文字。</summary>
-    [Fact]
-    public void InspectorOtherBanner_IsOneSentence()
-    {
-        var (s, _, _) = Open();
-        s.Navigate(Route.Reactor(1, 1));
-        s.Select(3, 11);
-        var i = s.Inspector;
-        Assert.True(i.HasOther);
-        Assert.Equal(new[] { "检查器：", "3号机 · RV11", "（不是当前页签）" }, i.OtherSegments.Select(x => x.Text));
-        Assert.Equal(new[] { false, true, false }, i.OtherSegments.Select(x => x.Bold));
-        var same = i.OtherSegments;
-        s.RefreshChrome();
-        Assert.Same(same, i.OtherSegments);
-        s.Select(2);
-        Assert.Equal("2号机", i.OtherSegments[1].Text);
-    }
 }
 #endif

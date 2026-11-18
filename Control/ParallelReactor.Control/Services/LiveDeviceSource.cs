@@ -63,7 +63,12 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     /// <summary>程序台账（M5，Core 的 ProgramLedger）：本机下发过的程序 + 步骤计时，按 HMI 启动号严格匹配（R5）。第一次用到时建（要等 <see cref="LedgerDirectory"/> 设好）。</summary>
     private ProgramLedger? _ledger;
     /// <summary>每一路给页面的程序记录（台账 + 最新一帧算出来的）：帧、台账 / 步骤计时的版本、启动号都没变时直接用（R10：每次刷新每一路都会问）。</summary>
-    private readonly Dictionary<int, (TelemetrySnapshot? Frame, int Lv, int Tv, string? Boot, ProgramRecord? Rec)> _progCache = new();
+    private readonly Dictionary<int, (TelemetrySnapshot? Frame, int Lv, int Tv, int Hv, string? Boot, ProgramRecord? Rec)> _progCache = new();
+    /// <summary>
+    /// 设备上的程序（融合版 F3，Core 的 <see cref="HmiRunPrograms"/>）：台账对不上 / 没下发过、而帧里这一路有程序时，步骤取自 GET /channels/{id}/program/run
+    /// （每次执行 / 换步取一次、去重、失败退避），落地后刷新程序显示。
+    /// </summary>
+    private readonly HmiRunPrograms _hmiRuns;
 
     /// <summary>报警 / 事件簿的投影（AlarmItem / EventItem，外框与检查器用），簿的 Version 变了才重建。</summary>
     private IReadOnlyList<AlarmItem> _alarms = Array.Empty<AlarmItem>();
@@ -100,7 +105,16 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         _clock = clock ?? SystemClock.Instance;
         _now = now ?? (() => _clock.UtcNow.ToLocalTime());
         _history = new LiveHistoryView(this);
+        _hmiRuns = new HmiRunPrograms(FetchRunAsync, () => _clock.UtcNow);
+        _hmiRuns.Landed += _ => MarkDirty(SourceChange.Programs);
     }
+
+    /// <summary>设备上的程序的缓存（测试 / 诊断用）。</summary>
+    public HmiRunPrograms HmiRuns => _hmiRuns;
+
+    /// <summary>GET /channels/{n}/program/run（经当前连接；没有连接时失败 → 退避）。</summary>
+    private Task<ProgramRunDto?> FetchRunAsync(int n, CancellationToken ct) =>
+        Connection is { } c ? c.Rest.ProgramRunAsync(n, ct) : Task.FromException<ProgramRunDto?>(new InvalidOperationException("未连接设备"));
 
     public Guid Id => Config.Id;
     public bool IsDemo => false;
@@ -327,6 +341,62 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     public ChannelExtras? Extras(int n) => null;
 
     /// <summary>
+    /// 整机数据（融合版 F3）：设置（报警上限、容积、传动比）+ 最新一帧（搅拌电流、气路占用 / 排队）+ 型号表（釜转速上限）+ GET /control（断线策略）。
+    /// 按（帧、设置、控制权现状、型号）的引用缓存：每帧刷新时只在有新的一帧时重建一次；容积只在设置换了时重建。
+    /// 断线策略取最近一次知道的（断开之后连接对象没了，断线横条正要用它）。
+    /// </summary>
+    public PlantInfo Plant
+    {
+        get
+        {
+            var f = Latest;
+            var s = Settings;
+            var cs = Connection?.ControlState;
+            if (cs != null) _lastControlState = cs;
+            else cs = _lastControlState;
+            var m = Model;
+            var k = _plant;
+            if (k.P != null && ReferenceEquals(k.F, f) && ReferenceEquals(k.S, s) && ReferenceEquals(k.C, cs) && ReferenceEquals(k.M, m)) return k.P;
+            if (!ReferenceEquals(_volumeOf, s)) { _volumeOf = s; _volume = VolumeOf(s?.Volume); }
+            var p = PlantOf(s, f, cs?.OnRemoteLost, m, _volume);
+            _plant = (f, s, cs, m, p);
+            return p;
+        }
+    }
+
+    private (TelemetrySnapshot? F, SettingsDto? S, ControlStateDto? C, ModelProfile? M, PlantInfo? P) _plant;
+    private ControlStateDto? _lastControlState;
+    private SettingsDto? _volumeOf;
+    private VolumeInfo? _volume;
+
+    /// <summary>型号表没有釜转速上限时（不该发生）的默认值：450 rpm（PlantInfo 的约定）。</summary>
+    public const double DefaultRpmMax = 450;
+
+    /// <summary>整机数据的投影（纯函数）：设置 alarms.overPressurePsi → MPa、overTempC、stir.stirGearRatio；帧 stir.motorCurrentA、programs.gasHolder / waitingGas[]；型号的釜转速上限。</summary>
+    public static PlantInfo PlantOf(SettingsDto? s, TelemetrySnapshot? f, string? onRemoteLost, ModelProfile? model, VolumeInfo? volume = null) => new(
+        OverPressureMPa: s?.Alarms is { } a ? Units.PsiToMpa(a.OverPressurePsi) : null,
+        OverTempC: s?.Alarms?.OverTempC,
+        RpmMax: model?.Limits.RpmMax is double r && r > 0 ? r : DefaultRpmMax,
+        StirCurrentA: f?.Stir?.MotorCurrentA,
+        GasHolder: f?.Programs?.GasHolder,
+        GasQueue: f?.Programs?.WaitingGas,
+        Volume: volume ?? VolumeOf(s?.Volume),
+        OnRemoteLost: string.IsNullOrEmpty(onRemoteLost) ? null : onRemoteLost,
+        StirGearRatio: s?.Stir is { } st && st.StirGearRatio > 0 ? st.StirGearRatio : null);
+
+    /// <summary>设置 volume.* → 容积（标定时刻 UTC → 本地时间；没有这一节的旧 HMI 为 null）。</summary>
+    public static VolumeInfo? VolumeOf(VolumeSettingsDto? v)
+    {
+        if (v is null) return null;
+        var eff = v.EffectiveVolume ?? Array.Empty<double?>();
+        var cal = v.VolumeCalibratedAt ?? Array.Empty<DateTime?>();
+        var at = new DateTime?[cal.Length];
+        for (int i = 0; i < cal.Length; i++)
+            at[i] = cal[i] is { } t ? (t.Kind == DateTimeKind.Local ? t : DateTime.SpecifyKind(t, DateTimeKind.Utc).ToLocalTime()) : null;
+        return new VolumeInfo(v.VesselVolume, v.GasLineVolume, eff, at, v.ManifoldVolume);
+    }
+
+    /// <summary>
     /// 程序台账的目录（配置目录：&lt;目录&gt;/programs/&lt;设备 id&gt;.json，PORT-PLAN §5 M5「数据」）；null = 只在内存里（截图、演示、测试、不能写文件的配置）。
     /// FleetVm 新建数据源时按配置的 CanWrite 给。
     /// </summary>
@@ -361,12 +431,17 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         var frame = Latest;
         var boot = BootIdNow;
         var l = Ledger;
-        if (_progCache.TryGetValue(n, out var c) && ReferenceEquals(c.Frame, frame) && c.Lv == l.Version && c.Tv == l.Tracker.Version && c.Boot == boot)
+        if (_progCache.TryGetValue(n, out var c) && ReferenceEquals(c.Frame, frame) && c.Lv == l.Version && c.Tv == l.Tracker.Version && c.Hv == _hmiRuns.Version && c.Boot == boot)
             return c.Rec;
         ProgramRecord? rec = null;
+        var history = _history.Data.Has(n) ? _history.Data.Channel(n) : null;
         if (frame != null && l.Entry(n) is { Valid: true })
-            rec = l.ProgramOf(n, frame, boot, Model, _history.Data.Has(n) ? _history.Data.Channel(n) : null, EtaRates.FromSettings(Settings));
-        _progCache[n] = (frame, l.Version, l.Tracker.Version, boot, rec);
+            rec = l.ProgramOf(n, frame, boot, Model, history, EtaRates.FromSettings(Settings));
+        // 融合版 F3：台账没有（不是本机下发的 / 对不上）而帧里这一路有程序 → 设备上的程序（步骤取自 GET /channels/{n}/program/run，与帧里这一次执行的
+        // 启动号 + 开始时刻对得上才用，R5）。台账的记录总是优先。取数只在已连接时发（断线时用断线前取到的）
+        if (rec is null && frame != null && SnapOf(n)?.Program is { StartedAt: not null })
+            rec = _hmiRuns.RecordOf(n, frame, boot, Model, l.Tracker, history, EtaRates.FromSettings(Settings), allowFetch: Connection != null && _conn == ConnStatus.Online);
+        _progCache[n] = (frame, l.Version, l.Tracker.Version, _hmiRuns.Version, boot, rec);
         return rec;
     }
 
@@ -602,6 +677,16 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 double sp = a.Sp ?? throw new ArgumentException("请输入设定温度");
                 var r = await c.Control.SetSetpointAsync(n, sp, ct).ConfigureAwait(true);
                 return Ok(rv + " 设定温度 " + JsNumber.ToString(sp) + " ℃", Hw(r, hw));
+            }
+            case DeviceAction.SetVolume:
+            {
+                // 融合版 F3：溶液体积（0.1 mL；参与吸气量的气相体积计算）。釜容积知道时不超过它（HMI 另按自己的上限校验）
+                double ml = a.Ml is double v0 && double.IsFinite(v0) ? CoreActions.RoundVolume(v0) : throw new ArgumentException("请输入溶液体积");
+                if (ml < 0) return ActionOutcome.Failed(alias + " · " + rv + " 溶液体积不能为负");
+                if (Settings?.Volume?.VesselVolume is double vmax && vmax > 0 && ml > vmax)
+                    return ActionOutcome.Failed(alias + " · " + rv + " 溶液体积超出釜容积 · ≤ " + JsNumber.ToString(vmax) + " mL");
+                var r = await c.Control.SetVolumeAsync(n, ml, ct).ConfigureAwait(true);
+                return Ok(CoreActions.VolumeText(n, ml), Hw(r, hw));
             }
             case DeviceAction.ProgLoad:
             {

@@ -16,6 +16,6 @@ public static class ShellText
         return parts.Count == 0 ? none : string.Join(" · ", parts);
     }
 
-    /// <summary>「N 台」（资源管理器标题栏）。</summary>
+    /// <summary>「N 台」。</summary>
     public static string Units(int n) => n + " 台";
 }

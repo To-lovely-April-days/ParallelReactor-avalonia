@@ -26,12 +26,14 @@ public static class DialogSet
         shell.Dialogs.Register("lease", arg => LeaseDialogVm.Create(shell, arg));
         shell.Dialogs.Register("estop", arg => new EstopDialogVm(shell, arg));
         shell.Dialogs.Register("stopall", arg => new StopAllDialogVm(shell, arg));
+        // 融合版 F3：停止一路（检查器「停止该通道」；参数 k:n）
+        shell.Dialogs.Register("stopch", arg => StopChannelDialogVm.Create(shell, arg));
         shell.Dialogs.Register("edit", arg => EditDeviceDialogVm.Create(shell, arg));
         shell.Dialogs.Register("rename", arg => RenameDialogVm.Create(shell, arg));
         shell.Dialogs.Register("remove", arg => RemoveDialogVm.Create(shell, arg));
         shell.Dialogs.Register("disconnect", arg => DisconnectDialogVm.Create(shell, arg));
         shell.Dialogs.Register("runall", arg => RunAllDialogVm.Create(shell, arg));
-        // M3 复核新加（样稿没有）：本机客户端名（真机，「设备 › 本机客户端名…」）、退出确认（真机，控制权申请还在触屏上时）
+        // M3 复核新加（样稿没有）：本机客户端名（真机，点深蓝条上的工位名）、退出确认（真机，控制权申请还在触屏上时）
         shell.Dialogs.Register("client", _ => ClientNameDialogVm.Create(shell));
         shell.Dialogs.Register("exit", _ => ExitDialogVm.Create(shell));
     }

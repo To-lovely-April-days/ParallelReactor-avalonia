@@ -27,7 +27,10 @@ public static class GalleryCharts
             var c3 = d3?.Channel(11);
             var a = d1 != null && c1 != null ? ReactorChartOptions.FromDemo(d1, c1, 30) : null;
             var b = d3 != null && c3 != null ? ReactorChartOptions.FromDemo(d3, c3, 30) : null;
-            var r = (a, b, OverviewTrendOptions.GalleryMulti(fleet));
+            // 第三张（F2 起）：1号机 RV2（pc-v3 的总览温度趋势随总览页删掉了）
+            var c2 = d1?.Channel(2) ?? c1;
+            var c = d1 != null && c2 != null ? ReactorChartOptions.FromDemo(d1, c2, 30) : a ?? b!;
+            var r = (a, b, c);
             _opts = r;
             return r;
         }

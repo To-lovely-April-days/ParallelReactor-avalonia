@@ -2,7 +2,8 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                     xmlns:c="using:ParallelReactor.Control.Controls"
                     xmlns:b="using:ParallelReactor.Control.Behaviors">
-  <!-- 菜单（PORT-PLAN §4.6；样稿 shell.css .pr-menuitem / .pr-menu / .pr-menu-item）。
+  <!-- 菜单（PORT-PLAN §4.6；样稿 shell.css .pr-menuitem / .pr-menu / .pr-menu-item）。融合版 F1：弹出层改成 GBG 直角（圆角 2）+ 1 px line-strong 边（样稿 #almPop），菜单项沿用；
+       菜单栏 PrMenuBarItem 属于 pc-v3 外壳（F2 换成融合版的 24 px 页面菜单）。
        菜单栏项高 28、15 px、圆角 4（悬停 / 展开 bg-hover，按下 bg-press）；下拉面板白底 line 边、圆角 6、ShadowPop、上下 6、最小宽 220、最宽 480；
        菜单项高 36、15 px t-2、左 12 右 16、图标列 20（图标 17 t-3）+ 间距 10；悬停 bg-hover + t-1，按下 bg-press；
        提示（b:Pr.Hint，14 px t-3）跟在标签后面；勾选项在最右侧画 17 px ✓（a-d，描边 2），图标照常（同样稿 .pr-menu-check）；
@@ -258,9 +259,9 @@
   <!-- 右键菜单 / 菜单弹出（MenuFlyout）：与下拉面板相同 -->
   <ControlTheme x:Key="PrContextMenu" TargetType="ContextMenu">
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
     <Setter Property="Padding" Value="0,6" />
     <Setter Property="MinWidth" Value="220" />
     <Setter Property="MaxWidth" Value="480" />
@@ -285,9 +286,9 @@
 
   <ControlTheme x:Key="PrMenuFlyout" TargetType="MenuFlyoutPresenter">
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
     <Setter Property="Padding" Value="0,6" />
     <Setter Property="MinWidth" Value="220" />
     <Setter Property="MaxWidth" Value="480" />
@@ -312,9 +313,9 @@
   <!-- 自定义内容的弹出框（新页签、图例等，样稿 .pr-menu.is-pop）：内边距 0，宽度由内容决定 -->
   <ControlTheme x:Key="PrPopover" TargetType="FlyoutPresenter">
     <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource LineStrongBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+    <Setter Property="CornerRadius" Value="{StaticResource RadiusStep}" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
     <Setter Property="FontSize" Value="{StaticResource FsBody}" />

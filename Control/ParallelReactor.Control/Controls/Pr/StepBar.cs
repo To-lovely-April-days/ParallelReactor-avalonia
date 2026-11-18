@@ -335,7 +335,7 @@ public sealed class StepBar : Avalonia.Controls.Control
                 {
                     var f = Fill(inner, s.Fraction);
                     context.DrawRectangle(IsGray ? GrayRunFill : ProgressPr.RunFill, null, f);
-                    context.DrawRectangle(IsGray ? Palette.NDotBrush : Palette.GDotLineBrush, null, new Rect(f.Right - 1, f.Y, 1, f.Height));
+                    context.DrawRectangle(IsGray ? Palette.NDotBrush : Palette.ADBrush, null, new Rect(f.Right - 1, f.Y, 1, f.Height));
                     if (_pulsing && !IsGray) context.DrawRectangle(PulseClock.Overlay, null, f);
                     break;
                 }

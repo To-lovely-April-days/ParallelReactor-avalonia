@@ -56,7 +56,7 @@ public class PerfReportTests : IDisposable
         Assert.Contains("<svg", html);
         Assert.Contains("RV1 温度", html);
         Assert.Contains("raw/telemetry.csv", html);
-        Assert.Contains("--purple:#765cc5", html); Assert.Contains("--bg:#ececee", html); Assert.Contains("--panel:#f7f7f8", html); Assert.Contains("--line:#c9c9cd", html);
+        Assert.Contains("--accent:#204797", html); Assert.Contains("--bg:#ececee", html); Assert.Contains("--panel:#f7f7f8", html); Assert.Contains("--line:#c9c9cd", html);
         Assert.Contains("Segoe UI", html);
         Assert.DoesNotContain("<script", html); Assert.DoesNotContain("http://", html.Replace("http://www.w3.org/2000/svg", ""));
         // 无模板残留 / 无 NaN

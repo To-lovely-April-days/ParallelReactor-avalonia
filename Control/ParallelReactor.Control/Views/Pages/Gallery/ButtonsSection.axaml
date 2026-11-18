@@ -4,7 +4,7 @@
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:b="using:ParallelReactor.Control.Behaviors"
              x:Class="ParallelReactor.Control.Views.Pages.Gallery.ButtonsSection">
-  <!-- 按钮（MOCK #/gallery「按钮」）：两行按钮（两行之间不留空，同样稿两个 .gallery-row）+ 禁用原因行 + 图标按钮行（上边距 14） -->
+  <!-- 按钮（融合版 F1，样稿 main-fusion.html .btn / .rb / .rbt / .ibtn / .lnkbtn）：两行按钮 + 禁用原因行 + 图标按钮行 + 工具条按钮行 + 圆形工具按钮行 -->
   <StackPanel>
     <g:GalleryRow>
       <Button Theme="{StaticResource PrButton}" b:Pr.Icon="edit" Content="编辑程序" />
@@ -28,7 +28,19 @@
       <Button Theme="{StaticResource PrIconButton}" Classes="stop" b:Pr.Icon="stop" ToolTip.Tip="停止" AutomationProperties.Name="停止" />
       <Button Theme="{StaticResource PrIconButton}" b:Pr.Icon="open" b:Pr.Reason="不可用" AutomationProperties.Name="打开" />
       <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="x" ToolTip.Tip="紧凑 28" AutomationProperties.Name="紧凑 28" />
-      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="6,0,0,0" Text="图标按钮 32 · 激活 · 停止 · 禁用 · 紧凑 28" />
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="6,0,0,0" Text="图标按钮 28 · 激活 · 停止 · 禁用 · 紧凑 26" />
+    </g:GalleryRow>
+    <!-- 工具条按钮（.rb：高 30、GBG 直角细边、灰图标）与圆形工具按钮（.rbt） -->
+    <g:GalleryRow Margin="0,14,0,0">
+      <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="flag" Content="打标记" />
+      <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="download" Content="导出" />
+      <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="refresh" Content="重置布局" />
+      <Button Theme="{StaticResource PrRibbonButton}" Classes="pri" b:Pr.Icon="send" Content="下发并启动" />
+      <Button Theme="{StaticResource PrRibbonButton}" b:Pr.Icon="upload" Content="导入" b:Pr.Reason="先申请控制权" />
+      <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="plus" ToolTip.Tip="添加设备" AutomationProperties.Name="添加设备" />
+      <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="refresh" ToolTip.Tip="刷新" AutomationProperties.Name="刷新" />
+      <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="left" ToolTip.Tip="上一路" AutomationProperties.Name="上一路" />
+      <TextBlock Theme="{DynamicResource GalleryCap}" Margin="6,0,0,0" Text="工具条按钮 30 · 主要 · 禁用 · 圆形工具按钮 28" />
     </g:GalleryRow>
   </StackPanel>
 </UserControl>

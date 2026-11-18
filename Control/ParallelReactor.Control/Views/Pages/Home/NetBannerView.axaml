@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             x:Class="ParallelReactor.Control.Views.Pages.Home.NetBannerView"
+             x:DataType="h:NetBannerVm">
+  <!-- 断线横条（样稿 .netbar 最终层叠）：外边距 8 10 0、内边距 6 12、1 px 边 + 左边 4 px、圆角 4、13 px；
+       连接中断 amb-bg 底 amb-line 边、左边 amb-edge、⚠ 18 px；已重新连接 g-2 底 g-edge 边、左边 g-dot、✓。标题 14/600 t-1（右边 10）+ 说明 t-2，行高 1.55；
+       窄屏（&lt; 1600）标题和说明分两行。 -->
+  <UserControl.Styles>
+    <Style Selector="Border#Bar">
+      <Setter Property="Margin" Value="10,8,10,0" />
+      <Setter Property="Padding" Value="12,6" />
+      <Setter Property="BorderThickness" Value="4,1,1,1" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="Border#Bar.lost">
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource AmbLineBrush}" />
+    </Style>
+    <Style Selector="Border#Bar.back">
+      <Setter Property="Background" Value="{StaticResource G2Brush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource GEdgeBrush}" />
+    </Style>
+    <Style Selector="Border#Edge">
+      <Setter Property="Width" Value="4" />
+      <Setter Property="Margin" Value="-16,-7,0,-7" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="CornerRadius" Value="4,0,0,4" />
+    </Style>
+  </UserControl.Styles>
+  <Border Name="Bar" Classes.lost="{Binding IsLost}" Classes.back="{Binding IsBack}">
+    <Panel>
+    <Border Name="Edge" Background="{StaticResource AmbEdgeBrush}" IsVisible="{Binding IsLost}" />
+    <Border Name="Edge2" Width="4" Margin="-16,-7,0,-7" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{StaticResource GDotBrush}" IsVisible="{Binding IsBack}" />
+    <DockPanel>
+      <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="10,0,0,0">
+        <Button Classes="sm" b:Pr.Icon="f-refresh" Content="立即重连" Command="{Binding RetryCommand}" IsVisible="{Binding IsLost}" />
+        <Button Classes="sm" Content="断线设置" Command="{Binding SettingsCommand}" IsVisible="{Binding IsLost}" ToolTip.Tip="设置 › 无人值守：断线重连、补拉数据" />
+        <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-x" Command="{Binding DismissCommand}" IsVisible="{Binding IsBack}" ToolTip.Tip="知道了" />
+      </StackPanel>
+      <Panel DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,10,0" VerticalAlignment="Center">
+        <c:IconView Icon="f-warn-f" Size="18" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding IsLost}" />
+        <c:IconView Icon="f-ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsBack}" />
+      </Panel>
+      <Panel VerticalAlignment="Center">
+        <!-- 宽屏：标题和说明接在一行里（说明折行）；窄屏（&lt; 1600）：分两行（HomePage 的样式切换） -->
+        <TextBlock Name="Txt" TextWrapping="Wrap" LineHeight="21" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}">
+          <Run Text="{Binding Title}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="　 " /><Run Text="{Binding Body}" />
+        </TextBlock>
+        <StackPanel Name="Txt2" IsVisible="False">
+          <TextBlock Text="{Binding Title}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="21" />
+          <TextBlock Text="{Binding Body}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" LineHeight="20" />
+        </StackPanel>
+      </Panel>
+    </DockPanel>
+    </Panel>
+  </Border>
+</UserControl>

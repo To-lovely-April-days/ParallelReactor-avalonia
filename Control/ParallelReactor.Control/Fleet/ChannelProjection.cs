@@ -30,7 +30,8 @@ public static class ChannelProjection
             ch.TempC, ch.TempSpC, Units.PsiToMpa(ch.PressurePsi), ch.PressureSpPsi > 0 ? Units.PsiToMpa(ch.PressureSpPsi) : null,
             ch.HeatOutputPct, stir is null ? null : stir.On ? stir.RpmSp : 0,
             StateMap.IsHeating(ch), ch.ValveOpen,
-            p is null ? null : new HmiProgram(p.Running, p.StepIndex, p.StepCount, p.State, p.Message, p.StartedAt, p.WaitingGas, p.StartedBy));
+            p is null ? null : new HmiProgram(p.Running, p.StepIndex, p.StepCount, p.State, p.Message, p.StartedAt, p.WaitingGas, p.StartedBy),
+            ch.GasConsumed, ch.GasRate, ch.SolutionVolume);
     }
 
     /// <summary>实时：从一帧里取第 n 路（Id = n）再投影；帧为空（从未收到数据）按 <paramref name="installed"/>。</summary>
@@ -43,7 +44,10 @@ public static class ChannelProjection
         return FromSnap(ch, n, online, everOnline, frame?.Estop?.Active ?? false, installed, frame?.Stir);
     }
 
-    /// <summary>演示：第 n 路（同样稿 PR.sim.reading / stateKey / stateText；演示的报警只有超压）。</summary>
+    /// <summary>
+    /// 演示：第 n 路（同样稿 PR.sim.reading / stateKey / stateText；演示的报警只有超压）。吸气量 = 演示的耗气 mmol，吸气速率 = 融合版演示值（旧数据 null），
+    /// 溶液体积 = 演示的 VolumeMl；融合版停用的通道读数全为 null（DemoChannel.NoData）。
+    /// </summary>
     public static ChannelReading FromDemo(DemoDevice d, int n)
     {
         var ch = d.Channel(n);
@@ -51,7 +55,8 @@ public static class ChannelProjection
         return new ChannelReading(n, true, d.StateKeyOf(ch), d.StateWord(ch), ch.State, d.StateText(ch),
             ch.State == StateKey.Alarm ? AlarmCause.OverPressure : AlarmCause.None,
             d.Reading(ch, DemoReading.TempC), d.Reading(ch, DemoReading.SpC), d.Reading(ch, DemoReading.PressureMPa), d.Reading(ch, DemoReading.PTargetMPa),
-            d.Reading(ch, DemoReading.HeaterPct), d.Reading(ch, DemoReading.Rpm), ch.Heating, ch.Sv);
+            d.Reading(ch, DemoReading.HeaterPct), d.Reading(ch, DemoReading.Rpm), ch.Heating, ch.Sv,
+            GasMmol: d.Reading(ch, DemoReading.Mmol), GasRate: d.Reading(ch, DemoReading.Rate), SolutionMl: d.Reading(ch, DemoReading.VolumeMl));
     }
 
     /// <summary>

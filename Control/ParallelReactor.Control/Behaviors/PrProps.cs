@@ -1,5 +1,4 @@
 using System;
-using System.Windows.Input;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -14,7 +13,7 @@ namespace ParallelReactor.Control.Behaviors;
 /// </summary>
 public static partial class Pr
 {
-    /// <summary>图标名（ui.js ICONS 的键；资源 Icon.名字）。PrButton / PrIconButton / PrChip / PrSideItem / PrDocTab / PrMenuItem 的模板显示它。</summary>
+    /// <summary>图标名（ui.js ICONS 的键；资源 Icon.名字）。PrButton / PrIconButton / PrChip / PrMenuItem / PrRibbonButton / PrStripLink 的模板显示它（「f-」开头 = 融合版的 Fluent 图标）。</summary>
     public static readonly AttachedProperty<string?> IconProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Icon", typeof(Pr));
 
@@ -22,21 +21,17 @@ public static partial class Pr
     public static readonly AttachedProperty<string?> UnitProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Unit", typeof(Pr));
 
-    /// <summary>红点：只表示「有未确认的错误报警」（PrSegItem / PrPTab / PrDocTab）。</summary>
+    /// <summary>红点：只表示「有未确认的错误报警」（PrSegItem / PrPTab）。</summary>
     public static readonly AttachedProperty<bool> DotProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, bool>("Dot", typeof(Pr));
 
-    /// <summary>中性计数（PrPTab 的未确认提醒数、PrChip 的数字）；null / 空 = 不显示。</summary>
+    /// <summary>中性计数（PrPTab 的未确认提醒数、PrChip 的数字）；菜单栏页面（PrMenuPage）的红色徽标也用它。null / 空 = 不显示。</summary>
     public static readonly AttachedProperty<string?> CountProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Count", typeof(Pr));
 
     /// <summary>菜单项的提示文字（PrMenuItem：标签右侧 14 px t-3，样稿 .pr-menu-hint，如「不需要控制权」「未显示」）。</summary>
     public static readonly AttachedProperty<string?> HintProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Hint", typeof(Pr));
-
-    /// <summary>文档页签的关闭命令（PrDocTab 的 ×）；null = 固定页签，不显示 ×。</summary>
-    public static readonly AttachedProperty<ICommand?> CloseCommandProperty =
-        AvaloniaProperty.RegisterAttached<AvaloniaObject, ICommand?>("CloseCommand", typeof(Pr));
 
     public static string? GetIcon(AvaloniaObject o) => o.GetValue(IconProperty);
     public static void SetIcon(AvaloniaObject o, string? v) => o.SetValue(IconProperty, v);
@@ -48,8 +43,6 @@ public static partial class Pr
     public static void SetCount(AvaloniaObject o, string? v) => o.SetValue(CountProperty, v);
     public static string? GetHint(AvaloniaObject o) => o.GetValue(HintProperty);
     public static void SetHint(AvaloniaObject o, string? v) => o.SetValue(HintProperty, v);
-    public static ICommand? GetCloseCommand(AvaloniaObject o) => o.GetValue(CloseCommandProperty);
-    public static void SetCloseCommand(AvaloniaObject o, ICommand? v) => o.SetValue(CloseCommandProperty, v);
 
     // 自动给的无障碍名（Style 优先级的值，换名字时先撤销旧的）
     private static readonly AttachedProperty<IDisposable?> AutoNameProperty =

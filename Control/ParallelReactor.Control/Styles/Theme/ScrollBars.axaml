@@ -1,21 +1,22 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-  <!-- 细滚动条（PORT-PLAN §4.6；样稿 reactor.css 的 ::-webkit-scrollbar：8 px，拇指 line 色、圆角 4，悬停 line-strong）。
+  <!-- 滚动条（融合版 F1；样稿 main-fusion.html ::-webkit-scrollbar）：默认 8 px 细条（样稿 .devs 设备列表那种，布局宽度同 pc-v3 不变），拇指 scroll-thumb（line-sep）、圆角 4，悬停 scroll-thumb-hover；
+       宽滚动条 PrScrollBarWide / PrScrollViewerWide（样稿页面主体：12 px、scroll-track 灰轨道、拇指内缩 3、圆角 4）给 F2 的停靠面板用。
        完整模板，不叠在 Fluent 模板上；M2 起是 ScrollViewer / ScrollBar 的默认主题（Styles/Theme/Defaults.axaml）；旧界面（LegacyHost）里换回 Fluent 的，旧的滚动条样式只作用于 .legacy 子树。
        ScrollBar 放在 ScrollViewer 模板里时自己绑定 Maximum / Value / ViewportSize / Visibility（Avalonia 11 的 ScrollBar 行为）。 -->
 
   <ControlTheme x:Key="PrScrollThumb" TargetType="Thumb">
-    <Setter Property="Background" Value="{StaticResource LineBrush}" />
+    <Setter Property="Background" Value="{StaticResource ScrollThumbBrush}" />
     <Setter Property="Template">
       <ControlTemplate>
         <Border Background="{TemplateBinding Background}" CornerRadius="4" />
       </ControlTemplate>
     </Setter>
     <Style Selector="^:pointerover">
-      <Setter Property="Background" Value="{StaticResource LineStrongBrush}" />
+      <Setter Property="Background" Value="{StaticResource ScrollThumbHoverBrush}" />
     </Style>
     <Style Selector="^:pressed">
-      <Setter Property="Background" Value="{StaticResource LineStrongBrush}" />
+      <Setter Property="Background" Value="{StaticResource ScrollThumbHoverBrush}" />
     </Style>
   </ControlTheme>
 
@@ -160,6 +161,37 @@
           <ScrollBar Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal" Theme="{StaticResource PrScrollBar}" />
           <ScrollBar Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Theme="{StaticResource PrScrollBar}" />
           <Panel Name="PART_ScrollBarsSeparator" Grid.Row="1" Grid.Column="1" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 宽滚动条（样稿 ::-webkit-scrollbar 12 px：scroll-track 轨道、拇指四周内缩 3 px） -->
+  <ControlTheme x:Key="PrScrollBarWide" TargetType="ScrollBar" BasedOn="{StaticResource PrScrollBar}">
+    <Setter Property="Background" Value="{StaticResource ScrollTrackBrush}" />
+    <Style Selector="^:vertical">
+      <Setter Property="Width" Value="{StaticResource ScrollBarW}" />
+    </Style>
+    <Style Selector="^:horizontal">
+      <Setter Property="Height" Value="{StaticResource ScrollBarW}" />
+    </Style>
+    <Style Selector="^ /template/ Thumb#PART_Thumb">
+      <Setter Property="Margin" Value="3" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 宽滚动区：同 PrScrollViewer，滚动条换成 PrScrollBarWide -->
+  <ControlTheme x:Key="PrScrollViewerWide" TargetType="ScrollViewer">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="*,Auto" RowDefinitions="*,Auto">
+          <ScrollContentPresenter Name="PART_ContentPresenter"
+                                  Background="{TemplateBinding Background}"
+                                  Padding="{TemplateBinding Padding}" />
+          <ScrollBar Name="PART_HorizontalScrollBar" Grid.Row="1" Orientation="Horizontal" Theme="{StaticResource PrScrollBarWide}" />
+          <ScrollBar Name="PART_VerticalScrollBar" Grid.Column="1" Orientation="Vertical" Theme="{StaticResource PrScrollBarWide}" />
+          <Panel Name="PART_ScrollBarsSeparator" Grid.Row="1" Grid.Column="1" Background="{StaticResource ScrollTrackBrush}" />
         </Grid>
       </ControlTemplate>
     </Setter>

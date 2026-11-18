@@ -1051,6 +1051,8 @@ public sealed partial class LiveDeviceSource
         // HMI 重启后它手里的程序不一定还是本机下发的那份：程序台账的条目全部作废（「启动」回到启用 + 加热，D6；「全部运行」没有对象，要先重新下发），
         // 步骤计时清空；新的启动号（WS hello 已经带来时）立即记下
         Ledger.ObserveRestart();
+        // 设备上的程序（融合版 F3）：旧启动的运行记录作废（按启动号本来也对不上，这里连在途的请求一起丢掉）
+        _hmiRuns.Reset();
         _progCache.Clear();
         // 会话标记：旧启动的会话不算（重取 /sessions/current 时再按新的来）
         _marks = Array.Empty<Core.Chart.SessionMark>();

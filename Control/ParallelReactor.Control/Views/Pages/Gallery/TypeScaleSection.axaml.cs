@@ -18,15 +18,17 @@ public sealed record TypeSample(string Caption, double CaptionSize, double Size,
 
 public partial class TypeScaleSection : UserControl
 {
-    // 样稿 placeholder.js galleryHTML 的 type 表：（资源键, 字重, 说明, 样例, 等宽数字）
+    // 融合版样稿 main-fusion.html 的字号（tools/fusion-tokens.json 的语义字号）：（资源键, 字重, 说明, 样例, 等宽数字）
     private static readonly (string Key, int Weight, string Label, string Sample, bool Numeric)[] Spec =
     {
-        ("FsNum", 400, "数字 / 单位", "119.8 ℃ · 0.349 MPa · 192.168.1.20", true),
-        ("Fs2", 400, "次要文字", "本地 · 只读 · 第 3/4 步 · 剩 42 min", false),
-        ("FsBody", 500, "正文 / 按钮", "启动加热 · 下发程序 · 1号机 · RV1", false),
-        ("FsTitle", 600, "面板标题", "属性查看器", false),
-        ("FsHead", 600, "分区头 / 对话框标题", "1号机 HT-PR8 · 现场", false),
-        ("FsRead", 600, "主要读数", "119.8 ℃", true),
+        ("FsBase", 400, "正文 / 标签 / 按钮 / 工具条", "设备 · 控制权 · 打标记 · 停止1号机", false),
+        ("FsCell", 400, "运行表 / 表格 / 输入框", "恒温反应 3/4 · 本步剩余 27 min", false),
+        ("FsValue", 600, "读数（运行表）", "145.2 °C · 2.35 MPa · 18.4 mmol", true),
+        ("FsPaneTitle", 600, "面板标题", "程序库 · 报警与事件", false),
+        ("FsDlgTitle", 300, "对话框标题（细体）", "急停 · 远程停机", false),
+        ("FsDevName", 300, "设备名（细体）", "1号机  HT-PR8", false),
+        ("FsMenu", 300, "菜单栏（当前页 400）", "主页 程序 曲线 报警", false),
+        ("FsPopValue", 600, "报警弹窗读数", "3.55 MPa", true),
     };
 
     private static IReadOnlyList<TypeSample>? _rows;
@@ -36,7 +38,7 @@ public partial class TypeScaleSection : UserControl
     {
         var size = Token(s.Key);
         var caption = $"{size.ToString(CultureInfo.InvariantCulture)} px{(s.Weight >= 600 ? " " + s.Weight : "")} · {s.Label}";
-        return new TypeSample(caption, Token("Fs2"), size, (FontWeight)s.Weight, s.Sample, s.Numeric, new Thickness(0, 0, 0, i == Spec.Length - 1 ? 0 : 1));
+        return new TypeSample(caption, Token("FsBase"), size, (FontWeight)s.Weight, s.Sample, s.Numeric, new Thickness(0, 0, 0, i == Spec.Length - 1 ? 0 : 1));
     }).ToList();
 
     private static double Token(string key) => Application.Current!.TryFindResource(key, out var v) && v is double d ? d : double.NaN;

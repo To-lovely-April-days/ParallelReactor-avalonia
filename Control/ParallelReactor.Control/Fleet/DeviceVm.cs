@@ -106,6 +106,13 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     [ObservableProperty] private string _markerText = "";
     [ObservableProperty] private string _markerTip = "";
     [ObservableProperty] private string? _sessionId;
+    /// <summary>未确认的报警条数（计入计数的：急停中的设备不数「急停已触发」那一条；融合版菜单栏「报警」徽标、报警摘要按钮、状态栏）。</summary>
+    [ObservableProperty] private int _unackedAlarms;
+    /// <summary>
+    /// 在跑的程序什么时候结束（融合版设备面板第三行，样稿「最早 14:39 · 最晚 15:47 结束」）：有剩余时间的运行中程序按 现在 + 全程剩余 算，
+    /// 取最早和最晚（只有一路时「15:47 结束」）；没有在跑的程序、或断线时为空串。
+    /// </summary>
+    [ObservableProperty] private string _etaText = "";
     /// <summary>'运行 4/4'；断线时 null（不画）。</summary>
     [ObservableProperty] private string? _runText;
     /// <summary>设备头的悬停提示（别名 · 型号（已安装）/ 地址 · SN / 连接 · 会话）。</summary>
@@ -116,6 +123,29 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     [ObservableProperty] private bool _wideRvNames;
 
     private GuardFacts? _facts;
+    private bool _wasLost;
+    private DateTime? _lostAt;
+
+    /// <summary>断开之后又连上（融合版 F3 断线横条「已重新连接」）：断开时刻、恢复时刻、补拉的条数（补拉在 F8；没有为 null）。关掉横条后为 null。</summary>
+    public sealed record NetBackInfo(DateTime LostAt, DateTime BackAt, int? Rows);
+
+    /// <summary>见 <see cref="NetBackInfo"/>。</summary>
+    [ObservableProperty] private NetBackInfo? _netBack;
+
+    /// <summary>关掉「已重新连接」横条。</summary>
+    public void DismissNetBack() => NetBack = null;
+
+    /// <summary>演示 / 截图：当作刚刚断开过又连上（net=back）。</summary>
+    public void ForceNetBack(DateTime lostAt, DateTime backAt, int? rows) => NetBack = new NetBackInfo(lostAt, backAt, rows);
+
+    /// <summary>断线横条用：连上过的设备从在线变成断线 / 从断线恢复时记下时刻（每次刷新调）。</summary>
+    private void TrackNet(ConnInfo conn, DateTime now)
+    {
+        bool lost = !conn.Online && conn.EverOnline;
+        if (lost && !_wasLost) { _lostAt = conn.LostAt ?? now; NetBack = null; }
+        else if (!lost && _wasLost && conn.Online) NetBack = new NetBackInfo(_lostAt ?? now, now, null);
+        _wasLost = lost;
+    }
 
     /// <summary>
     /// 守卫的输入（这台设备此刻的事实，显示用）：取一次、在数据源变化 / 刷新时作废（<see cref="InvalidateFacts"/>），一次刷新里所有按钮、
@@ -134,6 +164,9 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     {
         Source = source;
         _facts = null;
+        _wasLost = false;
+        _lostAt = null;
+        NetBack = null;
         if (Events.Count > 0) Events.Clear();
         Refresh(Fleet.Now);
     }
@@ -162,6 +195,7 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         var lease = s.Lease;
         var estop = s.Estop;
         bool online = conn.Online;
+        TrackNet(conn, now);
 
         Alias = cfg.Alias;
         ModelLabel = Model.Label;
@@ -218,6 +252,8 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         }
         Installed = inst;
         Running = run;
+        // 断线时照样写（样稿：数据停在断线时刻，预计结束仍按那时的进度）
+        EtaText = online || conn.EverOnline ? Eta(now) : "";
 
         // 报警（计数不数急停中设备的「急停已触发」那一条，样稿 ui.countedAlarms）
         var alarms = s.Alarms;
@@ -230,6 +266,9 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         }
         ErrAlarms = err;
         WarnAlarms = warn;
+        int ua = 0;
+        foreach (var a in alarms) if (!a.Acked && !(estop.Active && a.Code == "ESTOP")) ua++;
+        UnackedAlarms = ua;
         AlarmText = ShellText.AlarmText(err, warn);
         if (estop.Active) { Marker = AlarmMarker.Estop; MarkerText = EstopText; MarkerTip = EstopText + " · 复位只能在触屏" + (AlarmText.Length > 0 ? " · " + AlarmText : ""); }
         else if (err > 0) { Marker = AlarmMarker.Err; MarkerText = "报警 " + err; MarkerTip = AlarmText; }
@@ -248,6 +287,24 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         Health = !online ? (conn.State == ConnStatus.Disconnected ? DeviceHealth.Mute : DeviceHealth.Off)
             : estop.Active || err > 0 ? DeviceHealth.Err : alarms.Count > 0 ? DeviceHealth.Warn : DeviceHealth.Ok;
         foreach (var a in Alarms) a.RefreshReason();
+    }
+
+    /// <summary>见 <see cref="EtaText"/>：每路「现在 + 全程剩余」（Core 的 ProgramPanelText.EtaAt，按绝对时刻相加），取最早 / 最晚。</summary>
+    private string Eta(DateTime now)
+    {
+        DateTime? lo = null, hi = null;
+        foreach (var r in Reactors)
+        {
+            // 只算在跑的（报警暂停的不算，同样稿 etaOf 只认 RUN）
+            if (!r.Installed || r.Program is not { Status: ProgramStatus.Running, Progress: { TotalRemainMin: > 0 } p }) continue;
+            var at = Core.Programs.ProgramPanelText.EtaAt(now, p.TotalRemainMin);
+            if (lo == null || at < lo) lo = at;
+            if (hi == null || at > hi) hi = at;
+        }
+        if (lo == null) return "";
+        var a = Core.Format.Fmt.Hm(lo);
+        var b = Core.Format.Fmt.Hm(hi);
+        return a == b ? a + " 结束" : "最早 " + a + " · 最晚 " + b + " 结束";
     }
 
     private void SyncAlarms(IReadOnlyList<AlarmItem> items)

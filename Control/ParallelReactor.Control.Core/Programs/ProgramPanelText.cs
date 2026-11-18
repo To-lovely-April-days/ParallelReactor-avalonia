@@ -59,7 +59,7 @@ public static class ProgramPanelText
         if (line is null || p is null) return line;
         // 真机：本机下发之后由触屏启动的执行（台账照规则认它，但改没改过程序看不出来）—— 宽画布的说明后面写「触屏启动」，悬停写全
         if (p.StartedByTouch && p.Status != ProgramStatus.Loaded)
-            return line with { Full = line.Full + (line.Full.Length > 0 ? " · " : "") + TouchStarted, Note = TouchStartedNote };
+            return line with { Full = line.Full + (line.Full.Length > 0 ? " · " : "") + TouchStarted, Note = p.Source == ProgramSource.Hmi ? TouchStartedHmiNote : TouchStartedNote };
         // 真机：下发之后触屏端接管过控制（复核）—— 之后开始的执行、还没跑的已下发程序：说明后面写「触屏接管过控制」，悬停写全文（两样不同时写，触屏启动优先）
         if (p.AfterLocalControl)
             return line with
@@ -74,6 +74,8 @@ public static class ProgramPanelText
     public const string TouchStarted = "触屏启动";
     /// <summary>触屏启动的执行在状态行悬停里的补充说明。</summary>
     public const string TouchStartedNote = "按本机下发的程序显示";
+    /// <summary>同上，设备上的程序（融合版 F3，<see cref="ProgramSource.Hmi"/>：不是本机下发的，步骤取自设备）：悬停里的补充说明。</summary>
+    public const string TouchStartedHmiNote = "按设备上的程序显示";
     /// <summary>下发之后触屏端接管过控制（样稿没有这一种，复核）：状态行说明后面的短提醒。</summary>
     public const string LocalControl = "触屏接管过控制";
     /// <summary>同上，运行中 / 已结束的执行：悬停里的全文（代替短提醒）。</summary>

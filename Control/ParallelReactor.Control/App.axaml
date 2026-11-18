@@ -13,6 +13,8 @@
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/LegacyTokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Tokens.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Icons.axaml" />
+        <!-- 融合版的 Fluent 图标（F2：样稿内嵌的 symbol，键 Icon.f-名字） -->
+        <ResourceInclude Source="avares://ParallelReactor.Control/Styles/FluentIcons.axaml" />
         <!-- pc-v3 控件主题（PORT-PLAN §4.6）：带 x:Key（或以 Pr 自己的控件类型为键）；按依赖顺序合并，Defaults 最后（把它们设为默认主题） -->
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ScrollBars.axaml" />
         <ResourceInclude Source="avares://ParallelReactor.Control/Styles/Theme/ToolTips.axaml" />

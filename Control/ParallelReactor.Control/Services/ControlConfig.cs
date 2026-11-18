@@ -292,7 +292,7 @@ public sealed class ControlConfig
             else
             {
                 ClientName = MachineClientName();
-                if (ClientName != DefaultClientName) _notes.Add("本机客户端名改为「" + ClientName + "」· 可在「设备 › 本机客户端名…」中修改");
+                if (ClientName != DefaultClientName) _notes.Add("本机客户端名改为「" + ClientName + "」· 点深蓝条上的工位名可以修改");
             }
             if (Int(root, "timelineMinutes") is int tm && tm is > 0 and <= 24 * 60) TimelineMinutes = tm;
             var host = (Str(root, "host") ?? "").Trim();

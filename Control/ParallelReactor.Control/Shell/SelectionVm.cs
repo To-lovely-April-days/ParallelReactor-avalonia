@@ -6,7 +6,7 @@ using ParallelReactor.Control.Fleet;
 namespace ParallelReactor.Control.Shell;
 
 /// <summary>
-/// 当前选中的对象（样稿 shell.sel：<b>单选</b>，一台设备或一个反应釜）：检查器显示它，资源管理器 / 时间轴高亮它。
+/// 当前选中的对象（样稿 shell.sel：<b>单选</b>，一台设备或一个反应釜）：检查器显示它（融合版 F2 起跟着路由 NavVm 选的设备 / 通道），设备面板 / 时间轴高亮它。
 /// 单击 = 选中（<see cref="Select"/>），双击 = 打开页签（ShellVm.Navigate，设备页 / 反应釜页导航时同时选中它）。
 /// 选中的对象不在了（设备移除、反应釜未安装）时回到第一台设备（样稿 pruneSel）。
 /// </summary>

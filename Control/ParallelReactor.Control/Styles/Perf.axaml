@@ -53,7 +53,7 @@
     <Setter Property="Foreground" Value="{DynamicResource Label}" />
   </Style>
 
-  <!-- .check-item：高 18，gap 5，8px，底 1px #eeeeef；checkbox 9×9 accent #765cc5 -->
+  <!-- .check-item：高 18，gap 5，8px，底 1px #eeeeef；checkbox 9×9 accent 品牌蓝 -->
   <Style Selector="CheckBox.check-item">
     <Setter Property="Height" Value="18" />
     <Setter Property="MinHeight" Value="0" />
@@ -203,7 +203,7 @@
   <Style Selector="Border.step-row.sub TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource Breadcrumb}" />
   </Style>
-  <!-- .step-row .status-dot：7px 白底边 #c9c9cd；done #b7e99c/#a0d782；current #e5e0f5/#8a78cd -->
+  <!-- .step-row .status-dot：7px 白底边 #c9c9cd；done #b7e99c/#a0d782；current 品牌蓝浅底 / 边 -->
   <Style Selector="Border.step-row Ellipse.step-dot">
     <Setter Property="Width" Value="7" />
     <Setter Property="Height" Value="7" />

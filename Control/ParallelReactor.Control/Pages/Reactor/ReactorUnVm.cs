@@ -26,7 +26,7 @@ public sealed partial class ReactorUnVm : ObservableObject
         _shell = shell;
         K = k;
         N = n;
-        OpenCommand = new RelayCommand(() => _shell?.Navigate(Route.Device(K)));
+        OpenCommand = new RelayCommand(() => { _shell?.Go(AppPage.Home); _shell?.SelectDevice(K); });
         Caption = ReactorPageText.EmptySlot(n);
     }
 
@@ -95,7 +95,7 @@ public sealed partial class ReactorUnVm : ObservableObject
         while (Chips.Count > chips) Chips.RemoveAt(Chips.Count - 1);
     }
 
-    internal void Open(int n) => _shell?.Navigate(Route.Reactor(K, n));
+    internal void Open(int n) { _shell?.Go(AppPage.Home); _shell?.OpenChannel(K, n); }
 }
 
 /// <summary>位置按钮（样稿 .reactor-slot：44 × 58，小釜体 22 + 号）：未安装的虚线、不能点；当前的加 2 px a-line 框。</summary>
