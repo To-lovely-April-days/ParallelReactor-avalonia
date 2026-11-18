@@ -9,8 +9,11 @@ namespace ParallelReactor.Control.Theme;
 /// </summary>
 public static class UiFonts
 {
-    /// <summary>Windows（产品目标）：Segoe UI 西文与数字，微软雅黑 UI / 微软雅黑中文。</summary>
-    public const string WindowsStack = "Segoe UI, Microsoft YaHei UI, Microsoft YaHei, fonts:Inter#Inter";
+    /// <summary>
+    /// Windows（产品目标）：Segoe UI 西文与数字，微软雅黑 UI / 微软雅黑中文。雅黑经 <see cref="CjkFontCollection"/>（fonts:Cjk）取：
+    /// 它没有 600 字重，粗体（600）改用真 700，不模拟加粗（不然中文粗体发虚，2026-11-18 用户截图）。
+    /// </summary>
+    public const string WindowsStack = "Segoe UI, fonts:Cjk#Microsoft YaHei UI, fonts:Cjk#Microsoft YaHei, fonts:Inter#Inter";
 
     /// <summary>
     /// macOS（开发与截图）：内嵌的 Inter 放在苹方前面（苹方的数字不支持等宽；Inter 有真 600 字重、+tnum 后数字等宽）。
@@ -24,7 +27,7 @@ public static class UiFonts
     public const string MacSystemStack = ".AppleSystemUIFont, PingFang SC, fonts:Inter#Inter";
 
     /// <summary>其它系统（Linux 等）。</summary>
-    public const string OtherStack = "fonts:Inter#Inter, Noto Sans CJK SC, Noto Sans SC";
+    public const string OtherStack = "fonts:Inter#Inter, fonts:Cjk#Noto Sans CJK SC, fonts:Cjk#Noto Sans SC";
 
     public static string Stack()
     {
@@ -42,9 +45,9 @@ public static class UiFonts
     /// 后一段会沿用前一段回退到的字体实例（连字重一起），于是「急停<b>不需要控制权</b>，…」的粗体段画成常规、之后的常规段又可能画成粗体（M1 实测）。
     /// 绕过：字重变化之后的中文 Run 显式用这个字体族（不经回退），例如提示条里的粗体段和它后面的一段。
     /// </summary>
-    public const string WindowsCjk = "Microsoft YaHei UI, Microsoft YaHei";
+    public const string WindowsCjk = "fonts:Cjk#Microsoft YaHei UI, fonts:Cjk#Microsoft YaHei";
     public const string MacCjk = "PingFang SC";
-    public const string OtherCjk = "Noto Sans CJK SC, Noto Sans SC";
+    public const string OtherCjk = "fonts:Cjk#Noto Sans CJK SC, fonts:Cjk#Noto Sans SC";
 
     public static string CjkStack()
     {

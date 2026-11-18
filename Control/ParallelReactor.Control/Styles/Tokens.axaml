@@ -376,9 +376,9 @@
   </LinearGradientBrush>
 
   <!-- 字体（pc-v3 §4.3；样稿的 font 变量是 "Segoe UI Variable Text","Segoe UI",…,"PingFang SC","Microsoft YaHei UI"）：这里是产品目标 Windows 的栈；App.Initialize 在创建窗口前按系统写入 Application.Resources["UiFont"] -->
-  <FontFamily x:Key="UiFont">Segoe UI, Microsoft YaHei UI, Microsoft YaHei, fonts:Inter#Inter</FontFamily>
+  <FontFamily x:Key="UiFont">Segoe UI, fonts:Cjk#Microsoft YaHei UI, fonts:Cjk#Microsoft YaHei, fonts:Inter#Inter</FontFamily>
   <!-- 只含中文字体（Theme/UiFonts.CjkStack）：字重混排的中文 Run 显式用它，绕过 Avalonia 11.1 回退沿用上一段字重的缺陷 -->
-  <FontFamily x:Key="UiFontCjk">Microsoft YaHei UI, Microsoft YaHei</FontFamily>
+  <FontFamily x:Key="UiFontCjk">fonts:Cjk#Microsoft YaHei UI, fonts:Cjk#Microsoft YaHei</FontFamily>
 
   <!-- 字号、行高、外框、控件尺寸、间距、圆角、过渡：任何文字 ≥ 13 px（融合版中文同样 ≥ 13）。
        行高：Avalonia 的 LineHeight 是绝对值、会继承：只在多行文字、上下堆叠的文字上显式设置，单行居中的文字不用设。

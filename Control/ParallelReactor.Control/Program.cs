@@ -49,5 +49,7 @@ internal static class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .WithInterFont()
+            // fonts:Cjk：雅黑 / Noto CJK 没有 600 字重，粗体改用真 700，不模拟加粗（Theme/CjkFontCollection）
+            .ConfigureFonts(fm => fm.AddFontCollection(new Theme.CjkFontCollection()))
             .LogToTrace();
 }
