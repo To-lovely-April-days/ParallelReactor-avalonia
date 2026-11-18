@@ -111,6 +111,8 @@
   <SolidColorBrush x:Key="SideInkBrush" Color="{StaticResource SideInkColor}" />
   <Color x:Key="SideInk2Color">#e3e9f6</Color>
   <SolidColorBrush x:Key="SideInk2Brush" Color="{StaticResource SideInk2Color}" />
+  <Color x:Key="WinCloseHoverColor">#e81123</Color>
+  <SolidColorBrush x:Key="WinCloseHoverBrush" Color="{StaticResource WinCloseHoverColor}" />
   <Color x:Key="BrandOrangeColor">#ec681e</Color>
   <SolidColorBrush x:Key="BrandOrangeBrush" Color="{StaticResource BrandOrangeColor}" />
   <!-- 运行（绿） -->

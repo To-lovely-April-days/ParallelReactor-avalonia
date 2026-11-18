@@ -11,6 +11,40 @@
   <SolidColorBrush x:Key="StripChipBrush" Color="{StaticResource TInvColor}" Opacity="0.16" />
   <SolidColorBrush x:Key="StripHoverBrush" Color="{StaticResource TInvColor}" Opacity="0.14" />
   <SolidColorBrush x:Key="StripChipHoverBrush" Color="{StaticResource TInvColor}" Opacity="0.24" />
+  <!-- 自绘窗口按钮（样稿 .tb-win i:hover rgba(255,255,255,.16)；按下再深一点） -->
+  <SolidColorBrush x:Key="WinHoverBrush" Color="{StaticResource TInvColor}" Opacity="0.16" />
+  <SolidColorBrush x:Key="WinPressBrush" Color="{StaticResource TInvColor}" Opacity="0.26" />
+
+  <!-- 深蓝条右端的自绘窗口按钮（样稿 .tb-win i：44 × 30，图形 10 × 10 白色 1 px 线；悬停白 16 % 底，「关闭」悬停 WinCloseHover 红）。
+       没有圆角、没有焦点框外的装饰；内容是 Path（见 StripView）。 -->
+  <ControlTheme x:Key="PrWinButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource TInvBrush}" />
+    <Setter Property="Width" Value="44" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FocusAdorner" Value="{x:Null}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Body" Background="{TemplateBinding Background}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{StaticResource WinHoverBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="Background" Value="{StaticResource WinPressBrush}" />
+    </Style>
+    <Style Selector="^.close:pointerover">
+      <Setter Property="Background" Value="{StaticResource WinCloseHoverBrush}" />
+    </Style>
+    <Style Selector="^.close:pressed">
+      <Setter Property="Background" Value="{StaticResource WinCloseHoverBrush}" />
+      <Setter Property="Opacity" Value="0.85" />
+    </Style>
+  </ControlTheme>
 
   <!-- 深蓝条右端的文字按钮（样稿 .tb-link）：左右 7、上下 3、圆角 3，side-ink-2 字，图标 14 + 间距 5；悬停白 14 % 底 + 白字 -->
   <ControlTheme x:Key="PrStripLink" TargetType="Button">

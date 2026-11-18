@@ -34,6 +34,8 @@ internal static class Program
 #if DEBUG
         if (headless)
         {
+            // 截图按样稿画自绘标题栏（右端窗口按钮），不跟着开发机的系统走；PR_CONTROL_CHROME 可覆盖
+            Views.WindowChrome.Kind = Views.WindowChrome.FromEnv() ?? Views.ChromeKind.Custom;
             Avalonia.Headless.AvaloniaHeadlessPlatformExtensions.UseHeadless(
                     BuildAvaloniaApp().UseSkia(),
                     new Avalonia.Headless.AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false })

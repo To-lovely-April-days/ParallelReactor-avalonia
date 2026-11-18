@@ -292,6 +292,12 @@
     },
     {
       "group": "品牌蓝",
+      "name": "win-close-hover",
+      "hex": "#e81123",
+      "src": ".tb-win i.x:hover 自绘窗口按钮「关闭」悬停（Windows 标准红）"
+    },
+    {
+      "group": "品牌蓝",
       "name": "brand-orange",
       "hex": "#ec681e",
       "src": ".tb-app 应用图标圆点（ALZK 橙，只此一处）"

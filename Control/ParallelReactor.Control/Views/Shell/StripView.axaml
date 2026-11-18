@@ -5,11 +5,30 @@
              xmlns:sh="using:ParallelReactor.Control.Shell"
              x:Class="ParallelReactor.Control.Views.Shell.StripView"
              x:DataType="sh:ShellVm">
-  <!-- 深蓝条（融合版 F2；样稿 .titlebar，用户决定：系统标题栏之下的窗口内深蓝条，不自绘窗口按钮）：高 30、side-1 → side-2 竖向渐变、左 8、间距 10、13 px 白字。
+  <!-- 深蓝条（融合版 F2；样稿 .titlebar）：高 30、side-1 → side-2 竖向渐变、左 8、间距 10、13 px 白字。
        左：应用标志（18 圆、品牌橙、白色粗体 A）· 工位名小块（白 16 % 底、左右 8 上下 2、圆角 3）· 产品名（side-ink、字距 0.2，窄屏不写）；
-       右：关于 / 设置 / 帮助 / 工具（PrStripLink：图标 14 + 字，side-ink-2，悬停白 14 % 底）。右边留 8（样稿右边是窗口按钮，这里没有）。 -->
-  <Border Background="{StaticResource SideGradientBrush}" Padding="8,0,8,0" TextElement.FontSize="{StaticResource FsBase}">
+       右：关于 / 设置 / 帮助 / 工具（PrStripLink：图标 14 + 字，side-ink-2，悬停白 14 % 底）。
+       F9（用户：「标题栏还是改一下 用我们自定义的」）：深蓝条就是窗口标题栏（见 Views/WindowChrome）——
+       自绘（Windows）：右端最小化 / 最大化（最大化后是「还原」）/ 关闭（样稿 .tb-win，PrWinButton；离「工具」18 = 条的间距 10 + margin-left 8，右边不留白）；
+       macOS：左边让出红黄绿三个系统按钮的宽度；系统标题栏（Linux）：和以前一样，右边留 8。
+       空白处按住拖动窗口、双击最大化 / 还原（代码里）。 -->
+  <Border Name="Bar" Background="{StaticResource SideGradientBrush}" Padding="8,0,8,0" TextElement.FontSize="{StaticResource FsBase}">
     <DockPanel>
+      <StackPanel Name="WinButtons" DockPanel.Dock="Right" Orientation="Horizontal" Margin="18,0,0,0" IsVisible="False">
+        <Button Name="MinButton" Theme="{StaticResource PrWinButton}" ToolTip.Tip="最小化" AutomationProperties.Name="最小化">
+          <Path Data="M0,5.5 L10,5.5" Stroke="{StaticResource TInvBrush}" StrokeThickness="1" Width="10" Height="10" />
+        </Button>
+        <Button Name="MaxButton" Theme="{StaticResource PrWinButton}" ToolTip.Tip="最大化" AutomationProperties.Name="最大化">
+          <Panel Width="10" Height="10">
+            <Path Name="MaxGlyph" Data="M0.5,0.5 L9.5,0.5 L9.5,9.5 L0.5,9.5 Z" Stroke="{StaticResource TInvBrush}" StrokeThickness="1" />
+            <Path Name="RestoreGlyph" Data="M2.5,2.5 L2.5,0.5 L9.5,0.5 L9.5,7.5 L7.5,7.5 M0.5,2.5 L7.5,2.5 L7.5,9.5 L0.5,9.5 Z"
+                  Stroke="{StaticResource TInvBrush}" StrokeThickness="1" IsVisible="False" />
+          </Panel>
+        </Button>
+        <Button Name="CloseButton" Theme="{StaticResource PrWinButton}" Classes="close" ToolTip.Tip="关闭" AutomationProperties.Name="关闭">
+          <Path Data="M0,0 L10,10 M10,0 L0,10" Stroke="{StaticResource TInvBrush}" StrokeThickness="1" Width="10" Height="10" />
+        </Button>
+      </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
         <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-info" Content="关于" Command="{Binding AboutCommand}" />
         <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-gear" Content="设置" Command="{Binding SettingsCommand}" />
@@ -17,6 +36,7 @@
         <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-wrench" Content="工具" Command="{Binding ToolsCommand}" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Border Name="MacInset" Width="0" IsVisible="False" />
         <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource BrandOrangeBrush}" ToolTip.Tip="ALZK">
           <TextBlock Text="A" FontSize="{StaticResource FsBase}" FontWeight="Bold" Foreground="{StaticResource TInvBrush}"
                      HorizontalAlignment="Center" VerticalAlignment="Center" />

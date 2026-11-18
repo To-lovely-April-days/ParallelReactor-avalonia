@@ -77,6 +77,7 @@ public static class Palette
     public static readonly Color SideLineColor = Rgb(0x172f62);   // --side-line
     public static readonly Color SideInkColor = Rgb(0xeef2fa);   // --side-ink
     public static readonly Color SideInk2Color = Rgb(0xe3e9f6);   // --side-ink-2
+    public static readonly Color WinCloseHoverColor = Rgb(0xe81123);   // --win-close-hover
     public static readonly Color BrandOrangeColor = Rgb(0xec681e);   // --brand-orange
     // 运行（绿）
     public static readonly Color G1Color = Rgb(0xf2faf3);   // --g-1
@@ -214,6 +215,7 @@ public static class Palette
     public static readonly IImmutableSolidColorBrush SideLineBrush = new ImmutableSolidColorBrush(SideLineColor);
     public static readonly IImmutableSolidColorBrush SideInkBrush = new ImmutableSolidColorBrush(SideInkColor);
     public static readonly IImmutableSolidColorBrush SideInk2Brush = new ImmutableSolidColorBrush(SideInk2Color);
+    public static readonly IImmutableSolidColorBrush WinCloseHoverBrush = new ImmutableSolidColorBrush(WinCloseHoverColor);
     public static readonly IImmutableSolidColorBrush BrandOrangeBrush = new ImmutableSolidColorBrush(BrandOrangeColor);
     public static readonly IImmutableSolidColorBrush G1Brush = new ImmutableSolidColorBrush(G1Color);
     public static readonly IImmutableSolidColorBrush G2Brush = new ImmutableSolidColorBrush(G2Color);
@@ -402,7 +404,7 @@ public static class Palette
     public static readonly BoxShadows ShadowDotErr = BoxShadows.Parse("0 0 0 3 #29c62828");   // --shadow-dot-err
     public static readonly BoxShadows FocusRingShadow = BoxShadows.Parse("0 0 0 3 #1f204797");
 
-    /// <summary>126 个颜色令牌（封闭色板，顺序同 fusion-tokens.json），分组同组件陈列页的色板。</summary>
+    /// <summary>127 个颜色令牌（封闭色板，顺序同 fusion-tokens.json），分组同组件陈列页的色板。</summary>
     public static readonly IReadOnlyList<Token> Tokens = new Token[]
     {
         new("--bg-app", "BgApp", "底色", BgAppColor),
@@ -453,6 +455,7 @@ public static class Palette
         new("--side-line", "SideLine", "品牌蓝", SideLineColor),
         new("--side-ink", "SideInk", "品牌蓝", SideInkColor),
         new("--side-ink-2", "SideInk2", "品牌蓝", SideInk2Color),
+        new("--win-close-hover", "WinCloseHover", "品牌蓝", WinCloseHoverColor),
         new("--brand-orange", "BrandOrange", "品牌蓝", BrandOrangeColor),
         new("--g-1", "G1", "运行（绿）", G1Color),
         new("--g-2", "G2", "运行（绿）", G2Color),
