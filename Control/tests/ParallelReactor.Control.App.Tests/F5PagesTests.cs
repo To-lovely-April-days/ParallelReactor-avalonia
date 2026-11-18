@@ -362,6 +362,7 @@ public class F5PagesTests
         s.Dispose();
     }
 
+#if DEBUG   // 截图计划（Shot/*）只在 Debug 里编译
     [Fact]
     public void ShotPlan_IncludesStageF5()
     {
@@ -369,4 +370,5 @@ public class F5PagesTests
             Assert.NotNull(Shot.ShotPlan.Find(n));
         Assert.NotNull(Shot.ShotPlan.Find("page-alarm"));
     }
+#endif
 }

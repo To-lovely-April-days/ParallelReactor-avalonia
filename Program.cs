@@ -12,9 +12,8 @@ internal static class Program
         bool drm = (Environment.GetEnvironmentVariable("PR_DRM") ?? "") is "1" or "true";
         // 无头（PR_HEADLESS=1）：不接显示器 / 无 WindowServer 的开发机上跑完整的 VM、控制循环与对外接口（配合 PR_SIM=1 做接口验收）。
         // 只在 Debug 构建里存在（Avalonia.Headless 包按 Configuration 条件引用）：Release 发布包不带无头平台，现场设了也无效
-        bool headless = false;
 #if DEBUG
-        headless = (Environment.GetEnvironmentVariable("PR_HEADLESS") ?? "") is "1" or "true";
+        bool headless = (Environment.GetEnvironmentVariable("PR_HEADLESS") ?? "") is "1" or "true";
 #endif
         double scale = double.TryParse(Environment.GetEnvironmentVariable("PR_UI_SCALE"), out var s) ? s : 1.5;
 

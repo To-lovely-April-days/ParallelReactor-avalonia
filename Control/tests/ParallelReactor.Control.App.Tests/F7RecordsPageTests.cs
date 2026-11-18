@@ -248,12 +248,14 @@ public class F7RecordsPageTests
         finally { try { Directory.Delete(root, true); } catch { } }
     }
 
+#if DEBUG   // 截图计划（Shot/*）只在 Debug 里编译
     [Fact]
     public void ShotPlan_HasF7Entries()
     {
         foreach (var n in new[] { "page-rec", "rec-all", "rec-hist", "rec-ch", "rec-ovt", "rec-ovp", "rec-files", "rec-hold", "rec-tight", "rec-int", "rec-warn" })
             Assert.NotNull(Shot.ShotPlan.Find(n));
     }
+#endif
     [Fact]
     public void Store_FromDto_MapsManifest_StateCreatorLeakInterrupted()
     {

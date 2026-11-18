@@ -42,12 +42,13 @@ sudo apt-get install -y fonts-noto-cjk
 ## 打包发布（Linux）
 
 > 需在已安装 **.NET 8 SDK** 的机器上执行（Windows/Mac/Linux 均可交叉编译出 Linux 包）。
+> **命令里一定要写项目文件 `ParallelReactor.csproj`**：仓库根目录有解决方案 `ParallelReactor.sln`，不写项目时 `dotnet publish` 会把整个解决方案（类库、PC 软件、测试）都发布进同一个目录，并报 NETSDK1099「发布到单一文件仅适用于可执行应用程序」。
 > 按目标设备 CPU 选 RID：x86 工控机/PC 用 `linux-x64`，ARM 工控屏/树莓派用 `linux-arm64`。
 
 ### 自包含单文件（推荐，目标机无需装 .NET）
 
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained true \
+dotnet publish ParallelReactor.csproj -c Release -r linux-x64 --self-contained true \
   -p:PublishSingleFile=true \
   -p:IncludeNativeLibrariesForSelfExtract=true \
   -o publish/linux-x64
@@ -61,7 +62,7 @@ ARM 设备把 `-r linux-x64` 换成 `-r linux-arm64` 即可。
 ### 框架依赖（目标机已装 .NET 8 运行时，包更小）
 
 ```bash
-dotnet publish -c Release -r linux-x64 --self-contained false -o publish/linux-x64-fd
+dotnet publish ParallelReactor.csproj -c Release -r linux-x64 --self-contained false -o publish/linux-x64-fd
 ```
 
 ### 拷到 Linux 运行
