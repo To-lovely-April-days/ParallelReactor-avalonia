@@ -61,6 +61,16 @@ public sealed partial class ResPaneVm : ObservableObject
 
     [ObservableProperty] private string _gasState = "";
     [ObservableProperty] private bool _gasBusy;
+    [ObservableProperty] private bool _hasGasState = true;
+    /// <summary>v0.8.1：被测试 / 标定挡住排队的程序「排队 RV5」。</summary>
+    [ObservableProperty] private string _gasQueue = "";
+    [ObservableProperty] private bool _hasGasQueue;
+    /// <summary>v0.8.1：触屏手动阀控中（琥珀标签）。</summary>
+    [ObservableProperty] private bool _manualValve;
+    /// <summary>v0.8.1：搅拌电机故障（搅拌一行下面的红条「电机故障 0x80 · … · 在触屏清除 · 全部釜已停止搅拌」）。</summary>
+    [ObservableProperty] private bool _stirFault;
+    [ObservableProperty] private string _stirFaultTitle = "";
+    [ObservableProperty] private string _stirFaultRest = "";
     [ObservableProperty] private bool _hasStir;
     [ObservableProperty] private bool _stirOn;
     [ObservableProperty] private string _rpmText = "";
@@ -90,6 +100,21 @@ public sealed partial class ResPaneVm : ObservableObject
     }
 
     /// <summary>
+    /// v0.8.1 气路一行（ACT-SPEC §3.2 / §3.3 第 3 条）：泄漏测试 / 标定占用 →（「泄漏测试占用 · RV1–4」, 品牌蓝 600, 「排队 RV5」）；
+    /// 手动阀控、没有别的占用 →（空串：只画琥珀标签）；否则同原来的 <see cref="GasStateText"/>（程序的 gasHolder）。
+    /// </summary>
+    public static (string State, bool Busy, string Queue) GasStateOf(Core.Activity.DeviceActivity? act, Core.Activity.DeviceMarks m, int? holder, System.Collections.Generic.IReadOnlyList<int>? queue, string? holderWord)
+    {
+        var q = queue is { Count: > 0 } ? "排队 " + string.Join("、", queue.Select(n => "RV" + n.ToString(CultureInfo.InvariantCulture))) : "";
+        if (m.GasOwner == "leak" || act is { Live: true, Kind: Core.Activity.ActKind.Leak })
+            return ("泄漏测试占用" + (act is { Kind: Core.Activity.ActKind.Leak } a && a.Chs.Count > 0 ? " · " + Core.Activity.ActivityText.Range(a.Chs) : ""), true, q);
+        if (m.GasOwner == "calib" || act is { Live: true, Kind: Core.Activity.ActKind.Calib })
+            return ("容积标定占用" + (act is { Kind: Core.Activity.ActKind.Calib, Channel: int c } ? " · RV" + c.ToString(CultureInfo.InvariantCulture) : ""), true, q);
+        if (m.ManualValve && holder is null) return ("", false, "");
+        return (GasStateText(holder, queue, holderWord), holder != null, "");
+    }
+
+    /// <summary>
     /// 阀门小块的文字：只写气路名（惰性气 / 气体 A / 气体 B），不写气体种类——接什么气由工艺决定，
     /// HMI 也不报告实际接的气（2026-11-18 用户确认）。不再猜「未接」。
     /// </summary>
@@ -112,10 +137,19 @@ public sealed partial class ResPaneVm : ObservableObject
         var plant = src.Plant;
         var m = d.Model;
 
-        // 气路
-        string? hw = plant.GasHolder is int hn && d.Reactor(hn) is { } hr ? RunRowText.Word(hr.Own, hr.Cause, hr.OwnWord) : null;
-        GasState = GasStateText(plant.GasHolder, plant.GasQueue, hw);
-        GasBusy = plant.GasHolder != null;
+        // 气路：先看 gas.owner（v0.8.1：泄漏测试 / 标定占用时不再写「空闲」，排队的另写「排队 RV5」），再看程序的 gasHolder；触屏手动阀控时琥珀标签
+        var marks = d.Marks;
+        var (gs, busy, gq) = GasStateOf(d.Act, marks, plant.GasHolder, plant.GasQueue,
+            plant.GasHolder is int hn && d.Reactor(hn) is { } hr ? RunRowText.Word(hr.Own, hr.Cause, hr.OwnWord) : null);
+        GasState = gs;
+        GasBusy = busy;
+        GasQueue = gq;
+        HasGasQueue = gq.Length > 0;
+        HasGasState = gs.Length > 0;
+        ManualValve = marks.ManualValve;
+        StirFault = marks.HasStirFault;
+        StirFaultTitle = "电机故障" + (marks.StirCodeText is { } sc ? " " + sc : "");
+        StirFaultRest = (marks.StirFault is { Length: > 0 } fn ? " · " + fn : "") + " · 在触屏清除 · 全部釜已停止搅拌";
         int i = 0;
         foreach (var g in m.GasInlets)
         {

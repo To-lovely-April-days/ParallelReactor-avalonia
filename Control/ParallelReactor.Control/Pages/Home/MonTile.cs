@@ -184,6 +184,23 @@ public sealed partial class MonTileVm : ObservableObject
         Flow = r.Valve && srcOn && live;
         Bubbles = Flow;
         SvTip = MonText.ValveTip("进气阀 SV" + Num, r.Valve, svReason);
+
+        // v0.8.1 活动覆盖（样稿 act.js axTile / axDot）：「泄漏测试」+ 品牌蓝点 +「平衡 · 剩 05:20」；吸气量写「—」；排队等气路只换状态字
+        if (r.Act is { } act)
+        {
+            Word = act.Word;
+            if (act.Kind == Fleet.ChannelActKind.Queue) { Dot = RunDot.Idle; StepLine = MonText.StepLine(step, count, "排队"); }
+            else
+            {
+                Dot = act.Amber ? RunDot.Amb : RunDot.Brand;
+                StepLine = act.Line;
+                var aseg = RunRowVm.ActSegs(act.Segs);
+                if (aseg.Count > 0 && (Segs.Count != aseg.Count || !Segs.SequenceEqual(aseg))) Segs = aseg;
+                GasText = Fmt.Dash;
+            }
+            Tip = Rv + " · " + act.Word + (act.Line.Length > 0 ? " · " + act.Line : "");
+            CardTip = Rv + " · " + act.Word + " · 点击打开控制";
+        }
     }
 }
 

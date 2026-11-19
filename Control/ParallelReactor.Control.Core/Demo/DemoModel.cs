@@ -160,6 +160,8 @@ public sealed class DemoChannel
     /// <summary>升压速率 MPa/s（演示物理用）。</summary>
     public double PRate { get; internal set; }
     public ProgramRecord? Program { get; internal set; }
+    /// <summary>程序要用气路、被泄漏测试 / 标定挡住在排队（演示 act=leak-run；真机是帧里的 programs.waitingGas）。</summary>
+    public bool Queued { get; internal set; }
     public bool Alarm { get; internal set; }
     /// <summary>吸气速率 mmol/min（融合版样稿 rate：最近 1 min 平均；不在计量为 null）。旧样稿的数据恒为 null。</summary>
     public double? Rate { get; internal set; }

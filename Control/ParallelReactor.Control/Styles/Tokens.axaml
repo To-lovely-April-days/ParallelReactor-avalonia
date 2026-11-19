@@ -276,11 +276,48 @@
   <SolidColorBrush x:Key="PipeHdrBrush" Color="{StaticResource PipeHdrColor}" />
   <Color x:Key="SymColor">#8d98a8</Color>
   <SolidColorBrush x:Key="SymBrush" Color="{StaticResource SymColor}" />
+  <!-- 设备活动（ACT） -->
+  <Color x:Key="AxBrandLColor">#e9eef7</Color>
+  <SolidColorBrush x:Key="AxBrandLBrush" Color="{StaticResource AxBrandLColor}" />
+  <Color x:Key="AxTrackColor">#e4e8ee</Color>
+  <SolidColorBrush x:Key="AxTrackBrush" Color="{StaticResource AxTrackColor}" />
+  <Color x:Key="AxTintColor">#f3f5f8</Color>
+  <SolidColorBrush x:Key="AxTintBrush" Color="{StaticResource AxTintColor}" />
+  <Color x:Key="AxCurColor">#d5dff0</Color>
+  <SolidColorBrush x:Key="AxCurBrush" Color="{StaticResource AxCurColor}" />
+  <Color x:Key="AxCurAmbColor">#fbe7b8</Color>
+  <SolidColorBrush x:Key="AxCurAmbBrush" Color="{StaticResource AxCurAmbColor}" />
+  <Color x:Key="AxAmbColor">#d69a00</Color>
+  <SolidColorBrush x:Key="AxAmbBrush" Color="{StaticResource AxAmbColor}" />
+  <Color x:Key="AxAmbIconColor">#9a6700</Color>
+  <SolidColorBrush x:Key="AxAmbIconBrush" Color="{StaticResource AxAmbIconColor}" />
+  <Color x:Key="AxAmbTextColor">#7a5200</Color>
+  <SolidColorBrush x:Key="AxAmbTextBrush" Color="{StaticResource AxAmbTextColor}" />
+  <Color x:Key="AxAmbHeadColor">#5c4100</Color>
+  <SolidColorBrush x:Key="AxAmbHeadBrush" Color="{StaticResource AxAmbHeadColor}" />
+  <Color x:Key="AxAmbWashColor">#fff6e2</Color>
+  <SolidColorBrush x:Key="AxAmbWashBrush" Color="{StaticResource AxAmbWashColor}" />
+  <Color x:Key="AxAmbIconBgColor">#fdf1d6</Color>
+  <SolidColorBrush x:Key="AxAmbIconBgBrush" Color="{StaticResource AxAmbIconBgColor}" />
+  <Color x:Key="AxOkColor">#1f6b24</Color>
+  <SolidColorBrush x:Key="AxOkBrush" Color="{StaticResource AxOkColor}" />
+  <Color x:Key="AxOkBgColor">#eef6ef</Color>
+  <SolidColorBrush x:Key="AxOkBgBrush" Color="{StaticResource AxOkBgColor}" />
+  <Color x:Key="AxNoColor">#b42c2c</Color>
+  <SolidColorBrush x:Key="AxNoBrush" Color="{StaticResource AxNoColor}" />
+  <Color x:Key="AxNoBgColor">#fcf0f0</Color>
+  <SolidColorBrush x:Key="AxNoBgBrush" Color="{StaticResource AxNoBgColor}" />
+  <Color x:Key="AxOffColor">#a3a8b0</Color>
+  <SolidColorBrush x:Key="AxOffBrush" Color="{StaticResource AxOffColor}" />
   <!-- 杂项（rgba → #aarrggbb） -->
   <Color x:Key="ToastColor">#ff2b2b2b</Color>
   <SolidColorBrush x:Key="ToastBrush" Color="{StaticResource ToastColor}" />
   <Color x:Key="OverlayColor">#52111827</Color>
   <SolidColorBrush x:Key="OverlayBrush" Color="{StaticResource OverlayColor}" />
+  <Color x:Key="AxBtnLineColor">#29101828</Color>
+  <SolidColorBrush x:Key="AxBtnLineBrush" Color="{StaticResource AxBtnLineColor}" />
+  <Color x:Key="AxSegColor">#0d101828</Color>
+  <SolidColorBrush x:Key="AxSegBrush" Color="{StaticResource AxSegColor}" />
   <!-- 焦点：边框 = a；焦点环 = a × 0.12（.inp:focus） -->
   <SolidColorBrush x:Key="FocusBrush" Color="{StaticResource AColor}" />
   <SolidColorBrush x:Key="FocusRingBrush" Color="{StaticResource AColor}" Opacity="0.12" />
@@ -351,6 +388,10 @@
   <BoxShadows x:Key="ShadowKnob">0 1 2 0 #33000000</BoxShadows>
   <BoxShadows x:Key="ShadowDotRun">0 0 0 3 #242e8b3e</BoxShadows>
   <BoxShadows x:Key="ShadowDotErr">0 0 0 3 #29c62828</BoxShadows>
+  <BoxShadows x:Key="ShadowAxElev">0 16 40 0 #29101828, 0 3 8 0 #14101828, 0 0 0 1 #12101828</BoxShadows>
+  <BoxShadows x:Key="ShadowAxElevS">0 6 18 0 #24101828, 0 0 0 1 #12101828</BoxShadows>
+  <BoxShadows x:Key="ShadowAxSegCur">0 1 3 0 #1f101828</BoxShadows>
+  <BoxShadows x:Key="ShadowDotBrand">0 0 0 3 #24204797</BoxShadows>
   <BoxShadows x:Key="FocusRingShadow">0 0 0 3 #1f204797</BoxShadows>
   <!-- END GENERATED COLORS -->
 

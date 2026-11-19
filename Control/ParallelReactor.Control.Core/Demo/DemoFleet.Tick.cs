@@ -75,6 +75,7 @@ public sealed partial class DemoFleet
         }
         if (c.State != ConnStatus.Online) return;
         dev.DataAt = now;
+        TickActivity(dev);   // 设备活动（泄漏测试的倒计时，DemoFleet.Act.cs）
         if (Stress != 0) StressPin(dev);   // 压力测试数据：不跑物理模型，数值钉回最坏值
         else
         {

@@ -97,6 +97,9 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
     /// <summary>演示才有的数据（液位、每釜转速、冷却、mmol）。</summary>
     [ObservableProperty] private ChannelExtras? _extras;
 
+    /// <summary>v0.8.1：这一路被泄漏测试 / 标定 / 自整定占着、或在排队等被占的气路（运行表 / 卡片 / 棒图换状态字）；没有为 null。</summary>
+    [ObservableProperty] private ChannelAct? _act;
+
     partial void OnKeyChanged(StateKey value) => IsAlarm = value == StateKey.Alarm;
 
     /// <summary>

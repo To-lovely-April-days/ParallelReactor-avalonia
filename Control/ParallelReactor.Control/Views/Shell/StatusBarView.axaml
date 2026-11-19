@@ -27,6 +27,30 @@
       <Setter Property="Background" Value="{StaticResource LineSepBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <Style Selector="Button.axst">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Height="22" CornerRadius="4" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}">
+            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="Background" Value="{StaticResource AxBrandLBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.axst.amb">
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AxAmbTextBrush}" />
+    </Style>
+    <Style Selector=":is(Control).narrow Button.axst">
+      <Setter Property="Padding" Value="6,0" />
+    </Style>
+    <Style Selector=":is(Control).narrow Button.axst c|IconView.axi">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
   </UserControl.Styles>
   <Border Background="{StaticResource BgBarBrush}" BorderBrush="{StaticResource LineGreyBrush}" BorderThickness="0,1,0,0" Padding="12,0"
           TextElement.FontSize="{StaticResource FsBase}" TextElement.Foreground="{StaticResource T2Brush}">
@@ -84,6 +108,25 @@
         <Border Classes="sep" IsVisible="{Binding Status.SelText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
         <pr:PrText Text="{Binding Status.SelText}" VerticalAlignment="Center"
                    IsVisible="{Binding Status.SelText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+        <!-- v0.8.1 收起了的设备活动（样稿 .status .axst，v2 去掉框线）：22 高、圆角 4、左右 8（窄屏 6、不画图标）、a 浅底品牌蓝字；等人操作琥珀 -->
+        <ItemsControl ItemsSource="{Binding Status.Acts}" VerticalAlignment="Center" IsVisible="{Binding Status.HasActs}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="10" /></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="sh:ActStatusVm">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <Border Classes="sep" />
+                <Button Classes="axst" Classes.amb="{Binding Amb}" Command="{Binding Command}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Text}">
+                  <StackPanel Orientation="Horizontal" Spacing="5">
+                    <c:IconView Classes="axi" Icon="{Binding Icon}" Size="14" VerticalAlignment="Center" />
+                    <TextBlock Classes="num" Text="{Binding Text}" VerticalAlignment="Center" />
+                  </StackPanel>
+                </Button>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
     </DockPanel>
   </Border>

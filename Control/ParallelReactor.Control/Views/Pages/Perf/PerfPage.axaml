@@ -450,6 +450,9 @@
               <Border Classes="lockbar amb" Margin="14,10,14,10" IsVisible="{Binding LeakWarn, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <DockPanel><c:IconView Icon="f-warn-f" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakWarn}" /></DockPanel>
               </Border>
+              <Border Classes="lockbar" Margin="14,10,14,10" IsVisible="{Binding LeakPass, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <DockPanel><c:IconView Icon="f-ok-f" DockPanel.Dock="Left" Foreground="{StaticResource AxOkBrush}" /><TextBlock Classes="lbt" Text="{Binding LeakPass}" /></DockPanel>
+              </Border>
             </StackPanel>
           </ScrollViewer>
         </Panel>

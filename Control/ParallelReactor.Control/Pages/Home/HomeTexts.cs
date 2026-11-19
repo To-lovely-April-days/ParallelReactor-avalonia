@@ -39,6 +39,9 @@ public static class HomeConverters
 {
     public static readonly IValueConverter IsRunDot = new FuncValueConverter<RunDot, bool>(d => d == RunDot.Run);
     public static readonly IValueConverter IsErrDot = new FuncValueConverter<RunDot, bool>(d => d == RunDot.Err);
+    /// <summary>v0.8.1：泄漏测试 / 自整定 / 标定的品牌蓝点（样稿 .sts.s-ax-b），等人操作的琥珀点（.s-ax-a）。</summary>
+    public static readonly IValueConverter IsBrandDot = new FuncValueConverter<RunDot, bool>(d => d == RunDot.Brand);
+    public static readonly IValueConverter IsAmbDot = new FuncValueConverter<RunDot, bool>(d => d == RunDot.Amb);
     public static readonly IValueConverter IsLeftValue = new FuncValueConverter<LeftKind, bool>(k => k == LeftKind.Value);
     public static readonly IValueConverter IsLeftPaused = new FuncValueConverter<LeftKind, bool>(k => k == LeftKind.Paused);
     public static readonly IValueConverter IsLeftNone = new FuncValueConverter<LeftKind, bool>(k => k is LeftKind.None or LeftKind.Ended);

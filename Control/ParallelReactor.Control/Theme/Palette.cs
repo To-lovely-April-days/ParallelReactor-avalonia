@@ -163,9 +163,28 @@ public static class Palette
     public static readonly Color PipeColor = Rgb(0xc3cbd6);   // --pipe
     public static readonly Color PipeHdrColor = Rgb(0x9aa5b4);   // --pipe-hdr
     public static readonly Color SymColor = Rgb(0x8d98a8);   // --sym
+    // 设备活动（ACT）
+    public static readonly Color AxBrandLColor = Rgb(0xe9eef7);   // --ax-brand-l
+    public static readonly Color AxTrackColor = Rgb(0xe4e8ee);   // --ax-track
+    public static readonly Color AxTintColor = Rgb(0xf3f5f8);   // --ax-tint
+    public static readonly Color AxCurColor = Rgb(0xd5dff0);   // --ax-cur
+    public static readonly Color AxCurAmbColor = Rgb(0xfbe7b8);   // --ax-cur-amb
+    public static readonly Color AxAmbColor = Rgb(0xd69a00);   // --ax-amb
+    public static readonly Color AxAmbIconColor = Rgb(0x9a6700);   // --ax-amb-icon
+    public static readonly Color AxAmbTextColor = Rgb(0x7a5200);   // --ax-amb-text
+    public static readonly Color AxAmbHeadColor = Rgb(0x5c4100);   // --ax-amb-head
+    public static readonly Color AxAmbWashColor = Rgb(0xfff6e2);   // --ax-amb-wash
+    public static readonly Color AxAmbIconBgColor = Rgb(0xfdf1d6);   // --ax-amb-icon-bg
+    public static readonly Color AxOkColor = Rgb(0x1f6b24);   // --ax-ok
+    public static readonly Color AxOkBgColor = Rgb(0xeef6ef);   // --ax-ok-bg
+    public static readonly Color AxNoColor = Rgb(0xb42c2c);   // --ax-no
+    public static readonly Color AxNoBgColor = Rgb(0xfcf0f0);   // --ax-no-bg
+    public static readonly Color AxOffColor = Rgb(0xa3a8b0);   // --ax-off
     // 杂项（rgba → #aarrggbb）
     public static readonly Color ToastColor = Argb(0xff2b2b2b);   // --toast
     public static readonly Color OverlayColor = Argb(0x52111827);   // --overlay
+    public static readonly Color AxBtnLineColor = Argb(0x29101828);   // --ax-btn-line
+    public static readonly Color AxSegColor = Argb(0x0d101828);   // --ax-seg
 
     public static readonly IImmutableSolidColorBrush BgAppBrush = new ImmutableSolidColorBrush(BgAppColor);
     public static readonly IImmutableSolidColorBrush BgPanelBrush = new ImmutableSolidColorBrush(BgPanelColor);
@@ -294,8 +313,26 @@ public static class Palette
     public static readonly IImmutableSolidColorBrush PipeBrush = new ImmutableSolidColorBrush(PipeColor);
     public static readonly IImmutableSolidColorBrush PipeHdrBrush = new ImmutableSolidColorBrush(PipeHdrColor);
     public static readonly IImmutableSolidColorBrush SymBrush = new ImmutableSolidColorBrush(SymColor);
+    public static readonly IImmutableSolidColorBrush AxBrandLBrush = new ImmutableSolidColorBrush(AxBrandLColor);
+    public static readonly IImmutableSolidColorBrush AxTrackBrush = new ImmutableSolidColorBrush(AxTrackColor);
+    public static readonly IImmutableSolidColorBrush AxTintBrush = new ImmutableSolidColorBrush(AxTintColor);
+    public static readonly IImmutableSolidColorBrush AxCurBrush = new ImmutableSolidColorBrush(AxCurColor);
+    public static readonly IImmutableSolidColorBrush AxCurAmbBrush = new ImmutableSolidColorBrush(AxCurAmbColor);
+    public static readonly IImmutableSolidColorBrush AxAmbBrush = new ImmutableSolidColorBrush(AxAmbColor);
+    public static readonly IImmutableSolidColorBrush AxAmbIconBrush = new ImmutableSolidColorBrush(AxAmbIconColor);
+    public static readonly IImmutableSolidColorBrush AxAmbTextBrush = new ImmutableSolidColorBrush(AxAmbTextColor);
+    public static readonly IImmutableSolidColorBrush AxAmbHeadBrush = new ImmutableSolidColorBrush(AxAmbHeadColor);
+    public static readonly IImmutableSolidColorBrush AxAmbWashBrush = new ImmutableSolidColorBrush(AxAmbWashColor);
+    public static readonly IImmutableSolidColorBrush AxAmbIconBgBrush = new ImmutableSolidColorBrush(AxAmbIconBgColor);
+    public static readonly IImmutableSolidColorBrush AxOkBrush = new ImmutableSolidColorBrush(AxOkColor);
+    public static readonly IImmutableSolidColorBrush AxOkBgBrush = new ImmutableSolidColorBrush(AxOkBgColor);
+    public static readonly IImmutableSolidColorBrush AxNoBrush = new ImmutableSolidColorBrush(AxNoColor);
+    public static readonly IImmutableSolidColorBrush AxNoBgBrush = new ImmutableSolidColorBrush(AxNoBgColor);
+    public static readonly IImmutableSolidColorBrush AxOffBrush = new ImmutableSolidColorBrush(AxOffColor);
     public static readonly IImmutableSolidColorBrush ToastBrush = new ImmutableSolidColorBrush(ToastColor);
     public static readonly IImmutableSolidColorBrush OverlayBrush = new ImmutableSolidColorBrush(OverlayColor);
+    public static readonly IImmutableSolidColorBrush AxBtnLineBrush = new ImmutableSolidColorBrush(AxBtnLineColor);
+    public static readonly IImmutableSolidColorBrush AxSegBrush = new ImmutableSolidColorBrush(AxSegColor);
     /// <summary>焦点：边框 = --a；焦点环 = --a × 0.12。</summary>
     public static readonly IImmutableSolidColorBrush FocusBrush = ABrush;
     public static readonly IImmutableSolidColorBrush FocusRingBrush = new ImmutableSolidColorBrush(AColor, 0.12);
@@ -402,9 +439,13 @@ public static class Palette
     public static readonly BoxShadows ShadowKnob = BoxShadows.Parse("0 1 2 0 #33000000");   // --shadow-knob
     public static readonly BoxShadows ShadowDotRun = BoxShadows.Parse("0 0 0 3 #242e8b3e");   // --shadow-dot-run
     public static readonly BoxShadows ShadowDotErr = BoxShadows.Parse("0 0 0 3 #29c62828");   // --shadow-dot-err
+    public static readonly BoxShadows ShadowAxElev = BoxShadows.Parse("0 16 40 0 #29101828, 0 3 8 0 #14101828, 0 0 0 1 #12101828");   // --ax-elev
+    public static readonly BoxShadows ShadowAxElevS = BoxShadows.Parse("0 6 18 0 #24101828, 0 0 0 1 #12101828");   // --ax-elev-s
+    public static readonly BoxShadows ShadowAxSegCur = BoxShadows.Parse("0 1 3 0 #1f101828");   // --ax-seg-cur
+    public static readonly BoxShadows ShadowDotBrand = BoxShadows.Parse("0 0 0 3 #24204797");   // --shadow-dot-brand
     public static readonly BoxShadows FocusRingShadow = BoxShadows.Parse("0 0 0 3 #1f204797");
 
-    /// <summary>127 个颜色令牌（封闭色板，顺序同 fusion-tokens.json），分组同组件陈列页的色板。</summary>
+    /// <summary>143 个颜色令牌（封闭色板，顺序同 fusion-tokens.json），分组同组件陈列页的色板。</summary>
     public static readonly IReadOnlyList<Token> Tokens = new Token[]
     {
         new("--bg-app", "BgApp", "底色", BgAppColor),
@@ -534,6 +575,22 @@ public static class Palette
         new("--pipe", "Pipe", "釜体 · 气路", PipeColor),
         new("--pipe-hdr", "PipeHdr", "釜体 · 气路", PipeHdrColor),
         new("--sym", "Sym", "釜体 · 气路", SymColor),
+        new("--ax-brand-l", "AxBrandL", "设备活动（ACT）", AxBrandLColor),
+        new("--ax-track", "AxTrack", "设备活动（ACT）", AxTrackColor),
+        new("--ax-tint", "AxTint", "设备活动（ACT）", AxTintColor),
+        new("--ax-cur", "AxCur", "设备活动（ACT）", AxCurColor),
+        new("--ax-cur-amb", "AxCurAmb", "设备活动（ACT）", AxCurAmbColor),
+        new("--ax-amb", "AxAmb", "设备活动（ACT）", AxAmbColor),
+        new("--ax-amb-icon", "AxAmbIcon", "设备活动（ACT）", AxAmbIconColor),
+        new("--ax-amb-text", "AxAmbText", "设备活动（ACT）", AxAmbTextColor),
+        new("--ax-amb-head", "AxAmbHead", "设备活动（ACT）", AxAmbHeadColor),
+        new("--ax-amb-wash", "AxAmbWash", "设备活动（ACT）", AxAmbWashColor),
+        new("--ax-amb-icon-bg", "AxAmbIconBg", "设备活动（ACT）", AxAmbIconBgColor),
+        new("--ax-ok", "AxOk", "设备活动（ACT）", AxOkColor),
+        new("--ax-ok-bg", "AxOkBg", "设备活动（ACT）", AxOkBgColor),
+        new("--ax-no", "AxNo", "设备活动（ACT）", AxNoColor),
+        new("--ax-no-bg", "AxNoBg", "设备活动（ACT）", AxNoBgColor),
+        new("--ax-off", "AxOff", "设备活动（ACT）", AxOffColor),
     };
 
     /// <summary>杂项：审计时也算合法颜色；ShadowOnly = 只许出现在阴影里。</summary>
@@ -541,11 +598,13 @@ public static class Palette
     {
         new("--toast", "Toast", "杂项", Rgb(0x2b2b2b), ShadowOnly: false),
         new("--overlay", "Overlay", "杂项", Rgb(0x111827), ShadowOnly: false),
-        new("--shadow-card", "ShadowCard", "杂项", Rgb(0x101828), ShadowOnly: true),
+        new("--ax-btn-line", "AxBtnLine", "杂项", Rgb(0x101828), ShadowOnly: false),
+        new("--ax-seg", "AxSeg", "杂项", Rgb(0x101828), ShadowOnly: false),
         new("--shadow-pop", "ShadowPop", "杂项", Rgb(0x000000), ShadowOnly: true),
         new("--shadow-modal", "ShadowModal", "杂项", Rgb(0x142032), ShadowOnly: true),
         new("--shadow-dot-run", "ShadowDotRun", "杂项", Rgb(0x2e8b3e), ShadowOnly: true),
         new("--shadow-dot-err", "ShadowDotErr", "杂项", Rgb(0xc62828), ShadowOnly: true),
+        new("--shadow-dot-brand", "ShadowDotBrand", "杂项", Rgb(0x204797), ShadowOnly: true),
     };
     // END GENERATED COLORS
 

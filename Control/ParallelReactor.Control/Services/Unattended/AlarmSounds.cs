@@ -2,12 +2,14 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading.Tasks;
 using ParallelReactor.Control.Core.Unattended;
 
 namespace ParallelReactor.Control.Services.Unattended;
 
-/// <summary>Windows：winmm PlaySound 放系统的「严重停止」声（异步）；放不出来时控制台蜂鸣（在线程池上，不卡界面）。</summary>
+/// <summary>
+/// Windows：winmm PlaySound 放系统的「感叹号」提示音（SystemExclamation，Win10/11 是一声柔和的叮；异步）；没有时放系统默认提示音。
+/// 不再用「严重停止」声和控制台蜂鸣（用户 2026-11-19：「点了泄漏测试为什么会叫呢 很吓人」）。
+/// </summary>
 public sealed class WindowsAlarmSound : IAlarmSound
 {
     private const uint SndAsync = 0x0001, SndNoDefault = 0x0002, SndAlias = 0x00010000;
@@ -19,22 +21,19 @@ public sealed class WindowsAlarmSound : IAlarmSound
     {
         try
         {
-            if (PlaySound("SystemHand", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault)) return;
+            if (PlaySound("SystemExclamation", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault)) return;
+            PlaySound("SystemDefault", IntPtr.Zero, SndAlias | SndAsync | SndNoDefault);
         }
         catch { }
-        _ = Task.Run(() =>
-        {
-            try { if (OperatingSystem.IsWindows()) { Console.Beep(880, 220); Console.Beep(660, 220); } } catch { }
-        });
     }
 }
 
-/// <summary>macOS：afplay 一个系统声音（/System/Library/Sounds/Sosumi.aiff，没有时 Basso / Glass），不等放完。</summary>
+/// <summary>macOS：afplay 一个柔和的系统声音（Glass，没有时 Ping / Tink），不等放完。</summary>
 public sealed class MacAlarmSound : IAlarmSound
 {
     private static readonly string[] Candidates =
     {
-        "/System/Library/Sounds/Sosumi.aiff", "/System/Library/Sounds/Basso.aiff", "/System/Library/Sounds/Glass.aiff",
+        "/System/Library/Sounds/Glass.aiff", "/System/Library/Sounds/Ping.aiff", "/System/Library/Sounds/Tink.aiff",
     };
 
     public void Play()

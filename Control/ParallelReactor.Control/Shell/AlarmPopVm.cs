@@ -58,14 +58,24 @@ public sealed class PopQueue
         }
     }
 
-    /// <summary>按最新的报警重算队列（<paramref name="all"/> = 设备号 + 当前报警）。</summary>
-    public void Update(IEnumerable<(int K, AlarmEntry A)> all)
+    /// <summary>
+    /// 按最新的报警重算队列（<paramref name="all"/> = 设备号 + 当前报警）。<paramref name="first"/> = 排在最前的额外几条（v0.8.1：急停没有全部确认，
+    /// 见 <see cref="AlarmPopVm.EstopCode"/>）。
+    /// </summary>
+    public void Update(IEnumerable<(int K, AlarmEntry A)> all, IEnumerable<PopItem>? first = null)
     {
-        List = all.Where(x => x.A.IsErr && !x.A.Acked && x.A.Active && !x.A.IsEstop)
-                  .Select(x => new PopItem(x.K, x.A.Id, x.A.Ch, x.A.Code, x.A.Text, x.A.At))
+        List = (first ?? Array.Empty<PopItem>()).Concat(all.Where(x => x.A.IsErr && !x.A.Acked && x.A.Active && !x.A.IsEstop)
+                  .Select(x => new PopItem(x.K, x.A.Id, x.A.Ch, x.A.Code, x.A.Text, x.A.At)))
                   .Where(x => !_snoozed.Contains(x.Key))
                   .ToList();
         _cur = Current?.Key;
+    }
+
+    /// <summary>重新弹出某一条（设备栏的红行「阀门未确认关闭」）：忘掉它的稍后处理，下一次 Update 后显示它。</summary>
+    public void Bring(string key)
+    {
+        _snoozed.Remove(key);
+        _cur = key;
     }
 
     /// <summary>稍后处理当前这一条。</summary>
@@ -100,6 +110,9 @@ public sealed class PopQueue
         List = Array.Empty<PopItem>();
     }
 }
+
+/// <summary>报警弹窗「急停没有全部确认」的一行（v0.8.1：程序 / 加热 / 搅拌 / 阀门；没确认的一行标红）。</summary>
+public sealed record EstopRowVm(string Part, string Done, string State, bool Bad, bool Ok);
 
 /// <summary>报警弹窗里的一块读数（样稿 .avs > div：标题 13 t-3 · 值 24/600 · 单位 13 t-4；bad = 红）。</summary>
 public sealed record PopTile(string Label, string Value, string Unit, bool Bad);
@@ -182,19 +195,54 @@ public sealed partial class AlarmPopVm : ObservableObject
     /// <summary>「已持续 27 min」（至少 1 min）。</summary>
     public static string Lasting(DateTime at, DateTime now) => "已持续 " + Math.Max(1, (int)Math.Round((now - at).TotalMinutes)).ToString(CultureInfo.InvariantCulture) + " min";
 
+    /// <summary>v0.8.1：急停没有全部确认（不是设备报警簿里的一条，按急停分项算出来，排在最前）的代码 / Id。</summary>
+    public const string EstopCode = "ESTOP-PART", EstopId = "estop-part";
+
+    /// <summary>当前这一条是「急停没有全部确认」（显示四行，不显示读数块、趋势）。</summary>
+    [ObservableProperty] private bool _isEstop;
+    [ObservableProperty] private IReadOnlyList<EstopRowVm> _estopRows = Array.Empty<EstopRowVm>();
+    /// <summary>「定位到…」按钮（通道报警 = 定位到 RVn；急停 = 定位到设备）。</summary>
+    [ObservableProperty] private bool _canLocate;
+    /// <summary>不是急停的那几块（读数、自动处理）。</summary>
+    [ObservableProperty] private bool _notEstop = true;
+
+    /// <summary>急停后有部件没确认的设备 → 弹窗的一条。</summary>
+    private IEnumerable<PopItem> EstopItems()
+    {
+        var now = _shell.Fleet.Now;
+        foreach (var d in _shell.Fleet.Devices)
+            if (d.EstopActive && d.Marks.Estop is { } es && es.AnyUnconfirmed(now))
+                yield return new PopItem(d.K, EstopId, null, EstopCode, "急停没有全部确认", es.Since ?? d.Source.Estop.At ?? now);
+    }
+
+    /// <summary>设备栏红行「…未确认 · 到设备旁确认」：把这台的急停弹窗重新弹出来。</summary>
+    public void ShowEstop(int k)
+    {
+        Off = false;
+        _q.Bring(new PopItem(k, EstopId, null, EstopCode, "", default).Key);
+        Refresh();
+    }
+
     /// <summary>重算（数据变了 / 对话框开关了）。</summary>
     public void Refresh()
     {
         var all = _shell.Fleet.Devices.SelectMany(d => d.AlarmList.Select(a => (d.K, a)));
-        _q.Update(all);
+        var es = EstopItems().ToList();
+        // 新出现的「急停没有全部确认」直接翻到它（排在最前，比正在看的那条报警要紧）
+        foreach (var e in es) if (_estopSeen.Add(e.Key)) _q.Bring(e.Key);
+        _estopSeen.RemoveWhere(k => es.All(e => e.Key != k));
+        _q.Update(all, es);
         Show();
     }
+
+    private readonly HashSet<string> _estopSeen = new(StringComparer.Ordinal);
 
     /// <summary>截图前：忘掉稍后处理的，按 <see cref="Off"/> 重新决定。</summary>
     public void Reset(bool off)
     {
         Off = off;
         _q.Reset();
+        _estopSeen.Clear();
         Refresh();
     }
 
@@ -207,6 +255,9 @@ public sealed partial class AlarmPopVm : ObservableObject
             return;
         }
         IsOpen = true;
+        if (c.Code == EstopCode) { ShowEstopItem(c, d); return; }
+        IsEstop = false;
+        NotEstop = true;
         var (name, auto) = Split(c.Text);
         var now = _shell.Fleet.Now;
         var rv = c.Ch is int n ? "RV" + n.ToString(CultureInfo.InvariantCulture) : "整机";
@@ -220,6 +271,7 @@ public sealed partial class AlarmPopVm : ObservableObject
         AutoText = auto.Length > 0 ? auto : "已记录 · 等待人工处理";
         Tip = HomeTexts.AlarmTips.TryGetValue(name, out var t) ? t : null;
         HasCh = c.Ch is int;
+        CanLocate = HasCh;
         LocateLabel = "定位到 " + rv;
         StopLabel = "停止 " + rv;
 
@@ -268,6 +320,41 @@ public sealed partial class AlarmPopVm : ObservableObject
         AckReason = Nz(d.Actions.Why(DeviceAction.AlarmAck, new ActionPayload(Id: c.Id)));
     }
 
+    /// <summary>
+    /// 急停没有全部确认（样稿 act.js axEstopPop）：「1号机 · 14:29:52 本机发出急停 · 3 / 4 项已确认」+ 四行（没确认的红）+ 建议；
+    /// 底栏：稍后处理 · 定位到1号机 · 确认报警（确认设备的「急停已触发」那一条）。
+    /// </summary>
+    private void ShowEstopItem(PopItem c, DeviceVm d)
+    {
+        var now = _shell.Fleet.Now;
+        var es = d.Marks.Estop!;
+        IsEstop = true;
+        NotEstop = false;
+        var rows = es.Rows(now);
+        var bad = rows.Where(r => r.Bad).Select(r => r.Part).ToList();
+        var (ok, of) = es.Confirmed(now);   // 含「程序」一行（急停时程序一律中止）
+        Title = "急停没有全部确认";
+        var by = d.Source.Estop.By is { Length: > 0 } b && b.Contains(_shell.Fleet.ClientName, StringComparison.Ordinal) ? "本机发出急停" : "急停";
+        Sub = d.Alias + " · " + c.At.ToString("HH:mm:ss", CultureInfo.InvariantCulture) + " " + by + " · " + ok.ToString(CultureInfo.InvariantCulture) + " / "
+            + of.ToString(CultureInfo.InvariantCulture) + " 项已确认";
+        EstopRows = rows.Where(r => !r.Na).Select(r => new EstopRowVm(r.Part, r.Done, r.Ok ? "已确认" : r.Bad ? "没有收到确认" : "等待确认", r.Bad, r.Ok)).ToList();
+        int i = _q.Index;
+        Paged = _q.List.Count > 1;
+        PageText = (i + 1).ToString(CultureInfo.InvariantCulture) + " / " + _q.List.Count.ToString(CultureInfo.InvariantCulture);
+        CanPrev = i > 0;
+        CanNext = i < _q.List.Count - 1;
+        Tiles = Array.Empty<PopTile>();
+        HasTrend = false;
+        Trend = null;
+        HasCh = false;
+        CanLocate = true;
+        LocateLabel = "定位到" + d.Alias;
+        Tip = "到设备旁确认" + string.Join("、", bad) + "已经" + (bad.Count == 1 && bad[0] == "阀门" ? "关闭" : "停下") + "，确认前不要打开釜盖；必要时关闭气瓶总阀。急停复位只能在设备触屏上进行。";
+        StopReason = null;
+        var estopAlarm = d.AlarmList.FirstOrDefault(a => a.IsEstop && !a.Acked);
+        AckReason = estopAlarm is null ? null : Nz(d.Actions.Why(DeviceAction.AlarmAck, new ActionPayload(Id: estopAlarm.Id)));
+    }
+
     private static string? Nz(string s) => s.Length == 0 ? null : s;
 
     private void Later()
@@ -279,6 +366,14 @@ public sealed partial class AlarmPopVm : ObservableObject
     private void Locate()
     {
         if (_q.Current is not { } c) return;
+        if (c.Code == EstopCode)
+        {
+            _q.SnoozeKey(c.Key);
+            _shell.Go(AppPage.Home);
+            _shell.SelectDevice(c.K);
+            Show();
+            return;
+        }
         _q.SnoozeKey(c.Key);
         _shell.Go(AppPage.Home);
         if (c.Ch is int n) _shell.OpenChannel(c.K, n); else _shell.SelectDevice(c.K);
@@ -296,6 +391,14 @@ public sealed partial class AlarmPopVm : ObservableObject
     private void Ack()
     {
         if (_q.Current is not { } c || _shell.Fleet.Device(c.K) is not { } d) return;
+        if (c.Code == EstopCode)
+        {
+            // 急停没有全部确认：确认设备的「急停已触发」那一条（还没确认的话），这一条本次不再弹
+            if (d.AlarmList.FirstOrDefault(a => a.IsEstop && !a.Acked) is { } ea) _ = d.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: ea.Id));
+            _q.SnoozeKey(c.Key);
+            Show();
+            return;
+        }
         var vm = d.Alarms.FirstOrDefault(a => a.Id == c.Id);
         if (vm != null && vm.AckCommand.CanExecute(null)) vm.AckCommand.Execute(null);
         else _ = d.Actions.RunAsync(DeviceAction.AlarmAck, new ActionPayload(Id: c.Id));

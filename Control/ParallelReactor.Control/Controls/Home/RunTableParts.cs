@@ -147,10 +147,13 @@ public sealed class StepSegBar : Avalonia.Controls.Control
             var track = g.State switch
             {
                 SegmentState.Done => Palette.RunStepDoneBrush,
-                SegmentState.Cur => g.Err ? Palette.RTrackBrush : Palette.RunStepTrackBrush,
+                SegmentState.Cur => g.Err ? Palette.RTrackBrush : g.Amb ? Palette.AmbSoftBrush : Palette.RunStepTrackBrush,
                 _ => Palette.RunStepNextBrush,
             };
             ctx.DrawRectangle(track, null, new RoundedRect(new Rect(x, y, w, H), R));
+            // v0.8.1：等人在触屏上操作的那一段（标定加水，样稿 .pgb i.cur.ax-amb）：浅琥珀轨道 + 琥珀描边
+            if (g.State == SegmentState.Cur && g.Amb)
+                ctx.DrawRectangle(null, Palette.Pen(Palette.AxAmbColor, 1), new RoundedRect(new Rect(x + 0.5, y + 0.5, Math.Max(0, w - 1), H - 1), R));
             if (g.State == SegmentState.Cur && g.Fill > 0)
                 ctx.DrawRectangle(g.Err ? Palette.RBrush : Palette.RunStepFillBrush, null, new RoundedRect(new Rect(x, y, Math.Max(H, w * g.Fill), H), R));
         }

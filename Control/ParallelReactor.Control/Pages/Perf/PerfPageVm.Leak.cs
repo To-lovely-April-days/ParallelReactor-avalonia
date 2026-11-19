@@ -39,6 +39,8 @@ public sealed partial class PerfPageVm
     public ObservableCollection<LeakRowVm> LeakRows { get; } = new();
     [ObservableProperty] private string _leakResSub = "";
     [ObservableProperty] private string? _leakWarn;
+    /// <summary>v0.8.1：最近一次全部通过时的绿色提示。</summary>
+    [ObservableProperty] private string? _leakPass;
     [ObservableProperty] private string _leakEmpty = "";
     [ObservableProperty] private bool _hasLeakRows;
     /// <summary>正在测（真机快照 leakTest.running）：「正在测试 · 测量 42 %」。</summary>
@@ -48,7 +50,8 @@ public sealed partial class PerfPageVm
     /// <summary>这台设备的泄漏测试设置（没有时 HMI 出厂值）。</summary>
     public static LeakTestInfo LeakOf(DeviceVm? d) => d?.Source.Plant.Leak ?? LeakTestInfo.HmiDefault;
 
-    private static LeakSnap? LeakSnapOf(DeviceVm d) => d.Source.Latest?.LeakTest;
+    /// <summary>这台设备的泄漏测试快照（真机 = 最新一帧的 leakTest；演示 = 演示数据的，v0.8.1）。</summary>
+    private static LeakSnap? LeakSnapOf(DeviceVm d) => d.Source is DemoDeviceSource demo ? demo.Device.LeakTest : d.Source.Latest?.LeakTest;
 
     /// <summary>这一路现在能不能做泄漏测试（样稿：所选通道不能在运行、加热或报警中）：'' = 能，否则原因。</summary>
     public static string LeakBusy(ReactorVm r) =>
@@ -69,14 +72,16 @@ public sealed partial class PerfPageVm
         };
         if (!LeakParams.SequenceEqual(pars)) { LeakParams.Clear(); foreach (var r in pars) LeakParams.Add(r); }
 
-        // 阶段：真机正在测时按 HMI 的阶段（fill / equilibrate / measure / vent）标当前；否则最近一次做完了 = 全部完成
+        // 阶段：正在测时按 HMI 的阶段码 leakTest.stage（v0.8.1：prep / fill / lineVent = 充压，settle = 平衡，measure = 测量，vent / done = 判读 · 泄压；
+        // 不再解析中文的 phase —— 以前比的是英文码，HMI 给的却是中文文字，永远落在「充压」）；否则最近一次做完了 = 全部完成
         var snap = d == null ? null : LeakSnapOf(d);
-        int cur = snap is { Running: true } ? snap.Phase switch { "fill" or "prep" => 0, "equilibrate" => 1, "measure" => 2, "vent" => 3, _ => 0 } : -1;
+        int cur = snap is { Running: true } ? Core.Activity.ActivityBuild.LeakStage(snap.Stage, snap.Progress) : -1;
         var sum = d == null ? null : LeakResult(d);
         string[] names = { "充压至 " + LeakTestValue(leak.TestPsi) + " " + PressureDisplay.Unit, "平衡 " + N(leak.SettleMin) + " min", "测量 " + N(leak.MeasureMin) + " min", "判读 · 泄压" };
         var phases = names.Select((t, i) => new LeakPhaseVm((i + 1).ToString(Inv) + ". " + t, cur >= 0 ? i < cur : sum != null, i == cur)).ToList();
         if (!LeakPhases.SequenceEqual(phases)) { LeakPhases.Clear(); foreach (var ph in phases) LeakPhases.Add(ph); }
-        LeakState = snap is { Running: true } ? "正在测试 · " + names[Math.Max(0, cur)] + " · " + Math.Round(snap.Progress * (snap.Progress <= 1 ? 100 : 1)).ToString(Inv) + " %" : null;
+        // 进度一律 0–100（v0.8.1：以前 ≤ 1 时乘 100，开头几秒的 0.5 % 会显示成 50 %）
+        LeakState = snap is { Running: true } ? "正在测试 · " + names[Math.Max(0, cur)] + " · " + Math.Round(Math.Clamp(snap.Progress, 0, 100)).ToString(Inv) + " %" : null;
 
         // 通道（换设备时按此刻空闲的预选）
         if (d != null && _leakSelK != d.K)
@@ -119,6 +124,8 @@ public sealed partial class PerfPageVm
         HasLeakRows = LeakRows.Count > 0;
         var bad = LeakRows.Where(r => r.IsBad).Select(r => r.Rv).ToList();
         LeakWarn = bad.Count > 0 ? string.Join("、", bad) + " 泄漏率超过阈值 · 检查釜盖密封和接头后重测" : null;
+        // v0.8.1：「通过」也给提示（ACT-SPEC §3.3 第 4 条）
+        LeakPass = bad.Count == 0 && LeakRows.Any(r => r.Ok == true) ? "全部通过 · 泄漏率都低于阈值 " + leak.RatePsiH.ToString("0.0##", Inv) + " psi/h" : null;
         LeakResSub = sum?.Start is { } st ? "最近一次 · " + st.ToString("MM-dd HH:mm", Inv) : "";
         var err = d != null && _leakCache.TryGetValue(d.K, out var e) ? e.Error : null;
         LeakEmpty = d == null ? "没有设备" : _leakFetching.Contains(d.K) ? "正在读取最近一次的结果…" : err != null ? "读取失败：" + err
@@ -174,7 +181,14 @@ public sealed partial class PerfPageVm
         if (_lkStart.Reason is { } why) { _shell.Toast(why, ToastKind.Warn); return; }
         var chs = LeakChans.Where(c => c.IsOn).Select(c => c.N).ToArray();
         var what = "泄漏测试：" + string.Join(" ", chs.Select(n => "RV" + n.ToString(Inv))) + " · 充压 → 平衡 → 测量 → 判读";
-        if (d!.Source.IsDemo) { _shell.Toast("开始" + what + "（演示）", ToastKind.Info); return; }
+        if (d!.Source is DemoDeviceSource demo)
+        {
+            // 演示（v0.8.1）：真的开始一次演示泄漏测试，浮动活动面板自动展开、每秒倒计时
+            demo.Fleet.StartLeakDemo(demo.Device, chs);
+            _shell.Toast(d.Alias + " · 已开始" + what + "（演示）", ToastKind.Ok);
+            _shell.Fleet.RequestRefresh();
+            return;
+        }
         if (d.Source is not LiveDeviceSource { Connection: { } c }) { _shell.Toast(d.Alias + "未连接", ToastKind.Warn); return; }
         try
         {
@@ -189,12 +203,7 @@ public sealed partial class PerfPageVm
     /// <summary>「中止」先确认（F9，「停止一律先确认」）：没有进行中的测试时照旧只提示；确认后 <see cref="AbortLeakAsync"/>。</summary>
     private void ConfirmAbortLeak()
     {
-        var d = Dev;
-        if (d == null) return;
-        if (d.Source.IsDemo || d.Source is not LiveDeviceSource { Connection: not null }) { _shell.Toast(d.Source.IsDemo ? "当前没有进行中的泄漏测试（演示）" : d.Alias + "未连接", ToastKind.Info); return; }
-        if (LeakSnapOf(d) is not { Running: true }) { _shell.Toast(d.Alias + " 当前没有进行中的泄漏测试", ToastKind.Info); return; }
-        _shell.ShowDialog(Shell.Dialogs.StopConfirmDialogVm.LeakAbort(_shell, d,
-            () => LeakSnapOf(d) is { Running: true } ? null : "泄漏测试已经结束", AbortLeakAsync));
+        if (Dev is { } d) Shell.ActivityActions.ConfirmAbort(_shell, d);
     }
 
     /// <summary>中止（停止类：不需要控制权；真机 DELETE /leak-tests/current —— HMI 全关阀，不泄压）。</summary>

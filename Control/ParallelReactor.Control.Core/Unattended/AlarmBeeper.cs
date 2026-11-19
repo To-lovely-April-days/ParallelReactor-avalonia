@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ParallelReactor.Control.Core.Unattended;
 
 /// <summary>
-/// 报警声音（融合版 F8）：放一声短的系统提示音。Windows = winmm PlaySound（系统「严重停止」声，没有时控制台蜂鸣），
+/// 报警声音（融合版 F8）：放一声短的系统提示音。Windows = winmm PlaySound（系统「感叹号」提示音，柔和的一声；没有时系统默认提示音），
 /// macOS = afplay 一个系统声音（App 的 Services/Unattended）。无头 / 截图 / 测试不出声（空实现或假的）。
 /// </summary>
 public interface IAlarmSound

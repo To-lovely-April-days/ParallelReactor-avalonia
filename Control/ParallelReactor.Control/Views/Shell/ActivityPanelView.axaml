@@ -1,0 +1,421 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:sh="using:ParallelReactor.Control.Shell"
+             x:Class="ParallelReactor.Control.Views.Shell.ActivityPanelView"
+             x:DataType="sh:ActivityPanelVm"
+             Classes="audit-layer">
+  <!-- 浮动活动面板（v0.8.1 设备活动同步，ACT-SPEC §3.1 方向 A；样稿 act2.js ax2A / fusion.css「ACT v2」的 .a2*）。不是模态：只占自己的矩形，不盖遮罩。
+       胶囊 .a2pill：44 高、圆角 22、白底、ShadowAxElevS、左右 11 / 14、间距 10：小圆环 22（环宽 4）· 标题 14/600 · 说明 13 t-2（等人操作 amb-ink 600、不通过 ax-no 600）· ˄ 14 t-3。
+       卡片 .a2p：宽 420、圆角 8、白底、ShadowAxElev、13 px。
+         头 .a2h：上 16 右 12 下 6 左 20、间距 12：图标块 34（圆角 8，语气底色）· 标题 15/600 行高 20 + 副行 13 t-3 行高 18 · 收起 32（圆角 6）。
+         主角 .a2hero：上 12 右 20 下 14 左 22、间距 22：圆环 128（环宽 9），中心 小字 13 t-3 + 大字 28/600（结果 34）；右侧 小字 13 t-3 · 大字 22/600 品牌蓝 行高 30 · 13 t-2 行高 19（强调 600 t-1）· 13 t-3。
+           等人操作：整块 amb-bg 底、圆角 8、外边距 6 12 14、内边距 12 10。
+         阶段 .a2seg：外边距 0 20 14、内边距 3、圆角 8、ax-seg 底；每段 28 高、圆角 6、13 px t-icon，已完成 t-2 + ✓（品牌蓝），当前白底品牌蓝 600 + ShadowAxSegCur。
+         通道 .a2chip：两列、间距 6、外边距 0 20；内边距 8 12 8 10、圆角 6、ax-tint 底；第一行 22 高：记号 15 · RVn 14/600 · 数值 15/600（单位 13 t-3）；第二行 13 t-3（左缩 21）。
+         「RV5–8 不测」13 ax-off，上 10。带压提示 .a2warn：外边距 14 20 0、内边距 10 12、圆角 6、ax-amb-wash 底。底行 .a2f：上 14，内边距 0 16 16 20；按钮 32 高、圆角 6、左右 14、13/600。 -->
+  <UserControl.Styles>
+    <Style Selector="Button.plain">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Content="{TemplateBinding Content}" Background="Transparent" />
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="TextBlock.pm">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.pill.amb TextBlock.pm">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.pill.no TextBlock.pm">
+      <Setter Property="Foreground" Value="{StaticResource AxNoBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <!-- 图标块（.a2i.t-*） -->
+    <Style Selector="Border.ai">
+      <Setter Property="Background" Value="{StaticResource AxBrandLBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Border.ai.amb">
+      <Setter Property="Background" Value="{StaticResource AxAmbIconBgBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource AxAmbBrush}" />
+    </Style>
+    <Style Selector="Border.ai.no">
+      <Setter Property="Background" Value="{StaticResource AxNoBgBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource AxNoBrush}" />
+    </Style>
+    <Style Selector="Border.ai.ok">
+      <Setter Property="Background" Value="{StaticResource AxOkBgBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource AxOkBrush}" />
+    </Style>
+    <Style Selector="Border.ai.ab">
+      <Setter Property="Background" Value="{StaticResource AxTintBrush}" />
+      <Setter Property="TextElement.Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <!-- 圆环中心 -->
+    <Style Selector="TextBlock.cs">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="18" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.hero.amb TextBlock.cs">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.cb">
+      <Setter Property="FontSize" Value="{StaticResource FsRead28}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="LineHeight" Value="34" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.cb.amb">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.cb.mut">
+      <Setter Property="Foreground" Value="{StaticResource AxOffBrush}" />
+    </Style>
+    <Style Selector="TextBlock.cb.no">
+      <Setter Property="Foreground" Value="{StaticResource AxNoBrush}" />
+      <Setter Property="FontSize" Value="34" />
+      <Setter Property="LineHeight" Value="38" />
+    </Style>
+    <Style Selector="TextBlock.cb.ok">
+      <Setter Property="Foreground" Value="{StaticResource AxOkBrush}" />
+      <Setter Property="FontSize" Value="34" />
+      <Setter Property="LineHeight" Value="38" />
+    </Style>
+    <!-- 当前阶段 / 结果（.a2cur） -->
+    <Style Selector="TextBlock.us">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="LineHeight" Value="18" />
+    </Style>
+    <Style Selector="StackPanel.cur.amb TextBlock.us">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.ub">
+      <Setter Property="FontSize" Value="{StaticResource FsKpi}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="LineHeight" Value="30" />
+    </Style>
+    <Style Selector="StackPanel.cur.amb TextBlock.ub">
+      <Setter Property="Foreground" Value="{StaticResource AxAmbHeadBrush}" />
+      <Setter Property="FontSize" Value="{StaticResource FsReadS}" />
+    </Style>
+    <Style Selector="StackPanel.cur.no TextBlock.ub">
+      <Setter Property="Foreground" Value="{StaticResource AxNoBrush}" />
+    </Style>
+    <Style Selector="StackPanel.cur.ok TextBlock.ub">
+      <Setter Property="Foreground" Value="{StaticResource AxOkBrush}" />
+    </Style>
+    <Style Selector="StackPanel.cur.ab TextBlock.ub">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.ul">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="LineHeight" Value="19" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="StackPanel.cur.amb TextBlock.ul">
+      <Setter Property="Foreground" Value="{StaticResource AmbInk2Brush}" />
+    </Style>
+    <!-- 阶段分段文字（.a2seg span） -->
+    <Style Selector="Border.sg">
+      <Setter Property="Height" Value="28" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,0" />
+    </Style>
+    <Style Selector="Border.sg TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource TIconBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.sg.done TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.sg.cur">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowAxSegCur}" />
+    </Style>
+    <Style Selector="Border.sg.cur TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.sg.cur.amb TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <!-- 通道小块（.a2chip.k-*） -->
+    <Style Selector="Border.chip">
+      <Setter Property="Padding" Value="10,8,12,8" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Background" Value="{StaticResource AxTintBrush}" />
+      <Setter Property="Margin" Value="3" />
+    </Style>
+    <Style Selector="Border.chip.ok">
+      <Setter Property="Background" Value="{StaticResource AxOkBgBrush}" />
+    </Style>
+    <Style Selector="Border.chip.no">
+      <Setter Property="Background" Value="{StaticResource AxNoBgBrush}" />
+    </Style>
+    <Style Selector="Border.chip.amb">
+      <Setter Property="Background" Value="{StaticResource AxAmbWashBrush}" />
+    </Style>
+    <Style Selector="Border.chip TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsValue}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Border.chip TextBlock.w">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.chip c|IconView.mk">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Border.chip.ok c|IconView.mk">
+      <Setter Property="Foreground" Value="{StaticResource AxOkBrush}" />
+    </Style>
+    <Style Selector="Border.chip.ok TextBlock.w">
+      <Setter Property="Foreground" Value="{StaticResource AxOkBrush}" />
+    </Style>
+    <Style Selector="Border.chip.no c|IconView.mk">
+      <Setter Property="Foreground" Value="{StaticResource AxNoBrush}" />
+    </Style>
+    <Style Selector="Border.chip.no TextBlock.w, Border.chip.no TextBlock.v">
+      <Setter Property="Foreground" Value="{StaticResource AxNoBrush}" />
+    </Style>
+    <Style Selector="Border.chip.amb c|IconView.mk">
+      <Setter Property="Foreground" Value="{StaticResource AxAmbBrush}" />
+    </Style>
+    <Style Selector="Border.chip.amb TextBlock.w">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="Border.chip.ok TextBlock.w, Border.chip.no TextBlock.w, Border.chip.amb TextBlock.w">
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Border.chip.amb TextBlock.v">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="Foreground" Value="{StaticResource AmbInk2Brush}" />
+    </Style>
+    <Style Selector="Border.dot">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="8" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Margin" Value="3,0" />
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.chip:not(.n) Border.dot">
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowDotBrand}" />
+    </Style>
+    <Style Selector="Border.chip.n Border.dot">
+      <Setter Property="Background" Value="{StaticResource AxOffBrush}" />
+    </Style>
+    <!-- 按钮（.ax2b / .ax2b.pri） -->
+    <Style Selector="Button.ax2b">
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="Button.ax2b:not(.pri)">
+      <Setter Property="BorderBrush" Value="{StaticResource AxBtnLineBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Button.fold">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+  </UserControl.Styles>
+
+  <StackPanel Spacing="10" HorizontalAlignment="Right" VerticalAlignment="Bottom" IsVisible="{Binding IsVisible}">
+    <!-- 胶囊（其余设备 / 收起的）：堆在展开的那张上面 -->
+    <ItemsControl ItemsSource="{Binding Pills}" HorizontalAlignment="Right">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><StackPanel Spacing="10" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="sh:ActPillVm">
+          <Button Classes="plain" HorizontalAlignment="Right" Command="{Binding Command}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Title}">
+            <Border Classes="pill" Classes.amb="{Binding IsAmb}" Classes.no="{Binding IsNo}" Height="44" CornerRadius="22" Padding="11,0,14,0"
+                    Background="{StaticResource BgCardBrush}" BoxShadow="{StaticResource ShadowAxElevS}">
+              <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+                <cs:ActRing Size="22" Stroke="4" Segs="{Binding Mini}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding Title}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                <TextBlock Classes="pm num" Text="{Binding Meta}" />
+                <c:IconView Icon="f-chev-d" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="2,0,0,0" RenderTransform="rotate(180deg)" />
+              </StackPanel>
+            </Border>
+          </Button>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+    <!-- 展开的那张 -->
+    <Border Width="420" CornerRadius="8" Background="{StaticResource BgCardBrush}" BoxShadow="{StaticResource ShadowAxElev}" IsVisible="{Binding HasCard}"
+            HorizontalAlignment="Right" AutomationProperties.Name="设备活动">
+      <ContentControl Content="{Binding Card}">
+        <ContentControl.ContentTemplate>
+          <DataTemplate x:DataType="sh:ActCardVm">
+            <StackPanel TextElement.FontSize="{StaticResource FsBase}">
+              <!-- 头 -->
+              <DockPanel Margin="20,16,12,6">
+                <Border Classes="ai" Classes.amb="{Binding ToneAmb}" Classes.no="{Binding ToneNo}" Classes.ok="{Binding ToneOk}" Classes.ab="{Binding ToneAb}"
+                        DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="8" Margin="0,0,12,0" VerticalAlignment="Center">
+                  <c:IconView Icon="{Binding Icon}" Size="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <Button DockPanel.Dock="Right" Classes="fold" Theme="{StaticResource PrIconButton}" b:Pr.Icon="f-chev-d" Command="{Binding FoldCommand}"
+                        ToolTip.Tip="收起成右下角的小胶囊" Margin="12,0,0,0" VerticalAlignment="Center" />
+                <StackPanel VerticalAlignment="Center" Spacing="1">
+                  <TextBlock Text="{Binding Title}" FontSize="{StaticResource FsPaneTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="20"
+                             TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Title}" />
+                  <TextBlock Text="{Binding Sub}" Foreground="{StaticResource T3Brush}" LineHeight="18" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Sub}" />
+                </StackPanel>
+              </DockPanel>
+              <!-- 主角区 -->
+              <Border Classes="hero" Classes.amb="{Binding Amb}">
+                <Border.Styles>
+                  <Style Selector="Border.hero">
+                    <Setter Property="Padding" Value="22,12,20,14" />
+                  </Style>
+                  <Style Selector="Border.hero.amb">
+                    <Setter Property="Margin" Value="12,6,12,14" />
+                    <Setter Property="Padding" Value="10,12" />
+                    <Setter Property="CornerRadius" Value="8" />
+                    <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+                  </Style>
+                </Border.Styles>
+                <DockPanel>
+                  <Panel DockPanel.Dock="Left" Width="128" Height="128" Margin="0,0,22,0">
+                    <cs:ActRing Size="128" Stroke="9" Segs="{Binding Ring}" />
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                      <TextBlock Classes="cs" Text="{Binding CenterSmall}" IsVisible="{Binding SmallFirst}" />
+                      <TextBlock Classes="cb num" Classes.amb="{Binding CenterAmb}" Classes.no="{Binding CenterNo}" Classes.ok="{Binding CenterOk}" Classes.mut="{Binding CenterMut}"
+                                 Text="{Binding CenterBig}" />
+                      <TextBlock Classes="cs" Text="{Binding CenterSmall}" IsVisible="{Binding BigFirst}" />
+                    </StackPanel>
+                  </Panel>
+                  <StackPanel Classes="cur" Classes.amb="{Binding CurAmb}" Classes.no="{Binding CurNo}" Classes.ok="{Binding CurOk}" Classes.ab="{Binding CurAb}"
+                              VerticalAlignment="Center" Spacing="3">
+                    <StackPanel Orientation="Horizontal" Spacing="6">
+                      <c:IconView Icon="f-warn-f" Size="15" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Center" IsVisible="{Binding CurWarn}" />
+                      <TextBlock Classes="us" Text="{Binding CurSmall}" />
+                    </StackPanel>
+                    <TextBlock Classes="ub" Text="{Binding CurBig}" />
+                    <TextBlock Classes="ul" IsVisible="{Binding HasLine1}">
+                      <Run Text="{Binding Line1A}" /><Run Text="{Binding Line1Em}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding Line1B}" />
+                    </TextBlock>
+                    <TextBlock Classes="ul" Text="{Binding Line2}" Foreground="{StaticResource T3Brush}" IsVisible="{Binding HasLine2}" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+              <!-- 阶段 -->
+              <Border Margin="20,0,20,14" Padding="3" CornerRadius="8" Background="{StaticResource AxSegBrush}" IsVisible="{Binding HasSegs}">
+                <ItemsControl ItemsSource="{Binding Segs}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><cs:GrowRow Spacing="2" /></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="sh:ActSegVm">
+                      <Border Classes="sg" Classes.done="{Binding Done}" Classes.cur="{Binding Cur}" Classes.amb="{Binding Amb}">
+                        <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
+                          <c:IconView Icon="f-check" Size="12" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" IsVisible="{Binding Done}" />
+                          <TextBlock Text="{Binding Text}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+              <!-- 各路 -->
+              <ItemsControl ItemsSource="{Binding Chips}" Margin="17,-3,17,-3" IsVisible="{Binding HasChips}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><UniformGrid Columns="2" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sh:ActChipVm">
+                    <Border Classes="chip" Classes.ok="{Binding IsOk}" Classes.no="{Binding IsNo}" Classes.amb="{Binding IsAmb}" Classes.n="{Binding IsN}">
+                      <StackPanel>
+                        <DockPanel Height="22">
+                          <Panel DockPanel.Dock="Left" Width="15" Margin="0,0,6,0" VerticalAlignment="Center">
+                            <c:IconView Classes="mk" Icon="{Binding Icon}" Size="15" IsVisible="{Binding HasIcon}" />
+                            <Border Classes="dot" Margin="3,0,4,0" IsVisible="{Binding HasDot}" />
+                          </Panel>
+                          <TextBlock DockPanel.Dock="Left" Text="{Binding Rv}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
+                                     VerticalAlignment="Center" />
+                          <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="8,0,0,0">
+                            <TextBlock Classes="v num" Text="{Binding Value}" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding Unit}" Foreground="{StaticResource T3Brush}" Margin="3,0,0,0" VerticalAlignment="Center" IsVisible="{Binding HasUnit}" />
+                          </StackPanel>
+                        </DockPanel>
+                        <TextBlock Classes="w" Text="{Binding Word}" LineHeight="18" Margin="21,1,0,0" TextTrimming="CharacterEllipsis"
+                                   ToolTip.Tip="{Binding Word}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{Binding Off}" Foreground="{StaticResource AxOffBrush}" Margin="20,10,20,0" IsVisible="{Binding HasOff}" />
+              <!-- 带压提示 -->
+              <Border Margin="20,14,20,0" Padding="12,10" CornerRadius="6" Background="{StaticResource AxAmbWashBrush}" IsVisible="{Binding HasWarn}">
+                <DockPanel>
+                  <c:IconView DockPanel.Dock="Left" Icon="f-warn-f" Size="16" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Top" Margin="0,2,10,0" />
+                  <StackPanel>
+                    <TextBlock Text="{Binding WarnTitle}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource AxAmbHeadBrush}" LineHeight="19"
+                               TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding WarnBody}" Foreground="{StaticResource AmbInk2Brush}" LineHeight="19" TextWrapping="Wrap" />
+                  </StackPanel>
+                </DockPanel>
+              </Border>
+              <!-- 标定：第一遍 · 上次标定 -->
+              <ItemsControl ItemsSource="{Binding Kv}" Margin="20,0" IsVisible="{Binding HasKv}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><StackPanel Spacing="6" /></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="sh:ActKvVm">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Left" Width="100" Text="{Binding Key}" Foreground="{StaticResource T3Brush}" LineHeight="19" />
+                      <TextBlock Foreground="{StaticResource T1Brush}" LineHeight="19" TextWrapping="Wrap">
+                        <Run Text="{Binding A}" /><Run Text="{Binding B}" FontWeight="SemiBold" /><Run Text="{Binding C}" />
+                      </TextBlock>
+                    </DockPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <!-- 底行 -->
+              <DockPanel Margin="20,14,16,16" MinHeight="{Binding FootMinH}">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                  <Button Classes="ax2b" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="中止" Command="{Binding AbortCommand}" IsVisible="{Binding CanAbort}"
+                          ToolTip.Tip="中止泄漏测试：阀门全关，不放空 · 先确认 · 不需要控制权" />
+                  <Button Classes="ax2b" Content="关闭" Command="{Binding CloseCommand}" IsVisible="{Binding CanClose}" ToolTip.Tip="关掉这次的结果（下一次开始照常弹出）" />
+                  <Button Classes="ax2b pri" Theme="{StaticResource PrPrimary}" Content="查看结果" Command="{Binding ResultsCommand}" IsVisible="{Binding CanResults}"
+                          ToolTip.Tip="去 性能测试 → 泄漏测试" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                  <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding Lock}" />
+                  <TextBlock Classes="num" Text="{Binding Foot}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                             ToolTip.Tip="{Binding Foot}" />
+                </StackPanel>
+              </DockPanel>
+            </StackPanel>
+          </DataTemplate>
+        </ContentControl.ContentTemplate>
+      </ContentControl>
+    </Border>
+  </StackPanel>
+</UserControl>

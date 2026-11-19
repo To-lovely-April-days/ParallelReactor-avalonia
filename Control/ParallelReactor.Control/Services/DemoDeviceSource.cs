@@ -96,6 +96,27 @@ public sealed class DemoDeviceSource : IDeviceSource
 
     private PlantInfo? _plant;
     private VolumeInfo? _volume;
+
+    /// <summary>
+    /// 设备活动（v0.8.1）：演示的泄漏测试 / 标定（DemoDevice.LeakTest / Calib，与真机走同一个 Core 的 ActivityBuild）+ 标记（DemoDevice.Marks，
+    /// 再补上自整定中的通道（DemoFleet.Autotuning）与气路占用（进行中的泄漏测试 = leak、标定 = calib，同 HMI 的 gas.owner）。
+    /// </summary>
+    public ActivityInfo Activity
+    {
+        get
+        {
+            var d = Device;
+            var act = Core.Activity.ActivityBuild.Pick(Core.Activity.ActivityBuild.Leak(d.LeakTest), Core.Activity.ActivityBuild.Calib(d.Calib));
+            var tune = d.Channels.Where(c => c.Installed && _fleet.Autotuning(d, c.N)).Select(c => (c.N, c.SpC)).ToArray();
+            string? owner = d.LeakTest is { Running: true } ? "leak" : d.Calib is { Running: true } or { WaitingOperator: true } ? "calib" : d.GasHolder != null ? "program" : null;
+            var marks = d.Marks with { Autotune = tune, GasOwner = owner };
+            if (_act is { } cur && Equals(cur.Act, act) && cur.Marks.GasOwner == owner && cur.Marks.ManualValve == marks.ManualValve
+                && cur.Marks.StirCode == marks.StirCode && Equals(cur.Marks.Estop, marks.Estop) && cur.Marks.Autotune.SequenceEqual(tune)) return cur;
+            return _act = new ActivityInfo(act, marks);
+        }
+    }
+
+    private ActivityInfo? _act;
     private LeakTestInfo? _leak;
 
     public SessionInfo? Session => Device.Session is { } s ? new SessionInfo(s.Active, s.Id, s.StartAt, s.Markers.Count) : null;

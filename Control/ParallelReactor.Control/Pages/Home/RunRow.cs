@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ParallelReactor.Control.Core.Format;
@@ -11,14 +12,14 @@ using ParallelReactor.Control.Theme;
 
 namespace ParallelReactor.Control.Pages.Home;
 
-/// <summary>运行表状态点的样子（样稿 .sts.s-run / s-err / s-idle）。</summary>
-public enum RunDot { Idle, Run, Err }
+/// <summary>运行表状态点的样子（样稿 .sts.s-run / s-err / s-idle；v0.8.1 加 s-ax-b 品牌蓝 = 泄漏测试 / 标定 / 自整定，s-ax-a 琥珀 = 等触屏操作）。</summary>
+public enum RunDot { Idle, Run, Err, Brand, Amb }
 
 /// <summary>「本步剩余」格的写法（样稿 runTable left）：数值 + min / 已暂停（红 600）/ 已结束（灰）/ —。</summary>
 public enum LeftKind { None, Value, Paused, Ended }
 
 /// <summary>步骤分段条的一段（样稿 .pgb i：flex = 步骤分钟数（至少 1.2）；done / cur（按进度填充，报警时红）/ next）。</summary>
-public readonly record struct StepSeg(double Weight, SegmentState State, double Fill, bool Err, string Tip);
+public readonly record struct StepSeg(double Weight, SegmentState State, double Fill, bool Err, string Tip, bool Amb = false);
 
 /// <summary>
 /// 运行表的文字规则（样稿 runTable 的 pgCell / left / end / tCell / pCell，融合版 F3）：纯函数，单元测试直接调。
@@ -212,5 +213,57 @@ public sealed partial class RunRowVm : ObservableObject
         bool rate = r.GasRate is double gr && gr > 0 && RunRowText.Running(own);
         RateNa = !rate;
         RateText = rate ? r.GasRate!.Value.ToString("0.00", CultureInfo.InvariantCulture) : Fmt.Dash;
+        if (r.Act is { } act) ApplyAct(act);
+    }
+
+    /// <summary>
+    /// v0.8.1 活动覆盖（样稿 act.js axStW / axPg / axEnd）：泄漏测试 / 标定 / 自整定的通道换状态字（品牌蓝点，不用绿、不用红）、步骤栏写阶段 + 剩余、
+    /// 分段条 = 阶段；吸气量、速率写「—」；排队等气路的程序只换状态字（灰点）和「本步剩余」=「排队」。
+    /// </summary>
+    private void ApplyAct(Fleet.ChannelAct a)
+    {
+        Word = a.Word;
+        if (a.Kind == Fleet.ChannelActKind.Queue)
+        {
+            Dot = RunDot.Idle;
+            Left = LeftKind.None;
+            LeftText = "排队";
+            Tip = Rv + " · 程序要用气路 · 气路被占用，排队中";
+            return;
+        }
+        Dot = a.Amber ? RunDot.Amb : RunDot.Brand;
+        IsOff = false;
+        HasProg = true;
+        StepName = a.Step;
+        StepFrac = a.Sub;
+        var segs = ActSegs(a.Segs);
+        if (Segs.Count != segs.Count || !Segs.SequenceEqual(segs)) Segs = segs;
+        Left = LeftKind.None;
+        LeftText = Fmt.Dash;
+        EndText = a.End;
+        GasKind = 0;
+        GasText = Fmt.Dash;
+        RateNa = true;
+        RateText = Fmt.Dash;
+        Tip = Rv + " · " + a.Word + (a.Line.Length > 0 ? " · " + a.Line : "") + " · 点击在检查器里查看";
+    }
+
+    /// <summary>圆环的段 → 步骤分段条（已完成 / 当前（按进度填充）/ 未到）。</summary>
+    public static IReadOnlyList<StepSeg> ActSegs(IReadOnlyList<Core.Activity.RingSeg> segs)
+    {
+        var list = new StepSeg[segs.Count];
+        for (int i = 0; i < segs.Count; i++)
+        {
+            var s = segs[i];
+            var st = s.Kind switch
+            {
+                Core.Activity.RingSegKind.Cur or Core.Activity.RingSegKind.CurAmb => SegmentState.Cur,
+                Core.Activity.RingSegKind.Next => SegmentState.Next,
+                _ => SegmentState.Done,
+            };
+            bool amb = s.Kind == Core.Activity.RingSegKind.CurAmb;
+            list[i] = new StepSeg(Math.Max(1.2, s.Weight / 60), st, st == SegmentState.Cur && !amb ? Math.Clamp(s.Fill, 0, 1) : 0, false, "", amb);
+        }
+        return list;
     }
 }

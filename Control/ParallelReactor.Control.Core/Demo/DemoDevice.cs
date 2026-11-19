@@ -83,10 +83,17 @@ public sealed class DemoDevice
     /// <summary>共用气路此刻的占用者：第一个在升压的反应釜（融合版样稿 3号机 RV9）；没有为 null。</summary>
     public int? GasHolder => ChannelList.FirstOrDefault(c => c.Installed && c.State == StateKey.Press)?.N;
 
-    /// <summary>排队等共用气路的反应釜（在等进气、当前步要进气），按通道号；不含占用者。</summary>
+    /// <summary>排队等共用气路的反应釜（在等进气、当前步要进气，或被泄漏测试 / 标定挡住的 <see cref="DemoChannel.Queued"/>），按通道号；不含占用者。</summary>
     public IReadOnlyList<int> GasQueue => ChannelList
-        .Where(c => c.Installed && c.State == StateKey.Wait && !string.IsNullOrEmpty(c.Program?.CurrentStep?.Gas) && c.N != GasHolder)
+        .Where(c => c.Installed && (c.Queued || (c.State == StateKey.Wait && !string.IsNullOrEmpty(c.Program?.CurrentStep?.Gas))) && c.N != GasHolder)
         .Select(c => c.N).ToArray();
+
+    /// <summary>v0.8.1 设备活动同步：泄漏测试（同 HMI 快照的 leakTest；没有 = null，演示参数 act= 摆出来，见 DemoFleet.Act.cs）。</summary>
+    public ParallelReactor.Api.LeakSnap? LeakTest { get; internal set; }
+    /// <summary>容积标定（同 HMI 快照的 calib）。</summary>
+    public ParallelReactor.Api.CalibSnap? Calib { get; internal set; }
+    /// <summary>全局标记：触屏手动阀控、搅拌电机故障、急停分项（自整定 / 气路占用由 DemoDeviceSource 按演示状态补上）。</summary>
+    public Activity.DeviceMarks Marks { get; internal set; } = Activity.DeviceMarks.None;
 
     /// <summary>默认控制权（样稿 SLOTS[k].lease）与默认是否断线（4 号位）；参数覆盖取消时恢复到它。</summary>
     internal LeaseStatus DefaultLease { get; set; }

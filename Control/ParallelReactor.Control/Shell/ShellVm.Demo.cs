@@ -137,4 +137,39 @@ public sealed partial class ShellVm
         ApplyDemoParams(DemoParams.Default);
         Toast("演示数据已重置", ToastKind.Info);
     }
+    /// <summary>
+    /// v0.8.1 设备活动的演示参数（同样稿 act.js axQuery，ACT-SPEC §3.4）：
+    /// act=leak-run（1号机泄漏测试进行中，触屏发起）| leak-done（结束 · 全部通过，本机发起）| leak-fail（有不通过 + 釜内带压）| leak-abort（已中止）|
+    /// calib-wait（1号机容积标定 RV3 等加水）| stack（1号机泄漏测试 + 2号机标定 RV4 等加水）；actfold=1 全部收起成胶囊；axopen=k 指定展开哪一台；
+    /// axabort=1（点「中止」，打开确认框）；stirfault=1（搅拌电机故障）、manual=1（触屏手动阀控）、estoppart=1（急停后阀门没确认关闭）、tune=1（RV5 自整定中；和泄漏测试一起时排队的改成 RV6）。
+    /// </summary>
+    private void ApplyActParams(System.Func<string, string?> x)
+    {
+        static int Int(string? s) => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : 0;
+        if (Fleet.DemoData is not { } demo || demo.Device(1) is not { } d1) return;
+        var act = x("act");
+        bool tune = x("tune") == "1";
+        bool any = act != null || x("stirfault") == "1" || x("manual") == "1" || x("estoppart") == "1" || tune;
+        if (!any) return;
+        switch (act)
+        {
+            case "leak-run": demo.SeedLeak(d1, "run", "hmi", tune ? 6 : 5); break;
+            case "leak-done": demo.SeedLeak(d1, "done", "pc"); break;
+            case "leak-fail": demo.SeedLeak(d1, "fail", "hmi"); break;
+            case "leak-abort": demo.SeedLeak(d1, "abort", "hmi"); break;
+            case "calib-wait": demo.SeedCalib(d1, 3); break;
+            case "stack":
+                demo.SeedLeak(d1, "run", "pc", tune ? 6 : 5);
+                if (demo.Device(2) is { } d2) demo.SeedCalib(d2, 4);
+                break;
+        }
+        if (x("stirfault") == "1") demo.SeedStirFault(d1);
+        if (x("manual") == "1") demo.SeedManualValve(d1);
+        if (x("estoppart") == "1") demo.SeedEstopPart(d1);
+        if (tune) demo.SeedAutotune(d1, 5, 150, 1, 26);
+        Fleet.RefreshNow();
+        Activity.ApplyParams(x("actfold") == "1", Int(x("axopen")));
+        // axabort=1：点「中止」（截图看确认框）
+        if (x("axabort") == "1" && Fleet.Device(1) is { } dv) ActivityActions.ConfirmAbort(this, dv);
+    }
 }

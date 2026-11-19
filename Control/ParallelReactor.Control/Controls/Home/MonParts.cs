@@ -279,7 +279,7 @@ public sealed class TileMarkView : Avalonia.Controls.Control
         var c = new Point(Bounds.Width / 2, Bounds.Height / 2);
         if (Mark == TileMark.None)
         {
-            var b = Dot switch { RunDot.Run => Palette.GDotBrush, RunDot.Err => Palette.RBrush, _ => Palette.NDotBrush };
+            var b = Dot switch { RunDot.Run => Palette.GDotBrush, RunDot.Err => Palette.RBrush, RunDot.Brand => Palette.ABrush, RunDot.Amb => Palette.AxAmbBrush, _ => Palette.NDotBrush };
             ctx.DrawEllipse(b, null, c, 3.5, 3.5);
             return;
         }

@@ -129,6 +129,18 @@ public interface IDeviceSource : IAsyncDisposable
     /// 共用气路的占用与排队、容积（吸气量的气相体积）、断线时设备怎么做。见 <see cref="PlantInfo"/>。
     /// </summary>
     PlantInfo Plant { get; }
+
+    /// <summary>
+    /// v0.8.1 设备活动同步（ACT-SPEC §1）：这台设备此刻的泄漏测试 / 容积标定（触屏或本机发起）+ 全局标记（气路占用、手动阀控、搅拌故障、急停分项、自整定）。
+    /// 真机 = 最新一帧的 leakTest / calib / gas / stir / estop / channels[].autotuning；演示 = 演示数据（地址参数 act= 等）。
+    /// </summary>
+    ActivityInfo Activity { get; }
+}
+
+/// <summary>一台设备的活动 + 全局标记（见 <see cref="IDeviceSource.Activity"/>）。</summary>
+public sealed record ActivityInfo(Core.Activity.DeviceActivity? Act, Core.Activity.DeviceMarks Marks)
+{
+    public static readonly ActivityInfo None = new(null, Core.Activity.DeviceMarks.None);
 }
 
 /// <summary>

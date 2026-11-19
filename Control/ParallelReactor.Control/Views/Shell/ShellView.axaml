@@ -59,6 +59,9 @@
     <Style Selector="Grid#Root.short vs|AlarmPopView hc|MiniTrend">
       <Setter Property="Height" Value="72" />
     </Style>
+    <Style Selector="Grid#Root.narrow vs|ActivityPanelView#ActPanel">
+      <Setter Property="Margin" Value="0,0,40,12" />
+    </Style>
     <Style Selector="Grid#Root.narrow vs|AlarmPopover Border#AlarmBox">
       <Setter Property="Width" Value="440" />
     </Style>
@@ -110,6 +113,9 @@
     </Border>
 
     <vs:StatusBarView Grid.Row="4" />
+
+    <!-- v0.8.1 浮动活动面板（样稿 .axdock：右 44、状态栏上 16；窄屏右 40、上 12）：不是模态，只占自己的矩形；报警列表 / 报警弹窗 / 对话框盖在它上面 -->
+    <vs:ActivityPanelView Name="ActPanel" Grid.Row="3" ZIndex="90" DataContext="{Binding Activity}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,44,16" />
 
     <vs:AlarmPopover Name="AlarmPop" Classes="audit-layer" Grid.Row="2" Grid.RowSpan="2" ZIndex="100" Margin="0,4,8,8" HorizontalAlignment="Right"
                      IsVisible="{Binding Alarms.IsOpen}" />

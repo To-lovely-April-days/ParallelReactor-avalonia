@@ -53,6 +53,36 @@
       <Setter Property="Margin" Value="0,2,0,0" />
       <Setter Property="LineHeight" Value="16" />
     </Style>
+    <!-- v0.8.1 活动行 -->
+    <Style Selector="Button.axln">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Height="28" CornerRadius="6" Padding="9,0,8,0" Background="{TemplateBinding Background}">
+            <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Setter Property="Background" Value="{StaticResource AxBrandLBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="Cursor" Value="Arrow" />
+    </Style>
+    <Style Selector="Button.axln.go">
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.axln.a">
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource AxAmbTextBrush}" />
+    </Style>
+    <Style Selector="Button.axln.a c|IconView.li">
+      <Setter Property="Foreground" Value="{StaticResource AxAmbIconBrush}" />
+    </Style>
+    <Style Selector="Button.axln.r">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
   </UserControl.Styles>
   <DockPanel TextElement.FontSize="{StaticResource FsBase}">
     <Border DockPanel.Dock="Top" Height="{StaticResource PaneHeadH}" Background="{StaticResource PaneHeadBrush}" BorderBrush="{StaticResource RailLineBrush}"
@@ -108,6 +138,24 @@
                         <Run Text="{Binding Line1}" /><Run Text="{Binding Line1Red}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding Line1Tail}" />
                       </TextBlock>
                       <pr:PrText Classes="r3" Text="{Binding Eta}" IsVisible="{Binding HasEta}" />
+                      <!-- v0.8.1 活动行（样稿 .axlns / .axln，v2 去掉框线）：上 7、行距 4；28 高、圆角 6、左 9 右 8、13 px；品牌蓝 = 正在做，琥珀 = 要人去做，红 = 故障 -->
+                      <ItemsControl ItemsSource="{Binding Lines}" IsVisible="{Binding HasLines}" Margin="0,7,0,0">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate><StackPanel Spacing="4" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="sh:ActLineVm">
+                            <Button Classes="axln" Classes.a="{Binding IsA}" Classes.r="{Binding IsR}" Classes.go="{Binding Clickable}" Command="{Binding Command}"
+                                    ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Text}">
+                              <DockPanel>
+                                <c:IconView DockPanel.Dock="Right" Icon="f-chev-r" Size="12" Opacity="0.7" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Clickable}" />
+                                <c:IconView DockPanel.Dock="Left" Classes="li" Icon="{Binding Icon}" Size="14" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Text="{Binding Text}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                              </DockPanel>
+                            </Button>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
                     </StackPanel>
                   </DockPanel>
                 </Panel>

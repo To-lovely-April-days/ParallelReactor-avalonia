@@ -365,6 +365,24 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     }
 
     private (TelemetrySnapshot? F, SettingsDto? S, ControlStateDto? C, ModelProfile? M, PlantInfo? P) _plant;
+
+    /// <summary>
+    /// 设备活动（v0.8.1，Core 的 ActivityBuild / DeviceMarks）：按最新一帧（引用不变时直接用上一次的结果）。断线时是断线前最后一帧的。
+    /// </summary>
+    public ActivityInfo Activity
+    {
+        get
+        {
+            var f = Latest;
+            if (f is null) return ActivityInfo.None;
+            if (ReferenceEquals(_actOf, f) && _act != null) return _act;
+            _actOf = f;
+            return _act = new ActivityInfo(Core.Activity.ActivityBuild.From(f), Core.Activity.DeviceMarks.From(f));
+        }
+    }
+
+    private TelemetrySnapshot? _actOf;
+    private ActivityInfo? _act;
     private ControlStateDto? _lastControlState;
     private SettingsDto? _volumeOf;
     private VolumeInfo? _volume;

@@ -763,6 +763,102 @@
       "name": "sym",
       "hex": "#8d98a8",
       "src": ":root --sym · 阀门符号"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-brand-l",
+      "hex": "#e9eef7",
+      "src": ":root --brand-l · .axln 设备列表活动行底、.status .axst 状态栏一项、.a2i 图标块底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-track",
+      "hex": "#e4e8ee",
+      "src": ":root --ax-track · ax2Ring 圆环 / 胶囊小圆环的轨道"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-tint",
+      "hex": "#f3f5f8",
+      "src": ":root --ax-tint · .a2chip 进行中的通道小块底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-cur",
+      "hex": "#d5dff0",
+      "src": "ax2Ring 当前阶段的浅蓝底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-cur-amb",
+      "hex": "#fbe7b8",
+      "src": "ax2Ring 等人操作那一段的浅琥珀底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb",
+      "hex": "#d69a00",
+      "src": ":root --ax-amb · 等人操作的圆环、琥珀图标"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb-icon",
+      "hex": "#9a6700",
+      "src": ":root --amb · .axln.k-a 设备列表琥珀行的图标"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb-text",
+      "hex": "#7a5200",
+      "src": ".axln.k-a / .status .axst.amb 琥珀行的字"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb-head",
+      "hex": "#5c4100",
+      "src": ".a2warn b / .a2cur.amb b 琥珀块的标题"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb-wash",
+      "hex": "#fff6e2",
+      "src": ".a2warn 带压提示 / .a2chip.k-amb 初始压力过高的底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-amb-icon-bg",
+      "hex": "#fdf1d6",
+      "src": ".a2i.t-amb 等人操作的图标块底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-ok",
+      "hex": "#1f6b24",
+      "src": ":root --ax-ok · 通过的字、图标"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-ok-bg",
+      "hex": "#eef6ef",
+      "src": ":root --ax-ok-bg · .a2chip.k-ok 通过的通道底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-no",
+      "hex": "#b42c2c",
+      "src": ":root --ax-no · 不通过 / 充压不上的字、图标"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-no-bg",
+      "hex": "#fcf0f0",
+      "src": ":root --ax-no-bg · .a2chip.k-no 不通过的通道底"
+    },
+    {
+      "group": "设备活动（ACT）",
+      "name": "ax-off",
+      "hex": "#a3a8b0",
+      "src": ".a2off「RV5–8 不测」· .ax2rc b.mutb 已中止的「—」"
     }
   ],
   "misc": [
@@ -775,6 +871,16 @@
       "name": "overlay",
       "rgba": "rgba(17,24,39,.32)",
       "src": ".apop-bg 弹窗遮罩；对话框遮罩 rgba(20,20,40,.25) 同色系"
+    },
+    {
+      "name": "ax-btn-line",
+      "rgba": "rgba(16,24,40,.16)",
+      "src": ".ax2b 浮动面板按钮的描边（inset 0 0 0 1px）"
+    },
+    {
+      "name": "ax-seg",
+      "rgba": "rgba(16,24,40,.05)",
+      "src": ".a2seg 阶段分段文字的底"
     }
   ],
   "shadows": [
@@ -849,6 +955,30 @@
       "key": "ShadowDotErr",
       "css": "0 0 0 3px rgba(198,40,40,.16)",
       "src": ".rtab .sts.s-err i 运行表报警的状态点光圈"
+    },
+    {
+      "name": "ax-elev",
+      "key": "ShadowAxElev",
+      "css": "0 16px 40px rgba(16,24,40,.16),0 3px 8px rgba(16,24,40,.08),0 0 0 1px rgba(16,24,40,.07)",
+      "src": ":root --ax-elev · .a2p 浮动活动面板"
+    },
+    {
+      "name": "ax-elev-s",
+      "key": "ShadowAxElevS",
+      "css": "0 6px 18px rgba(16,24,40,.14),0 0 0 1px rgba(16,24,40,.07)",
+      "src": ":root --ax-elev-s · .a2pill 收起后的胶囊"
+    },
+    {
+      "name": "ax-seg-cur",
+      "key": "ShadowAxSegCur",
+      "css": "0 1px 3px rgba(16,24,40,.12)",
+      "src": ".a2seg span.cur 当前阶段的白色凸起"
+    },
+    {
+      "name": "shadow-dot-brand",
+      "key": "ShadowDotBrand",
+      "css": "0 0 0 3px rgba(32,71,151,.14)",
+      "src": ".rtab .sts.s-ax-b i 运行表泄漏测试 / 自整定通道的品牌蓝状态点光圈"
     }
   ],
   "focus": {

@@ -101,6 +101,27 @@
       <Setter Property="Background" Value="{StaticResource RBrush}" />
       <Setter Property="BoxShadow" Value="{StaticResource ShadowDotErr}" />
     </Style>
+    <Style Selector="Border.axtag">
+      <Setter Property="Height" Value="26" />
+      <Setter Property="Padding" Value="8,0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource AmbLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource AmbBgBrush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.axtag.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RLineBrush}" />
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <!-- v0.8.1：泄漏测试 / 标定 / 自整定的通道（样稿 .rtab .sts.s-ax-b / s-ax-a） -->
+    <Style Selector="Border.sdot.brand">
+      <Setter Property="Background" Value="{StaticResource ABrush}" />
+      <Setter Property="BoxShadow" Value="{StaticResource ShadowDotBrand}" />
+    </Style>
+    <Style Selector="Border.sdot.amb">
+      <Setter Property="Background" Value="{StaticResource AxAmbBrush}" />
+    </Style>
     <Style Selector="Button.rr StackPanel.stp">
       <Setter Property="Width" Value="112" />
       <Setter Property="Margin" Value="0,0,14,0" />
@@ -218,6 +239,19 @@
                   </TextBlock>
                   <Border Name="MvSep1" Classes="vsep" />
                   <vp:StirCtlView Name="MvStir" DataContext="{Binding Res}" IsVisible="{Binding HasStir}" VerticalAlignment="Center" />
+                  <!-- v0.8.1（样稿 axHdrChips）：琥珀「触屏手动阀控中」+ 红「电机故障 0x80」，26 高 -->
+                  <Border Name="MvManual" Classes="axtag" IsVisible="{Binding Res.ManualValve}" ToolTip.Tip="有人在设备触屏上手动开关阀门；PC 上的阀门状态跟着触屏变">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <c:IconView Icon="f-wrench" Size="14" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="触屏手动阀控中" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Border>
+                  <Border Name="MvFault" Classes="axtag err" IsVisible="{Binding Res.StirFault}" ToolTip.Tip="搅拌电机故障 · 只能在设备触屏上清除 · 全部釜已停止搅拌">
+                    <StackPanel Orientation="Horizontal" Spacing="5">
+                      <c:IconView Icon="f-err-f" Size="14" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Center" />
+                      <TextBlock Text="{Binding Res.StirFaultTitle}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </Border>
                 </StackPanel>
               </Panel>
             </DockPanel>
@@ -253,7 +287,9 @@
                           </StackPanel>
                           <StackPanel Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
                             <Border Classes="sdot" Classes.run="{Binding Dot, Converter={x:Static h:HomeConverters.IsRunDot}}"
-                                    Classes.err="{Binding Dot, Converter={x:Static h:HomeConverters.IsErrDot}}" />
+                                    Classes.err="{Binding Dot, Converter={x:Static h:HomeConverters.IsErrDot}}"
+                                    Classes.brand="{Binding Dot, Converter={x:Static h:HomeConverters.IsBrandDot}}"
+                                    Classes.amb="{Binding Dot, Converter={x:Static h:HomeConverters.IsAmbDot}}" />
                             <TextBlock Classes="sw" Text="{Binding Word}" />
                           </StackPanel>
                           <Panel VerticalAlignment="Center">

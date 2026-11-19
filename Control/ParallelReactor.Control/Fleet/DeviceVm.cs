@@ -121,6 +121,13 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
     [ObservableProperty] private DeviceHealth _health;
     /// <summary>反应釜号有两位数（≥ 10 路：资源管理器 RV 列 40 px）。</summary>
     [ObservableProperty] private bool _wideRvNames;
+    /// <summary>v0.8.1：这台设备此刻的泄漏测试 / 容积标定（结束的结果保持到下一次开始；面板和设备栏是否显示由外框的 ActivityDeck 决定）。</summary>
+    [ObservableProperty] private Core.Activity.DeviceActivity? _act;
+    /// <summary>v0.8.1：全局标记（气路占用、手动阀控、搅拌故障、急停分项、自整定）。</summary>
+    [ObservableProperty] private Core.Activity.DeviceMarks _marks = Core.Activity.DeviceMarks.None;
+
+    /// <summary>运行类（不含报警）：自整定只在不跑程序的通道上覆盖。</summary>
+    private static bool RunRowTextRunning(StateKey own) => Pages.Home.RunRowText.Running(own);
 
     private GuardFacts? _facts;
     private bool _wasLost;
@@ -264,6 +271,16 @@ public sealed partial class DeviceVm : ObservableObject, IFleetDevice
         }
         Installed = inst;
         Running = run;
+
+        // 设备活动（v0.8.1）：泄漏测试 / 标定 + 全局标记；被占着的通道换状态字（运行表 / 卡片 / 棒图）
+        var ai = s.Activity;
+        Act = ai.Act;
+        Marks = ai.Marks;
+        var queue = s.Plant.GasQueue;
+        var leak = s.Plant.Leak;
+        var at = s.IsDemo ? now : s.History.Now;
+        foreach (var r in Reactors)
+            r.Act = r.Installed ? ChannelAct.Of(r.N, ai.Act, ai.Marks, queue, leak, at, RunRowTextRunning(r.Own)) : null;
         // 断线时照样写（样稿：数据停在断线时刻，预计结束仍按那时的进度）
         EtaText = online || conn.EverOnline ? Eta(now) : "";
 

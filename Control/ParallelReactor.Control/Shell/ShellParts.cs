@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ParallelReactor.Control.Core.Activity;
 using ParallelReactor.Control.Controls.Pr;
 using ParallelReactor.Control.Core.Format;
 using ParallelReactor.Control.Core.Guard;
@@ -499,6 +500,13 @@ public sealed partial class DeviceRowVm : ObservableObject
     [ObservableProperty] private string _line1Tail = "";
     [ObservableProperty] private string _eta = "";
     [ObservableProperty] private bool _hasEta;
+    /// <summary>
+    /// v0.8.1 活动行（样稿 act.js axLines，v2 去掉框线）：急停没确认（红）· 搅拌电机故障（红）· 泄漏测试 / 容积标定（品牌蓝，等人操作 / 结束有问题琥珀）·
+    /// PID 自整定（品牌蓝）· 触屏手动阀控（琥珀）。能点的行右边有 ›。
+    /// </summary>
+    [ObservableProperty] private IReadOnlyList<ActLineVm> _lines = Array.Empty<ActLineVm>();
+    [ObservableProperty] private bool _hasLines;
+
     /// <summary>竖条上的小方块的点：err / run / 空。</summary>
     public bool BarErr => Bar == "err";
     public bool BarRun => Bar == "run";
@@ -582,6 +590,9 @@ public sealed partial class DevicePaneVm : ObservableObject
             }
             r.Eta = d.EtaText;
             r.HasEta = d.EtaText.Length > 0;
+            var lines = ActLines(d);
+            if (!lines.SequenceEqual(r.Lines)) r.Lines = lines;
+            r.HasLines = lines.Count > 0;
             want.Add(r);
         }
         Sync(Rows, want);
@@ -596,6 +607,39 @@ public sealed partial class DevicePaneVm : ObservableObject
             var rows = InfoRows(sel);
             if (!rows.SequenceEqual(Info)) Info = rows;
         }
+    }
+
+    /// <summary>
+    /// 一台设备的活动行（样稿 axLines 的顺序）：急停没确认 → 搅拌电机故障 → 泄漏测试 / 标定（面板里显示着的才列）→ PID 自整定 → 触屏手动阀控。
+    /// </summary>
+    internal IReadOnlyList<ActLineVm> ActLines(DeviceVm d)
+    {
+        var m = d.Marks;
+        var list = new List<ActLineVm>();
+        int k = d.K;
+        var now = _shell.Fleet.Now;
+        if (d.EstopActive && m.Estop is { } es && es.AnyUnconfirmed(now))
+        {
+            var bad = es.Rows(now).First(r => r.Bad);
+            list.Add(new ActLineVm("r", "f-err-f", bad.Done + " · 到设备旁确认", "急停后设备没有收到这个部件的确认 · 点开看详情", true, () => _shell.AlarmPop.ShowEstop(k), k + ":estop"));
+        }
+        if (m.HasStirFault)
+            list.Add(new ActLineVm("r", "f-err-f", "搅拌电机故障 · 在触屏清除", "电机故障 " + (m.StirCodeText ?? "") + (m.StirFault is { } f ? " · " + f : "") + " · 只能在设备触屏上清除",
+                false, null, k + ":stir"));
+        if (d.Act is { } a && _shell.Activity.Shown(k) != null)
+        {
+            var (tone, icon, text) = ActivityText.DevLine(a);
+            list.Add(new ActLineVm(tone == ActTone.Amb ? "a" : "b", icon, text, ActivityText.Name(a) + " · " + (a.Live ? "点击打开浮动面板" : "点击打开结果"), true, () => _shell.Activity.Expand(k), k + ":act"));
+        }
+        if (m.Autotune.Count > 0)
+        {
+            var sp = m.Autotune[0].SpC;
+            list.Add(new ActLineVm("b", "f-trend", "PID 自整定 " + ActivityText.Range(m.Autotune.Select(x => x.N).ToList()) + (sp is double v ? " · " + v.ToString("0", CultureInfo.InvariantCulture) + " °C" : ""),
+                "在「设置 → 温控 / PID」里查看", true, () => { _shell.SelectDevice(k); _shell.OpenSettings("pid"); }, k + ":tune"));
+        }
+        if (m.ManualValve)
+            list.Add(new ActLineVm("a", "f-wrench", "触屏手动阀控中", "有人在设备触屏上手动开关阀门 · 程序升压会排队", false, null, k + ":manual"));
+        return list;
     }
 
     /// <summary>气源一行下面的说明（样稿 devInfo、阀门小块的悬停）。</summary>
@@ -635,6 +679,55 @@ public sealed partial class DevicePaneVm : ObservableObject
     }
 }
 
+/// <summary>
+/// 设备栏的一行活动（v0.8.1）：语气 b（品牌蓝）/ a（琥珀，要人去做事）/ r（红，故障）、图标、文字、悬停、能不能点（右边 ›）、点了做什么。
+/// 相等只比显示的内容（<see cref="Id"/> + 语气 + 文字），刷新时内容没变就不换。
+/// </summary>
+public sealed class ActLineVm : IEquatable<ActLineVm>
+{
+    public ActLineVm(string tone, string icon, string text, string tip, bool clickable, Action? go, string id)
+    {
+        Tone = tone; Icon = icon; Text = text; Tip = tip; Clickable = clickable; Id = id;
+        Command = new RelayCommand(() => go?.Invoke());
+    }
+
+    public string Tone { get; }
+    public string Icon { get; }
+    public string Text { get; }
+    public string Tip { get; }
+    public bool Clickable { get; }
+    public string Id { get; }
+    public ICommand Command { get; }
+    public bool IsB => Tone == "b";
+    public bool IsA => Tone == "a";
+    public bool IsR => Tone == "r";
+
+    public bool Equals(ActLineVm? o) => o != null && o.Id == Id && o.Tone == Tone && o.Text == Text && o.Icon == Icon && o.Tip == Tip;
+    public override bool Equals(object? obj) => Equals(obj as ActLineVm);
+    public override int GetHashCode() => HashCode.Combine(Id, Tone, Text);
+}
+
+/// <summary>状态栏里一项收起了的设备活动（v0.8.1，样稿 .status .axst）：「1号机 · 泄漏测试 · 平衡 · 16 %」，等人操作琥珀；点它展开浮动面板。</summary>
+public sealed class ActStatusVm : IEquatable<ActStatusVm>
+{
+    public ActStatusVm(int k, string text, bool amb, string icon, string tip, ActivityPanelVm panel)
+    {
+        K = k; Text = text; Amb = amb; Icon = icon; Tip = tip;
+        Command = new RelayCommand(() => panel.Expand(k));
+    }
+
+    public int K { get; }
+    public string Text { get; }
+    public bool Amb { get; }
+    public string Icon { get; }
+    public string Tip { get; }
+    public ICommand Command { get; }
+
+    public bool Equals(ActStatusVm? o) => o != null && o.K == K && o.Text == Text && o.Amb == Amb && o.Icon == Icon;
+    public override bool Equals(object? obj) => Equals(obj as ActStatusVm);
+    public override int GetHashCode() => HashCode.Combine(K, Text);
+}
+
 /// <summary>状态栏的一项（样稿 .status .it：13 px 图标 + 文字；红字粗体的一段放在 <see cref="Red"/>）。</summary>
 public sealed record StatusItem(string Icon, string Text, string Red = "", string Tail = "", string? Tip = null, bool Alert = false);
 
@@ -668,6 +761,9 @@ public sealed partial class StatusBarVm : ObservableObject
     [ObservableProperty] private string _alarmTail = "";
     [ObservableProperty] private string? _selText;
     [ObservableProperty] private string? _noteText;
+    /// <summary>v0.8.1：收起了的设备活动（每台一项，可以点）。</summary>
+    public ObservableCollection<ActStatusVm> Acts { get; } = new();
+    [ObservableProperty] private bool _hasActs;
     [ObservableProperty] private string _sampleText = "采样 1 s";
     [ObservableProperty] private string _clockText = "";
 
@@ -693,9 +789,18 @@ public sealed partial class StatusBarVm : ObservableObject
         AlarmTail = ua > 0 ? "" : "已全部确认";
         var nav = _shell.Nav;
         if (nav.DeviceK > 0 && f.Device(nav.DeviceK) is { } d && d.Reactor(nav.Channel) is { } r)
-            SelText = d.Alias + " · RV" + r.N + " · " + Pages.Home.RunRowText.Word(r.Own, r.Cause, r.OwnWord);
+            SelText = d.Alias + " · RV" + r.N + " · " + (r.Act?.Word ?? Pages.Home.RunRowText.Word(r.Own, r.Cause, r.OwnWord));
         else SelText = null;
-        NoteText = f.IsDemo ? "演示数据 · " + ModelProfiles.SampleNote : f.HasSampleModels ? ModelProfiles.SampleNote : null;
+        // v0.8.1：收起了的活动各一项（点它重新展开浮动面板）；窄屏缩成「1号机 泄漏测试 16 %」
+        bool narrow = !_shell.Layout.IsWide;
+        var acts = _shell.Activity.Deck.Visible(f.Now).Where(x => x.Folded && f.Device(x.K) != null)
+            .Select(x => new ActStatusVm(x.K, ActivityText.Status(f.Device(x.K)!.Alias, x.Activity, narrow), x.Activity.Waiting,
+                x.Activity.Kind == ActKind.Leak ? "f-timer" : "f-beaker", ActivityText.Title(f.Device(x.K)!.Alias, x.Activity) + " · 点击打开浮动面板",
+                _shell.Activity)).ToList();
+        if (!acts.SequenceEqual(Acts)) { Acts.Clear(); foreach (var a in acts) Acts.Add(a); }
+        HasActs = Acts.Count > 0;
+        // 窄屏又有收起的活动时，演示数据不写「演示数据 · 」（状态栏放不下；窗口标题里照样写着演示数据）
+        NoteText = f.IsDemo ? (narrow && HasActs ? "" : "演示数据 · ") + ModelProfiles.SampleNote : f.HasSampleModels ? ModelProfiles.SampleNote : null;
         var now = f.Now;
         ClockText = Fmt.Date(now) + " " + Fmt.Time(now);
     }

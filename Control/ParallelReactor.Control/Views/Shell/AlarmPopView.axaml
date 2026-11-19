@@ -46,6 +46,32 @@
     <Style Selector="Button.flip /template/ c|IconView#PART_Icon">
       <Setter Property="RenderTransform" Value="rotate(180deg)" />
     </Style>
+    <!-- v0.8.1 急停分项 -->
+    <Style Selector="Border.eth">
+      <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+    </Style>
+    <Style Selector="Border.eth TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="TextBlock.erd">
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="TextBlock.ers">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.er.bad">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+    </Style>
+    <Style Selector="Border.er.bad Border.eth">
+      <Setter Property="Background" Value="{StaticResource RBgBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+      <Setter Property="BorderThickness" Value="3,0,0,0" />
+      <Setter Property="Padding" Value="7,8,10,8" />
+    </Style>
+    <Style Selector="Border.er.bad TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource RInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
   </UserControl.Styles>
   <Panel IsVisible="{Binding IsOpen}">
     <Border Background="{StaticResource OverlayBrush}" />
@@ -74,6 +100,29 @@
         </DockPanel>
         <!-- 正文 -->
         <StackPanel Margin="20,0,20,16">
+          <!-- v0.8.1 急停没有全部确认（样稿 .apop .axes）：四行 程序 / 加热 / 搅拌 / 阀门，14 px；键 64 宽 bg-panel 600 t-2；行线 bg-press；
+               没确认的一行 r-bg 底、r-ink 600、左边 3 px 红线；右列「已确认」t-3 /「没有收到确认」 -->
+          <Border IsVisible="{Binding IsEstop}" BorderBrush="{StaticResource BgPressBrush}" BorderThickness="0,1,0,0">
+            <ItemsControl ItemsSource="{Binding EstopRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="sh:EstopRowVm">
+                  <Border Classes="er" Classes.bad="{Binding Bad}" BorderBrush="{StaticResource BgPressBrush}" BorderThickness="0,0,0,1">
+                    <DockPanel>
+                      <Border Classes="eth" DockPanel.Dock="Left" Width="64" Padding="10,8">
+                        <TextBlock Text="{Binding Part}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" />
+                      </Border>
+                      <TextBlock Classes="ers" DockPanel.Dock="Right" Text="{Binding State}" FontSize="{StaticResource Fs2}" VerticalAlignment="Center" Margin="10,0" />
+                      <StackPanel Orientation="Horizontal" Spacing="8" Margin="10,8" VerticalAlignment="Center">
+                        <c:IconView Icon="f-ok-f" Size="16" Foreground="{StaticResource AxOkBrush}" VerticalAlignment="Center" IsVisible="{Binding Ok}" />
+                        <c:IconView Icon="f-no-f" Size="16" Foreground="{StaticResource RBrush}" VerticalAlignment="Center" IsVisible="{Binding Bad}" />
+                        <TextBlock Classes="erd" Text="{Binding Done}" FontSize="{StaticResource Fs2}" VerticalAlignment="Center" />
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
           <ItemsControl ItemsSource="{Binding Tiles}" Margin="0,0,-8,0">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
@@ -116,7 +165,7 @@
               </StackPanel>
             </StackPanel>
           </Border>
-          <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="4" Background="{StaticResource ApopInfoBrush}">
+          <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="4" Background="{StaticResource ApopInfoBrush}" IsVisible="{Binding NotEstop}">
             <DockPanel>
               <c:IconView DockPanel.Dock="Left" Icon="f-check" Size="18" Foreground="{StaticResource ABrush}" VerticalAlignment="Top" Margin="0,2,10,0" />
               <StackPanel>
@@ -137,7 +186,7 @@
                            ToolTip.Tip="有未确认的报警时每 30 s 响一次" />
             <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
               <Button Classes="af" Content="稍后处理" Command="{Binding LaterCommand}" ToolTip.Tip="这一条先不弹（Esc）· 报警列表里仍可确认" />
-              <Button Classes="af" b:Pr.Icon="f-locate" Content="{Binding LocateLabel}" Command="{Binding LocateCommand}" IsVisible="{Binding HasCh}" />
+              <Button Classes="af" b:Pr.Icon="f-locate" Content="{Binding LocateLabel}" Command="{Binding LocateCommand}" IsVisible="{Binding CanLocate}" />
               <Button Classes="af" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="{Binding StopLabel}" Command="{Binding StopCommand}"
                       b:Pr.Reason="{Binding StopReason}" IsVisible="{Binding HasCh}" ToolTip.Tip="停加热、关进气阀 · 不需要控制权" />
               <Button Classes="af" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-check" Content="确认报警" Command="{Binding AckCommand}" b:Pr.Reason="{Binding AckReason}" />

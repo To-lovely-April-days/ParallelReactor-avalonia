@@ -70,6 +70,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Status = new StatusBarVm(this);
         AlarmPop = new AlarmPopVm(this);
         Ctl = new ChannelCtlVm(this);
+        Activity = new ActivityPanelVm(this);
         Dialogs.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(DialogHostVm.IsOpen)) AlarmPop.Refresh(); };
 
         Fleet.Changed += OnFleetChanged;
@@ -117,6 +118,8 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
     public AlarmPopVm AlarmPop { get; }
     /// <summary>主页检查器（融合版 F3：选中的一路，样稿 ctlHTML）。</summary>
     public ChannelCtlVm Ctl { get; }
+    /// <summary>浮动活动面板（v0.8.1 设备活动同步：泄漏测试 / 容积标定，右下角，不是模态）。</summary>
+    public ActivityPanelVm Activity { get; }
 
     public System.Windows.Input.ICommand SettingsCommand { get; }
     public System.Windows.Input.ICommand AboutCommand { get; }
@@ -270,6 +273,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         if (X("alm") == "1") Alarms.IsOpen = true;
         if (X("ovm") is { Length: > 0 } ovm && OpenPage<HomePageVm>() is { } hp) hp.Curve.ModeKey = ovm;
         if (X("mv") is { Length: > 0 } mv && OpenPage<HomePageVm>() is { } hm) hm.MonKey = mv;
+        ApplyActParams(X);
         Nav.Prune();
         Page?.ApplyParams(X);
         Page?.Refresh(Fleet);
@@ -294,6 +298,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         OpenPage<HomePageVm>()?.ResetBoard();
         foreach (var pg in Pages) pg.ResetView();
         AlarmPop.Reset(false);
+        Activity.Reset();
         Nav.Reset();
     }
 
@@ -444,6 +449,7 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         Alarms.Refresh();
         Ribbon.Refresh();
         if (Page != null) Ribbon.SetTools(Page.Tools);
+        Activity.Refresh();   // 先于设备栏 / 状态栏：活动行、状态栏一项按面板里显示着的活动
         Devices.Refresh();
         Status.Refresh();
         Ctl.Refresh();
