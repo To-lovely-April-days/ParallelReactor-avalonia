@@ -99,7 +99,7 @@ public partial class MainViewModel : ViewModelBase
     public async System.Threading.Tasks.Task RefreshStirFaultAsync()
     {
         var c = await _stir.ReadAlarmAsync();
-        if (c is { } code) { _stirAlarmCode = code; StirFaultText = StirFaultName(code); }
+        if (c is { } code) { _stirAlarmCode = code; StirFaultText = StirFaultName(code); TrackStirFault(code); }
         var v = await _stir.ReadBusVoltageAsync();
         if (v is { } bv) StirBusVoltage = bv;
     }

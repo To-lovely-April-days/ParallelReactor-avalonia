@@ -125,7 +125,9 @@ public static class SnapshotBuilder
         var waiting = vm.GasQueue.Waiting.Where(rv => runInfos.TryGetValue(rv, out var w) && w.WaitingGas).ToArray();
         var programs = new ProgramsSnap(runInfos.Count, ProgramRunSet.RunningIds(runInfos).ToArray(), vm.GasHolderRv,
             waiting, ProgramRunSet.Summary(runInfos));
-        var leak = new LeakSnap(vm.Leak.Running, Math.Round(vm.Leak.Progress, 1), vm.Leak.Running ? vm.Leak.PhaseText : null, vm.Leak.CurrentRunId, vm.Leak.Done, vm.Leak.Failed);
+        // v0.8.1 设备活动同步：泄漏测试的阶段码 / 剩余时间 / 发起人 / 8 路状态，结果保持到下一次开始；容积标定（没有为 null）
+        var leak = vm.Leak.Activity.ToSnap(now, vm.Leak.Running, vm.Leak.Progress, vm.Leak.PhaseText, vm.Leak.CurrentRunId, vm.Leak.ActivityCells);
+        var calib = vm.Calib.Activity.ToSnap(vm.Calib.Running, vm.Calib.Progress, vm.Calib.PhaseText, vm.Calib.WaterMl);
         // id = 会话文件主名（唯一键，接口的会话 id）；testId = 调用方给的测试编号（CSV「会话」列）
         var sid = vm.Logger.SessionId;
         var session = new SessionSnap(sid != null, vm.Logger.SessionKey, sid, vm.Logger.SessionPath is { } sp ? System.IO.Path.GetFileName(sp) : null);
@@ -133,7 +135,7 @@ public static class SnapshotBuilder
             vm.Arbiter.Mode == ControlMode.Remote ? vm.Arbiter.HolderName : null);
 
         var frame = new TelemetrySnapshot("telemetry", seq, now.UtcDateTime, HardwareOptions.Sim, vm.Logger.Events?.Head ?? 0,
-            mode, estop, new CommSnap(realT, realP, vm._stir.Online, vm._valves.Online), frameCh, stir, gas, program, programs, leak, session);
+            mode, estop, new CommSnap(realT, realP, vm._stir.Online, vm._valves.Online), frameCh, stir, gas, program, programs, leak, session, calib);
 
         var st = vm.Settings;
         var bands = vm.Temp.Bands.Select((b, i) => new TempBandSnap(i, b.Lo, b.Hi)).ToArray();

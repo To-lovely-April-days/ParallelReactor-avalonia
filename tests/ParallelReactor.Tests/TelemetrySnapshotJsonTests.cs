@@ -83,7 +83,7 @@ public class TelemetrySnapshotJsonTests
         using var doc = JsonDocument.Parse(json);
         var root = doc.RootElement;
         var top = root.EnumerateObject().Select(p => p.Name).ToArray();
-        Assert.Equal(new[] { "type", "seq", "ts", "simulated", "eventSeqApplied", "mode", "estop", "comm", "channels", "stir", "gas", "program", "programs", "leakTest", "session" }, top);
+        Assert.Equal(new[] { "type", "seq", "ts", "simulated", "eventSeqApplied", "mode", "estop", "comm", "channels", "stir", "gas", "program", "programs", "leakTest", "session", "calib" }, top);
         var ch = root.GetProperty("channels")[0].EnumerateObject().Select(p => p.Name).ToArray();
         Assert.Equal(new[]
         {
@@ -98,7 +98,13 @@ public class TelemetrySnapshotJsonTests
         Assert.Equal(new[] { "on", "rpmSp", "online", "locked", "motorCurrentA", "busVoltageV", "fault", "alarmCode", "rampMsPer1000Rpm" }, root.GetProperty("stir").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "inlets", "ventOpen", "manualValve", "task", "owner" }, root.GetProperty("gas").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "running", "channel", "status", "stepIndex", "stepCount", "phase", "detail" }, root.GetProperty("program").EnumerateObject().Select(p => p.Name));
-        Assert.Equal(new[] { "running", "progress", "phase", "runId", "done", "failed" }, root.GetProperty("leakTest").EnumerateObject().Select(p => p.Name));
+        Assert.Equal(new[]
+        {
+            "running", "progress", "phase", "runId", "done", "failed",
+            // v0.8.1 设备活动同步（末尾追加）
+            "stage", "stageLeftSec", "totalLeftSec", "startedAt", "startedBy", "targetPsi", "thresholdPsiH", "channels", "vented", "aborted",
+            "failReason", "finishedAt",
+        }, root.GetProperty("leakTest").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "active", "id", "testId", "file" }, root.GetProperty("session").EnumerateObject().Select(p => p.Name));
         Assert.Equal(new[] { "control", "holder" }, root.GetProperty("mode").EnumerateObject().Select(p => p.Name));
         // 无字段被 PascalCase 泄漏

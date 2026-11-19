@@ -124,7 +124,7 @@ public partial class LeakViewModel : ViewModelBase
     /// 面板是很久以前打开的）时按当前状态重建格子，再按 ids 勾选。target = 本次测试压力 psi。
     /// 第一个 await 之前就占用气路并锁定面板（与命令的同步头在同一次调用里）。
     /// </summary>
-    internal Task RunAsync(IReadOnlyList<int> channelIds, double target)
+    internal Task RunAsync(IReadOnlyList<int> channelIds, double target, string startedBy = "触屏")
     {
         if (channelIds.Any(id => Cells.FirstOrDefault(c => c.Id == id) is not { CanPick: true }))
         {
@@ -132,10 +132,10 @@ public partial class LeakViewModel : ViewModelBase
             foreach (var c in Cells.Where(c => c.CanPick)) c.Selected = channelIds.Contains(c.Id);
         }
         var picked = Cells.Where(c => channelIds.Contains(c.Id)).ToList();
-        return RunAsync(picked, target);
+        return RunAsync(picked, target, startedBy);
     }
 
-    private async Task RunAsync(List<LeakCell> picked, double target)
+    private async Task RunAsync(List<LeakCell> picked, double target, string startedBy)
     {
         var s = _main.Settings;
         double thr = s.LeakRate;
@@ -149,6 +149,8 @@ public partial class LeakViewModel : ViewModelBase
             else { c.Status = "skip"; c.Detail = c.CanPick ? "不测" : "运行中"; }
         }
         var ct = _main.BeginGas(GasOwner.Leak, "泄漏测试", ids, ids);
+        _runCells = Cells.ToArray();   // 快照用：面板之后重建格子（重新打开）也不影响这次的结果
+        Activity.Begin(DateTimeOffset.Now, startedBy, ids, target, thr, s.LeakSettleMin, s.LeakMeasureMin);
         _rec = new LeakRecord(DateTimeOffset.Now);
         _main.Logger.AddMarker($"泄漏测试开始 {_rec.RunId}");
         var sessionKey = _main.Logger.SessionKey;   // 会话进行中（§10.3）：事件带会话 id，并写进会话 manifest 的 leakTests
@@ -180,11 +182,13 @@ public partial class LeakViewModel : ViewModelBase
             }
             if (fillList.Count == 0) throw new GasFaultException("所选通道初始压力均高于测试压力，请先泄压");
 
+            Activity.Enter(LeakStageCodes.Fill, DateTimeOffset.Now);
             tested = await FillAsync(fillList, target, ct);
             if (tested.Count == 0) throw new GasFaultException("没有通道充压成功");
             overFill = tested.Where(c => c.Pressure > target * 1.25).Select(c => c.Id).ToList();
 
             // 总管泄压：关气源后开排空，避免总管余压经 SV 补进釜里、掩盖泄漏
+            Activity.Enter(LeakStageCodes.LineVent, DateTimeOffset.Now);
             PhaseText = "总管泄压…";
             await _main.ApplyValvesAsync(ValveFrame.AllClosed(), ct);
             await _main.HoldAsync(ValveFrame.AllClosed(), PurgePlan.DeadSec, ct);
@@ -200,6 +204,7 @@ public partial class LeakViewModel : ViewModelBase
             rates = await MeasureAsync(tested, s.LeakMeasureMin, ct);
 
             SetStage(3);
+            Activity.Enter(LeakStageCodes.Vent, DateTimeOffset.Now);
             Judge(tested, rates, thr);
             vented = await TryVentAsync(tested, ct);
         }
@@ -214,6 +219,7 @@ public partial class LeakViewModel : ViewModelBase
         }
 
         Finish(picked, tested, overFill, rates, thr, vented, aborted, fail);
+        Activity.End(DateTimeOffset.Now, vented, aborted, fail, Failed, Progress);
         try { SaveRecord(picked, rates, target, thr, aborted, fail); }
         catch (Exception ex) { _main.Alarm.Log("warn", "系统", "泄漏测试逐点数据未保存", ex.Message); }
     }
@@ -224,6 +230,18 @@ public partial class LeakViewModel : ViewModelBase
 
     /// <summary>正在进行的泄漏测试编号（leak-yyyyMMdd-HHmmss；无测试为 null）。接口快照只读。</summary>
     internal string? CurrentRunId => _rec?.RunId;
+
+    // ============ 设备活动同步（v0.8.1）：PC 同步显示用的阶段码 / 剩余时间 / 发起人 / 各路结果 ============
+
+    /// <summary>本次（或最近一次）测试的阶段与结果，接口快照只读（SnapshotBuilder）。</summary>
+    internal LeakActivity Activity { get; } = new();
+
+    /// <summary>最近一次测试开始时的 8 个格子（面板重新打开会换一组新格子，这组保留这次的状态与结果）。</summary>
+    private LeakCell[] _runCells = Array.Empty<LeakCell>();
+
+    /// <summary>快照用的各路格子状态（Id / Status / Detail / 压力 psi）。</summary>
+    internal IEnumerable<(int Id, string Status, string Detail, double Pressure)> ActivityCells
+        => _runCells.Select(c => (c.Id, c.Status, c.Detail, c.Pressure));
 
     /// <summary>读一次 8 路压力（同 <see cref="MainViewModel.ReadPressuresAsync"/>），并把 cells 的这一点记入逐点数据。</summary>
     private async Task<double[]> SampleAsync(string phase, IEnumerable<LeakCell> cells)
@@ -337,6 +355,7 @@ public partial class LeakViewModel : ViewModelBase
     {
         double total = minutes * 60;
         var sw = Stopwatch.StartNew();
+        Activity.Enter(LeakStageCodes.Settle, DateTimeOffset.Now, total);
         foreach (var c in tested) c.Detail = "平衡中";
         while (true)
         {
@@ -359,6 +378,7 @@ public partial class LeakViewModel : ViewModelBase
         var t0 = tested.ToDictionary(c => c.Id, c => TempOf(c.Id));
         if (_rec != null) foreach (var kv in t0) _rec.TRef[kv.Key] = kv.Value;   // 逐点数据的补偿参考温度 = 判读用的同一参考
         var sw = Stopwatch.StartNew();
+        Activity.Enter(LeakStageCodes.Measure, DateTimeOffset.Now, total);
         while (true)
         {
             double el = sw.Elapsed.TotalSeconds;
@@ -372,8 +392,10 @@ public partial class LeakViewModel : ViewModelBase
                 var list = series[c.Id];
                 list.Add((vmin, comp));
                 c.Pressure = psi;
-                c.Detail = vmin >= 3
-                    ? $"≈ {Math.Max(0, LeakMath.DropRatePerHour(list)):0.00} psi/hr"
+                double? live = vmin >= 3 ? Math.Max(0, LeakMath.DropRatePerHour(list)) : null;
+                Activity.SetRate(c.Id, live);   // 快照 ratePsiH：格子上「≈ x psi/hr」的那个数（前 3 分钟还没有）
+                c.Detail = live is double lr
+                    ? $"≈ {lr:0.00} psi/hr"
                     : $"-{Math.Max(0, list[0].Psi - comp):0.00} psi";
             }
             Progress = 35 + 62 * Math.Min(1, el / total);
@@ -391,6 +413,7 @@ public partial class LeakViewModel : ViewModelBase
             double r = rates[c.Id];
             c.Status = r < thr ? "ok" : "bad";
             c.Detail = $"{Math.Max(0, r):0.00} psi/hr";
+            Activity.SetRate(c.Id, Math.Max(0, r));
         }
     }
 
@@ -450,7 +473,9 @@ public partial class LeakViewModel : ViewModelBase
             ResultTitle = aborted ? "测试已中止" : "测试失败";
             ResultText = (aborted ? "已按要求中止，阀门已全关。" : $"{fail}。阀门已全关。")
                 + "如已充压，釜内仍有压力，拆釜前请先泄压。";
-            _main.Alarm.Log(aborted ? "warn" : "err", "系统", aborted ? "泄漏测试中止" : "泄漏测试失败",
+            // 泄漏测试失败是一次操作的结果（人在跟前，屏幕上写着原因），按「提醒」记，不当报警（PC 不响铃）；
+            // 阀门 / 压力模块通讯故障另由各自的代码记报警（用户 2026-11-19：「点了泄漏测试为什么会叫呢 很吓人」）
+            _main.Alarm.Log("warn", "系统", aborted ? "泄漏测试中止" : "泄漏测试失败",
                 aborted ? "手动中止 · 阀门已全关" : $"{fail} · 阀门已全关");
             _main.Toast(aborted ? "warn" : "err", aborted ? "泄漏测试已中止 · 阀门全关" : $"泄漏测试失败 · {fail}");
         }

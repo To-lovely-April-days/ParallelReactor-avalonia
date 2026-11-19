@@ -142,6 +142,7 @@ public partial class CalibViewModel : ViewModelBase
         AwaitWater = false;
         HasResult = false;
         PhaseText = "";
+        Activity.Clear();   // 不再有等加水的标定（快照 calib 变为 null）
     }
 
     [RelayCommand]
@@ -177,8 +178,11 @@ public partial class CalibViewModel : ViewModelBase
 
     // ============ 标定流程（命令层守卫通过后调用）============
 
-    /// <summary>做一遍：withWater = false 是空釜那一遍，true 是加水后的第二遍（waterMl = 加入的水 mL）。第一个 await 之前就占用气路。</summary>
-    internal async Task RunAsync(int ch, bool withWater, double waterMl)
+    /// <summary>
+    /// 做一遍：withWater = false 是空釜那一遍，true 是加水后的第二遍（waterMl = 加入的水 mL）。第一个 await 之前就占用气路。
+    /// startedBy = 发起人（CommandSource.Label，快照 calib.startedBy）。
+    /// </summary>
+    internal async Task RunAsync(int ch, bool withWater, double waterMl, string startedBy = "触屏")
     {
         Channel = ch;
         Running = true;
@@ -187,6 +191,7 @@ public partial class CalibViewModel : ViewModelBase
         Progress = 0;
         var c = _main.FindReactor(ch)!;
         var ct = _main.BeginGas(GasOwner.Calib, $"容积标定 RV{ch}", new[] { ch }, new[] { ch });
+        Activity.Begin(DateTimeOffset.Now, ch, withWater, waterMl, TwoRuns, startedBy);
         string pass = withWater ? $"第二遍（加水 {waterMl:0.##} mL）" : "空釜";
         _main.Logger.AddMarker($"容积标定开始 RV{ch} {pass}");
         _main.Alarm.Log("info", "系统", $"RV{ch} 容积标定开始", $"{pass} · 惰性气体 · {VolumeCalib.Steps} 次充放");
@@ -249,6 +254,25 @@ public partial class CalibViewModel : ViewModelBase
             _main.Logger.AddMarker($"容积标定结束 RV{ch}");
         }
         Finish(c, withWater, waterMl, steps, aborted, fail);
+        SyncActivity(ch);
+    }
+
+    // ============ 设备活动同步（v0.8.1）：PC 同步显示用的阶段 / 等加水时刻 / 结果 ============
+
+    /// <summary>本次（或最近一次）标定的阶段与结果，接口快照只读（SnapshotBuilder）。</summary>
+    internal CalibActivity Activity { get; } = new();
+
+    /// <summary>一遍结束后按面板的结果状态记阶段：失败 / 中止 → failed；空釜一遍做完等加水 → waitWater；得出有效容积 → done。</summary>
+    private void SyncActivity(int ch)
+    {
+        string text = $"{ResultTitle.TrimStart('✓', ' ')}：{ResultText}";
+        if (Failed) Activity.Fail(text, Progress, PhaseText);
+        else if (AwaitWater) Activity.AwaitWater(DateTimeOffset.Now, null, text);   // 两遍法的第一遍只得出比值，还没有容积
+        else
+        {
+            var v = _main.Settings.EffectiveVolume is { } a && a.Length >= ch ? a[ch - 1] : null;
+            Activity.Complete(v, text, Progress, PhaseText);
+        }
     }
 
     private void Finish(Reactor c, bool withWater, double waterMl, List<(double Before, double After)> steps, bool aborted, string? fail)

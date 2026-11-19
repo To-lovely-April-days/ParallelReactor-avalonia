@@ -93,7 +93,25 @@ public sealed record ProgramSnap(bool Running, int? Channel, string Status, int 
 public sealed record ProgramsSnap(int Running, int[] Channels, int? GasHolder, int[] WaitingGas, string Summary);
 
 /// <summary>§6.3 的 leakTest。</summary>
-public sealed record LeakSnap(bool Running, double Progress, string? Phase, string? RunId, bool Done, bool Failed);
+public sealed record LeakSnap(bool Running, double Progress, string? Phase, string? RunId, bool Done, bool Failed,
+    string? Stage = null, double? StageLeftSec = null, double? TotalLeftSec = null, DateTime? StartedAt = null, string? StartedBy = null,
+    double? TargetPsi = null, double? ThresholdPsiH = null, LeakChannelSnap[]? Channels = null, bool? Vented = null, bool Aborted = false,
+    string? FailReason = null, DateTime? FinishedAt = null);
+
+/// <summary>
+/// v0.8.1（ACT-SPEC.md，PC 端同步显示触屏发起的泄漏测试）：一路的状态。status：testing（进行中，detail 是触屏的文字「充压中 60%」「平衡中」）/
+/// pass / fail（不通过）/ fillFail（充压不上）/ tooHigh（初始压力过高，未测）/ untested（没参加）。pressurePsi 表压 psi；ratePsiH 压降速率（测量阶段起有）。
+/// </summary>
+public sealed record LeakChannelSnap(int Id, string Status, double? PressurePsi, double? RatePsiH, string Detail);
+
+/// <summary>
+/// v0.8.1：容积标定（只能在触屏上开始 / 继续 / 中止；PC 只显示）。stage：first（第一遍 · 空釜）/ waitWater（等操作员加水后点继续）/
+/// second（第二遍 · 读数）/ done / failed。waitingOperator = 正在等触屏操作；firstPassMl = 第一遍算出的有效容积（只有一遍就结束时是结果）；
+/// resultMl = 两遍做完算出的有效容积；startedBy：「触屏」。
+/// </summary>
+public sealed record CalibSnap(bool Running, int? Channel, string Stage, bool WaitingOperator, double? WaterMl, double? FirstPassMl,
+    double? ResultMl, double Progress, string? PhaseText, DateTime? StartedAt, DateTime? WaitingSince, string? StartedBy, bool Done, bool Failed,
+    string? ResultText);
 
 /// <summary>§6.3 的 session（P0 会话：id 即 testId，见 §9.1 K6）。</summary>
 public sealed record SessionSnap(bool Active, string? Id, string? TestId, string? File);
@@ -163,7 +181,8 @@ public sealed record TelemetrySnapshot(
     ProgramSnap Program,
     ProgramsSnap Programs,
     LeakSnap LeakTest,
-    SessionSnap Session);
+    SessionSnap Session,
+    CalibSnap? Calib = null);
 
 /// <summary>
 /// 一个 Tick 生成的全部只读数据：对外帧 + 通道全量（含曲线）+ 设置 + 门闸 / 通讯统计 + 运行中的程序 + 档位 PID（v0.6）。

@@ -21,6 +21,8 @@
     <Compile Include="../../Models/GasUptake.cs" Link="Src/GasUptake.cs" />
     <Compile Include="../../Models/VolumeCalib.cs" Link="Src/VolumeCalib.cs" />
     <Compile Include="../../Models/StirGear.cs" Link="Src/StirGear.cs" />
+    <!-- v0.8.1 设备活动同步：泄漏测试 / 容积标定的快照状态 + 搅拌电机故障报警的跳变判断 -->
+    <Compile Include="../../Models/DeviceActivity.cs" Link="Src/DeviceActivity.cs" />
     <Compile Include="../../Models/OverPressureGuard.cs" Link="Src/OverPressureGuard.cs" />
     <Compile Include="../../Models/ReactorState.cs" Link="Src/ReactorState.cs" />
     <Compile Include="../../Models/RunSelection.cs" Link="Src/RunSelection.cs" />

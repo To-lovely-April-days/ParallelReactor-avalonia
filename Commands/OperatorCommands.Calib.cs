@@ -29,7 +29,7 @@ public sealed partial class OperatorCommands
         }
         if (GasBlocked(needPressure: true) is { } gb) return gb.AsTask();
 
-        _ = _m.Calib.RunAsync(id, withWater, waterMl);   // 同步部分已占用气路；之后的进度 / 结果由流程自己提示
+        _ = _m.Calib.RunAsync(id, withWater, waterMl, src.Label);   // 同步部分已占用气路；之后的进度 / 结果由流程自己提示（发起人给快照 calib.startedBy）
         return OpResult.Accepted("", "ok", new { channel = id, withWater, waterMl }).AsTask();
     }
 

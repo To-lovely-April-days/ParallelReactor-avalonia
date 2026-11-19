@@ -52,6 +52,8 @@ public static class EventKinds
         if (origin == "阀门") return "valve.frame";
         if (origin == "设置") return "system.settingsChanged";
         if (origin == "通讯") return has("恢复") ? "alarm.commRestored" : "alarm.commLost";
+        // v0.8.1：搅拌驱动器报警码由 0 变为非 0 时记一次，回到 0 时「已清除 · 报警解除」
+        if (has("搅拌电机故障")) return has("解除") ? "alarm.stirFaultCleared" : "alarm.stirFault";
 
         if (has("超温"))
         {

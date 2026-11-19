@@ -448,6 +448,27 @@ public partial class MainViewModel
         else Alarm.Raise(key, "err", "通讯", $"{name} 离线", "连续 3 次通讯失败 · " + stat);
     }
 
+    // ============ 搅拌电机故障（v0.8.1：只记跳变，同一个故障只记一次；报警码回到 0 时解除）============
+
+    private readonly StirFaultWatch _stirFaultWatch = new();
+
+    /// <summary>每读到一次驱动器报警码调用一次（RefreshStirFaultAsync）。读失败不调用：通讯中断另由模块掉线报警。</summary>
+    private void TrackStirFault(ushort code)
+    {
+        // 构造函数里的首次读取若同步完成，报警列表还没建：这次不登记，下一次轮询再判
+        if (Alarm is null) return;
+        switch (_stirFaultWatch.Update(code))
+        {
+            case StirFaultWatch.Change.Raise:
+                Alarm.Raise(StirFaultWatch.Key, "err", "搅拌", StirFaultWatch.Title(code),
+                    $"{StirFaultName(code)} · 驱动器报警码 {StirFaultWatch.CodeText(code)} · 排查后在触屏搅拌栏点「清除」");
+                break;
+            case StirFaultWatch.Change.Clear:
+                Alarm.Clear(StirFaultWatch.Key, "搅拌", "搅拌电机故障已清除 · 报警解除", "驱动器报警码回到 0");
+                break;
+        }
+    }
+
     // ============ 阀门整帧变化（只写事件文件）============
 
     private static string ValveName(int i) => i switch

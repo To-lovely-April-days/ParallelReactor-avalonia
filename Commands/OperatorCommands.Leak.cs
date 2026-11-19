@@ -35,7 +35,7 @@ public sealed partial class OperatorCommands
             return OpResult.Fail(OpCodes.ParamCrossCheck, "测试压力须低于超压报警值的 90% · 请在「设置 → 参数与报警」调整",
                 "err", new { testPsi = target, max = _m.Settings.OverPressure * SettingSpecs.LeakTestMaxRatio }).AsTask();
 
-        _ = _m.Leak.RunAsync(ids, target);   // 同步部分已占用气路并锁定面板；之后的进度 / 结果由流程自己提示
+        _ = _m.Leak.RunAsync(ids, target, src.Label);   // 同步部分已占用气路并锁定面板；之后的进度 / 结果由流程自己提示（发起人给快照 leakTest.startedBy）
         return OpResult.Accepted("", "ok", new { runId = _m.Leak.CurrentRunId, channels = ids, testPsi = target }).AsTask();
     }
 
