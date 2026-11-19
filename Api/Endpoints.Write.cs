@@ -101,6 +101,26 @@ public static partial class Endpoints
             }).ConfigureAwait(false);
         }));
 
+        // —— §7.7a 阀门（v0.7，用户：远程控制要能做一切操作，不要维护模式）：正文 {"open": true|false}；开 = 控制类（要控制权），关 = 停止类 ——
+        w.MapPut("/channels/{id}/valve", async (HttpContext ctx, string id) =>
+        {
+            bool open = ValveOpen(await ReadBodyAsync(ctx).ConfigureAwait(false));
+            return await CommandAsync(ctx, host, new WriteSpec("valve.channel", open ? ActionClass.Control : ActionClass.Stop),
+                (b, c) => cmd.SetReactorValveAsync(c, Channel(id), RequiredOpen(b), ctx.RequestAborted)).ConfigureAwait(false);
+        });
+        w.MapPut("/gas/inlets/{gid}", async (HttpContext ctx, string gid) =>
+        {
+            bool open = ValveOpen(await ReadBodyAsync(ctx).ConfigureAwait(false));
+            return await CommandAsync(ctx, host, new WriteSpec("valve.gasInlet", open ? ActionClass.Control : ActionClass.Stop),
+                (b, c) => cmd.SetGasInletAsync(c, GasInletIndex(gid), RequiredOpen(b), ctx.RequestAborted)).ConfigureAwait(false);
+        });
+        w.MapPut("/gas/vent", H(async (HttpContext ctx) =>
+        {
+            bool open = ValveOpen(await ReadBodyAsync(ctx).ConfigureAwait(false));
+            return await CommandAsync(ctx, host, new WriteSpec("valve.vent", open ? ActionClass.Control : ActionClass.Stop),
+                (b, c) => cmd.SetVentAsync(c, RequiredOpen(b), ctx.RequestAborted)).ConfigureAwait(false);
+        }));
+
         // —— §7.8 泄漏测试 ——
         w.MapPost("/leak-tests", H((HttpContext ctx) => CommandAsync(ctx, host, new WriteSpec("leakTest.start", ActionClass.Control, IdemRequired: true),
             (b, c) => cmd.StartLeakTestAsync(c, IntList(b, "channels", required: true)!, Num(b, "testPsi"), ctx.RequestAborted))));
@@ -379,6 +399,23 @@ public static partial class Endpoints
         if (v.ValueKind != JsonValueKind.Number || !v.TryGetInt32(out var n)) throw new ApiBadRequestException($"{name} 须为整数");
         return n;
     }
+
+    /// <summary>先看正文决定动作类（同 /stir）：只有 open=true 是控制类；读不出来按控制类（管线里再报 400）。</summary>
+    private static bool ValveOpen(string? body)
+    {
+        try { return Bool(ParseBody(body ?? "", out _), "open") != false; } catch (ApiRejectException) { return true; }
+    }
+
+    private static bool RequiredOpen(JsonElement? b) => Bool(b, "open") ?? throw new ApiBadRequestException("缺少 open（true = 开，false = 关）");
+
+    /// <summary>气源 id：inert / A / B（同快照 gas.inlets[].id，不区分大小写），也接受 1–3。</summary>
+    private static int GasInletIndex(string gid) => gid.Trim().ToLowerInvariant() switch
+    {
+        "inert" or "1" => 0,
+        "a" or "2" => 1,
+        "b" or "3" => 2,
+        _ => throw new ApiRejectException(OpCodes.NotFound, "气源 " + gid + " 不存在（inert / A / B）"),
+    };
 
     private static bool? Bool(JsonElement? b, string name)
     {

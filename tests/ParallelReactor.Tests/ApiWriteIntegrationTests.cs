@@ -236,6 +236,51 @@ public class ApiWriteIntegrationTests
         finally { await host.StopAsync(); src.Dispose(); }
     }
 
+    /// <summary>
+    /// v0.7 阀门（用户：远程控制要能做一切操作，不要维护模式）：PUT /channels/{id}/valve、/gas/inlets/{id}、/gas/vent，正文 {open}。
+    /// 开 = 控制类（本地模式 MODE_LOCAL、viewer 403），关 = 停止类（免控制权）；缺 open 400；通道 / 气源越界 404；命令层的拒绝（联锁）透传。
+    /// </summary>
+    [Fact]
+    public async Task Valves_OpenIsControl_CloseIsStop()
+    {
+        var (host, src) = await StartAsync();
+        try
+        {
+            using var op = Client(host, Operator);
+            using var viewer = Client(host, Viewer);
+            // 开：没有控制权 → MODE_LOCAL；viewer 403；都不进命令层
+            var (_, b0, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/3/valve", "{\"open\":true}"));
+            Assert.Equal("MODE_LOCAL", Code(b0));
+            Assert.Equal(HttpStatusCode.Forbidden, (await SendAsync(viewer, Req(HttpMethod.Put, "/gas/vent", "{\"open\":true}"))).Status);
+            Assert.Empty(src.Fake.Calls);
+            // 关：停止类，不要控制权
+            Assert.Equal(HttpStatusCode.OK, (await SendAsync(op, Req(HttpMethod.Put, "/channels/3/valve", "{\"open\":false}"))).Status);
+            Assert.Equal(("SetReactorValve", "3,False"), (src.Fake.Calls.Last().Method, src.Fake.Calls.Last().Args));
+            Assert.Equal(HttpStatusCode.OK, (await SendAsync(op, Req(HttpMethod.Put, "/gas/inlets/A", "{\"open\":false}"))).Status);
+            Assert.Equal(("SetGasInlet", "1,False"), (src.Fake.Calls.Last().Method, src.Fake.Calls.Last().Args));
+
+            var (lease, _) = await AcquireAsync(op);
+            int n = src.Fake.Calls.Count;
+            Assert.Equal("BAD_REQUEST", Code((await SendAsync(op, Req(HttpMethod.Put, "/gas/vent", "{}", lease: lease))).Body));
+            Assert.Equal("CHANNEL_NOT_FOUND", Code((await SendAsync(op, Req(HttpMethod.Put, "/channels/9/valve", "{\"open\":true}", lease: lease))).Body));
+            Assert.Equal(HttpStatusCode.NotFound, (await SendAsync(op, Req(HttpMethod.Put, "/gas/inlets/C", "{\"open\":true}", lease: lease))).Status);
+            Assert.Equal(n, src.Fake.Calls.Count);
+            // 有控制权：开阀进命令层；气源 id 按快照写法 inert / A / B（不分大小写）
+            Assert.Equal(HttpStatusCode.OK, (await SendAsync(op, Req(HttpMethod.Put, "/channels/3/valve", "{\"open\":true}", lease: lease))).Status);
+            Assert.Equal(("SetReactorValve", "3,True"), (src.Fake.Calls.Last().Method, src.Fake.Calls.Last().Args));
+            Assert.Equal(HttpStatusCode.OK, (await SendAsync(op, Req(HttpMethod.Put, "/gas/inlets/inert", "{\"open\":true}", lease: lease))).Status);
+            Assert.Equal(("SetGasInlet", "0,True"), (src.Fake.Calls.Last().Method, src.Fake.Calls.Last().Args));
+            Assert.Equal(HttpStatusCode.OK, (await SendAsync(op, Req(HttpMethod.Put, "/gas/vent", "{\"open\":true}", lease: lease))).Status);
+            Assert.Equal(("SetVent", "True"), (src.Fake.Calls.Last().Method, src.Fake.Calls.Last().Args));
+            // 命令层的联锁拒绝透传（例：加压中禁止开阀）
+            src.Fake.Next = () => CommandOutcome.Done(OpResult.Fail(OpCodes.ChannelBusy, "加压/反应中禁止手动开阀（RV3）"));
+            var (st, bb, _) = await SendAsync(op, Req(HttpMethod.Put, "/channels/3/valve", "{\"open\":true}", lease: lease));
+            Assert.Equal("CHANNEL_BUSY", Code(bb));
+            Assert.NotEqual(HttpStatusCode.OK, st);
+        }
+        finally { await host.StopAsync(); src.Dispose(); }
+    }
+
     [Fact]
     public async Task Roles_StopClass_Estop_Release()
     {

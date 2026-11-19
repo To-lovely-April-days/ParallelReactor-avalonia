@@ -90,6 +90,13 @@ public sealed class HmiRemoteCommands : IRemoteCommands
         }, control, ct);
     }
 
+    // —— 阀门（v0.7）：开 = 控制类（信号量 + Background），关 = 停止类 ——
+    private Task<CommandOutcome> Valve(bool open, Func<OperatorCommands, CommandSource, Task<OpResult>> call, RemoteCaller c, CancellationToken ct)
+        => open ? Control(call, c, ct) : Stop(call, c, ct);
+    public Task<CommandOutcome> SetReactorValveAsync(RemoteCaller c, int id, bool open, CancellationToken ct) => Valve(open, (o, s) => o.TrySetReactorValve(s, id, open), c, ct);
+    public Task<CommandOutcome> SetGasInletAsync(RemoteCaller c, int index, bool open, CancellationToken ct) => Valve(open, (o, s) => o.TrySetGasInlet(s, index, open), c, ct);
+    public Task<CommandOutcome> SetVentAsync(RemoteCaller c, bool open, CancellationToken ct) => Valve(open, (o, s) => o.TrySetVent(s, open), c, ct);
+
     // —— 泄漏测试 ——
     public Task<CommandOutcome> StartLeakTestAsync(RemoteCaller c, IReadOnlyList<int> channels, double? testPsi, CancellationToken ct) => Control((o, s) => o.TryStartLeakTest(s, channels, testPsi), c, ct);
     public Task<CommandOutcome> AbortLeakTestAsync(RemoteCaller c, CancellationToken ct) => Stop((o, s) => o.TryAbortLeakTest(s), c, ct);

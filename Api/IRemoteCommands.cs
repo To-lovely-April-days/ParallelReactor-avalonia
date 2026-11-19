@@ -82,6 +82,13 @@ public interface IRemoteCommands
     // —— §7.7 搅拌 ——
     /// <summary>PUT /stir：rpm 先于 on 应用；两个都可选（至少一个由端点保证）。</summary>
     Task<CommandOutcome> SetStirAsync(RemoteCaller c, bool? on, int? rpm, CancellationToken ct);
+    // —— §7.7a 阀门（v0.7：远程直接开关，不经「手动阀控」；开 = 控制类，关 = 停止类） ——
+    /// <summary>PUT /channels/{id}/valve：开 / 关该通道进气阀 SVn。</summary>
+    Task<CommandOutcome> SetReactorValveAsync(RemoteCaller c, int id, bool open, CancellationToken ct);
+    /// <summary>PUT /gas/inlets/{id}：开 / 关一路气源进气阀；index 0..2 = inert / A / B。</summary>
+    Task<CommandOutcome> SetGasInletAsync(RemoteCaller c, int index, bool open, CancellationToken ct);
+    /// <summary>PUT /gas/vent：开 / 关排空阀。</summary>
+    Task<CommandOutcome> SetVentAsync(RemoteCaller c, bool open, CancellationToken ct);
     // —— §7.8 泄漏测试 ——
     Task<CommandOutcome> StartLeakTestAsync(RemoteCaller c, IReadOnlyList<int> channels, double? testPsi, CancellationToken ct);
     Task<CommandOutcome> AbortLeakTestAsync(RemoteCaller c, CancellationToken ct);

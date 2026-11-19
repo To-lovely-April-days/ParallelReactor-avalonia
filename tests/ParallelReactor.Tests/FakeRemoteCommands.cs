@@ -47,6 +47,9 @@ public sealed class FakeRemoteCommands : IRemoteCommands
     public Task<CommandOutcome> StartAutotuneAsync(RemoteCaller c, int id, double tempC, int? band, CancellationToken ct) => Rec("StartAutotune", band is { } b ? $"{id},{tempC},{b}" : $"{id},{tempC}", c);
     public Task<CommandOutcome> CancelAutotuneAsync(RemoteCaller c, int id, CancellationToken ct) => Rec("CancelAutotune", id.ToString(), c);
     public Task<CommandOutcome> SetStirAsync(RemoteCaller c, bool? on, int? rpm, CancellationToken ct) => Rec("SetStir", $"{on},{rpm}", c);
+    public Task<CommandOutcome> SetReactorValveAsync(RemoteCaller c, int id, bool open, CancellationToken ct) => Rec("SetReactorValve", $"{id},{open}", c);
+    public Task<CommandOutcome> SetGasInletAsync(RemoteCaller c, int index, bool open, CancellationToken ct) => Rec("SetGasInlet", $"{index},{open}", c);
+    public Task<CommandOutcome> SetVentAsync(RemoteCaller c, bool open, CancellationToken ct) => Rec("SetVent", $"{open}", c);
     public Task<CommandOutcome> StartLeakTestAsync(RemoteCaller c, IReadOnlyList<int> channels, double? testPsi, CancellationToken ct) => Rec("StartLeakTest", $"{string.Join("/", channels)},{testPsi}", c);
     public Task<CommandOutcome> AbortLeakTestAsync(RemoteCaller c, CancellationToken ct) => Rec("AbortLeakTest", "", c);
     public Task<CommandOutcome> ReplaceProgramAsync(RemoteCaller c, int id, JsonElement steps, CancellationToken ct) => Rec("ReplaceProgram", $"{id},{steps.GetArrayLength()}", c);

@@ -573,9 +573,9 @@ public class ArchitectureTests
         ["TryRun"] = "Record|Control", ["TryExitApp"] = "Stop·本地",
         // 搅拌
         ["TrySetStir"] = "Control|Stop", ["TrySetStirRpm"] = "Control", ["TryClearStirFault"] = "Control·本地",
-        // 手动阀
-        ["TrySetManualValveMode"] = "Control|Stop·本地", ["TrySetReactorValve"] = "Control|Stop·本地",
-        ["TrySetGasInlet"] = "Control|Stop·本地", ["TrySetVent"] = "Control|Stop·本地",
+        // 手动阀（v0.7：三个阀门命令远程也可用 —— 持有控制权的 PC 直接开关，不经「手动阀控」；「手动阀控」开关本身仍只在触屏）
+        ["TrySetManualValveMode"] = "Control|Stop·本地", ["TrySetReactorValve"] = "Control|Stop",
+        ["TrySetGasInlet"] = "Control|Stop", ["TrySetVent"] = "Control|Stop",
         // 通道 / 抽屉
         ["TrySetChannelTemp"] = "Control", ["TrySetChannelVolume"] = "Control", ["TrySetSpMode"] = "Control",
         ["TrySetProfileSegCount"] = "Control", ["TrySetProfileSegment"] = "Control", ["TryReplaceProfile"] = "Control",
