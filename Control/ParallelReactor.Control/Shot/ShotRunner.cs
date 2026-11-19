@@ -88,16 +88,19 @@ public static partial class ShotRunner
             await Act("stir 300", Core.Guard.DeviceAction.StirOn, new Core.Guard.ActionPayload(Rpm: 300));
 
             var schema = await c.Rest.ProgramSchemaAsync(ct);
-            bool hasPurge = schema.StepTypes.Contains("purge");
+            // 程序步骤 v0.8：保持代替等待、置换代替吹扫（STEPS-SPEC.md）；较早的 HMI 的 schema 里没有 exchange 时只用保持
+            bool hasPurge = schema.StepTypes.Contains("exchange");
             var p3 = new ProgramDoc { Name = "加氢测试-03" };
-            p3.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
+            p3.Add(StepType.Hold, new { until = "time", time = 0.3 });
             p3.Add(StepType.Heat, new { mode = "fixed", temp = 50.0, wait = 0.1 });
-            p3.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
-            var p4 = new ProgramDoc { Name = "吹扫测试-04" };
-            if (hasPurge) p4.Add(StepType.Purge, new { gas = "inert", cycles = 2, fill = 3, vent = 3 });
-            else p4.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
+            p3.Add(StepType.Hold, new { until = "time", time = 0.3 });
+            p3.Add(StepType.End, new { });
+            var p4 = new ProgramDoc { Name = "置换测试-04" };
+            if (hasPurge) p4.Add(StepType.Exchange, new { gas = "inert", cycles = 0, lineFlush = 2 });
+            else p4.Add(StepType.Hold, new { until = "time", time = 0.3 });
             p4.Add(StepType.Heat, new { mode = "fixed", temp = 45.0, wait = 0.1 });
-            p4.Add(StepType.Wait, new { mode = "fixed", time = 0.3 });
+            p4.Add(StepType.Hold, new { until = "time", time = 0.3 });
+            p4.Add(StepType.End, new { });
             var r3 = await live.UploadProgramAsync(3, p3, ct); log.AppendLine($"put program rv3: {r3.Message}");
             var r4 = await live.UploadProgramAsync(4, p4, ct); log.AppendLine($"put program rv4: {r4.Message} (purge={hasPurge})");
             shell.Fleet.RefreshNow();

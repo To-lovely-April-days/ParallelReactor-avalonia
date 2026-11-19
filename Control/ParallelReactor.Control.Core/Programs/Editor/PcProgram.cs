@@ -44,19 +44,27 @@ public sealed class PcStep
         return c;
     }
 
-    /// <summary>新步骤：参数取 schema 的默认值（sel 取第一项）；名字 = 类型名。</summary>
+    /// <summary>
+    /// 新步骤：数值取 schema 的默认值（压力按设置的单位取整）；选项取 STEPS-SPEC §1 的默认码（schema 里有这一项时；否则第一项）；
+    /// schema 没有的键按 §1 的默认值补（<see cref="StepDefaults.Fill"/>）。名字 = 类型名。
+    /// </summary>
     public static PcStep New(StepType t, ProgramSchema schema)
     {
         var spec = schema.Of(t);
         var s = new PcStep(t, spec?.Label ?? t.Zh());
+        var defs = StepDefaults.Of(t);
         if (spec != null)
             foreach (var f in spec.Fields)
             {
-                if (f.IsSelect) s.Sel[f.Key] = f.Options[0].Code;
+                if (f.IsSelect)
+                {
+                    string? want = f.DefaultCode ?? defs.FirstOrDefault(d => d.Key == f.Key).Def as string;
+                    s.Sel[f.Key] = want != null && f.Options.Any(o => o.Code == want) ? want : f.Options[0].Code;
+                }
                 else s.Num[f.Key] = f.NewValue();
             }
         if (t == StepType.Heat) s.Segments.Add(new CurveSeg(s.N("temp", 80), 3, 20));
-        return s;
+        return StepDefaults.Fill(s);
     }
 }
 
@@ -75,9 +83,19 @@ public sealed class PcProgram
     public bool Draft { get; set; }
     public List<PcStep> Steps { get; } = new();
 
+    /// <summary>
+    /// 读进来时从旧格式转换过（STEPS-SPEC §3：吹扫 / 等待 / 定时搅拌 / 带方式的结束 / 按 endBy 的反应）。只在内存里：编辑器顶上提示「已从旧格式转换，请检查」，
+    /// 保存后按新格式写盘、下次读进来就不再是转换的了。
+    /// </summary>
+    public bool Migrated { get; set; }
+
+    /// <summary>转换时旧值超出新范围被收紧的说明（同 HMI 的 PUT 提示；只在内存里，编辑器的转换提示条里列出）。</summary>
+    public List<string> MigrationNotes { get; } = new();
+
     public PcProgram Clone(string? id = null, string? name = null)
     {
-        var p = new PcProgram { Id = id ?? Id, Name = name ?? Name, Model = Model, Modified = Modified, By = By, Draft = Draft };
+        var p = new PcProgram { Id = id ?? Id, Name = name ?? Name, Model = Model, Modified = Modified, By = By, Draft = Draft, Migrated = Migrated };
+        p.MigrationNotes.AddRange(MigrationNotes);
         p.Steps.AddRange(Steps.Select(s => s.Clone()));
         return p;
     }
@@ -89,8 +107,8 @@ public sealed class PcProgram
     // ———————————————————— HMI 程序 JSON ————————————————————
 
     /// <summary>
-    /// 转成 HMI 的程序（PUT /channels/{id}/program 的正文，§6.9）：类型码、sel 码、数值（压力 MPa → psi，保留 1 位小数）、曲线段。
-    /// 步骤名不在协议里（HMI 的 name 是只读的），本机的名字只在 PC 上显示。
+    /// 转成 HMI 的程序（PUT /channels/{id}/program 的正文，§6.9 / STEPS-SPEC §6）：类型码、sel 码、数值（压力 MPa → psi，保留 1 位小数；压降 MPa/h → psi/h，2 位）、
+    /// 曲线段（升温方式 = 曲线时）。只发 v0.8 的键（<see cref="StepDefaults.Known"/>）。步骤名不在协议里（HMI 的 name 是只读的），本机的名字只在 PC 上显示。
     /// </summary>
     public ProgramDoc ToDoc(string? name = null)
     {
@@ -102,46 +120,39 @@ public sealed class PcProgram
     public static ProgramStepDoc StepDoc(PcStep s)
     {
         var d = new ProgramStepDoc(s.Type.ToCode());
-        foreach (var (k, v) in s.Sel) d.Params[k] = JsonSerializer.SerializeToElement(v);
-        foreach (var (k, v) in s.Num)
-        {
-            double x = s.Type == StepType.Press && k == "pres" ? Math.Round(Units.MpaToPsi(v), 1) : v;
-            d.Params[k] = JsonSerializer.SerializeToElement(x);
-        }
+        foreach (var (k, v) in s.Sel) if (StepDefaults.Known(s.Type, k)) d.Params[k] = JsonSerializer.SerializeToElement(v);
+        foreach (var (k, v) in s.Num) if (StepDefaults.Known(s.Type, k)) d.Params[k] = JsonSerializer.SerializeToElement(StepDefaults.ToWire(s.Type, k, v));
         if (s.Type == StepType.Heat && s.S("mode") == "curve" && s.Segments.Count > 0)
             d.Params["segments"] = JsonSerializer.SerializeToElement(s.Segments.Select(g => new Dictionary<string, double> { ["temp"] = g.Temp, ["rate"] = g.Rate, ["hold"] = g.Hold }).ToArray());
         return d;
     }
 
-    /// <summary>HMI 程序 JSON → 本机（psi → MPa，按设置的压力单位取整；不认识的步骤类型跳过）。旧程序页的草稿（drafts.json）迁移、导入 JSON 用。</summary>
+    /// <summary>
+    /// HMI 程序 JSON → 本机（旧程序页的草稿 drafts.json 迁移、导入 JSON）：旧格式按 STEPS-SPEC §3 转换（经 Contracts 的 StepMigration，
+    /// 转换过就标 <see cref="Migrated"/>），压力 psi → MPa（按设置的压力单位取整），缺的参数按 §1 的默认值补；不认识的步骤类型跳过。
+    /// </summary>
     public static PcProgram FromDoc(ProgramDoc doc, string model, string id)
     {
         var p = new PcProgram { Id = id, Name = doc.Name, Model = model };
+        var mig = new List<MigStep>(doc.Steps.Count);
         foreach (var d in doc.Steps)
         {
-            if (d.StepType is not StepType t) continue;
-            var s = new PcStep(t, t.Zh());
+            if (d.StepType is null) continue;
+            var ps = new Dictionary<string, object>(StringComparer.Ordinal);
+            var segs = new List<(double, double, double)>();
             foreach (var (k, e) in d.Params)
             {
-                if (e.ValueKind == JsonValueKind.String) s.Sel[k] = e.GetString() ?? "";
-                else if (e.ValueKind == JsonValueKind.Number && e.TryGetDouble(out var v))
-                    s.Num[k] = t == StepType.Press && k == "pres" ? PsiToStored(v) : v;
+                if (e.ValueKind == JsonValueKind.String) ps[k] = e.GetString() ?? "";
+                else if (e.ValueKind == JsonValueKind.Number && e.TryGetDouble(out var v)) ps[k] = v;
                 else if (k == "segments" && e.ValueKind == JsonValueKind.Array)
-                    foreach (var g in e.EnumerateArray())
-                        s.Segments.Add(new CurveSeg(G(g, "temp"), G(g, "rate"), G(g, "hold")));
+                    foreach (var g in e.EnumerateArray()) segs.Add((G(g, "temp"), G(g, "rate"), G(g, "hold")));
             }
-            p.Steps.Add(s);
+            mig.Add(new MigStep(d.Type, ps, segs));
         }
+        p.Steps.AddRange(StepDefaults.FromWire(mig, out bool migrated, out var notes));
+        p.Migrated = migrated;
+        p.MigrationNotes.AddRange(notes);
         return p;
-    }
-
-    /// <summary>
-    /// HMI 的 psi → 本机存的 MPa：在设置的压力单位里按输入小数位取整再换回 MPa（MPa 时 = 取到 0.01 MPa，同改单位之前；psi 时 50 psi 仍是 50 psi）。
-    /// </summary>
-    private static double PsiToStored(double psi)
-    {
-        var u = PressureDisplay.Primary;
-        return PressureUnits.ToMpa(Math.Round(PressureUnits.FromPsi(psi, u), PressureUnits.InputDecimals(u)), u);
     }
 
     private static double G(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.Number ? v.GetDouble() : 0;
@@ -221,10 +232,17 @@ public sealed class PcProgram
             Draft = e.TryGetProperty("draft", out var dr) && dr.ValueKind == JsonValueKind.True,
             Modified = DateTime.TryParse(Str(e, "modified"), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var m) ? m : DateTime.Now,
         };
-        if (e.TryGetProperty("steps", out var st)) p.Steps.AddRange(ReadSteps(st));
+        if (e.TryGetProperty("steps", out var st))
+        {
+            // 旧版程序库（吹扫 / 等待 / 定时搅拌 / 带方式的结束）读进来就转换（STEPS-SPEC §3），保存时按新格式写回
+            p.Steps.AddRange(StepDefaults.Migrate(ReadSteps(st), out bool migrated, out var notes));
+            p.Migrated = migrated;
+            p.MigrationNotes.AddRange(notes);
+        }
         return p;
     }
 
+    /// <summary>读 library.json / experiments.json 的步骤原样（旧格式的步骤也读出来，不转换；转换见 <see cref="StepDefaults.Migrate"/>）。</summary>
     public static List<PcStep> ReadSteps(JsonElement arr)
     {
         var list = new List<PcStep>();

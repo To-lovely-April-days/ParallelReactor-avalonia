@@ -228,7 +228,7 @@ public class F3LiveTests
             h.On("GET", "/channels/1/program/run", _ => ScriptedHttpHandler.Ok(Run(1, t0, by: "远程（PC-别人）")));
             h.On("GET", "/channels/2/program/run", _ => ScriptedHttpHandler.Ok(Run(2, t0, by: Me)));
         });
-        var doc = ProgramDraftStore.Template("加氢测试-01");
+        var doc = LegacyDocs.Four("加氢测试-01");
         Assert.True((await live.UploadProgramAsync(1, doc, CancellationToken.None)).Ok);
         Assert.True((await live.UploadProgramAsync(2, doc, CancellationToken.None)).Ok);
         // RV2：本机下发、本机启动 → 台账的程序（名字、来源），不去取设备上的

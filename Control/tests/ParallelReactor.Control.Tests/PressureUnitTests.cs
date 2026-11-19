@@ -147,11 +147,11 @@ public sealed class PressureUnitTests : IDisposable
         var p = Schema.Field(StepType.Press, "pres")!;
         Assert.True(p.IsPressure);
         Assert.Equal(("MPa", "MPa", 2, 2), (p.Unit, p.ShowUnit, p.Dp, p.ShowDp));
-        Assert.Equal((0.01, 3.16), (p.Min, p.Max));
-        Assert.Equal("0.01 – 3.16", p.RangeText);
+        Assert.Equal((0.06, 3.16), (p.Min, p.Max));        // v0.8：下限 7.3 psi = 0.0503 MPa，向上取到 0.01
+        Assert.Equal("0.06 – 3.16", p.RangeText);
         Assert.Equal("0.35", p.Num(0.35));
         Assert.Equal(0.35, p.FromInput(0.351));
-        Assert.Equal(0.34, p.NewValue());                 // 50 psi = 0.3447 MPa，取到 0.01
+        Assert.Equal(2.0, p.NewValue());                  // 290.1 psi = 2.0002 MPa，取到 0.01
         Assert.False(p.Bad(3.16));
         Assert.True(p.Bad(3.17));
         var temp = Schema.Field(StepType.Heat, "temp")!;
@@ -165,12 +165,13 @@ public sealed class PressureUnitTests : IDisposable
         PressureDisplay.Set(PressureUnit.Psi);
         var p = Schema.Field(StepType.Press, "pres")!;
         Assert.Equal(("MPa", "psi", 0), (p.Unit, p.ShowUnit, p.ShowDp));       // 内部照旧 MPa
-        Assert.Equal("1 – 458", p.RangeText);                                    // HMI 的 1 psi 下限原样，不经 0.01 MPa 变成 2
-        Assert.Equal(50, p.Shown(p.NewValue()), 9);                              // 新步骤默认正好 50 psi
+        Assert.Equal("8 – 458", p.RangeText);                                    // HMI 的 7.3 psi 下限按整数 psi 向上取，不经 0.06 MPa 变成 9
+        Assert.Equal(290, p.Shown(p.NewValue()), 9);                             // 新步骤默认 290.1 psi → 整数 psi
         Assert.Equal("51", p.Num(0.35));
         double v = p.FromInput(50.4);                                            // 输入按整数 psi
         Assert.Equal(50, PressureUnits.FromMpa(v, PressureUnit.Psi), 9);
-        Assert.False(p.Bad(p.FromInput(1)));
+        Assert.False(p.Bad(p.FromInput(8)));
+        Assert.True(p.Bad(p.FromInput(7)));
         Assert.False(p.Bad(p.FromInput(458)));
         Assert.True(p.Bad(p.FromInput(459)));
         Assert.True(p.Bad(double.NaN));
@@ -188,10 +189,32 @@ public sealed class PressureUnitTests : IDisposable
         PressureDisplay.Set(PressureUnit.Bar);
         var p = Schema.Field(StepType.Press, "pres")!;
         Assert.Equal(("bar", 1), (p.ShowUnit, p.ShowDp));
-        Assert.Equal("0.1 – 31.6", p.RangeText);                                 // 1 psi = 0.069 bar 向上、458.9 psi = 31.64 bar 向下
+        Assert.Equal("0.6 – 31.6", p.RangeText);                                 // 7.3 psi = 0.503 bar 向上、458.9 psi = 31.64 bar 向下
         Assert.Equal("3.5", p.Num(0.35));
-        Assert.Equal(3.4, p.Shown(p.NewValue()), 9);                              // 50 psi = 3.447 bar → 3.4
+        Assert.Equal(20.0, p.Shown(p.NewValue()), 9);                             // 290.1 psi = 20.002 bar → 20.0
         Assert.Equal(0.25, p.FromInput(2.5), 12);
+    }
+
+    /// <summary>气密的允许压降（psi/h）：内部 MPa/h（4 位），界面按「压力单位/h」—— MPa 4 位、bar 3 位、psi 1 位；下发回 psi/h（2 位）。</summary>
+    [Fact]
+    public void FieldSpec_LeakRate_FollowsTheUnitPerHour()
+    {
+        var r = Schema.Field(StepType.Leak, "maxDrop")!;
+        Assert.True(r.IsRate);
+        Assert.False(r.IsPressure);
+        Assert.Equal(("MPa/h", "MPa/h", 4), (r.Unit, r.ShowUnit, r.ShowDp));
+        Assert.Equal(0.0138, r.NewValue(), 9);                                   // 设置的泄漏率阈值 2 psi/h
+        Assert.Equal("0.0007 – 0.6894", r.RangeText);                            // 0.1 – 100 psi/h
+        var st = new PcStep(StepType.Leak, "气密检查");
+        st.Num["maxDrop"] = r.NewValue();
+        Assert.Equal(2.0, PcProgram.StepDoc(st).Params["maxDrop"].GetDouble());
+        PressureDisplay.Set(PressureUnit.Psi);
+        Assert.Equal(("psi/h", 1, "0.1 – 100"), (r.ShowUnit, r.ShowDp, r.RangeText));
+        Assert.Equal(2.0, r.Shown(r.NewValue()), 9);
+        Assert.Equal("2.0", r.Num(r.NewValue()));
+        PressureDisplay.Set(PressureUnit.Bar);
+        Assert.Equal(("bar/h", 3), (r.ShowUnit, r.ShowDp));
+        Assert.Equal("0.138", r.Num(r.FromInput(0.138)));
     }
 
     [Fact]

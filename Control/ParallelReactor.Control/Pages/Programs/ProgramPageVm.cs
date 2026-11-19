@@ -80,6 +80,8 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         shell.Dialogs.Register("pgcheck", _ => CreateCheck());
         if (Store.LoadError is { } le) shell.Toast(le, ToastKind.Warn);
         else if (Store.Migrated > 0) shell.Toast("已把旧程序页的 " + Store.Migrated + " 份草稿迁移到程序库", ToastKind.Info);
+        else if (!demo && Store.Programs.Count(p => p.Migrated) is int conv and > 0)
+            shell.Toast("程序库里有 " + conv + " 个旧格式的程序，已按新步骤转换 · 打开检查后保存", ToastKind.Info);
     }
 
     private readonly RibbonTool _new, _save, _dup, _imp, _exp, _chk1, _run1, _stop1, _reset, _savePlan, _impCsv, _expCsv, _chkMx, _runMx;
@@ -300,7 +302,8 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
     {
         var p = Sel;
         int run = p is null ? 0 : UsedBy(p.Id).Count;
-        _save.Reason = p is null ? "先选一个程序" : run > 0 ? "运行中的程序不能直接保存 · 先复制为新程序" : !IsDirty(p.Id) ? "没有未保存的修改" : null;
+        // 从旧格式转换来的程序没改也能保存（按新格式写回）
+        _save.Reason = p is null ? "先选一个程序" : run > 0 ? "运行中的程序不能直接保存 · 先复制为新程序" : !IsDirty(p.Id) && !p.Migrated ? "没有未保存的修改" : null;
         _save.Tip = "保存修改";
         _dup.Reason = p is null ? "先选一个程序" : null;
         _exp.Reason = p is null ? "先选一个程序" : null;
@@ -323,20 +326,17 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
     private void NewProgram()
     {
         if (Dev is not { } d) return;
-        var schema = SchemaOf(d);
-        var p = new PcProgram { Id = Store.NewId("N"), Name = "未命名程序", Model = d.Model.Key, Modified = _shell.Fleet.Now, By = "本机", Draft = true };
-        var heat = PcStep.New(StepType.Heat, schema);
-        heat.Num["temp"] = Math.Min(100, schema.Field(StepType.Heat, "temp")?.Max ?? 100);
-        p.Steps.Add(heat);
-        var end = PcStep.New(StepType.End, schema);
-        end.Name = "降温";
-        p.Steps.Add(end);
+        // 新程序 = 设计稿的加氢筛选模板（气密 → 惰性置换 → 气体 A 置换 → 搅拌 → 升温 → 充压 → 反应 → 放空 → 结束），按需要删改
+        var p = ProgramTemplates.Hydrogenation(Store.NewId("N"), d.Model.Key, "未命名程序");
+        p.Modified = _shell.Fleet.Now;
+        p.By = "本机";
+        p.Draft = true;
         Store.Programs.Insert(0, p);
         _dirty.Add(p.Id);
         SelId = p.Id;
         One.StepIndex = 0;
         if (IsMatrix) SetMode("one");
-        _shell.Toast("已新建程序 · 从「添加步骤」开始", ToastKind.Info);
+        _shell.Toast("已按加氢筛选模板新建程序 · 按需要删改步骤", ToastKind.Info);
         Refresh(_shell.Fleet);
     }
 
@@ -348,7 +348,12 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         if (Dev is { } d && ProgramIssues.Of(p.Steps, SchemaOf(d), MatrixPlan.ModelLabelOf(p.Model)).Count == 0) p.Draft = false;
         _dirty.Remove(p.Id);
         if (Store.Save() is { } err) _shell.Toast(err, ToastKind.Err);
-        else _shell.Toast("已保存「" + p.Name + "」", ToastKind.Ok);
+        else
+        {
+            bool conv = p.Migrated;
+            p.Migrated = false;   // 已按新格式写盘
+            _shell.Toast("已保存「" + p.Name + "」" + (conv ? " · 已按新步骤格式保存" : ""), ToastKind.Ok);
+        }
         Refresh(_shell.Fleet);
     }
 
@@ -430,7 +435,8 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
 
     /// <summary>
     /// 像新打开的页面（截图前）：回到默认模式（条件矩阵）、默认程序（A，进矩阵时换 H1）、第 3 步、下发面板只选 RV5、溶液体积 5.0；矩阵按模板重建。
-    /// 地址参数：pgm=one|mx（模式）、pgbank=2（16 路设备看 RV9–16）、pgvol=n:（第 n 路的溶液体积清空，演示校验）、pgstep=n（单路程序选中第 n 步，截图看那一步的参数）。
+    /// 地址参数：pgm=one|mx（模式）、pgbank=2（16 路设备看 RV9–16）、pgvol=n:（第 n 路的溶液体积清空，演示校验）、pgstep=n（单路程序选中第 n 步，截图看那一步的参数）、
+    /// pgp=id（选这个程序，例如 H1 加氢筛选、OX 旧格式转换来的）、pgset=键:值,…（改选中那一步的参数，截图看 visibleWhen：例如 until:tempBelow、cycles:0）。
     /// </summary>
     /// <summary>
     /// 记录页「用这组参数再做一次」（融合版 F7 → F8 接上）：切到单路程序、载入那个程序（按程序库 id，找不到按名字），预选那次会话的通道里此刻空闲的。
@@ -451,7 +457,8 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         var skipped = request.Channels.Except(got).Concat(request.Busy).Distinct().OrderBy(n => n).ToList();
         string Rvs(IEnumerable<int> ns) => string.Join("、", ns.Select(n => "RV" + n.ToString(System.Globalization.CultureInfo.InvariantCulture)));
         toast = "已载入「" + prog.Name + "」· 预选 " + (got.Count == 0 ? "没有空闲的通道" : Rvs(got))
-            + (skipped.Count > 0 ? "（" + Rvs(skipped) + " 正在运行 / 停用，没选）" : "") + " · 装好样品、填好溶液体积后点「下发并运行」";
+            + (skipped.Count > 0 ? "（" + Rvs(skipped) + " 正在运行 / 停用，没选）" : "")
+            + (prog.Migrated ? " · 这个程序是旧格式、已按新步骤转换，请先检查" : "") + " · 装好样品、填好溶液体积后点「下发并运行」";
         return true;
     }
 
@@ -459,11 +466,13 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
     {
         _inited = false;
         _dirty.Clear();
+        Store.ResetDemo();
         SelId = "A";
         LibQuery = "";
         LibScope = "cur";
         One.Reset();
         Mx.Reset();
+        if (x("pgp") is { Length: > 0 } pid && Store.Find(pid) != null) { SelId = pid; _inited = true; }
         IsMatrix = x("pgm") != "one";
         if (IsMatrix) EnterMatrix();
         Refresh(_shell.Fleet);
@@ -475,6 +484,13 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
             else One.VolText = double.IsNaN(v) ? "" : JsNumber.ToFixed(v, 1);
         }
         if (!IsMatrix && int.TryParse(x("pgstep"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var step) && step >= 1) One.Select(step - 1);
+        if (!IsMatrix && x("pgset") is { Length: > 0 } set)
+            foreach (var kv in set.Split(','))
+                if (kv.Split(':') is { Length: 2 } a2)
+                {
+                    if (double.TryParse(a2[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var num)) One.SetNum(a2[0], num);
+                    else One.SetSel(a2[0], a2[1]);
+                }
         RaiseToolsChanged();
         Refresh(_shell.Fleet);
     }

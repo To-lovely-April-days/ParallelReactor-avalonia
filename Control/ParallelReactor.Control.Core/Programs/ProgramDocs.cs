@@ -21,6 +21,10 @@ namespace ParallelReactor.Control.Core.Programs;
 /// </list>
 /// 真机程序只有搅拌步骤带转速（PORT-PLAN §3.5），其它步骤的转速为 null（卡片显示「—」）；没有 cool 步骤。
 /// 不认识的步骤类型跳过。预估分钟数：按时间结束的步骤 = 该时长，按温度 / 压力结束的为 0（未知，M5 的 EtaEstimator 再估）。
+/// <para><b>程序步骤 v0.8</b>（STEPS-SPEC.md）：leak / exchange / hold / vent，以及新写法的 stir（没有 dur：立即进入下一步）、react（没有 endBy：最长时间 + 吸气条件，标「≤」）、
+/// end（没有 mode / cool：固定收尾）。预估分钟数按 §5（保持按条件 = min(最长等待, 15)，标「约」）。
+/// 这里<b>一步对一步、不转换旧格式</b>：设备正在执行的程序（较早的 HMI 还是旧步骤）和程序台账都按步骤序号对齐，转换会让序号对不上；
+/// 旧格式的转换（StepMigration）只在编辑的入口做（程序库 / 草稿 / 导入，见 PcProgram）。</para>
 /// </summary>
 public static class ProgramDocs
 {
@@ -84,6 +88,19 @@ public static class ProgramDocs
                 c.Gas = gas;
                 return new ProgramStep(StepKind.Press) { Sp = c.Temp, Target = mpa, Gas = gas, End = new StepEnd(EndKind.Press, mpa, "≥"), Regulate = Sel(s, "regulate", "on") == "on" };
             }
+            case "react" when !Has(s, "endBy"):
+            {
+                // v0.8：最长时间一定有；吸气量达到 / 吸气停止 先到者结束（标「≤」）
+                double time = Num(s, "time", 480);
+                var ends = new List<string>(2);
+                if (Sel(s, "stallOn", "on") == "on") ends.Add("吸气停止");
+                if (Sel(s, "mmolOn", "off") == "on") ends.Add("吸气量 ≥ " + JsNumber.ToFixed(Num(s, "mmol", 5), 2) + " mmol");
+                return new ProgramStep(StepKind.React)
+                {
+                    Sp = c.Temp, Target = c.Pres, Gas = c.Gas, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time,
+                    Mark = StepMark.UpTo, Ends = ends.Count > 0 ? string.Join(" / ", ends) : null,
+                };
+            }
             case "react":
             {
                 double time = Num(s, "time", 120);
@@ -94,6 +111,9 @@ public static class ProgramDocs
                 double time = Num(s, "time", 30);
                 return new ProgramStep(StepKind.Wait) { Sp = c.Temp, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time };
             }
+            case "stir" when !Has(s, "dur"):
+                // v0.8：设定后立即进入下一步，转速一直保持
+                return new ProgramStep(StepKind.Stir) { Sp = c.Temp, Rpm = Num(s, "rpm", 400), EstMin = 0 };
             case "stir":
             {
                 double dur = Num(s, "dur", 5);
@@ -105,6 +125,50 @@ public static class ProgramDocs
                 double min = Math.Round(cycles * (Num(s, "fill", 3) + Num(s, "vent", 5) + 1) / 60.0 * 10, MidpointRounding.AwayFromZero) / 10;
                 return new ProgramStep(StepKind.Purge) { Sp = c.Temp, Gas = GasKey(model, Sel(s, "gas", "inert")), Cycles = (int)Math.Round(cycles), End = new StepEnd(EndKind.Time, min), EstMin = min };
             }
+            case "leak":
+            {
+                double settle = Num(s, "settle", 5), hold = Num(s, "hold", 30);
+                c.Pres = null;
+                return new ProgramStep(StepKind.Leak)
+                {
+                    Sp = c.Temp, Target = Units.PsiToMpa(Num(s, "pres", 435.1)), Gas = GasKey(model, "inert"), Minutes = settle + hold,
+                    End = new StepEnd(EndKind.Time, settle + hold), EstMin = settle + hold + 1,
+                };
+            }
+            case "exchange":
+            {
+                int cycles = (int)Math.Round(Num(s, "cycles", 3)), flush = (int)Math.Round(Num(s, "lineFlush", 2));
+                c.Pres = null;
+                return new ProgramStep(StepKind.Exchange)
+                {
+                    Sp = c.Temp, Target = Units.PsiToMpa(Num(s, "fill", 72.5)), Gas = GasKey(model, Sel(s, "gas", "inert")), Cycles = cycles, LineFlush = flush,
+                    EstMin = Math.Round((flush * 9 + cycles * 20) / 60.0, 1),
+                };
+            }
+            case "hold":
+            {
+                string until = Sel(s, "until", "time");
+                if (until == "time")
+                {
+                    double time = Num(s, "time", 10);
+                    return new ProgramStep(StepKind.Hold) { Sp = c.Temp, Minutes = time, End = new StepEnd(EndKind.Time, time), EstMin = time };
+                }
+                double max = Num(s, "maxWait", 60);
+                string op = until.EndsWith("Below", StringComparison.Ordinal) ? "≤" : "≥";
+                var end = until.StartsWith("temp", StringComparison.Ordinal) ? new StepEnd(EndKind.Temp, Num(s, "temp", 40), op)
+                    : new StepEnd(EndKind.Press, Units.PsiToMpa(Num(s, "pres", 14.5)), op);
+                return new ProgramStep(StepKind.Hold) { Sp = c.Temp, End = end, MaxMin = max, Mark = StepMark.About, EstMin = Math.Min(max, 15) };
+            }
+            case "vent":
+            {
+                double to = Units.PsiToMpa(Num(s, "to", 2.9));
+                int flush = (int)Math.Round(Num(s, "flush", 3));
+                c.Pres = null;
+                return new ProgramStep(StepKind.Vent) { Sp = c.Temp, Target = to, Cycles = flush, End = new StepEnd(EndKind.Press, to, "≤"), EstMin = Math.Round(1 + flush * 20 / 60.0, 1) };
+            }
+            case "end" when !Has(s, "mode") && !Has(s, "cool"):
+                // v0.8：固定收尾（关加热、阀全关、释放搅拌），没有参数、不降温
+                return new ProgramStep(StepKind.End);
             case "end":
             {
                 double cool = Num(s, "cool", 40);
@@ -121,6 +185,8 @@ public static class ProgramDocs
 
     /// <summary>HMI 的气路代码（'A' / 'inert'）→ 型号表的键（'a' / 'inert'）；型号表没有对应代码时原样。</summary>
     public static string GasKey(ModelProfile? model, string code) => model?.GasByHmi(code)?.Key ?? code;
+
+    private static bool Has(ProgramStepDoc s, string key) => s.Params.ContainsKey(key);
 
     private static double Num(ProgramStepDoc s, string key, double fallback) =>
         s.Params.TryGetValue(key, out var e) && e.ValueKind == JsonValueKind.Number && e.TryGetDouble(out var v) && double.IsFinite(v) ? v : fallback;

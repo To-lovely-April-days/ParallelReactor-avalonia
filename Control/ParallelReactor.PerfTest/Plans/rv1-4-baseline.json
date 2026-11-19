@@ -550,7 +550,7 @@
           "steps": [
             { "id": "P4-1", "kind": "instruction", "title": "减压阀出口调到目标 + 余量", "text": "减压阀出口调到 {value} psi + 少量余量后打开气源；确认超压阈值 ≥ 1.2 × 目标。" },
             { "id": "P4-2", "kind": "command", "title": "启用 RV{rv}", "command": { "op": "enable", "allowCodes": ["CHANNEL_STATE_INVALID"] } },
-            { "id": "P4-3", "kind": "command", "title": "下发升压程序（{value} psi，稳压 10 min）", "command": { "op": "programPut", "args": { "steps": [ { "type": "press", "params": { "gas": "A", "pres": "{value}", "regulate": "on" } }, { "type": "wait", "params": { "mode": "fixed", "time": 10 } } ] } } },
+            { "id": "P4-3", "kind": "command", "title": "下发升压程序（{value} psi，稳压 10 min）", "command": { "op": "programPut", "args": { "steps": [ { "type": "press", "params": { "gas": "A", "pres": "{value}", "regulate": "on" } }, { "type": "hold", "params": { "until": "time", "time": 10 } }, { "type": "end", "params": { } } ] } } },
             { "id": "P4-4", "kind": "command", "title": "运行程序", "command": { "op": "programRun", "expectStatus": ["accepted", "confirmed"] } },
             { "id": "P4-5", "kind": "hold", "title": "记录升压 + 稳压 12 min", "durationSec": 720, "signals": ["pressurePsi", "pressureRaw"] },
             { "id": "P4-6", "kind": "measure", "title": "升压指标", "metrics": [

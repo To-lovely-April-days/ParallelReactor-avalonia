@@ -178,12 +178,41 @@ public sealed partial class DemoFleet
                 if (el >= (st.Minutes ?? double.NaN) * 60) NextStep(dev, ch);
                 break;
             }
-            case StepKind.Cool:
+            case StepKind.Hold when st.End is { Kind: EndKind.Temp, Op: "≤" or "<" } he:
             {
-                double sp = st.Sp ?? double.NaN;
+                // 降温（保持 · 温度 ≤ x）：演示里同原样稿的降温步骤（关加热、有冷却水的型号开冷却水）
+                double sp = he.V;
                 ch.State = StateKey.Cool; ch.Heating = false; ch.Cooling = dev.Model.HasCooling; ch.HeaterPct = 0; ch.SpC = st.Sp; ch.Sv = false;
                 ch.TempC -= (ch.TempC - (sp - 12)) * (ch.Cooling ? 0.0011 : 0.0005) + Nz(0.02);
-                if (ch.TempC <= sp) NextStep(dev, ch);
+                if (ch.TempC <= sp || (st.MaxMin is double mx && el >= mx * 60)) NextStep(dev, ch);
+                break;
+            }
+            case StepKind.Hold when st.End is { Kind: EndKind.Time }:
+            {
+                ch.State = StateKey.Wait;
+                if (st.Sp is double hs) HoldTemp(ch, hs);
+                if (el >= DemoHistory.Or(st.Minutes, 1) * 60) NextStep(dev, ch);
+                break;
+            }
+            case StepKind.Leak:
+            case StepKind.Exchange:
+            {
+                // 气密（充到试验压力后保压）/ 置换（充放几次）：演示按计划时长走，压力先到目标、最后放回
+                ch.State = StateKey.Press;
+                if (st.Sp is double ls) HoldTemp(ch, ls);
+                double target = st.Target ?? 0.5;
+                bool last = el >= st.EstMin * 60 * 0.9;
+                ch.Sv = !last || st.Type == StepKind.Exchange;
+                ch.PressureMPa = last ? Math.Max(0.004, ch.PressureMPa * 0.97) : Math.Min(target * 1.003, ch.PressureMPa + ch.PRate + Nz(ch.PRate * 0.1));
+                if (el >= DemoHistory.Or(st.EstMin, 1) * 60) { ch.Sv = false; NextStep(dev, ch); }
+                break;
+            }
+            case StepKind.Vent:
+            {
+                ch.State = StateKey.Press; ch.Sv = true; ch.PTargetMPa = null;
+                if (st.Sp is double vs) HoldTemp(ch, vs);
+                ch.PressureMPa = Math.Max(0.004, ch.PressureMPa * 0.95);
+                if ((ch.PressureMPa <= (st.Target ?? 0.02) && el >= DemoHistory.Or(st.EstMin, 1) * 60) || el > DemoHistory.Or(st.EstMin, 1) * 60 * 2) { ch.Sv = false; NextStep(dev, ch); }
                 break;
             }
             case StepKind.End:

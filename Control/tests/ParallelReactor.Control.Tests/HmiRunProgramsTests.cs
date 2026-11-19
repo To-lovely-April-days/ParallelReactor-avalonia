@@ -101,8 +101,13 @@ public class HmiRunProgramsTests
         Assert.Null(ProgramDocs.FromRun(null, Pr8));
         Assert.Empty(ProgramDocs.FromRun(Array.Empty<ProgramStepDto>(), Pr8)!);
         // 缺参数：同本机程序的默认值
-        var d = ProgramDocs.FromRun(new[] { S("wait", "{}"), S("stir", "{}") }, Pr8)!;
+        var d = ProgramDocs.FromRun(new[] { S("wait", "{}"), S("stir", "{\"dur\":5}") }, Pr8)!;
         Assert.Equal((30.0, 5.0, 1000.0), (d[0].Minutes!.Value, d[1].Minutes!.Value, d[1].Rpm!.Value));
+        // v0.8 的搅拌（没有 dur）：默认 400 rpm，立即进入下一步
+        var n = ProgramDocs.FromRun(new[] { S("stir", "{}"), S("hold", "{\"until\":\"tempBelow\",\"temp\":45,\"maxWait\":30}"), S("end", "{}") }, Pr8)!;
+        Assert.Equal((400.0, (double?)null, 0.0), (n[0].Rpm!.Value, n[0].Minutes, n[0].EstMin));
+        Assert.Equal((new StepEnd(EndKind.Temp, 45, "≤"), 30.0, 15.0, StepMark.About), (n[1].End, n[1].MaxMin!.Value, n[1].EstMin, n[1].Mark));
+        Assert.Equal(StepKind.End, n[2].Type);
     }
 
     // ———————————————————— 取数的时机 ————————————————————

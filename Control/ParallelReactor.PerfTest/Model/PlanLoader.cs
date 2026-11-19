@@ -139,7 +139,10 @@ public static class PlanValidator
 
     public static readonly string[] EnvKeys = { "ambientTempC", "humidityPct", "atmPressureKpa", "supplyVoltageV", "assemblyNo", "mediumAndMassG" };
 
-    /// <summary>programPut 正文校验（HMI ProgramJson 的规则）：type 为已知步骤码；sel 字段必须是枚举码字符串（区分大小写，不接受 bool）。</summary>
+    /// <summary>
+    /// programPut 正文校验（HMI ProgramJson 的规则）：type 为程序步骤 v0.8 的步骤码（旧码 purge / wait HMI 虽然还认、会转换，测试计划里不用，
+    /// 免得测的不是写下的步骤，STEPS-SPEC §0）；sel 字段必须是枚举码字符串（区分大小写，不接受 bool）。
+    /// </summary>
     private static void ValidateProgramSteps(string q, System.Text.Json.JsonElement steps, Action<string> Err)
     {
         if (steps.ValueKind != System.Text.Json.JsonValueKind.Array) { Err($"{q} programPut.args.steps 须为数组"); return; }
@@ -148,7 +151,8 @@ public static class PlanValidator
         {
             i++;
             var type = st.TryGetProperty("type", out var t) && t.ValueKind == System.Text.Json.JsonValueKind.String ? t.GetString()! : "";
-            if (!ParallelReactor.Models.StepTypeCodes.TryParse(type, out _)) { Err($"{q} 程序第 {i} 步 type 未知：{type}"); continue; }
+            if (!ParallelReactor.Models.StepTypeCodes.TryParse(type, out var stepType)) { Err($"{q} 程序第 {i} 步 type 未知：{type}"); continue; }
+            if (ParallelReactor.Models.StepTypeCodes.IsLegacy(stepType)) { Err($"{q} 程序第 {i} 步 type「{type}」是旧步骤码（v0.8 起用 hold / exchange）"); continue; }
             if (!st.TryGetProperty("params", out var ps) || ps.ValueKind != System.Text.Json.JsonValueKind.Object) continue;
             foreach (var p in ps.EnumerateObject())
             {

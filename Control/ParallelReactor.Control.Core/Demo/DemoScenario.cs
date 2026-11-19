@@ -71,7 +71,7 @@ internal static class DemoScenario
                 S(StepKind.Heat, 22, Temp("≥", 149.5), sp: 150, rpm: 800),
                 S(StepKind.Press, 6, Press("≥", 5.2), sp: 150, target: 5.2, gas: "h2", rpm: 800),
                 S(StepKind.React, 120, Time(120), sp: 150, target: 5.2, gas: "h2", minutes: 120, rpm: 800),
-                S(StepKind.Cool, 25, Temp("≤", 40), sp: 40, rpm: 300),
+                S(StepKind.Hold, 25, Temp("≤", 40), sp: 40, rpm: 300) with { Name = "降温" },   // 原样稿的降温步骤（v0.8 没有降温步骤：保持 · 温度 ≤ 40）
                 S(StepKind.End, 3, Press("<", 0.2), coolTo: 40, vent: true, rpm: 0),
             }));
         if (k == "PR16")

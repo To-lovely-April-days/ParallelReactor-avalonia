@@ -50,7 +50,8 @@ public readonly record struct StepEta(DateTime? StepStart, double StepDurS, doub
 /// <item><b>按条件结束的</b>（定值升温的升温段：|温度 − 目标| ≤ 2 ℃；充压到目标；结束步骤降温到 ℃）：只能估 = 距离 ÷ 速率（实测优先，否则 <see cref="EtaRates"/>）。
 ///   估计用完还没到时剩余为 0 —— 充压 / 结束步骤的结束条件是压力 / 温度，Progress 据此写「当前 · 等条件」「等压力 ≥ 0.350 MPa」（样稿 overdue）；
 ///   升温步骤还有平衡段，剩余不低于平衡时长。</item>
-/// <item>吹扫：message 里的「2/3」循环计数按比例；否则按计划时长。</item>
+/// <item>吹扫 / 置换 / 放空：message 里的「2/3」循环计数按比例；否则按计划时长。</item>
+/// <item>v0.8：搅拌立即完成；气密 = 静置 + 保压（定时）；保持按时间 = 定时，按温度 = 距离 ÷ 速率（不超过最长等待），按压力 = 计划时长；结束 = 立即。</item>
 /// </list>
 /// 时刻一律是设备时钟的 UTC；「估算的时刻」= 最新一帧的时刻（离线时 Progress 停在 DataAt，倒计时不再走）。纯函数。
 /// </summary>
@@ -107,8 +108,8 @@ public static class EtaEstimator
 
     /// <summary>
     /// 每一步的计划时长（ProgramStep.EstMin，Progress 用它排后面的步骤、算全程剩余 / ETA）：按条件结束的步骤按前一步留下的温度 / 压力估：
-    /// 定值升温 = |目标 − 前一步温度| ÷ 升温（降温）速率 + 稳定 + 平衡时长；充压 = 差值 ÷ 充压速率（至少 0.5 min）；结束 = 降温 + 收尾；
-    /// 降温（演示型号）= 差值 ÷ 降温速率。定时的步骤不变。<paramref name="startTempC"/> / <paramref name="startPressureMPa"/>：第一步之前的温度 / 压力（不知道按 25 ℃ / 0）。
+    /// 定值升温 = |目标 − 前一步温度| ÷ 升温（降温）速率 + 稳定 + 平衡时长；充压 = 差值 ÷ 充压速率（至少 0.5 min）；旧的结束 = 降温 + 收尾（v0.8 的结束 = 0）；
+    /// 保持到温度 = 差值 ÷ 降温 / 升温速率（不超过最长等待）。定时的步骤不变。<paramref name="startTempC"/> / <paramref name="startPressureMPa"/>：第一步之前的温度 / 压力（不知道按 25 ℃ / 0）。
     /// </summary>
     public static IReadOnlyList<ProgramStep> Plan(IReadOnlyList<ProgramStep> steps, double? startTempC = null, double? startPressureMPa = null, EtaRates? rates = null)
     {
@@ -133,12 +134,22 @@ public static class EtaEstimator
                     est = Math.Max(0.5, Math.Max(0, tg - pres) / r.FillMPaPerMin);
                     pres = tg;
                     break;
-                case StepKind.Cool when s.Sp is double c:
-                    est = Math.Max(0, temp - c) / r.CoolCPerMin;
-                    temp = c;
+                case StepKind.Hold when s.End is { Kind: EndKind.Temp } he:
+                    // 保持到温度：朝目标的距离 ÷ 速率（≤ 自然降温，≥ 升温）；已经到了为 0
+                    est = he.Op is "≤" or "<" ? Math.Max(0, temp - he.V) / r.CoolCPerMin : Math.Max(0, he.V - temp) / r.HeatCPerMin;
+                    if (s.MaxMin is double mx) est = Math.Min(est.Value, mx);
+                    temp = he.Op is "≤" or "<" ? Math.Min(temp, he.V) : Math.Max(temp, he.V);
                     break;
                 case StepKind.Purge:
                     pres = 0;
+                    break;
+                case StepKind.Leak:
+                case StepKind.Exchange:
+                case StepKind.Vent:
+                    pres = 0;
+                    break;
+                case StepKind.End when !StepText.LegacyEnd(s):
+                    est = 0;   // v0.8 的结束：固定收尾，立即完成
                     break;
                 case StepKind.End:
                     if (s.CoolTo is double ct) { est = Math.Max(0, temp - ct) / r.CoolCPerMin + r.EndTailMin; temp = Math.Min(temp, ct); }
@@ -203,7 +214,12 @@ public static class EtaEstimator
                 }
                 else { remainS = Planned(step, elapsed); basis = EtaBasis.Unknown; }
                 break;
-            case StepKind.React or StepKind.Wait or StepKind.Stir:
+            case StepKind.Stir when step.Minutes is null:
+                remainS = 0;   // v0.8 的搅拌：设定后立即进入下一步
+                basis = EtaBasis.Estimate;
+                break;
+            case StepKind.React or StepKind.Wait or StepKind.Stir or StepKind.Leak:
+            case StepKind.Hold when step.End is { Kind: EndKind.Time }:
             {
                 double min = step.Minutes ?? (step.End is { Kind: EndKind.Time } e ? e.V : step.EstMin);
                 timedMin = min;
@@ -212,7 +228,7 @@ public static class EtaEstimator
                 else { remainS = min * 60; basis = EtaBasis.Unknown; }
                 break;
             }
-            case StepKind.Purge:
+            case StepKind.Purge or StepKind.Exchange or StepKind.Vent:
             {
                 double min = step.EstMin > 0 ? step.EstMin : step.End is { Kind: EndKind.Time } e ? e.V : 1;
                 timedMin = min;
@@ -230,10 +246,13 @@ public static class EtaEstimator
                 }
                 else { remainS = Planned(step, elapsed); basis = EtaBasis.Unknown; }
                 break;
-            case StepKind.Cool:
-                if (rd.TempC is double tc && step.Sp is double sc)
+            case StepKind.Hold when step.End is { Kind: EndKind.Temp } he:
+                if (rd.TempC is double th)
                 {
-                    remainS = tc <= sc ? 0 : (tc - sc) / RateToward(rd.TempRate, sc - tc, r.CoolCPerMin, 0.1) * 60;
+                    bool below = he.Op is "≤" or "<";
+                    double gap = below ? th - he.V : he.V - th;
+                    remainS = gap <= 0 ? 0 : gap / RateToward(rd.TempRate, below ? -gap : gap, below ? r.CoolCPerMin : r.HeatCPerMin, 0.1) * 60;
+                    if (step.MaxMin is double mx && elapsed is double ela) remainS = Math.Min(remainS, Math.Max(0, mx * 60 - ela));
                     basis = EtaBasis.Estimate;
                 }
                 else { remainS = Planned(step, elapsed); basis = EtaBasis.Unknown; }
@@ -289,6 +308,7 @@ public static class EtaEstimator
         {
             var s = steps[k];
             if (s.Type == StepKind.End && s.CoolTo is double c) return c;
+            if (s.Type == StepKind.Hold && s.End is { Kind: EndKind.Temp } he) return he.V;
             if (s.Sp is double sp) return sp;
         }
         return null;

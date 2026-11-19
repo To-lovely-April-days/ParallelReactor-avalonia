@@ -98,19 +98,19 @@ public class F4HomeTests
         Assert.Empty(h.TilesLow);
         Assert.Equal((8, 8, false), (h.MonCols, h.BarCols, h.IsN16));
         MonTileVm T(int n) => h.Tiles.Single(t => t.N == n);
-        Assert.Equal(("145.2", "目标 150.0 °C", "2.35", "400", "3/4 · 剩 27 min"), (T(1).TempText, T(1).SpLine, T(1).PressText, T(1).RpmText, T(1).StepLine));
+        Assert.Equal(("145.2", "目标 150.0 °C", "2.35", "400", "3/6 · 剩 27 min"), (T(1).TempText, T(1).SpLine, T(1).PressText, T(1).RpmText, T(1).StepLine));
         Assert.True(T(1).IsSelected);
         Assert.Equal(TileMark.None, T(1).Mark);
         Assert.Equal(RunDot.Run, T(1).Dot);
         // RV2 提醒（升温偏慢）、RV4 报警（压力超限：红底压力、已暂停、红色的当前段）
         Assert.Equal(TileMark.Warn, T(2).Mark);
-        Assert.Equal((TileMark.Err, true, "压力超限", "3/4 · 已暂停"), (T(4).Mark, T(4).PressHot, T(4).Word, T(4).StepLine));
+        Assert.Equal((TileMark.Err, true, "压力超限", "3/6 · 已暂停"), (T(4).Mark, T(4).PressHot, T(4).Word, T(4).StepLine));
         Assert.True(T(4).Segs.Single(x => x.State == SegmentState.Cur).Err);
         Assert.Contains("未确认", T(4).MarkTip);
-        // 已就绪 / 停用：照样稿写「—/4」（设备程序的步数）
-        Assert.Equal(("已就绪", "—/4 · 待启动", 4), (T(5).Word, T(5).StepLine, T(5).Segs.Count));
-        Assert.Equal((true, "—/4 · 已停用", "—", "0.0"), (T(7).IsOff, T(7).StepLine, T(7).RpmText, T(7).GasText));
-        Assert.Equal("4/4 · 剩 9 min", T(8).StepLine);
+        // 已就绪 / 停用：照样稿写「—/N」（设备程序的步数；程序步骤 v0.8 的程序 A 是 6 步）
+        Assert.Equal(("已就绪", "—/6 · 待启动", 6), (T(5).Word, T(5).StepLine, T(5).Segs.Count));
+        Assert.Equal((true, "—/6 · 已停用", "—", "0.0"), (T(7).IsOff, T(7).StepLine, T(7).RpmText, T(7).GasText));
+        Assert.Equal("4/6 · 剩 9 min", T(8).StepLine);
         // 釜图 / 棒图的比例：量程 200 ℃ / 4.14 MPa，报警上限 3.50
         Assert.Equal(145.2 / 200, T(1).TFrac, 3);
         Assert.Equal(0.75, T(1).SpFrac, 3);
@@ -220,7 +220,7 @@ public class F4HomeTests
         var s = Shell("mv=vessel", dev: 2);
         var h = Home(s);
         Assert.Equal((4, 4, 4, true), (h.Tiles.Count, h.MonCols, h.BarCols, h.IsN4));
-        Assert.Equal("4/4 · 已结束", h.Tiles.Single(t => t.N == 4).StepLine);
+        Assert.Equal("6/6 · 已结束", h.Tiles.Single(t => t.N == 4).StepLine);
         s.Dispose();
     }
 

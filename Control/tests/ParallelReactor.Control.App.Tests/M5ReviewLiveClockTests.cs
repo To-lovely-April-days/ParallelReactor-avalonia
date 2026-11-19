@@ -95,7 +95,7 @@ public class M5ReviewLiveClockTests
         r.Clock.Advance(TimeSpan.FromSeconds(1));                                        // 写命令之间的最小间隔按（假）时钟走
         await Task.Delay(20);
         var d0 = r.Clock.UtcNow;   // 下发时刻（两边的钟现在一样）
-        await Bounded(r.Ui.InvokeAsync(() => r.Src.UploadProgramAsync(1, ProgramDraftStore.Template("加氢测试-01"), CancellationToken.None)), "下发");
+        await Bounded(r.Ui.InvokeAsync(() => r.Src.UploadProgramAsync(1, LegacyDocs.Four("加氢测试-01"), CancellationToken.None)), "下发");
         var e = await r.On(() => r.Src.Ledger.Entry(1)!);
         Assert.Equal(d0, e.DownloadedAtDevice);                                         // 以前 d0 + 6 s
 

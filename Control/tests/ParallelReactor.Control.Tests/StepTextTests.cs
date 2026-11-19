@@ -26,7 +26,11 @@ public class StepTextTests
     public void ProgramLibraries_MatchMock()
     {
         using var doc = JsonDocument.Parse(DemoMockVectors.Json);
-        var expected = doc.RootElement.GetProperty("steps").EnumerateArray().Select(x => x.GetString()!).ToList();
+        // 原样稿的降温步骤（HT-PR4 有冷却水）在程序步骤 v0.8 里是「保持 · 温度 ≤ x」（没有降温步骤）：摘要与加热器一节按保持写，其余逐字照样稿
+        static string V08(string line) => !line.Contains(" name=降温 ", System.StringComparison.Ordinal) ? line
+            : System.Text.RegularExpressions.Regex.Replace(System.Text.RegularExpressions.Regex.Replace(line, "text=降至 ([0-9.]+) ℃", "text=温度 ≤ $1 ℃"),
+                "加热器/关闭 · (冷却水|自然)降温/降至/", "加热器/保持/设定值/");
+        var expected = doc.RootElement.GetProperty("steps").EnumerateArray().Select(x => V08(x.GetString()!)).ToList();
         var actual = new List<string>();
         foreach (var stress in new[] { "", "&stress=1" })
         {
@@ -78,8 +82,11 @@ public class StepTextTests
         Assert.Equal("H₂ · 到压后保持", pr4[1].Mode);
         Assert.Equal("5.20 MPa · H₂", StepText.Summary(Pr4, LibStep(Pr4, "h2-hp", 1)));
 
-        var cool = StepText.Sections(Pr4, 3, LibStep(Pr4, "h2-hp", 3));
-        Assert.Equal(("关闭 · 冷却水降温", "降至", "40.0 ℃"), (cool[0].Mode, cool[0].Label, cool[0].Value));
+        // 原样稿的降温步骤 = 保持 · 温度 ≤ 40（v0.8 没有降温步骤）
+        var coolStep = LibStep(Pr4, "h2-hp", 3);
+        Assert.Equal((StepKind.Hold, "降温", "温度 ≤ 40 ℃"), (coolStep.Type, StepText.Name(coolStep), StepText.Summary(Pr4, coolStep)));
+        var cool = StepText.Sections(Pr4, 3, coolStep);
+        Assert.Equal(("保持", "设定值", "40.0 ℃"), (cool[0].Mode, cool[0].Label, cool[0].Value));
         var end = StepText.Sections(Pr4, 3, LibStep(Pr4, "h2-hp", 4));
         Assert.Equal(("排空阀", "打开 · 泄压", "0.00 MPa"), (end[1].Dev, end[1].Mode, end[1].Value));
         var end8 = StepText.Sections(Pr8, null, LibStep(Pr8, "cat-100", 3));
@@ -92,12 +99,17 @@ public class StepTextTests
     [Fact]
     public void KindNamesAndCodes()
     {
+        // 程序步骤 v0.8 的九种 + 旧格式的吹扫 / 等待（显示旧程序用）；没有降温步骤
         var names = new Dictionary<StepKind, (string Code, string Zh, string Icon)>
         {
+            [StepKind.Leak] = ("leak", "气密检查", "lock"), [StepKind.Exchange] = ("exchange", "置换", "refresh"), [StepKind.Vent] = ("vent", "放空", "wind"),
+            [StepKind.Hold] = ("hold", "保持", "clock"),
             [StepKind.Purge] = ("purge", "吹扫", "wind"), [StepKind.Heat] = ("heat", "升温", "thermo"), [StepKind.Press] = ("press", "充压", "gauge"),
             [StepKind.Stir] = ("stir", "搅拌", "fan"), [StepKind.Wait] = ("wait", "等待", "clock"), [StepKind.React] = ("react", "反应", "flask"),
-            [StepKind.Cool] = ("cool", "降温", "snow"), [StepKind.End] = ("end", "结束", "flag"),
+            [StepKind.End] = ("end", "结束", "flag"),
         };
+        Assert.Equal(names.Count, System.Enum.GetValues<StepKind>().Length);
+        Assert.False(StepText.TryParse("cool", out _));
         foreach (var (k, v) in names)
         {
             Assert.Equal(v, (StepText.Code(k), StepText.KindName(k), StepText.Icon(k)));
@@ -203,7 +215,9 @@ public class StepTextTests
         Assert.Equal("曲线升温", StepText.Sections(Pr8, 1, steps[0])[0].Mode);
         Assert.Equal("0.345 MPa · 气体 A", StepText.Summary(Pr8, steps[1]));   // 默认 50 psi、气体 A
         Assert.Equal("气体 A · 稳压保持", StepText.Sections(Pr8, 1, steps[1])[1].Mode);   // 默认 regulate = on
-        Assert.Equal("保持密封", StepText.Summary(Pr8, steps[2]));       // 默认 seal
-        Assert.Equal("温度 < 40 ℃", StepText.Cond(steps[2], Pr8).Value);
+        // 没有 mode / cool 的结束 = v0.8 的结束（固定收尾，没有参数、不降温）
+        Assert.Equal("关加热 · 阀全关", StepText.Summary(Pr8, steps[2]));
+        Assert.Equal("立即", StepText.Cond(steps[2], Pr8).Value);
+        Assert.False(StepText.LegacyEnd(steps[2]));
     }
 }

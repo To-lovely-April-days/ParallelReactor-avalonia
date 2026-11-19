@@ -511,7 +511,7 @@ public class LedgerMatchTests
     {
         var l = new ProgramLedger("dev-1", Me);
         var doc = Doc();
-        doc.Steps.Insert(1, new ProgramStepDoc("leak"));      // 不认识的步骤类型：序号对不上，不按台账显示
+        doc.Steps.Insert(1, new ProgramStepDoc("dose"));      // 不认识的步骤类型：序号对不上，不按台账显示（leak 从 v0.8 起认识）
         l.AddDownload(1, doc, "b1", D0, TimeSpan.Zero, null, true);
         var f = Frame(D0.AddSeconds(60), Ch(1, program: Run(0, count: 5)));
         Assert.Equal(LedgerMatchKind.Matched, l.Match(1, f.Channels[0].Program, "b1").Kind);

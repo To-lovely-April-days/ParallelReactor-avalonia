@@ -104,7 +104,9 @@ public static class ProgramPanelText
             case ProgramStatus.Done:
             {
                 string t = p.EndedAt is { } e ? Fmt.Hm(e) : "";
-                return new ProgramStatusLine(StateKey.Done, "已结束", "共 " + pr.N + " 步" + (t.Length > 0 ? " · " + t + " 完成" : ""), t.Length > 0 ? t + " 完成" : "共 " + pr.N + " 步");
+                // v0.8：反应的结束原因（设备给的 endReason）写在完整文字里
+                return new ProgramStatusLine(StateKey.Done, "已结束", "共 " + pr.N + " 步" + (t.Length > 0 ? " · " + t + " 完成" : "") + (p.EndReason is { Length: > 0 } er ? " · 反应结束：" + er : ""),
+                    t.Length > 0 ? t + " 完成" : "共 " + pr.N + " 步");
             }
             case ProgramStatus.Aborted:
                 return new ProgramStatusLine(StateKey.Stopped, "已中止", "第 " + kn + " 步", kn);

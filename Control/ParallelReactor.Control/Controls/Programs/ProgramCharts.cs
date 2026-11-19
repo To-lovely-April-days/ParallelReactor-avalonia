@@ -108,11 +108,19 @@ public sealed class PlanPreviewChart : ProgramChartBase
                 ctx.DrawLine(Palette.Pen(Palette.LineFaintColor, 1), new Point(L, Y(v)), new Point(W - R, Y(v)));
                 Text(ctx, k == 'P' ? JsNumber.ToFixed(v, pDec) : JsNumber.ToFixed(v, 0), L - 6, Y(v) + 4, 1, Palette.T3Color);
             }
+            // 步号：v0.8 有不占时间的步骤（搅拌、结束）和很短的步骤（置换、放空），挨得太近的步号不写（离上一个写出的不到 16 px），免得叠在一起；
+            // 选中的那一步一定写
+            double lastX = double.NegativeInfinity;
             foreach (var b in p.Bounds)
             {
                 if (b.I == Selected) ctx.FillRectangle(Palette.ATintBrush, new Rect(X(b.M0), t0, Math.Max(2, X(b.M1) - X(b.M0)), ih));
                 ctx.DrawLine(Palette.Pen(Palette.LineSoftColor, 1), new Point(X(b.M0), t0), new Point(X(b.M0), t0 + ih));
-                if (ri == 0) Text(ctx, (b.I + 1).ToString(CultureInfo.InvariantCulture), (X(b.M0) + X(b.M1)) / 2, t0 + 14, 0, Palette.T3Color);
+                double cx = (X(b.M0) + X(b.M1)) / 2;
+                if (ri == 0 && (cx - lastX >= 16 || b.I == Selected))
+                {
+                    Text(ctx, (b.I + 1).ToString(CultureInfo.InvariantCulture), cx, t0 + 14, 0, b.I == Selected ? Palette.AColor : Palette.T3Color);
+                    lastX = cx;
+                }
             }
             var pen = Palette.Pen(k == 'T' ? Palette.ChTColor : Palette.ChPColor, 2);
             ctx.DrawGeometry(null, pen, Line(p.Points.Select(q => new Point(X(q.M), Y(k == 'T' ? q.T : q.P * pk)))));

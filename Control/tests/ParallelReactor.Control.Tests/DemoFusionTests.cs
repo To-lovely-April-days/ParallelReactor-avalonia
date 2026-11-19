@@ -213,42 +213,45 @@ public class DemoFusionTests
         var f = Fleet();
         var a = f.Device(1)!.ProgramById("A")!;
         Assert.Equal("平行合成程序 A", a.Name);
-        Assert.Equal(new[] { "升温", "升压", "恒温反应", "降温" }, a.Steps.Select(s => s.Name));
-        Assert.Equal(new[] { "升温", "升压", "恒温反应", "降温" }, a.Steps.Select(StepText.Name));
-        Assert.Equal(new[] { StepKind.Heat, StepKind.Press, StepKind.React, StepKind.End }, a.Steps.Select(s => s.Type));
+        // 程序步骤 v0.8：降温 = 保持 · 温度 ≤ 40（没有降温步骤），之后放空、结束
+        Assert.Equal(new[] { "升温", "升压", "恒温反应", "保持", "放空", "结束" }, a.Steps.Select(s => s.Name));
+        Assert.Equal(new[] { "升温", "升压", "恒温反应", "保持", "放空", "结束" }, a.Steps.Select(StepText.Name));
+        Assert.Equal(new[] { StepKind.Heat, StepKind.Press, StepKind.React, StepKind.Hold, StepKind.Vent, StepKind.End }, a.Steps.Select(s => s.Type));
         Assert.Equal((150 - 25) / 3.5 + 15, a.Steps[0].EstMin, 9);
-        Assert.Equal(new[] { 3.0, 45, 22 }, a.Steps.Skip(1).Select(s => s.EstMin));
+        Assert.Equal(new[] { 3.0, 45, 22, 2, 0 }, a.Steps.Skip(1).Select(s => s.EstMin));
+        Assert.Equal((StepMark.UpTo, StepMark.About), (a.Steps[2].Mark, a.Steps[3].Mark));
+        Assert.Equal(new StepEnd(EndKind.Temp, 40, "≤"), a.Steps[3].End);
         Assert.Equal(45, a.Steps[2].Minutes);
         Assert.Equal((2.5, "a"), (a.Steps[1].Target!.Value, a.Steps[1].Gas));
-        Assert.Equal(new[] { "A", "H1", "LK", "OX" }, f.Device(1)!.Programs.Select(p => p.Id));
+        Assert.Equal(new[] { "A", "H1", "LK", "OX", "IH" }, f.Device(1)!.Programs.Select(p => p.Id));
 
         var b = f.Device(2)!.ProgramById("B")!;
         Assert.Equal(("高压加氢-150", "a"), (b.Name, b.Steps[1].Gas));
         Assert.Equal("150 ℃ · 5.20 MPa 气体 A · 反应 120 min", f.Device(2)!.Programs[0].Note);
-        Assert.Equal(new[] { (150 - 25) / 3.5 + 10, 3, 120, 22 }, b.Steps.Select(s => s.EstMin));
-        Assert.Equal(new[] { "升温", "升压", "反应", "降温" }, b.Steps.Select(s => s.Name));
+        Assert.Equal(new[] { (150 - 25) / 3.5 + 10, 3, 120, 22, 2, 0 }, b.Steps.Select(s => s.EstMin));
+        Assert.Equal(new[] { "升温", "升压", "反应", "保持", "放空", "结束" }, b.Steps.Select(s => s.Name));
 
         var c = f.Device(3)!.ProgramById("C")!;
         Assert.Equal(("筛选-80 ℃", "a"), (c.Name, c.Steps[1].Gas));
-        Assert.Equal(new[] { 55 / 3.5 + 5, 3, 60, 11 }, c.Steps.Select(s => s.EstMin));
+        Assert.Equal(new[] { 55 / 3.5 + 5, 3, 60, 11, 2, 0 }, c.Steps.Select(s => s.EstMin));
     }
 
     /// <summary>样稿运行表：本步剩余（left）与预计结束（etaOf = left + 后面各步的估计时长，钟点 = 14:30 + 分钟）。</summary>
     [Theory]
-    [InlineData(1, 1, 3, 27, "15:19")]
-    [InlineData(1, 2, 1, 7, "15:47")]
-    [InlineData(1, 3, 3, 21, "15:13")]
-    [InlineData(1, 6, 3, 21, "15:13")]
-    [InlineData(1, 8, 4, 9, "14:39")]
-    [InlineData(2, 1, 3, 90, "16:22")]
-    [InlineData(2, 2, 1, 8, "17:03")]
-    [InlineData(2, 3, 4, 12, "14:42")]
-    [InlineData(3, 1, 3, 58, "15:39")]
-    [InlineData(3, 6, 3, 63, "15:44")]
-    [InlineData(3, 7, 1, 6, "15:50")]
-    [InlineData(3, 8, 1, 4, "15:48")]
-    [InlineData(3, 9, 2, 3, "15:44")]
-    [InlineData(3, 10, 2, 2, "15:43")]
+    [InlineData(1, 1, 3, 27, "15:22")]
+    [InlineData(1, 2, 1, 7, "15:50")]
+    [InlineData(1, 3, 3, 21, "15:16")]
+    [InlineData(1, 6, 3, 21, "15:16")]
+    [InlineData(1, 8, 4, 9, "14:42")]
+    [InlineData(2, 1, 3, 90, "16:25")]
+    [InlineData(2, 2, 1, 8, "17:06")]
+    [InlineData(2, 3, 4, 12, "14:45")]
+    [InlineData(3, 1, 3, 58, "15:42")]
+    [InlineData(3, 6, 3, 63, "15:47")]
+    [InlineData(3, 7, 1, 6, "15:53")]
+    [InlineData(3, 8, 1, 4, "15:51")]
+    [InlineData(3, 9, 2, 3, "15:47")]
+    [InlineData(3, 10, 2, 2, "15:46")]
     public void RunTable_RemainAndEta(int k, int n, int step, int remain, string eta)
     {
         var f = Fleet();
@@ -257,7 +260,7 @@ public class DemoFusionTests
         Assert.Equal(ProgramStatus.Running, pr.Status);
         Assert.Equal((step, remain), (pr.K, pr.StepRemainMin));
         Assert.Equal(eta, Hm(f.Now.AddMinutes(pr.TotalRemainMin)));
-        Assert.Equal("第 " + step + "/4 步 · 剩 " + remain + " min", d.ProgText(d.Channel(n)));
+        Assert.Equal("第 " + step + "/6 步 · 剩 " + remain + " min", d.ProgText(d.Channel(n)));
     }
 
     [Fact]
@@ -269,9 +272,9 @@ public class DemoFusionTests
             var etas = d.Channels.Select(c => d.Progress(c)).Where(p => p is { Status: ProgramStatus.Running }).Select(p => f.Now.AddMinutes(p!.TotalRemainMin)).ToList();
             return (Hm(etas.Min()), Hm(etas.Max()));
         }
-        Assert.Equal(("14:39", "15:47"), Span(f.Device(1)!));
-        Assert.Equal(("14:42", "17:03"), Span(f.Device(2)!));
-        Assert.Equal(("15:39", "15:50"), Span(f.Device(3)!));
+        Assert.Equal(("14:42", "15:50"), Span(f.Device(1)!));
+        Assert.Equal(("14:45", "17:06"), Span(f.Device(2)!));
+        Assert.Equal(("15:42", "15:53"), Span(f.Device(3)!));
     }
 
     [Fact]
@@ -281,14 +284,14 @@ public class DemoFusionTests
         var d1 = f.Device(1)!;
         var pr4 = d1.Progress(d1.Channel(4))!;
         Assert.Equal((ProgramStatus.Held, 3), (pr4.Status, pr4.K));
-        Assert.Equal("第 3/4 步 · 报警暂停", d1.ProgText(d1.Channel(4)));
+        Assert.Equal("第 3/6 步 · 报警暂停", d1.ProgText(d1.Channel(4)));
         var d3 = f.Device(3)!;
         Assert.Equal((ProgramStatus.Held, 3), (d3.Progress(d3.Channel(11))!.Status, d3.Progress(d3.Channel(11))!.K));
-        Assert.Equal("已结束 · 共 4 步", f.Device(2)!.ProgText(f.Device(2)!.Channel(4)));
-        Assert.Equal("已结束 · 共 4 步", d3.ProgText(d3.Channel(12)));
+        Assert.Equal("已结束 · 共 6 步", f.Device(2)!.ProgText(f.Device(2)!.Channel(4)));
+        Assert.Equal("已结束 · 共 6 步", d3.ProgText(d3.Channel(12)));
         // 步内进度 = 样稿 f（全程进度按各步估计时长）
         var p1 = d1.Progress(d1.Channel(1))!;
-        Assert.Equal((125 / 3.5 + 15 + 3 + 0.40 * 45) / (125 / 3.5 + 15 + 3 + 45 + 22), p1.Frac, 3);
+        Assert.Equal((125 / 3.5 + 15 + 3 + 0.40 * 45) / (125 / 3.5 + 15 + 3 + 45 + 22 + 2 + 1), p1.Frac, 3);   // 放空 2 min、结束按 1 min 计
         // 已完成的步骤在 Log 里、首尾相接
         var prog = d1.Channel(1)!.Program!;
         Assert.Equal(new[] { 0, 1 }, prog.Log.Select(l => l.I));
@@ -420,7 +423,7 @@ public class DemoFusionTests
             ("14:03:18", 4, "RV4 压力超上限", EventLevel.Err),
             ("14:01:30", 2, "RV2 升温偏慢", EventLevel.Warn),
             ("13:58:00", 2, "RV2 程序「平行合成程序 A」开始", EventLevel.Info),
-            ("13:41:30", 8, "RV8 进入第 4 步 降温", EventLevel.Info),
+            ("13:41:30", 8, "RV8 进入第 4 步 保持", EventLevel.Info),
             ("13:05:00", null, "会话 · 会话 PT-20261115-1305 开始", EventLevel.Op),
         }, e1.Take(6).Select(e => (e.At.ToString("HH:mm:ss", CultureInfo.InvariantCulture), e.N, e.Text, e.Level)));
         Assert.All(e1, e => Assert.Equal(At(0, 0).Date, e.At.Date));
@@ -477,7 +480,7 @@ public class DemoFusionTests
         // 断线时刻的进度 = 样稿的值
         var pr = d.Progress(d.Channel(1))!;
         Assert.True(pr.Offline);
-        Assert.Equal((3, 27, 49), (pr.K, pr.StepRemainMin, pr.TotalRemainMin));
+        Assert.Equal((3, 27, 52), (pr.K, pr.StepRemainMin, pr.TotalRemainMin));   // 样稿 49 + 放空 2 + 结束 1（程序步骤 v0.8）
         Assert.Equal(7, d.Progress(d.Channel(2))!.StepRemainMin);
         // 历史停在断线时刻
         Assert.Equal(At(14, 28, 41), d.Channel(1)!.History[^1].T);

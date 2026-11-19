@@ -20,9 +20,12 @@ namespace ParallelReactor.Control.Pages.Programs;
 /// <summary>
 /// 单路程序（融合版 F6，样稿 PAGES.prog 的 render）：
 /// <list type="bullet">
-/// <item>步骤面板：「共 4 步 · 约 2 h 01 min」+ 校验通过 / N 处待改 + 适用型号 + 上移 / 下移 / 删除；在跑的程序锁住（琥珀条 + 复制为新程序）；
-///   预计温度 / 压力曲线（上下两张，不用双轴）；添加步骤（7 种）；步骤列表（序号、类型、名字、两项摘要、待改、估计时长）；待改项清单。</item>
-/// <item>参数面板：选中那一步的名字和参数（来自设备的程序 schema：单位、范围；压力按设置的单位，MPa / bar 时并写约合 psi）；曲线升温的段表。</item>
+/// <item>步骤面板：「共 9 步 · 约 10 h 31 min」+ 校验通过 / N 处待改 + 适用型号 + 上移 / 下移 / 删除；在跑的程序锁住（琥珀条 + 复制为新程序）；
+///   从旧格式转换来的程序顶上一条「已从旧格式转换，请检查」（STEPS-SPEC §3）；预计温度 / 压力曲线（上下两张，不用双轴）；
+///   添加步骤（程序步骤 v0.8 的 8 种，插在「结束」之前）；步骤列表（序号、类型、名字、两项摘要、待改、估计时长：按条件「约」、反应「≤」）；
+///   待改项清单（含下发前检查的「拒绝」）与提示（反应前没有充压、先充压后升温、没有放空，STEPS-SPEC §4）。</item>
+/// <item>「结束」固定在最后：不能删、不能挪，别的步骤也不能挪到它后面。</item>
+/// <item>参数面板：选中那一步的名字和参数（来自设备的程序 schema：单位、范围；压力按设置的单位，MPa / bar 时并写约合 psi；按 visibleWhen 只显示用得到的字段）；曲线升温的段表。</item>
 /// <item>下发面板：通道小块（在跑 / 停用的不能选）、选全部空闲 / 清空、溶液体积（所选各路相同，0.1 mL，必填）、预运行检查、下发并运行。</item>
 /// </list>
 /// </summary>
@@ -47,7 +50,8 @@ public sealed partial class OneVm : ObservableObject
         CheckCommand = new RelayCommand(page.OpenCheck);
         RunCommand = new AsyncRelayCommand(SendAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions);
         AddSegCommand = new RelayCommand(AddSeg);
-        AddTypes = StepTypeCodes.All.Select(t => new AddStepVm(t, () => Add(t))).ToArray();
+        // 「结束」固定在最后、只有一个（STEPS-SPEC §0），不在添加列表里
+        AddTypes = StepTypeCodes.All.Where(t => t != StepType.End).Select(t => new AddStepVm(t, () => Add(t))).ToArray();
     }
 
     /// <summary>选中的步骤（样稿 PG.step，默认第 3 步）。</summary>
@@ -80,6 +84,13 @@ public sealed partial class OneVm : ObservableObject
     public ObservableCollection<StepRowVm> Steps { get; } = new();
     public ObservableCollection<string> Issues { get; } = new();
     [ObservableProperty] private bool _hasIssues;
+    /// <summary>下发前检查的提示（不拦：反应前没有充压、先充压后升温、没有放空）。</summary>
+    public ObservableCollection<string> Hints { get; } = new();
+    [ObservableProperty] private bool _hasHints;
+    /// <summary>从旧格式转换来的（编辑器顶上的提示条，STEPS-SPEC §3）。</summary>
+    [ObservableProperty] private bool _migrated;
+    /// <summary>转换时旧值超出新范围被收紧的说明（每处一行；没有为空串）。</summary>
+    [ObservableProperty] private string _migNote = "";
     public ICommand UpCommand { get; }
     public ICommand DownCommand { get; }
     public ICommand DeleteCommand { get; }
@@ -163,9 +174,13 @@ public sealed partial class OneVm : ObservableObject
         Valid = iss.Count == 0;
         IssueTag = Valid ? "校验通过" : iss.Count + " 处待改";
         AppliesTo = "适用 " + MatrixPlan.ModelLabelOf(p.Model);
-        UpReason = Locked ? "运行中的程序不能直接修改" : StepIndex <= 0 ? "已经是第一步" : null;
-        DownReason = Locked ? "运行中的程序不能直接修改" : StepIndex >= p.Steps.Count - 1 ? "已经是最后一步" : null;
-        DeleteReason = Locked ? "运行中的程序不能直接修改" : p.Steps.Count < 2 ? "至少要留一步" : null;
+        bool isEnd = StepIndex < p.Steps.Count && p.Steps[StepIndex].Type == StepType.End;
+        bool beforeEnd = StepIndex + 1 < p.Steps.Count && p.Steps[StepIndex + 1].Type == StepType.End;
+        UpReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : StepIndex <= 0 ? "已经是第一步" : null;
+        DownReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : beforeEnd ? "「结束」固定在最后，不能挪到它后面" : StepIndex >= p.Steps.Count - 1 ? "已经是最后一步" : null;
+        DeleteReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : p.Steps.Count < 2 ? "至少要留一步" : null;
+        Migrated = p.Migrated;
+        MigNote = p.Migrated ? string.Join("\n", p.MigrationNotes) : "";
         foreach (var a in AddTypes) { a.Reason = Locked ? "运行中的程序不能直接修改 · 先复制为新程序" : null; a.Label = schema.Of(a.Type)?.Label ?? a.Type.Zh(); }
         Plan = plan;
         PlanSel = StepIndex;
@@ -173,6 +188,9 @@ public sealed partial class OneVm : ObservableObject
         Issues.Clear();
         foreach (var x in iss) Issues.Add(x.Msg);
         HasIssues = iss.Count > 0;
+        Hints.Clear();
+        foreach (var x in ProgramChecks.Of(p.Steps, schema).Where(x => x.Level == CheckLevel.Warn)) Hints.Add(x.Msg);
+        HasHints = Hints.Count > 0;
         SyncParams(p, schema);
         SyncSend(d, p, iss.Count);
     }
@@ -194,7 +212,8 @@ public sealed partial class OneVm : ObservableObject
             row.K2 = kv.Count > 1 ? kv[1].K : "";
             row.V2 = kv.Count > 1 ? kv[1].V : "";
             row.Bad = iss.Any(x => x.I == i);
-            row.Dur = ProgramPlanner.Hm(plan.Bounds[i].M1 - plan.Bounds[i].M0);
+            row.Dur = ProgramPlanner.Dur(plan.Bounds[i]);
+            row.IsEnd = s.Type == StepType.End;
             row.IsSelected = i == StepIndex;
         }
     }
@@ -214,10 +233,12 @@ public sealed partial class OneVm : ObservableObject
         var spec = schema.Of(s.Type);
         ParamSub = "第 " + (StepIndex + 1).ToString("00", CultureInfo.InvariantCulture) + " 步 · " + (spec?.Label ?? s.Type.Zh());
         if (StepName != s.Name) { _stepNameSync = true; StepName = s.Name; _stepNameSync = false; }
-        Note = spec?.Note;
+        Note = spec?.NoteFor(s);
         IsCurve = s.Type == StepType.Heat && s.S("mode") == "curve";
-        // 压力单位换了（设置 → 常规）也重建：字段的单位、范围、小数位跟着变
-        string key = p.Id + "|" + StepIndex + "|" + s.Type + "|" + IsCurve + "|" + schema.GetHashCode() + "|" + PressureDisplay.Version;
+        IsEndStep = s.Type == StepType.End;
+        // 压力单位换了（设置 → 常规）也重建：字段的单位、范围、小数位跟着变；显示哪些字段（visibleWhen）变了也重建
+        string vis = spec is null ? "" : string.Concat(spec.Fields.Select(f => Shown(s, f) ? "1" : "0"));
+        string key = p.Id + "|" + StepIndex + "|" + s.Type + "|" + vis + "|" + schema.GetHashCode() + "|" + PressureDisplay.Version;
         if (key != _fieldKey || Fields.Count != (spec?.Fields.Count(f => Shown(s, f)) ?? 0))
         {
             _fieldKey = key;
@@ -237,9 +258,13 @@ public sealed partial class OneVm : ObservableObject
 
     private bool _stepNameSync;
 
-    /// <summary>曲线升温时不显示定值的「目标温度 / 等待平衡」（换成段表）。</summary>
-    private static bool Shown(PcStep s, FieldSpec f) =>
-        !(s.Type == StepType.Heat && s.S("mode") == "curve" && f.Key is "temp" or "wait");
+    /// <summary>选中的是「结束」（没有参数：参数面板写固定的收尾）。</summary>
+    [ObservableProperty] private bool _isEndStep;
+
+    private const string EndFixed = "「结束」固定在最后，不能删、不能挪";
+
+    /// <summary>这个字段现在显示（visibleWhen：例如保持的目标温度只在「温度 ≥ / ≤」时有；曲线升温时定值的目标温度 / 速率 / 平衡换成段表）。</summary>
+    private static bool Shown(PcStep s, FieldSpec f) => f.Visible(s);
 
     private void SyncSend(DeviceVm d, PcProgram p, int issues)
     {
@@ -322,8 +347,11 @@ public sealed partial class OneVm : ObservableObject
 
     private void Add(StepType t)
     {
-        if (Editable is not { } p || _schema is null) return;
+        if (Editable is not { } p || _schema is null || t == StepType.End) return;
         int at = Math.Min(StepIndex + 1, p.Steps.Count);
+        // 插在「结束」之前（结束固定在最后）
+        int end = p.Steps.FindIndex(x => x.Type == StepType.End);
+        if (end >= 0 && at > end) at = end;
         p.Steps.Insert(at, PcStep.New(t, _schema));
         StepIndex = at;
         Touch(p);
@@ -334,6 +362,7 @@ public sealed partial class OneVm : ObservableObject
         if (Editable is not { } p) return;
         int j = StepIndex + dir;
         if (j < 0 || j >= p.Steps.Count) return;
+        if (p.Steps[StepIndex].Type == StepType.End || p.Steps[j].Type == StepType.End) return;
         (p.Steps[StepIndex], p.Steps[j]) = (p.Steps[j], p.Steps[StepIndex]);
         StepIndex = j;
         Touch(p);
@@ -341,7 +370,7 @@ public sealed partial class OneVm : ObservableObject
 
     private void Delete()
     {
-        if (Editable is not { } p || p.Steps.Count < 2) return;
+        if (Editable is not { } p || p.Steps.Count < 2 || p.Steps[StepIndex].Type == StepType.End) return;
         p.Steps.RemoveAt(StepIndex);
         StepIndex = Math.Max(0, StepIndex - 1);
         Touch(p);
@@ -434,6 +463,8 @@ public sealed partial class StepRowVm : ObservableObject
     [ObservableProperty] private bool _bad;
     [ObservableProperty] private string _dur = "";
     [ObservableProperty] private bool _isSelected;
+    /// <summary>「结束」（固定在最后：序号旁画锁）。</summary>
+    [ObservableProperty] private bool _isEnd;
 }
 
 /// <summary>参数面板的一个字段（数值：文字 + 单位 + 范围；sel：下拉）。</summary>
@@ -456,6 +487,8 @@ public sealed partial class FieldVm : ObservableObject
     public bool IsSelect => Spec.IsSelect;
     public bool IsNum => !Spec.IsSelect;
     public IReadOnlyList<FieldOption> Options { get; }
+    /// <summary>输入框宽：单位长（「mmol/min」「°C/min」）时加宽，数字不被单位挤掉（同一列里其余字段仍是 128）。</summary>
+    public double InputWidth => Unit.Length > 5 ? 156 : 128;
 
     [ObservableProperty] private string _text = "";
     [ObservableProperty] private FieldOption? _selected;
@@ -507,7 +540,8 @@ public sealed partial class FieldVm : ObservableObject
             if (!double.TryParse(Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var cur) || Math.Abs(cur - Spec.Shown(v)) > 1e-9 || !double.IsFinite(v)) Text = t;
             Bad = Spec.Bad(v);
             // 压力另写约合多少 psi（样稿 rng：「0.01 – 3.15（≈ 363 psi）」）—— 只在 MPa 时写（bar 的范围多一位整数，加上会放不下；psi 本身就是）
-            Range = Spec.RangeText + (Spec.IsPressure && PressureDisplay.Primary == PressureUnit.MPa && double.IsFinite(v) ? "（≈ " + JsNumber.ToFixed(Units.MpaToPsi(v), 0) + " psi）" : "");
+            // 超范围时不写（琥珀的范围 + 图标已经够了；窄屏的参数面板放不下第二行的「≈ psi」，会把 psi 拆开）
+            Range = Spec.RangeText + (Spec.IsPressure && PressureDisplay.Primary == PressureUnit.MPa && double.IsFinite(v) && !Bad ? "（≈ " + JsNumber.ToFixed(Units.MpaToPsi(v), 0) + " psi）" : "");
         }
         _sync = false;
     }

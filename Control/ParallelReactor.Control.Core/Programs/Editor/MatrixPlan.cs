@@ -25,7 +25,7 @@ public sealed record MxRoutePlan(IReadOnlyList<PlanPoint> Points, double Total, 
 
 /// <summary>
 /// 条件矩阵（融合版 F6，样稿「程序页 · 条件矩阵」MX + mxBuild / mxSteps / mxPlan / mxIssues / mxAct）：
-/// 同一套步骤（模板），每一路的升温目标、升压目标、反应时长各填各的（<see cref="PerKeys"/>）；硬件共用的参数（搅拌 = 一台电机，吹扫 / 反应气 = 共用总管）
+/// 同一套步骤（模板），每一路的升温目标、升压目标、反应时长各填各的（<see cref="PerKeys"/>）；硬件共用的参数（搅拌 = 一台电机、转速不能按路变化，置换 / 反应气 = 共用总管）
 /// 和其余参数只填一次（<see cref="SharedKeys"/>，各路相同便于比较）。每路另有样品名（只存在本机）和必填的溶液体积（1 – 上限 mL，0.1 mL）。
 /// 下发时按每一路生成一个程序（HMI 一个通道一个程序，<see cref="StepsFor"/>）；升压步骤在共用总管上排队，按每路约 3 min 估算（<see cref="PlanFor"/>）。
 /// 纯逻辑（App 的程序页持有一个实例，本机方案文件 experiments.json 存它，见 App 的 ExperimentStore）。
@@ -41,29 +41,36 @@ public sealed class MatrixPlan
         _ => Array.Empty<string>(),
     };
 
-    /// <summary>矩阵里显示的参数（样稿 MXF；每路可以不同的那几个也在里面）。</summary>
+    /// <summary>
+    /// 矩阵里显示的参数（样稿 MXF；每路可以不同的那几个也在里面）。程序步骤 v0.8：每种步骤挑最常改的一两个，其余在单路程序里改
+    /// （矩阵按模板生成，没显示的参数各路都是模板值）；结束没有参数，只有标题行。
+    /// </summary>
     public static IReadOnlyList<string> RowKeys(StepType t) => t switch
     {
-        StepType.Purge => new[] { "gas", "cycles" },
+        StepType.Leak => new[] { "pres", "hold" },
+        StepType.Exchange => new[] { "gas", "cycles" },
+        StepType.Stir => new[] { "rpm" },
         StepType.Heat => new[] { "temp", "wait" },
         StepType.Press => new[] { "gas", "pres", "regulate" },
-        StepType.Stir => new[] { "rpm", "dur" },
-        StepType.Wait => new[] { "mode", "time" },
-        StepType.React => new[] { "endBy", "time" },
-        StepType.End => new[] { "mode", "cool" },
+        StepType.Hold => new[] { "until", "time" },
+        StepType.React => new[] { "time", "stallOn" },
+        StepType.Vent => new[] { "flush" },
         _ => Array.Empty<string>(),
     };
 
-    /// <summary>共用参数为什么只填一次（样稿 MXWHY）。<see cref="IsHardwareShared"/> 的用链接图标，其它用说明图标。</summary>
+    /// <summary>
+    /// 共用参数为什么只填一次（样稿 MXWHY）。<see cref="IsHardwareShared"/> 的用链接图标，其它用说明图标。
+    /// 搅拌：一台电机经齿轮带全部釜，转速不能按路变化（STEPS-SPEC §4：同时启动的几路转速必须一样）。
+    /// </summary>
     public static string Why(StepType t, string key) => t switch
     {
-        StepType.Stir => "全部釜共用一台电机",
-        StepType.Purge => "吹扫共用总管",
+        StepType.Stir => "一台电机带全部釜 · 转速不能按路变化",
+        StepType.Exchange or StepType.Leak or StepType.Vent => "共用总管，各路依次排队",
         StepType.Press when key == "gas" => "共用总管，一台只接一种反应气",
         _ => "各路相同，便于比较",
     };
 
-    public static bool IsHardwareShared(StepType t, string key) => t is StepType.Stir or StepType.Purge || (t == StepType.Press && key == "gas");
+    public static bool IsHardwareShared(StepType t, string key) => t is StepType.Stir || (t is StepType.Exchange && key == "gas") || (t == StepType.Press && key == "gas");
 
     public static bool IsPer(StepType t, string key) => PerKeys(t).Contains(key);
 
@@ -228,6 +235,16 @@ public sealed class MatrixPlan
             l.Add(c.N);
         }
         foreach (var (w, ns) in vb) o.Add(new MxIssue(MxLevel.No, "溶液体积：" + ChList(ns) + " " + w));
+        // 下发前检查（STEPS-SPEC §4）的「拒绝」：结束不在最后、先充压后升温超上限（按每一路的参数）；转速是共用参数，各路一定一样
+        var rej = new SortedDictionary<string, List<int>>(StringComparer.Ordinal);
+        foreach (var c in inc)
+            foreach (var x in ProgramChecks.Of(StepsFor(c.N), ctx.Schema).Where(x => x.Level == CheckLevel.Reject))
+            {
+                string key = x.Code == "heatafter" ? Step(x.I) + "充压在升温之前 · 升温后压力会超过上限，先升温、到位后再充压" : x.Msg;
+                if (!rej.TryGetValue(key, out var l)) rej[key] = l = new List<int>();
+                l.Add(c.N);
+            }
+        foreach (var (msg, ns) in rej) o.Add(new MxIssue(MxLevel.No, msg + "（" + ChList(ns) + "）"));
         var busy = inc.Where(c => c.Busy).ToList();
         if (busy.Count > 0)
         {

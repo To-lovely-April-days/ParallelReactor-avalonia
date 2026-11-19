@@ -55,11 +55,11 @@ public static class Progress
 
     private const double MinMs = 60000;
 
-    /// <summary>一步的计划时长（秒，样稿 stepPlanS）：反应 / 等待按 minutes；其它按预估分钟（至少 60 s）。null → 60。</summary>
+    /// <summary>一步的计划时长（秒，样稿 stepPlanS）：反应 / 等待 / 按时间的保持按 minutes；其它按预估分钟（至少 60 s）。null → 60。</summary>
     public static double StepPlanS(ProgramStep? step)
     {
         if (step is null) return 60;
-        if (step.Type is StepKind.React or StepKind.Wait) return (step.Minutes ?? double.NaN) * 60;
+        if (step.Type is StepKind.React or StepKind.Wait || (step.Type == StepKind.Hold && step.End is { Kind: EndKind.Time })) return (step.Minutes ?? double.NaN) * 60;
         return Math.Max(60, (step.EstMin != 0 && !double.IsNaN(step.EstMin) ? step.EstMin : 1) * 60);
     }
 
@@ -170,7 +170,7 @@ public static class Progress
             var st = p.Steps[i];
             bool cur = i == p.StepIndex;
             var t1 = cur ? Max(AddMs(t, p.StepDurS * 1000), AddMs(now, 30000)) : AddMs(t, StepPlanS(st) * 1000);
-            bool needGas = st.Type is StepKind.Press or StepKind.Purge && st.Gas != null;
+            bool needGas = st.Type is StepKind.Press or StepKind.Purge or StepKind.Exchange or StepKind.Leak && st.Gas != null;
             bool wait = needGas && (cur ? ctx.ChannelState == StateKey.Wait : ctx.GasOpen != null && !ctx.GasOpen(st.Gas!));
             output.Add(new ProgramSegment(i, st, StepText.Name(st), t, t1, cur ? SegmentState.Cur : SegmentState.Next, wait));
             t = t1;

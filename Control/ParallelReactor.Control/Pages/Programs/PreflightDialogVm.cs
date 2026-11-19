@@ -39,6 +39,8 @@ public sealed partial class CheckRowVm : ObservableObject
 /// 预运行检查（融合版 F6，样稿 pgCheckDlg / mxCheckDlg）：两种模式共用一个对话框（名字「pgcheck」），内容按模式。
 /// <list type="bullet">
 /// <item>本机检查：急停、控制模式、气路占用、搅拌、报警通道、程序 / 模板、目标 / 参加通道、溶液体积、（矩阵）每路参数、升压排队、会话。</item>
+/// <item>程序步骤 v0.8 的下发前检查（STEPS-SPEC §4，<see cref="ProgramChecks"/>）：搅拌转速（同一批的几路必须一样，写明哪几路；和别的在跑的程序不同时提示）、
+///   吸气计量（反应前没有充压）、升温后压力（先充压后升温：提示估算，超上限拒绝）、结束时压力（没有放空）—— 没问题的不列。</item>
 /// <item>真机另取 GET /preflight（Client 的 PreflightAsync，HMI 的硬件自检：温控、压力 / 超压监视、阀门、搅拌器）—— 取到之前写「正在读取」；
 ///   演示数据按模块通讯写在线。HMI 的「运行通道」「程序通道」「控制模式（手动阀）」是给触屏「全部运行」用的，这里不用。</item>
 /// </list>
@@ -167,14 +169,15 @@ public sealed partial class PreflightDialogVm : DialogVm
         var sel = o.SelectedChannels;
         string vb = MatrixPlan.VolBad(o.Vol, ProgramPageVm.VolMaxOf(d));
         var stir = d.Source.Stir;
-        return new()
+        var rows = new List<(string T, CheckKind K, string D)>
         {
             Estop(d),
             Lease(d, false),
             Temp(d),
             Valves(d),
             Gas(d),
-            Hw(d, "搅拌器", () => (CheckKind.Ok, stir is { On: true } s ? "运行中 " + JsNumber.ToString(s.Rpm) + " rpm · 程序会改转速（整台）" : "待机")),
+            Hw(d, "搅拌器", () => (CheckKind.Ok, (stir is { On: true } s ? "运行中 " + JsNumber.ToString(s.Rpm) + " rpm" : "待机")
+                + (p != null && ProgramChecks.FirstRpm(p.Steps) is double pr ? " · 程序设为 " + JsNumber.ToString(pr) + " rpm（整台）" : " · 程序不改转速"))),
             Pressure(d),
             Alarms(d),
             p is null ? ("程序", CheckKind.No, "没有选程序")
@@ -183,6 +186,41 @@ public sealed partial class PreflightDialogVm : DialogVm
             sel.Count > 0 ? ("目标通道", CheckKind.Ok, MatrixPlan.ChList(sel) + " 空闲") : ("目标通道", CheckKind.No, "未选择"),
             vb.Length > 0 ? ("溶液体积", CheckKind.No, vb) : ("溶液体积", CheckKind.Ok, "所选各路 " + JsNumber.ToFixed(o.Vol, 1) + " mL · 吸气量由设备按压降计算"),
         };
+        if (p != null) rows.AddRange(StepRows(d, schema, sel.Select(n => (n, (IReadOnlyList<PcStep>)p.Steps)).ToList(), sel));
+        return rows;
+    }
+
+    /// <summary>
+    /// 程序步骤 v0.8 的下发前检查（STEPS-SPEC §4）：同一批的搅拌转速、与在跑的程序的搅拌转速、反应前没有充压、先充压后升温、没有放空。按项合并各路（同一条写哪几路），没问题的不列。
+    /// </summary>
+    private static List<(string T, CheckKind K, string D)> StepRows(DeviceVm d, ProgramSchema schema, IReadOnlyList<(int N, IReadOnlyList<PcStep> Steps)> batch, IReadOnlyCollection<int> sel)
+    {
+        var rows = new List<(string, CheckKind, string)>();
+        if (batch.Count == 0) return rows;
+        // 搅拌：一台电机带全部釜
+        if (ProgramChecks.RpmMismatch(batch) is { } mis) rows.Add(("搅拌转速", CheckKind.No, mis));
+        else if (batch.Select(b => ProgramChecks.FirstRpm(b.Steps)).FirstOrDefault(r => r != null) is double rpm)
+        {
+            var others = d.Reactors.Where(r => r.Installed && r.IsRunning && !sel.Contains(r.N)).Select(r => r.N).ToArray();
+            if (others.Length > 0 && d.Source.Stir is { On: true } st && Math.Abs(st.Rpm - rpm) > 0.5)
+                rows.Add(("搅拌转速", CheckKind.Warn, MatrixPlan.ChList(others) + " 的程序也在用搅拌（" + JsNumber.ToString(st.Rpm) + " rpm）· 下发后整台改为 " + JsNumber.ToString(rpm) + " rpm"));
+        }
+        // 结构检查（各路合并）
+        var by = new List<(string Code, CheckLevel Level, string Msg, List<int> Ns)>();
+        foreach (var (n, steps) in batch)
+            foreach (var c in ProgramChecks.Of(steps, schema).Where(c => c.Code is "nogas" or "heatafter" or "novent"))
+            {
+                int at = by.FindIndex(x => x.Msg == c.Msg);
+                if (at < 0) by.Add((c.Code, c.Level, c.Msg, new List<int> { n }));
+                else by[at].Ns.Add(n);
+            }
+        foreach (var (code, level, msg, ns) in by)
+        {
+            string title = code switch { "nogas" => "吸气计量", "heatafter" => "升温后压力", _ => "结束时压力" };
+            string who = batch.Count > 1 && ns.Count < batch.Count ? "（" + MatrixPlan.ChList(ns) + "）" : "";
+            rows.Add((title, level == CheckLevel.Reject ? CheckKind.No : CheckKind.Warn, msg + who));
+        }
+        return rows;
     }
 
     private List<(string T, CheckKind K, string D)> MatrixRows(DeviceVm d)
@@ -210,8 +248,9 @@ public sealed partial class PreflightDialogVm : DialogVm
         rows.Add(param > 0 ? ("每路参数", CheckKind.No, param + " 处超出范围") : ("每路参数", CheckKind.Ok, "全部在范围内"));
         rows.Add(volBad.Length > 0 ? ("溶液体积", CheckKind.No, MatrixPlan.ChList(volBad) + " 没填或超范围 · 算不出吸气量") : ("溶液体积", CheckKind.Ok, "每路已填 · 吸气量由设备按压降计算"));
         rows.Add(("气路", CheckKind.Ok, press is null ? "本程序不进气" : inc.Count > 1 ? gasName + " · " + inc.Count + " 路依次升压，最后一路晚约 " + JsNumber.ToString(q) + " min" : gasName + " · 只有 1 路，无需排队"));
-        rows.Add(("搅拌", CheckKind.Ok, stirStep != null ? JsNumber.ToString(stirStep.N("rpm")) + " rpm · 全部釜共用" : "保持 " + (d.Source.Stir is { } st ? JsNumber.ToString(st.Rpm) : Fmt.Dash) + " rpm"));
+        rows.Add(("搅拌", CheckKind.Ok, stirStep != null ? JsNumber.ToString(stirStep.N("rpm")) + " rpm · 一台电机带全部釜，各路相同" : "保持 " + (d.Source.Stir is { } st ? JsNumber.ToString(st.Rpm) : Fmt.Dash) + " rpm"));
         rows.Add(("会话", CheckKind.Ok, m.Record ? "下发后开始「" + m.Name + "」" : "不记录"));
+        rows.AddRange(StepRows(d, schema, inc.Select(c => (c.N, m.StepsFor(c.N))).ToList(), inc.Select(c => c.N).ToArray()));
         // 真机：HMI 的硬件自检另列在后面（演示没有，同样稿）
         if (d.Source is LiveDeviceSource)
         {

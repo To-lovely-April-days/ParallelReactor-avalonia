@@ -127,7 +127,7 @@ internal static class DemoFusion
         new Event(1, At(14, 3, 18), EventLevel.Err, 4, "RV4 压力超上限"),
         new Event(1, At(14, 1, 30), EventLevel.Warn, 2, "RV2 升温偏慢"),
         new Event(1, At(13, 58, 0), EventLevel.Info, 2, "RV2 程序「平行合成程序 A」开始"),
-        new Event(1, At(13, 41, 30), EventLevel.Info, 8, "RV8 进入第 4 步 降温"),
+        new Event(1, At(13, 41, 30), EventLevel.Info, 8, "RV8 进入第 4 步 保持"),
         new Event(1, At(13, 5, 0), EventLevel.Op, null, "会话 · 会话 PT-20261115-1305 开始"),
         new Event(1, At(12, 55, 41), EventLevel.Op, null, "设置 · 超压报警阈值 3.40 → 3.50 MPa"),
         new Event(1, At(11, 22, 10), EventLevel.Err, 6, "RV6 超温 · 切断加热"),
@@ -174,8 +174,8 @@ internal static class DemoFusion
     }
 
     /// <summary>
-    /// 样稿 progPlan 的写法逐步排程序：估计时长（分钟）—— 升温 |目标 − 当前温度| / 3.5 + 等待平衡；升压 3；吹扫 次数 × (充 + 排) / 60；
-    /// 搅拌 / 等待 / 反应 = 设定时长；结束 max(0, 当前温度 − 先降温至) / 5。温度从 25 ℃ 起。
+    /// 样稿 progPlan 的写法逐步排程序（步骤按程序步骤 v0.8）：估计时长（分钟）—— 升温 |目标 − 当前温度| / 3.5 + 等待平衡；升压 3；反应 = 设定时长；
+    /// 降温（保持 · 温度 ≤）max(0, 当前温度 − 目标) / 5；气密 / 置换 / 放空 / 保持按 STEPS-SPEC §5；搅拌、结束 0。温度从 25 ℃ 起。
     /// </summary>
     private sealed class Plan
     {
@@ -191,24 +191,12 @@ internal static class DemoFusion
 
         private double? Sp => _heated ? _t : null;
 
-        public Plan Purge(string name, int cycles, double fillS = 3, double ventS = 5)
-        {
-            Steps.Add(new ProgramStep(StepKind.Purge) { Name = name, Gas = GasKey(_m, "惰性气体"), Cycles = cycles, EstMin = cycles * (fillS + ventS) / 60 });
-            return this;
-        }
-
         public Plan Heat(string name, double temp, double wait)
         {
             double est = Math.Abs(temp - _t) / 3.5 + wait;
             _t = temp;
             _heated = true;
             Steps.Add(new ProgramStep(StepKind.Heat) { Name = name, Sp = temp, End = new StepEnd(EndKind.Temp, temp, "≥"), EstMin = est });
-            return this;
-        }
-
-        public Plan Stir(string name, double rpm, double min)
-        {
-            Steps.Add(new ProgramStep(StepKind.Stir) { Name = name, Sp = Sp, Rpm = rpm, Minutes = min, End = new StepEnd(EndKind.Time, min), EstMin = min });
             return this;
         }
 
@@ -220,23 +208,62 @@ internal static class DemoFusion
             return this;
         }
 
-        public Plan Wait(string name, double max)
-        {
-            Steps.Add(new ProgramStep(StepKind.Wait) { Name = name, Sp = Sp, Minutes = max, End = new StepEnd(EndKind.Time, max), EstMin = max });
-            return this;
-        }
-
+        /// <summary>反应（v0.8：最长时间，标「≤」；演示程序不按吸气条件结束）。</summary>
         public Plan React(string name, double max)
         {
-            Steps.Add(new ProgramStep(StepKind.React) { Name = name, Sp = Sp, Target = _p, Gas = _gas, Minutes = max, End = new StepEnd(EndKind.Time, max), EstMin = max });
+            Steps.Add(new ProgramStep(StepKind.React) { Name = name, Sp = Sp, Target = _p, Gas = _gas, Minutes = max, End = new StepEnd(EndKind.Time, max), EstMin = max, Mark = StepMark.UpTo });
             return this;
         }
 
-        public Plan End(string name, double cool, bool vent = false)
+        /// <summary>降温 = 保持 · 温度 ≤ x（没有降温步骤；估计同样稿 progPlan 的结束：max(0, 当前温度 − x) / 5）。</summary>
+        public Plan Cool(string name, double temp)
         {
-            double est = Math.Max(0, _t - cool) / 5;
-            _t = Math.Min(_t, cool);
-            Steps.Add(new ProgramStep(StepKind.End) { Name = name, CoolTo = cool, Vent = vent, End = new StepEnd(EndKind.Temp, cool, "<"), EstMin = est });
+            double est = Math.Max(0, _t - temp) / 5;
+            _t = Math.Min(_t, temp);
+            Steps.Add(new ProgramStep(StepKind.Hold) { Name = name, Sp = Sp, End = new StepEnd(EndKind.Temp, temp, "≤"), MaxMin = 60, Mark = StepMark.About, EstMin = est });
+            return this;
+        }
+
+        /// <summary>放空到 0.02 MPa，之后惰性置换 flush 次（估计 1 + flush × 20 / 60 min）。</summary>
+        public Plan Vent(string name, int flush = 3)
+        {
+            _p = null;
+            Steps.Add(new ProgramStep(StepKind.Vent) { Name = name, Sp = Sp, Target = 0.02, Cycles = flush, End = new StepEnd(EndKind.Press, 0.02, "≤"), EstMin = 1 + flush * 20 / 60.0 });
+            return this;
+        }
+
+        /// <summary>气密检查（惰性气体，静置 + 保压）。</summary>
+        public Plan Leak(string name, double p, double hold = 30, double settle = 5)
+        {
+            Steps.Add(new ProgramStep(StepKind.Leak) { Name = name, Sp = Sp, Target = p, Gas = GasKey(_m, "惰性气体"), Minutes = settle + hold, End = new StepEnd(EndKind.Time, settle + hold), EstMin = settle + hold + 1 });
+            return this;
+        }
+
+        /// <summary>置换（先吹总管 lineFlush 次，再充到 / 放到 cycles 次；估计 (lineFlush × 9 + cycles × 20) / 60）。</summary>
+        public Plan Exchange(string name, string gas, int cycles = 3, int lineFlush = 2)
+        {
+            Steps.Add(new ProgramStep(StepKind.Exchange) { Name = name, Sp = Sp, Target = 0.5, Gas = GasKey(_m, gas), Cycles = cycles, LineFlush = lineFlush, EstMin = (lineFlush * 9 + cycles * 20) / 60.0 });
+            return this;
+        }
+
+        /// <summary>搅拌（v0.8：设定后立即进入下一步）。</summary>
+        public Plan StirNow(string name, double rpm)
+        {
+            Steps.Add(new ProgramStep(StepKind.Stir) { Name = name, Sp = Sp, Rpm = rpm });
+            return this;
+        }
+
+        /// <summary>保持（按时间）。</summary>
+        public Plan HoldTime(string name, double min)
+        {
+            Steps.Add(new ProgramStep(StepKind.Hold) { Name = name, Sp = Sp, Minutes = min, End = new StepEnd(EndKind.Time, min), EstMin = min });
+            return this;
+        }
+
+        /// <summary>结束（v0.8：固定收尾，没有参数）。</summary>
+        public Plan End(string name = "结束")
+        {
+            Steps.Add(new ProgramStep(StepKind.End) { Name = name });
             return this;
         }
     }
@@ -252,21 +279,24 @@ internal static class DemoFusion
         {
             case "PR4":
                 list.Add(new ProgramDef("B", "高压加氢-150", Note(m, 150, 5.2, "气体 A", "反应 120 min"),
-                    new Plan(m).Heat("升温", 150, 10).Press("升压", 5.2).React("反应", 120).End("降温", 40).Steps));
+                    new Plan(m).Heat("升温", 150, 10).Press("升压", 5.2).React("反应", 120).Cool("保持", 40).Vent("放空").End().Steps));
                 break;
             case "PR16":
                 list.Add(new ProgramDef("C", "筛选-80 ℃", Note(m, 80, 1.2, "气体 A", "反应 60 min"),
-                    new Plan(m).Heat("升温", 80, 5).Press("升压", 1.2).React("反应", 60).End("降温", 25).Steps));
+                    new Plan(m).Heat("升温", 80, 5).Press("升压", 1.2).React("反应", 60).Cool("保持", 25).Vent("放空").End().Steps));
                 break;
             default:
                 list.Add(new ProgramDef("A", "平行合成程序 A", Note(m, 150, 2.5, "气体 A", "反应 45 min"),
-                    new Plan(m).Heat("升温", 150, 15).Press("升压", 2.5).React("恒温反应", 45).End("降温", 40).Steps));
+                    new Plan(m).Heat("升温", 150, 15).Press("升压", 2.5).React("恒温反应", 45).Cool("保持", 40).Vent("放空").End().Steps));
                 list.Add(new ProgramDef("H1", "催化加氢筛选 · 120 ℃", Note(m, 120, 3.0, "气体 A", "反应 90 min"),
-                    new Plan(m).Purge("吹扫置换", 8).Heat("升温", 120, 10).Stir("搅拌", 400, 10).Press("升压", 3.0).React("反应", 90).End("降温", 35).Steps));
-                list.Add(new ProgramDef("LK", "气密预检", "1.00 MPa " + m.GasName(GasKey(m, "气体 A")) + " · 保压观察 30 min",
-                    new Plan(m).Purge("吹扫", 5).Press("充压", 1.0, hold: false).Wait("保压观察", 30).End("排空", 40, vent: true).Steps));
+                    new Plan(m).Leak("气密检查", 3.0).Exchange("惰性置换", "惰性气体").Exchange("气体 A 置换", "气体 A").StirNow("搅拌", 400).Heat("升温", 120, 10)
+                        .Press("升压", 3.0).React("反应", 90).Vent("放空").End().Steps));
+                list.Add(new ProgramDef("LK", "气密预检", "3.00 MPa " + m.GasName(GasKey(m, "惰性气体")) + " · 保压 30 min",
+                    new Plan(m).Leak("气密检查", 3.0).End().Steps));
                 list.Add(new ProgramDef("OX", "低温氧化 · 60 ℃", Note(m, 60, 3.4, "气体 B", "反应 240 min"),
-                    new Plan(m).Heat("升温", 60, 10).Press("升压", 3.4, "气体 B").React("反应", 240).End("降温", 30).Steps));
+                    new Plan(m).Heat("升温", 60, 10).Press("升压", 3.4, "气体 B").React("反应", 240).Cool("保持", 30).End().Steps));
+                list.Add(new ProgramDef("IH", "惰性气氛加热", Note(m, 120, 0.5, "惰性气体", "保持 4 h"),
+                    new Plan(m).Exchange("惰性置换", "惰性气体").StirNow("搅拌", 400).Heat("升温", 120, 15).Press("充压", 0.5, "惰性气体").HoldTime("保持", 240).Vent("放空").End().Steps));
                 break;
         }
         return list;

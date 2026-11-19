@@ -65,14 +65,14 @@ public class F3HomeTests
         var h = Home(s);
         Assert.Equal(8, h.Rows.Count);
         RunRowVm R(int n) => h.Rows.Single(r => r.N == n);
-        Assert.Equal(("27", "15:19", "−4.8"), (R(1).LeftText, R(1).EndText, R(1).DevChip));
-        Assert.Equal(("7", "15:47"), (R(2).LeftText, R(2).EndText));
-        Assert.Equal(("21", "15:13"), (R(3).LeftText, R(3).EndText));
-        Assert.Equal(("21", "15:13"), (R(6).LeftText, R(6).EndText));
-        Assert.Equal(("9", "14:39", "降温", "4/4"), (R(8).LeftText, R(8).EndText, R(8).StepName, R(8).StepFrac));
+        Assert.Equal(("27", "15:22", "−4.8"), (R(1).LeftText, R(1).EndText, R(1).DevChip));   // 程序步骤 v0.8：样稿的结束时刻 + 放空 2 min + 结束 1 min
+        Assert.Equal(("7", "15:50"), (R(2).LeftText, R(2).EndText));
+        Assert.Equal(("21", "15:16"), (R(3).LeftText, R(3).EndText));
+        Assert.Equal(("21", "15:16"), (R(6).LeftText, R(6).EndText));
+        Assert.Equal(("9", "14:42", "保持", "4/6"), (R(8).LeftText, R(8).EndText, R(8).StepName, R(8).StepFrac));
         // 报警：已暂停、没有预计结束、红行、压力红字
         Assert.Equal((LeftKind.Paused, "已暂停", (string?)null, true, true), (R(4).Left, R(4).LeftText, R(4).EndText, R(4).IsErr, R(4).PressHot));
-        Assert.Equal(("压力超限", "恒温反应", "3/4"), (R(4).Word, R(4).StepName, R(4).StepFrac));
+        Assert.Equal(("压力超限", "恒温反应", "3/6"), (R(4).Word, R(4).StepName, R(4).StepFrac));
         Assert.True(R(4).Segs.Single(x => x.State == SegmentState.Cur).Err);
         // 已就绪 / 停用
         Assert.Equal(("已就绪", false, "未运行 · 待启动", LeftKind.None), (R(5).Word, R(5).HasProg, R(5).NoProg, R(5).Left));
@@ -93,8 +93,8 @@ public class F3HomeTests
     {
         var s = Shell();
         var segs = Home(s).Rows.Single(r => r.N == 1).Segs;
-        Assert.Equal(new[] { SegmentState.Done, SegmentState.Done, SegmentState.Cur, SegmentState.Next }, segs.Select(x => x.State));
-        Assert.Equal(new[] { 50.7, 3.0, 45.0, 22.0 }, segs.Select(x => Math.Round(x.Weight, 1)));
+        Assert.Equal(new[] { SegmentState.Done, SegmentState.Done, SegmentState.Cur, SegmentState.Next, SegmentState.Next, SegmentState.Next }, segs.Select(x => x.State));
+        Assert.Equal(new[] { 50.7, 3.0, 45.0, 22.0, 2.0, 1.2 }, segs.Select(x => Math.Round(x.Weight, 1)));   // 降温（保持 ≤）· 放空 · 结束（每段至少 1.2）
         Assert.Equal(0.4, segs[2].Fill, 2);
         Assert.Equal("第 3 步 恒温反应 · 约 45 min", segs[2].Tip);
         s.Dispose();
@@ -405,7 +405,7 @@ public class F3HomeTests
         var s = Shell();
         s.OpenChannel(1, 1);
         Assert.Equal(("RV1", "反应中", "气相 5.7 mL = 有效容积 10.7 − 溶液", "5.0"), (s.Ctl.Title, s.Ctl.Word, s.Ctl.VolHint, s.Ctl.VolText));
-        Assert.Equal("第 3/4 步 恒温反应 · 剩 27 min", s.Ctl.Sub2);
+        Assert.Equal("第 3/6 步 恒温反应 · 剩 27 min", s.Ctl.Sub2);
         Assert.Null(s.Ctl.Bar);                                   // 1号机远程控制中
         Assert.Equal("RV1 程序运行中", s.Ctl.VolReason);              // 程序运行中设备不让改（HMI CHANNEL_PROGRAM_OWNED）
         s.OpenChannel(1, 5);                                          // RV5 已就绪

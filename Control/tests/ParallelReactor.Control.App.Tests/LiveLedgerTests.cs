@@ -87,7 +87,7 @@ public class LiveLedgerTests
         return (f, d, fake, (LiveDeviceSource)d.Source);
     }
 
-    private static ProgramDoc Doc() => ProgramDraftStore.Template("加氢测试-01");
+    private static ProgramDoc Doc() => LegacyDocs.Four("加氢测试-01");
 
     /// <summary>第 1 路的一帧（其它通道空闲）：温度 / 设定 / 程序。</summary>
     private static TelemetrySnapshot Frame(DateTime ts, ChannelProgramSnap? p, double temp = 60, double sp = 80, string state = "heating") =>

@@ -411,7 +411,7 @@ public sealed partial class DemoFleet
             log.Add(new StepLogEntry(idx, stepStartedAt, endedAt.Value));
             stepDurS = Ms(endedAt.Value, stepStartedAt) / 1000;
         }
-        else if (cur.Type is StepKind.React or StepKind.Wait) stepDurS = (cur.Minutes ?? double.NaN) * 60;
+        else if (cur.Type is StepKind.React or StepKind.Wait || (cur.Type == StepKind.Hold && cur.End is { Kind: EndKind.Time })) stepDurS = (cur.Minutes ?? double.NaN) * 60;
         else stepDurS = el + (p.RemainMin is double rm ? rm * 60 : Math.Max(60, cur.EstMin * 60 - el));
         return prog with { Log = log.ToArray(), StartedAt = startedAt, StepStartedAt = stepStartedAt, StepDurS = stepDurS, EndedAt = endedAt };
     }
@@ -683,7 +683,7 @@ public sealed partial class DemoFleet
             new(StepKind.Press) { Sp = v.Sp, Target = v.P, Gas = gas, Rpm = v.Rpm, End = new StepEnd(EndKind.Press, v.P, "≥"), EstMin = 15 },
             new(StepKind.React) { Sp = v.Sp, Target = v.P, Gas = gas, Minutes = 999, Rpm = v.Rpm, End = new StepEnd(EndKind.Time, 999), EstMin = 999 },
         };
-        if (m.HasCooling) steps.Add(new ProgramStep(StepKind.Cool) { Sp = 40, Rpm = 300, End = new StepEnd(EndKind.Temp, 40, "≤"), EstMin = 60 });
+        if (m.HasCooling) steps.Add(new ProgramStep(StepKind.Hold) { Name = "降温", Sp = 40, Rpm = 300, End = new StepEnd(EndKind.Temp, 40, "≤"), EstMin = 60 });
         steps.Add(new ProgramStep(StepKind.End) { CoolTo = 40, Vent = true, Rpm = 0, End = new StepEnd(EndKind.Temp, 40, "<"), EstMin = 30 });
         return new ProgramDef("stress", name, JsNumber.ToString(v.Sp) + " ℃ · " + Fmt.Mpa(v.P, v.Dec) + " MPa " + m.GasName(gas) + " · 反应 999 min", steps);
     }
@@ -823,10 +823,11 @@ public sealed partial class DemoFleet
         StepKind.Heat => StateKey.Heat,
         StepKind.Press => StateKey.Press,
         StepKind.React => StateKey.React,
-        StepKind.Cool => StateKey.Cool,
+        StepKind.Hold when step.End is { Kind: EndKind.Temp, Op: "≤" or "<" } => StateKey.Cool,   // 降温（保持 · 温度 ≤）
+        StepKind.Hold => StateKey.Wait,
         StepKind.End => StateKey.Cool,
         StepKind.Stir => StateKey.Stir,
-        StepKind.Purge => StateKey.Press,
+        StepKind.Purge or StepKind.Exchange or StepKind.Leak or StepKind.Vent => StateKey.Press,
         StepKind.Wait => StateKey.Wait,
         _ => StateKey.Ready,
     };

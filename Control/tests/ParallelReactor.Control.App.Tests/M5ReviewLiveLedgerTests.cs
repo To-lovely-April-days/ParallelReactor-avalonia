@@ -74,7 +74,7 @@ public class M5ReviewLiveLedgerTests
         return (f, d, fake, (LiveDeviceSource)d.Source);
     }
 
-    private static ProgramDoc Doc() => ProgramDraftStore.Template("加氢测试-01");
+    private static ProgramDoc Doc() => LegacyDocs.Four("加氢测试-01");
 
     private static TelemetrySnapshot Frame(DateTime ts, ChannelProgramSnap? p, double temp = 60, string state = "heating") =>
         LiveFrames.Frame(ts, LiveFrames.Ch(1, temp, 80, 30, 0, 50, state, program: p), LiveFrames.Ch(2), LiveFrames.Ch(3), LiveFrames.Ch(4));

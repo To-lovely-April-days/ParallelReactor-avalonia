@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using ParallelReactor.Client;
+using ParallelReactor.Control.Core.Programs.Editor;
 using ParallelReactor.Models;
 
 namespace ParallelReactor.Control.Services;
 
 /// <summary>
 /// 每个 RV 的本地程序草稿（HMI 没有 GET program，PC 侧只知道自己下发过什么）+「新建程序」草稿（键 0）。
-/// 落盘到配置目录 drafts.json（截图模式不写）。首次打开给 mock 的 4 步示例（升温 80 → 升压 A 300 → 反应 60 min → 结束）。
+/// 落盘到配置目录 drafts.json（截图模式不写）。首次打开给加氢筛选模板（程序步骤 v0.8，见 Core 的 ProgramTemplates）。
 /// </summary>
 public sealed class ProgramDraftStore
 {
@@ -78,14 +79,6 @@ public sealed class ProgramDraftStore
         catch { }
     }
 
-    /// <summary>mock 示例程序（4 步）。</summary>
-    public static ProgramDoc Template(string name)
-    {
-        var d = new ProgramDoc { Name = name };
-        d.Add(StepType.Heat, new { mode = "fixed", temp = 80.0, wait = 10.0 });
-        d.Add(StepType.Press, new { gas = "A", pres = 150.0, regulate = "on" });
-        d.Add(StepType.React, new { endBy = "time", time = 60.0 });
-        d.Add(StepType.End, new { mode = "vent", cool = 30.0 });
-        return d;
-    }
+    /// <summary>示例程序（程序步骤 v0.8 的加氢筛选模板，HMI 程序 JSON：压力 psi）。</summary>
+    public static ProgramDoc Template(string name) => ProgramTemplates.Hydrogenation("EX", "PR8", name).ToDoc(name);
 }

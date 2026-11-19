@@ -321,7 +321,7 @@ public class DeviceActionsTests
         Assert.Equal("L-test", start.Lease);
         Assert.Equal(70, start.Json.GetProperty("tempC").GetDouble());              // SP 取自快照
         Assert.Equal(0, fake.Http.Count("POST", "/channels/1/program/run"));
-        await live.UploadProgramAsync(1, ProgramDraftStore.Template("加氢测试-01"), System.Threading.CancellationToken.None);
+        await live.UploadProgramAsync(1, LegacyDocs.Four("加氢测试-01"), System.Threading.CancellationToken.None);
         Assert.Equal(1, fake.Http.Count("PUT", "/channels/1/program"));
         o = await d.Actions.RunAsync(DeviceAction.Start, ActionPayload.Ch(1));
         Assert.True(o.Ok, o.Message);
@@ -347,7 +347,7 @@ public class DeviceActionsTests
         Assert.Empty(live.RunAllTargets());
         Assert.False((await d.Actions.RunAsync(DeviceAction.RunAll)).Ok);
         Assert.Empty(fake.Http.Of("POST", ".*/program/run"));
-        await live.UploadProgramAsync(1, ProgramDraftStore.Template("加氢测试-01"), System.Threading.CancellationToken.None);
+        await live.UploadProgramAsync(1, LegacyDocs.Four("加氢测试-01"), System.Threading.CancellationToken.None);
         Assert.Equal("", d.Actions.Why(DeviceAction.RunAll));
         Assert.Equal(new[] { 1 }, live.RunAllTargets());
         var o = await d.Actions.RunAsync(DeviceAction.RunAll);
@@ -378,7 +378,7 @@ public class DeviceActionsTests
         var shell = new ShellVm(f);
         shell.Toasts.Frozen = true;
         await HoldLease(f, d, fake);
-        await ((LiveDeviceSource)d.Source).UploadProgramAsync(1, ProgramDraftStore.Template("加氢测试-01"), System.Threading.CancellationToken.None);
+        await ((LiveDeviceSource)d.Source).UploadProgramAsync(1, LegacyDocs.Four("加氢测试-01"), System.Threading.CancellationToken.None);
         f.RefreshNow();
         Assert.Equal("", d.Actions.Why(DeviceAction.RunAll));
         shell.OpenDialog("runall", "1");

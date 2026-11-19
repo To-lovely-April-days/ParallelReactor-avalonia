@@ -193,25 +193,38 @@
             <TextBlock Text="{Binding One.LockText}" />
           </DockPanel>
         </Border>
+        <!-- 从旧格式转换来的程序（STEPS-SPEC §3：转换只在内存里，保存后按新格式存） -->
+        <Border Classes="lockbar amb" DockPanel.Dock="Top" Margin="16,10,16,0" IsVisible="{Binding One.Migrated}" Name="MigBar">
+          <DockPanel>
+            <c:IconView Icon="f-warn-f" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <StackPanel Spacing="2">
+              <TextBlock>
+                <Run Text="已从旧格式转换，请检查" FontWeight="SemiBold" />
+                <Run Text=" · 吹扫 → 置换（只吹总管）、等待 → 保持、结束的「先降温至」→ 保持 · 温度 ≤；保存后按新格式存" />
+              </TextBlock>
+              <TextBlock Text="{Binding One.MigNote}" IsVisible="{Binding One.MigNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
         <!-- 预计温度 / 压力（样稿 #pgPrev：176 高，矮屏 112；上下两张，不用双轴） -->
         <Border DockPanel.Dock="Top" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
           <pc:PlanPreviewChart Name="Preview" Plan="{Binding One.Plan}" Selected="{Binding One.PlanSel}" Height="176" Margin="0,0,6,0" />
         </Border>
-        <!-- 添加步骤（样稿 .pgadd） -->
-        <Border DockPanel.Dock="Top" Padding="16,10" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <TextBlock Classes="mut" Text="添加步骤" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <ItemsControl ItemsSource="{Binding One.AddTypes}">
+        <!-- 添加步骤（样稿 .pgadd；v0.8 的 8 种，插在「结束」之前；放不下一行时折行，按钮间距 6） -->
+        <Border DockPanel.Dock="Top" Padding="16,10,10,4" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
+          <DockPanel>
+            <TextBlock Classes="mut" Text="添加步骤" DockPanel.Dock="Left" VerticalAlignment="Top" Margin="0,7,10,0" />
+            <ItemsControl ItemsSource="{Binding One.AddTypes}" Name="AddSteps">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="6" /></ItemsPanelTemplate>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="pg:AddStepVm">
-                  <Button b:Pr.Icon="f-plus" Content="{Binding Label}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}" Padding="9,0" />
+                  <Button b:Pr.Icon="f-plus" Content="{Binding Label}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}" Padding="9,0" Margin="0,0,6,6" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-          </StackPanel>
+          </DockPanel>
         </Border>
         <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
@@ -221,14 +234,14 @@
                   <Button Classes="pgs" Theme="{StaticResource PgRow}" Classes.on="{Binding IsSelected}" Command="{Binding PickCommand}"
                           AutomationProperties.Name="{Binding Name}">
                     <DockPanel>
-                      <TextBlock DockPanel.Dock="Right" Text="{Binding Dur}" Width="76" TextAlignment="Right" FontSize="{StaticResource FsBase}"
+                      <TextBlock DockPanel.Dock="Right" Text="{Binding Dur}" Width="92" TextAlignment="Right" FontSize="{StaticResource FsBase}"
                                  Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="3" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="10,0,0,0">
                         <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="待改" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" ClipToBounds="True">
-                        <Border Classes="no"><TextBlock Text="{Binding No}" /></Border>
+                        <Border Classes="no" ToolTip.Tip="{Binding IsEnd, Converter={x:Static pg:ProgramConverters.EndTip}}"><TextBlock Text="{Binding No}" /></Border>
                         <Border Classes="ty"><TextBlock Text="{Binding TypeLabel}" /></Border>
                         <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}"
                                    MaxWidth="120" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
@@ -244,20 +257,37 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <!-- 待改项（样稿 .pgiss） -->
-            <Border Margin="12,10" Padding="10,8" BorderBrush="{StaticResource AmbLineBrush}" BorderThickness="1" Background="{StaticResource AmbBgBrush}"
-                    CornerRadius="{StaticResource RadiusS}" IsVisible="{Binding One.HasIssues}">
-              <ItemsControl ItemsSource="{Binding One.Issues}">
-                <ItemsControl.ItemTemplate>
-                  <DataTemplate x:DataType="x:String">
-                    <DockPanel>
-                      <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,3,6,0" />
-                      <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource AmbInk2Brush}" TextWrapping="Wrap" />
-                    </DockPanel>
-                  </DataTemplate>
-                </ItemsControl.ItemTemplate>
-              </ItemsControl>
-            </Border>
+            <!-- 待改项 + 提示（间距 8；没有的不占位） -->
+            <StackPanel Margin="12,10" Spacing="8">
+              <!-- 待改项（样稿 .pgiss） -->
+              <Border Padding="10,8" BorderBrush="{StaticResource AmbLineBrush}" BorderThickness="1" Background="{StaticResource AmbBgBrush}"
+                      CornerRadius="{StaticResource Radius}" IsVisible="{Binding One.HasIssues}">
+                <ItemsControl ItemsSource="{Binding One.Issues}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <DockPanel>
+                        <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,3,6,0" />
+                        <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource AmbInk2Brush}" TextWrapping="Wrap" />
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+              <!-- 提示（下发前检查的「提示，不拦」，STEPS-SPEC §4：灰底说明，不是待改项） -->
+              <Border Padding="10,8" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" Background="{StaticResource BgSideBrush}"
+                      CornerRadius="{StaticResource Radius}" IsVisible="{Binding One.HasHints}" Name="Hints">
+                <ItemsControl ItemsSource="{Binding One.Hints}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <DockPanel>
+                        <c:IconView Icon="f-info" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,6,0" />
+                        <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" />
+                      </DockPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </Border>
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
@@ -295,7 +325,7 @@
                     <!-- 范围放不下时（压力「0.01 – 3.14（≈ 363 psi）」在窄的参数面板里）把括号整段折到第二行，不裁掉 -->
                     <DockPanel Grid.Column="2" IsVisible="{Binding IsNum}" Classes.bad="{Binding Bad}">
                       <TextBox DockPanel.Dock="Left" Theme="{StaticResource PgUnit}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" b:Pr.Unit="{Binding Unit}"
-                               Classes.bad="{Binding Bad}" IsEnabled="{Binding !Locked}" Classes="pgnum" />
+                               Classes.bad="{Binding Bad}" IsEnabled="{Binding !Locked}" Classes="pgnum" Width="{Binding InputWidth}" />
                       <c:IconView DockPanel.Dock="Left" Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="8,0,-4,0" />
                       <TextBlock Classes="rng" Text="{Binding RangeShown}" TextWrapping="Wrap" Margin="8,0,0,0" />
                     </DockPanel>

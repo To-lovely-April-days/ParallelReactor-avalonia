@@ -138,14 +138,14 @@ public sealed class PressureUnitAppTests : IDisposable
         Assert.True(pres.Cells[3].Bad);
         Assert.Equal("580", pres.Cells[3].Text);                                          // 4.00 MPa = 580.2 psi，整数 psi
         string range = pres.Spec.RangeText;
-        Assert.StartsWith("1 – ", range);                                                  // HMI 的 1 psi 下限
-        Assert.Equal("第 04 步目标压力：RV4 580 psi · 超出 HT-PR8 范围 " + range + " psi", pg.Mx.Issues[0].Msg);
+        Assert.StartsWith("8 – ", range);                                                  // HMI 的 7.3 psi 下限（整数 psi 向上）
+        Assert.Equal("第 06 步目标压力：RV4 580 psi · 超出 HT-PR8 范围 " + range + " psi", pg.Mx.Issues[0].Msg);
         Assert.Equal("RV4：超出 HT-PR8 范围 " + range + " psi", pres.Cells[3].Tip);
         // 输入 435 psi：存 MPa，不再超范围，下发仍是 435.0 psi
         pres.Cells[3].Text = "435";
         Assert.False(pres.Cells[3].Bad);
-        Assert.Equal(435, PressureUnits.FromMpa(pg.Mx.Plan!.PerValue(3, "pres", 4), PressureUnit.Psi), 9);
-        var st = pg.Mx.Plan.StepsFor(4)[3];
+        Assert.Equal(435, PressureUnits.FromMpa(pg.Mx.Plan!.PerValue(5, "pres", 4), PressureUnit.Psi), 9);
+        var st = pg.Mx.Plan.StepsFor(4)[5];
         Assert.Equal(435.0, PcProgram.StepDoc(st).Params["pres"].GetDouble());
 
         // 同一个页面上切到 bar（设置页切换的路径）：行重建，单位 / 小数位跟着变
@@ -155,7 +155,7 @@ public sealed class PressureUnitAppTests : IDisposable
         pres = pg.Mx.Rows.OfType<MxPerRow>().First(r => r.Spec.Key == "pres");
         Assert.Equal("bar", pres.Unit);
         Assert.Equal("30.0", pres.Cells[3].Text);                                        // 435 psi = 29.99 bar
-        Assert.StartsWith("0.1 – ", pres.Spec.RangeText);
+        Assert.StartsWith("0.6 – ", pres.Spec.RangeText);                                // 7.3 psi = 0.503 bar 向上
     }
 
     [Fact]
@@ -164,13 +164,13 @@ public sealed class PressureUnitAppTests : IDisposable
         var s = Shell("punit=bar&page=prog&dev=1&pgm=one");
         var pg = Assert.IsType<ProgramPageVm>(s.Page);
         Assert.False(pg.IsMatrix);
-        var press = pg.One.Steps.First(x => x.TypeLabel == "升压");
+        var press = pg.One.Steps.First(x => x.TypeLabel == "充压");
         Assert.Matches(@"^\d+\.\d bar$", press.K1 == "目标压力" ? press.V1 : press.V2);          // 步骤列表的摘要
         press.PickCommand.Execute(null);
         var f = pg.One.Fields.Single(x => x.Spec.Key == "pres");
         Assert.Equal("bar", f.Unit);
         Assert.Matches(@"^\d+\.\d$", f.Text);
-        Assert.Matches(@"^0\.1 – \d+\.\d$", f.Range);                                // bar 不写「≈ psi」（放不下；MPa 照旧写）
+        Assert.Matches(@"^0\.6 – \d+\.\d$", f.Range);                                // bar 不写「≈ psi」（放不下；MPa 照旧写）
     }
 
     [Fact]

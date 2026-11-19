@@ -4,10 +4,15 @@ using System.Collections.Generic;
 namespace ParallelReactor.Control.Core.Programs;
 
 /// <summary>
-/// 步骤类型（样稿 PR.STEP 的键，API.md §3.1 Step.type）：设备的 7 种 + 显示旧程序 / 有冷却水型号用的 cool。
-/// HMI 的 schema 没有 cool（冷却写在 end.cool），真机程序不会出现 Cool（PORT-PLAN §3.5）。
+/// 步骤类型（显示用，样稿 PR.STEP 的键 + 程序步骤 v0.8，research/fusion-port/notes/STEPS-SPEC.md）：
+/// v0.8 的九种 Leak / Exchange / Stir / Heat / Press / Hold / React / Vent / End；Purge / Wait 是旧格式，只在显示旧程序时出现
+/// （较早的 HMI 正在执行的程序、旧的程序台账 —— 那里步骤序号要和设备对得上，不转换，见 <see cref="ProgramDocs"/>）。
+/// 没有降温步骤（用户 2026-11-19 决定）：要等凉了再放空，用 Hold「温度 ≤ x」。
 /// </summary>
-public enum StepKind { Heat, Press, React, Cool, End, Purge, Wait, Stir }
+public enum StepKind { Heat, Press, React, End, Purge, Wait, Stir, Leak, Exchange, Hold, Vent }
+
+/// <summary>预计时长的标注（STEPS-SPEC §5）：None = 按时长；About = 按条件结束、只是估计（写「约」）；UpTo = 最长时间（反应，写「≤」）。</summary>
+public enum StepMark { None, About, UpTo }
 
 /// <summary>步骤结束条件的种类：按时间 / 温度 / 压力。</summary>
 public enum EndKind { Time, Temp, Press }
@@ -31,11 +36,11 @@ public sealed record ProgramStep(StepKind Type)
 {
     /// <summary>温度设定值 ℃（升温 / 降温目标；其它步骤 = 保持的温度）。</summary>
     public double? Sp { get; init; }
-    /// <summary>目标压力 MPa（充压 / 反应补压 / 吹扫充至）。</summary>
+    /// <summary>目标压力 MPa（充压 / 反应补压 / 吹扫充至；气密 = 试验压力，置换 = 每次充到，保持 = 压力条件，放空 = 放到）。</summary>
     public double? Target { get; init; }
     /// <summary>气路：型号表里的键（'a' / 'h2' / 'n2' / 'inert' …），显示名用 ModelProfile.GasName。</summary>
     public string? Gas { get; init; }
-    /// <summary>步骤时长（分钟）：反应 / 等待 / 搅拌。</summary>
+    /// <summary>步骤时长（分钟）：反应（最长时间）/ 等待 / 保持（按时间）/ 旧的定时搅拌 / 气密（静置 + 保压）。</summary>
     public double? Minutes { get; init; }
     /// <summary>转速设定 rpm（样稿每步都有；真机程序只有搅拌步骤有）。</summary>
     public double? Rpm { get; init; }
@@ -43,7 +48,7 @@ public sealed record ProgramStep(StepKind Type)
     public double? CoolTo { get; init; }
     /// <summary>结束步骤：是否泄压（排空）。null = 没写。</summary>
     public bool? Vent { get; init; }
-    /// <summary>吹扫：置换次数。</summary>
+    /// <summary>吹扫：置换次数；置换：次数（0 = 只吹总管）；放空：之后惰性置换的次数。</summary>
     public int? Cycles { get; init; }
     /// <summary>结束条件；null =「立即」。</summary>
     public StepEnd? End { get; init; }
@@ -55,6 +60,14 @@ public sealed record ProgramStep(StepKind Type)
     public bool HeatCurve { get; init; }
     /// <summary>HMI press.regulate：true = 稳压保持，false = 到目标后保持；null = 样稿步骤（写「到压后保持」）。</summary>
     public bool? Regulate { get; init; }
+    /// <summary>预计时长的标注（v0.8：保持按条件 =「约」，反应 =「≤」）。</summary>
+    public StepMark Mark { get; init; }
+    /// <summary>保持（按温度 / 压力）：最长等待 min；没有为 null。</summary>
+    public double? MaxMin { get; init; }
+    /// <summary>反应（v0.8）另外的结束条件：「吸气停止」「吸气量 ≥ 5.00 mmol」；没有为 null。</summary>
+    public string? Ends { get; init; }
+    /// <summary>置换：先吹总管的次数（lineFlush）；放空：之后惰性置换的次数用 <see cref="Cycles"/>。</summary>
+    public int? LineFlush { get; init; }
 }
 
 /// <summary>已完成的一步：步骤序号（0 起）+ 开始 / 结束时刻（样稿 Program.log 的 { i, t0, t1 }）。</summary>
@@ -106,6 +119,12 @@ public sealed record ProgramRecord
     /// 设备上的程序可能已修改：程序面板的状态行写「触屏接管过控制」，悬停写全（ProgramPanelText）。触屏启动的照旧写「触屏启动」（两样不同时写）。演示数据为 false。
     /// </summary>
     public bool AfterLocalControl { get; init; }
+
+    /// <summary>
+    /// 反应步骤的结束原因（v0.8，STEPS-SPEC §1.7：「最长时间到」「吸气量达到 5.00 mmol」「吸气停止（30 min &lt; 0.005 mmol/min）」）：
+    /// 真机取自 GET …/program/run 的 endReason（设备程序，见 HmiRunPrograms）；没有为 null。已结束的程序在状态行写出来。
+    /// </summary>
+    public string? EndReason { get; init; }
 
     /// <summary>当前步；越界为 null。</summary>
     public ProgramStep? CurrentStep => StepIndex >= 0 && StepIndex < Steps.Count ? Steps[StepIndex] : null;

@@ -93,6 +93,7 @@ public sealed class HmiRunPrograms
         var rec = new ProgramRecord
         {
             Name = DefaultName, Steps = steps, Source = ProgramSource.Hmi, StartedByTouch = hmi.StartedBy == "local",
+            EndReason = RunOf(n, hmi, bootId)?.EndReason is { Length: > 0 } er ? er : null,
         };
         return ProgramLedger.RunRecord(rec, ch, tracker?.TrackOf(n, hmi, bootId), frame!.Ts, history, rates);
     }

@@ -284,7 +284,7 @@ public class M6ReasonsToastsTests
         Assert.True((await d.Actions.RunAsync(DeviceAction.LeaseRequest)).Ok);
         for (int i = 0; i < 200 && fake.Lease.State != ParallelReactor.Client.LeaseState.Holding; i++) await Task.Delay(10);
         var live = (LiveDeviceSource)d.Source;
-        for (int n = 1; n <= 4; n++) await live.UploadProgramAsync(n, ProgramDraftStore.Template("加氢测试-0" + n), CancellationToken.None);
+        for (int n = 1; n <= 4; n++) await live.UploadProgramAsync(n, LegacyDocs.Four("加氢测试-0" + n), CancellationToken.None);
         f.RefreshNow();
         var targets = live.RunAllTargets();
         Assert.NotEmpty(targets);

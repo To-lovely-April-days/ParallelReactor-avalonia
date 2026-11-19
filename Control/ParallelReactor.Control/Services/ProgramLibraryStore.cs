@@ -17,7 +17,9 @@ namespace ParallelReactor.Control.Services;
 /// 参数键同 HMI 的程序 JSON（§6.9），sel 存协议码；压力存 MPa（下发时换算 psi）。
 /// <list type="bullet">
 /// <item>第一次打开（没有 library.json）：把旧程序页的草稿（drafts.json，每个 RV 一份）迁移成草稿程序「RV1 草稿 · 名字」，适用型号 = 当时第一台设备的型号；
-///   都没有时放一个示例程序（ProgramDraftStore.Template）。drafts.json 不删（旧的检查器下拉还读它）。</item>
+///   都没有时放设计稿的三个推荐模板（ProgramTemplates）。drafts.json 不删（旧的检查器下拉还读它）。</item>
+/// <item>程序步骤 v0.8：旧格式的程序（library.json 里的吹扫 / 等待 / 定时搅拌 / 带方式的结束、drafts.json 的旧草稿）读进来就按 STEPS-SPEC §3 转换
+///   （PcProgram.Read / FromDoc → Contracts 的 StepMigration），标 PcProgram.Migrated，编辑器顶上提示「已从旧格式转换，请检查」；保存时按新格式写回。</item>
 /// <item>演示 / 截图（PR_CONTROL_DEMO / PR_CONTROL_SHOT）：用样稿的程序库（DemoPrograms），不读也不写文件。</item>
 /// </list>
 /// </summary>
@@ -46,6 +48,14 @@ public sealed class ProgramLibraryStore
     public int Migrated { get; private set; }
 
     public PcProgram? Find(string? id) => Programs.FirstOrDefault(p => p.Id == id);
+
+    /// <summary>演示：程序库回到样稿的初始内容（截图前「像新打开」，上一张截图里改过的参数不留下）。非演示不动。</summary>
+    public void ResetDemo()
+    {
+        if (!_demo) return;
+        Programs.Clear();
+        Programs.AddRange(DemoPrograms.Library());
+    }
 
     /// <summary>不重复的 id（'P' + 时间戳；同一毫秒再加序号）。</summary>
     public string NewId(string prefix = "P")
@@ -99,10 +109,13 @@ public sealed class ProgramLibraryStore
         catch (Exception ex) when (ex is IOException or JsonException or FormatException or UnauthorizedAccessException) { }
         if (list.Count == 0)
         {
-            var ex = PcProgram.FromDoc(ProgramDraftStore.Template("示例程序"), firstModel, "EX1");
-            ex.Modified = DateTime.Now;
-            ex.Draft = true;
-            list.Add(ex);
+            // 第一次打开、没有旧草稿：放设计稿的三个推荐模板（加氢筛选 · 只做气密 · 惰性气氛加热）
+            foreach (var t in ProgramTemplates.All(firstModel))
+            {
+                t.Modified = DateTime.Now;
+                t.By = "本机";
+                list.Add(t);
+            }
         }
         return list;
     }

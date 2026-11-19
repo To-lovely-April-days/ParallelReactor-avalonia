@@ -200,7 +200,7 @@ public static class MatrixJson
         w.WriteEndObject();
     }
 
-    /// <summary>读回（模板要已经在程序库里；步骤类型和模板对不上时只取参加 / 样品 / 体积，参数按模板重建）。</summary>
+    /// <summary>读回（模板要已经在程序库里；旧格式的步骤先转换；步骤类型和模板对不上时只取参加 / 样品 / 体积，参数按模板重建）。</summary>
     public static MatrixPlan Read(JsonElement e, PcProgram template, int deviceK, IReadOnlyList<MxChannel> chs)
     {
         var m = MatrixPlan.Build(template, deviceK, chs, Str(e, "name") ?? "");
@@ -214,7 +214,8 @@ public static class MatrixJson
             foreach (var p in sm.EnumerateObject()) if (int.TryParse(p.Name, out var n)) m.Samples[n] = p.Value.GetString() ?? "";
         if (e.TryGetProperty("vol", out var vol) && vol.ValueKind == JsonValueKind.Object)
             foreach (var p in vol.EnumerateObject()) if (int.TryParse(p.Name, out var n)) m.Vol[n] = p.Value.ValueKind == JsonValueKind.Number ? p.Value.GetDouble() : double.NaN;
-        var steps = e.TryGetProperty("steps", out var st) ? PcProgram.ReadSteps(st) : new List<PcStep>();
+        // 旧版本存的方案（旧格式的步骤）先按 STEPS-SPEC §3 转换，再和（已经转换过的）模板比
+        var steps = e.TryGetProperty("steps", out var st) ? StepDefaults.Migrate(PcProgram.ReadSteps(st), out _) : new List<PcStep>();
         bool same = steps.Count == m.Steps.Count && steps.Select(s => s.Type).SequenceEqual(m.Steps.Select(s => s.Type));
         if (!same) return m;
         for (int i = 0; i < steps.Count; i++) m.Steps[i] = steps[i];

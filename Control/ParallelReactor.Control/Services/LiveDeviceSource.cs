@@ -831,6 +831,14 @@ public sealed partial class LiveDeviceSource : IDeviceSource
     /// 下发程序到第 n 路（PUT /channels/{n}/program，需要控制权）并记进程序台账（「启动」「全部运行」与反应釜页的程序显示用，D6 / R5）：
     /// 启动号、下发时刻（本机 + 设备时钟）、下发那一刻这一路的上一次执行（比它新的执行才可能是这个程序）、本机客户端名、命令的 opId。
     /// </summary>
+    /// <summary>PUT /channels/{id}/program 的 result.steps（v0.8：转换后的步骤数组）→ 程序；不是数组（较早的 HMI 给步数）或读不了为 null。</summary>
+    public static ProgramDoc? ConvertedSteps(System.Text.Json.JsonElement? result, string name)
+    {
+        if (result is not { ValueKind: System.Text.Json.JsonValueKind.Object } res || !res.TryGetProperty("steps", out var st) || st.ValueKind != System.Text.Json.JsonValueKind.Array) return null;
+        try { return ProgramDoc.FromJson("{\"steps\":" + st.GetRawText() + "}", name); }
+        catch (FormatException) { return null; }
+    }
+
     public async Task<ActionOutcome> UploadProgramAsync(int n, ProgramDoc doc, CancellationToken ct, string? libraryId = null, List<string>? hw = null)
     {
         var c = Conn0;
@@ -843,6 +851,8 @@ public sealed partial class LiveDeviceSource : IDeviceSource
         // 事件核对从下发命令自己的事件序号起（没有时从 WS 已经连续收到的最后一条起）；序号纪元 = WS hello 的（没有 hello 时 GET /device 的）。
         // 设备时钟的下发时刻先按最近的帧估（hello 量的时钟差可能是几天前的，复核）；台账看到下发命令自己的事件时换成它的时刻
         var hello = c.Ws?.Hello;
+        // v0.8：PUT 的 result.steps 是 HMI 转换 / 收紧之后的步骤（数组；较早的 HMI 是步数）—— 台账记它，步骤序号才和设备的执行对得上
+        doc = ConvertedSteps(r.Result, doc.Name) ?? doc;
         l.AddDownload(n, doc, BootIdNow ?? "", _clock.UtcNow, DownloadClockOffset(c), prior, priorKnown: frame != null,
             opId: string.IsNullOrEmpty(r.OpId) ? null : r.OpId, opEventSeq: r.OpEventSeq > 0 ? r.OpEventSeq : null, libraryId: libraryId,
             eventEpoch: hello?.SeqEpoch ?? Info?.SeqEpoch, eventCursor: hello != null ? c.Ws!.LastEventSeq : null);

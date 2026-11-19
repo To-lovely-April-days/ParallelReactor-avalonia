@@ -91,7 +91,7 @@ internal static class Program
 
         var en2 = await conn.Control.EnableChannelAsync(2, ct);
         Step("POST /channels/2/enable", $"{en2.HttpStatus} {en2.Status}");
-        var prog = new ProgramDoc { Name = "smoke-2step" }.Add(StepType.Wait, new { mode = "fixed", time = 0.2 }).Add(StepType.Heat, new { mode = "fixed", temp = 50, wait = 0.1 });
+        var prog = new ProgramDoc { Name = "smoke-2step" }.Add(StepType.Hold, new { until = "time", time = 0.2 }).Add(StepType.Heat, new { mode = "fixed", temp = 50, wait = 0.1 });
         var put = await conn.Control.ReplaceProgramAsync(2, prog, ct);
         Step("PUT /channels/2/program (wait 0.2 min, heat 50℃)", $"{put.HttpStatus} {put.Status} result={put.Result.GetRawText()}");
         var run = await conn.Control.RunProgramAsync(2, null, IdempotencyKeys.New("smoke-run-rv2"), ct);
