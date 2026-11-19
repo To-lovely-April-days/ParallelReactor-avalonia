@@ -174,11 +174,7 @@ public sealed partial class OneVm : ObservableObject
         Valid = iss.Count == 0;
         IssueTag = Valid ? "校验通过" : iss.Count + " 处待改";
         AppliesTo = "适用 " + MatrixPlan.ModelLabelOf(p.Model);
-        bool isEnd = StepIndex < p.Steps.Count && p.Steps[StepIndex].Type == StepType.End;
-        bool beforeEnd = StepIndex + 1 < p.Steps.Count && p.Steps[StepIndex + 1].Type == StepType.End;
-        UpReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : StepIndex <= 0 ? "已经是第一步" : null;
-        DownReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : beforeEnd ? "「结束」固定在最后，不能挪到它后面" : StepIndex >= p.Steps.Count - 1 ? "已经是最后一步" : null;
-        DeleteReason = Locked ? "运行中的程序不能直接修改" : isEnd ? EndFixed : p.Steps.Count < 2 ? "至少要留一步" : null;
+        (UpReason, DownReason, DeleteReason) = ReasonsAt(p, StepIndex);
         Migrated = p.Migrated;
         MigNote = p.Migrated ? string.Join("\n", p.MigrationNotes) : "";
         foreach (var a in AddTypes) { a.Reason = Locked ? "运行中的程序不能直接修改 · 先复制为新程序" : null; a.Label = schema.Of(a.Type)?.Label ?? a.Type.Zh(); }
@@ -215,7 +211,48 @@ public sealed partial class OneVm : ObservableObject
             row.Dur = ProgramPlanner.Dur(plan.Bounds[i]);
             row.IsEnd = s.Type == StepType.End;
             row.IsSelected = i == StepIndex;
+            (row.UpReason, row.DownReason, row.DeleteReason) = ReasonsAt(p, i);
+            row.CanDrag = !Locked && !row.IsEnd;
         }
+    }
+
+    /// <summary>第 i 步的上移 / 下移 / 删除不能做的原因（null = 能做）：工具条（选中的一步）与每行的右键菜单共用。</summary>
+    private (string? Up, string? Down, string? Del) ReasonsAt(PcProgram p, int i)
+    {
+        const string locked = "运行中的程序不能直接修改";
+        bool isEnd = i < p.Steps.Count && p.Steps[i].Type == StepType.End;
+        bool beforeEnd = i + 1 < p.Steps.Count && p.Steps[i + 1].Type == StepType.End;
+        string? up = Locked ? locked : isEnd ? EndFixed : i <= 0 ? "已经是第一步" : null;
+        string? down = Locked ? locked : isEnd ? EndFixed : beforeEnd ? "「结束」固定在最后，不能挪到它后面" : i >= p.Steps.Count - 1 ? "已经是最后一步" : null;
+        string? del = Locked ? locked : isEnd ? EndFixed : p.Steps.Count < 2 ? "至少要留一步" : null;
+        return (up, down, del);
+    }
+
+    /// <summary>右键菜单：先选中第 i 步，再删除 / 上移 / 下移（同工具条）。</summary>
+    internal void DeleteAt(int i) { Select(i); Delete(); }
+    internal void MoveBy(int i, int dir) { Select(i); Move(dir); }
+
+    /// <summary>第 i 步能不能拖动（程序没在运行、不是「结束」）。</summary>
+    public bool CanDrag(int i) => Editable is { } p && i >= 0 && i < p.Steps.Count && p.Steps[i].Type != StepType.End;
+
+    /// <summary>
+    /// 拖动排序：把第 <paramref name="from"/> 步放到第 <paramref name="gap"/> 个空隙（0 = 最前，n = 最后；第 g 个空隙在第 g 步前面）。
+    /// 「结束」固定在最后：放到它后面的按放在它前面算。返回移动后的位置（没动返回 -1）。
+    /// </summary>
+    public int MoveTo(int from, int gap)
+    {
+        if (Editable is not { } p || !CanDrag(from)) return -1;
+        int end = p.Steps.FindIndex(x => x.Type == StepType.End);
+        if (end >= 0) gap = Math.Min(gap, end);
+        gap = Math.Clamp(gap, 0, p.Steps.Count);
+        int to = gap > from ? gap - 1 : gap;
+        if (to == from) return -1;
+        var s = p.Steps[from];
+        p.Steps.RemoveAt(from);
+        p.Steps.Insert(to, s);
+        StepIndex = to;
+        Touch(p);
+        return to;
     }
 
     internal void Select(int i)
@@ -453,9 +490,28 @@ public sealed partial class AddStepVm : ObservableObject
 /// <summary>步骤列表的一行（样稿 .pgs）。</summary>
 public sealed partial class StepRowVm : ObservableObject
 {
-    public StepRowVm(OneVm owner, int i) { I = i; PickCommand = new RelayCommand(() => owner.Select(I)); }
+    public StepRowVm(OneVm owner, int i)
+    {
+        I = i;
+        PickCommand = new RelayCommand(() => owner.Select(I));
+        UpCommand = new RelayCommand(() => owner.MoveBy(I, -1));
+        DownCommand = new RelayCommand(() => owner.MoveBy(I, +1));
+        DeleteCommand = new RelayCommand(() => owner.DeleteAt(I));
+    }
     public int I { get; }
     public ICommand PickCommand { get; }
+    /// <summary>右键菜单（上移 / 下移 / 删除这一步；不能做时灰掉并写原因）。</summary>
+    public ICommand UpCommand { get; }
+    public ICommand DownCommand { get; }
+    public ICommand DeleteCommand { get; }
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanUp))] private string? _upReason;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanDown))] private string? _downReason;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanDelete))] private string? _deleteReason;
+    public bool CanUp => UpReason is null;
+    public bool CanDown => DownReason is null;
+    public bool CanDelete => DeleteReason is null;
+    /// <summary>能拖动排序（程序没在运行、不是「结束」）：手形之外再给「上下拖动」的光标。</summary>
+    [ObservableProperty] private bool _canDrag;
     [ObservableProperty] private string _no = "";
     [ObservableProperty] private string _typeLabel = "";
     [ObservableProperty] private string _name = "";

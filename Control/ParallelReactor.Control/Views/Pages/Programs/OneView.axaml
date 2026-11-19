@@ -228,11 +228,24 @@
         </Border>
         <ScrollViewer Theme="{StaticResource PrScrollViewerWide}" HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
-            <ItemsControl ItemsSource="{Binding One.Steps}">
+            <!-- 步骤列表（用户 2026-11-19）：右键菜单 上移 / 下移 / 删除这一步；左键按住上下拖动排序（插入线 DropLine，见 OneView.axaml.cs）；Delete 键删除选中的一步 -->
+            <Panel>
+            <ItemsControl Name="StepList" ItemsSource="{Binding One.Steps}" Focusable="True">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="pg:StepRowVm">
                   <Button Classes="pgs" Theme="{StaticResource PgRow}" Classes.on="{Binding IsSelected}" Command="{Binding PickCommand}"
                           AutomationProperties.Name="{Binding Name}">
+                    <Button.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="上移" b:Pr.Icon="f-up" Command="{Binding UpCommand}" IsEnabled="{Binding CanUp}"
+                                  ToolTip.Tip="{Binding UpReason}" ToolTip.ShowOnDisabled="True" />
+                        <MenuItem Header="下移" b:Pr.Icon="f-dn" Command="{Binding DownCommand}" IsEnabled="{Binding CanDown}"
+                                  ToolTip.Tip="{Binding DownReason}" ToolTip.ShowOnDisabled="True" />
+                        <Separator />
+                        <MenuItem Header="删除这一步" b:Pr.Icon="f-delete" b:Pr.Hint="Delete" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"
+                                  ToolTip.Tip="{Binding DeleteReason}" ToolTip.ShowOnDisabled="True" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
                     <DockPanel>
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Dur}" Width="92" TextAlignment="Right" FontSize="{StaticResource FsBase}"
                                  Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
@@ -257,6 +270,11 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- 拖动时的插入线（品牌蓝 2 px，左右各缩 8） -->
+            <Canvas Name="DropCanvas" IsHitTestVisible="False">
+              <Border Name="DropLine" Height="2" CornerRadius="1" Background="{StaticResource ABrush}" IsVisible="False" />
+            </Canvas>
+            </Panel>
             <!-- 待改项 + 提示（间距 8；没有的不占位） -->
             <StackPanel Margin="12,10" Spacing="8">
               <!-- 待改项（样稿 .pgiss） -->

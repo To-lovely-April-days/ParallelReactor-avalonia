@@ -326,8 +326,9 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
     private void NewProgram()
     {
         if (Dev is not { } d) return;
-        // 新程序 = 设计稿的加氢筛选模板（气密 → 惰性置换 → 气体 A 置换 → 搅拌 → 升温 → 充压 → 反应 → 放空 → 结束），按需要删改
-        var p = ProgramTemplates.Hydrogenation(Store.NewId("N"), d.Model.Key, "未命名程序");
+        // 新程序 = 空程序：只有固定在最后的「结束」（用户 2026-11-19：新建应该是空的，不要带模板的步骤）；模板在程序库里另有（加氢筛选 / 只做气密 / 惰性气氛加热）
+        var p = new PcProgram { Id = Store.NewId("N"), Name = "未命名程序", Model = d.Model.Key };
+        p.Steps.Add(ProgramTemplates.End());
         p.Modified = _shell.Fleet.Now;
         p.By = "本机";
         p.Draft = true;
@@ -336,7 +337,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         SelId = p.Id;
         One.StepIndex = 0;
         if (IsMatrix) SetMode("one");
-        _shell.Toast("已按加氢筛选模板新建程序 · 按需要删改步骤", ToastKind.Info);
+        _shell.Toast("已新建空程序 · 用「添加步骤」加入步骤；右键删除，按住上下拖动排序", ToastKind.Info);
         Refresh(_shell.Fleet);
     }
 

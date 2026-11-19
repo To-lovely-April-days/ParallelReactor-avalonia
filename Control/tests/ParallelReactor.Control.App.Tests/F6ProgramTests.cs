@@ -275,15 +275,14 @@ public class F6ProgramTests
     }
 
     [Fact]
-    public void NewProgram_IsTheHydrogenationTemplate_RedoNotesMigration()
+    public void NewProgram_IsEmpty_RedoNotesMigration()
     {
         var s = Shell("pgm=one");
         var pg = Page(s);
         pg.Tools.SelectMany(g => g.Tools).First(t => t.Label == "新建程序").Command.Execute(null);
         Assert.Equal("未命名程序", pg.Sel!.Name);
-        Assert.Equal(new[] { StepType.Leak, StepType.Exchange, StepType.Exchange, StepType.Stir, StepType.Heat, StepType.Press, StepType.React, StepType.Vent, StepType.End }, pg.Sel.Steps.Select(x => x.Type));
-        Assert.Equal("校验通过", pg.One.IssueTag);
-        Assert.False(pg.One.HasHints);
+        // 用户 2026-11-19：新建程序是空的 —— 只有固定在最后的「结束」（模板在程序库里另有）
+        Assert.Equal(new[] { StepType.End }, pg.Sel.Steps.Select(x => x.Type));
         // 记录页「再做一次」载入的程序是旧格式转换来的：提示先检查
         Assert.True(pg.AcceptRedo(new ParallelReactor.Control.Pages.Records.RedoRequest(ParallelReactor.Control.Pages.Records.RedoKind.Program, 1, "S1", "低温氧化 · 60 ℃", "OX", new[] { 5 }, Array.Empty<int>()), out var toast));
         Assert.Contains("旧格式、已按新步骤转换，请先检查", toast);
