@@ -22,10 +22,7 @@
           <TextBlock Text="工具" FontSize="{StaticResource FsBase}" Foreground="{StaticResource SideInk2Brush}" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource BrandOrangeBrush}">
-            <TextBlock Text="A" FontSize="{StaticResource FsBase}" FontWeight="Bold" Foreground="{StaticResource TInvBrush}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Border>
+          <Image Source="avares://ParallelReactor.Control/Assets/logo-64.png" Width="20" Height="20" VerticalAlignment="Center" RenderOptions.BitmapInterpolationMode="HighQuality" />
           <Border Background="{StaticResource StripChipBrush}" CornerRadius="3" Padding="8,2">
             <TextBlock Text="PC-测试工位1" FontSize="{StaticResource FsBase}" Foreground="{StaticResource TInvBrush}" />
           </Border>

@@ -14,7 +14,15 @@
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <SatelliteResourceLanguages>zh-Hans</SatelliteResourceLanguages>
+    <!-- 软件图标（用户 2026-11-19 给的 ALZK 标志；Assets/logo-source.png 是原图 1024，其余由它裁掉四周留白后缩出来） -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 窗口图标（512）与深蓝条上的小标志（64，画 20 DIP，高分屏也够） -->
+    <AvaloniaResource Include="Assets\logo.png" />
+    <AvaloniaResource Include="Assets\logo-64.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../Contracts/ParallelReactor.Contracts/ParallelReactor.Contracts.csproj" />

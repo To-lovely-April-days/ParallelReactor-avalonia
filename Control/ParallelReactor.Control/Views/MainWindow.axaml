@@ -5,6 +5,7 @@
         xmlns:cs="using:ParallelReactor.Control.Controls.Shell"
         x:Class="ParallelReactor.Control.Views.MainWindow"
         Title="ALZK 平行反应仪控制软件"
+        Icon="avares://ParallelReactor.Control/Assets/logo.png"
         Width="1440" Height="900"
         Background="{StaticResource BgAppBrush}"
         FontFamily="{DynamicResource UiFont}" FontSize="{StaticResource FsBody}" Foreground="{StaticResource T2Brush}"

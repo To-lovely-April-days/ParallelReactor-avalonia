@@ -6,7 +6,7 @@
              x:Class="ParallelReactor.Control.Views.Shell.StripView"
              x:DataType="sh:ShellVm">
   <!-- 深蓝条（融合版 F2；样稿 .titlebar）：高 30、side-1 → side-2 竖向渐变、左 8、间距 10、13 px 白字。
-       左：应用标志（18 圆、品牌橙、白色粗体 A）· 工位名小块（白 16 % 底、左右 8 上下 2、圆角 3）· 产品名（side-ink、字距 0.2，窄屏不写）；
+       左：软件标志（ALZK 标志图 20 × 20；样稿是 18 的橙色圆 A，2026-11-19 换成用户给的标志）· 工位名小块（白 16 % 底、左右 8 上下 2、圆角 3）· 产品名（side-ink、字距 0.2，窄屏不写）；
        右：关于 / 设置 / 帮助 / 工具（PrStripLink：图标 14 + 字，side-ink-2，悬停白 14 % 底）。
        F9（用户：「标题栏还是改一下 用我们自定义的」）：深蓝条就是窗口标题栏（见 Views/WindowChrome）——
        自绘（Windows）：右端最小化 / 最大化（最大化后是「还原」）/ 关闭（样稿 .tb-win，PrWinButton；离「工具」18 = 条的间距 10 + margin-left 8，右边不留白）；
@@ -37,10 +37,9 @@
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
         <Border Name="MacInset" Width="0" IsVisible="False" />
-        <Border Width="18" Height="18" CornerRadius="9" Background="{StaticResource BrandOrangeBrush}" ToolTip.Tip="ALZK">
-          <TextBlock Text="A" FontSize="{StaticResource FsBase}" FontWeight="Bold" Foreground="{StaticResource TInvBrush}"
-                     HorizontalAlignment="Center" VerticalAlignment="Center" />
-        </Border>
+        <!-- 软件标志（用户 2026-11-19 给的 ALZK 标志，代替样稿的橙色圆 A）：20 × 20，高质量缩放 -->
+        <Image Source="avares://ParallelReactor.Control/Assets/logo-64.png" Width="20" Height="20" VerticalAlignment="Center"
+               RenderOptions.BitmapInterpolationMode="HighQuality" ToolTip.Tip="ALZK" />
         <Button Theme="{StaticResource PrStripChip}" Content="{Binding ClientName}" Command="{Binding ClientCommand}" ToolTip.Tip="本机工位名 · 点击修改"
                 AutomationProperties.Name="本机工位名" />
         <pr:PrText Name="StripTitle" Text="{Binding StripTitle}" Foreground="{StaticResource StripInkBrush}" LetterSpacing="0.2" VerticalAlignment="Center"
