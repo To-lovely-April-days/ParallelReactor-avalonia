@@ -52,9 +52,10 @@ public sealed partial class HomePageVm
     /// <summary>棒图 16 路时灰带写单位「°C / MPa」（每根条下不写单位）。</summary>
     [ObservableProperty] private bool _showBarUnits;
 
-    /// <summary>点阀门：只显示状态（电脑端没有维护模式的接口）。</summary>
-    public ICommand ValveCommand => _valve ??= new RelayCommand(() => _shell.Toast(MonText.ValveToast, ToastKind.Info));
-    private ICommand? _valve;
+    /// <summary>点气路图上的阀门（HMI v0.7：直接开关，见 <see cref="ValveCtl"/>）：第 n 路 SVn / 一路气源 / 排空。</summary>
+    public void ToggleSv(int n, bool isOpen) { if (Device is { } d) ValveCtl.ToggleSv(_shell, d, n, isOpen); }
+    public void ToggleGas(string key, bool isOpen) { if (Device is { } d) ValveCtl.ToggleGas(_shell, d, key, isOpen); }
+    public void ToggleVent() { if (Device is { Model.Vent: { } v } d) ValveCtl.ToggleGas(_shell, d, v.Key, d.Source.GasOpen(v.Key)); }
 
     /// <summary>点一路（釜卡 / 棒）：选中这一路并打开检查器（同运行表的行，样稿 data-ch）。</summary>
     public void OpenTile(MonTileVm t)
@@ -106,7 +107,7 @@ public sealed partial class HomePageVm
         {
             if (d.Reactor(t.N) is not { } r) continue;
             var (mark, tip) = MarkOf(d, t.N);
-            t.Apply(r, lim.TempMaxC, lim.PressureMaxMPa, plim, Gas.SrcOn, d.EstopActive, t.N == sel, stale, mark, tip, devSteps);
+            t.Apply(r, lim.TempMaxC, lim.PressureMaxMPa, plim, Gas.SrcOn, d.EstopActive, t.N == sel, stale, mark, tip, devSteps, ValveCtl.SvReason(d, r.N, r.Valve));
             t.BarTUnit = IsN16 ? "" : " °C";
             t.BarPUnit = IsN16 ? "" : " " + PressureDisplay.Unit;
         }

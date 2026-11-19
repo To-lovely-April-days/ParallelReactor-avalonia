@@ -9,7 +9,7 @@
   <!-- 共用资源（样稿 resPane / .res 最终层叠）：内边距 4 14 12；各节上下 10、节间 line-faint 细线（矮屏上下 6，最近事件不显示）。
        气路：h6 13/600 t-1 + 状态 13 t-3（占用时品牌蓝 600）；阀门小块 26 高、圆角 13、line-soft 边、13 px t-2，开 = g-1 底 g-line 边 g-ink 600 + 绿点，未接虚线 t-dis。
        搅拌：「搅拌」13/500 t-2 · 转速框 28 高 line-2 边 圆角 3（14/600 + 「rpm」13 t-3）· 开关 38 × 22 · 电流 13 t-3 ·「全部釜共用」13 t-3。
-       工具：维护模式（只读，触屏操作）· 看气路图 · 右侧会话「● 记录中 · PT-…」13 t-2。最近事件：7 px 圆点 + 1 px 竖线、时刻 40 宽 t-4、来源 600 t-1 + 标题 t-2、行高 18、行距 9。 -->
+       气路小块点击开关阀门（HMI v0.7，ValveCtl）。工具：看气路图 · 右侧会话「● 记录中 · PT-…」13 t-2。最近事件：7 px 圆点 + 1 px 竖线、时刻 40 宽 t-4、来源 600 t-1 + 标题 t-2、行高 18、行距 9。 -->
   <UserControl.Styles>
     <Style Selector="StackPanel#Body">
       <Setter Property="Margin" Value="14,4,14,12" />
@@ -146,7 +146,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="h:ValvePillVm">
-                <Border Classes="vp" Classes.on="{Binding IsOn}" Classes.na="{Binding IsNa}" ToolTip.Tip="{Binding Tip}">
+                <Border Classes="vp" Classes.on="{Binding IsOn}" Classes.na="{Binding IsNa}" ToolTip.Tip="{Binding Tip}" Cursor="Hand" Tapped="OnValvePill">
                   <Panel>
                   <Rectangle Classes="dash" Margin="-10,-1" RadiusX="13" RadiusY="13" Stroke="{StaticResource LineSoftBrush}" StrokeThickness="1" StrokeDashArray="3,2" />
                   <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
@@ -179,7 +179,7 @@
           <TextBlock Text="全部釜共用" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
         </StackPanel>
       </Border>
-      <!-- 维护模式 · 看气路图 · 会话 -->
+      <!-- 看气路图 · 会话（HMI v0.7：阀门直接点，去掉了「维护模式」按钮） -->
       <Border Classes="sec" Name="Tools">
         <DockPanel Name="ToolsRow">
           <StackPanel Name="Sess" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding SessTip}" Margin="8,0,0,0">
@@ -187,8 +187,6 @@
             <TextBlock Text="{Binding SessText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Classes="sm maint" b:Pr.Icon="f-wrench" Content="维护模式" Foreground="{StaticResource TDisBrush}" Command="{Binding MaintCommand}"
-                    ToolTip.Tip="{Binding MaintTip}" />
             <Button Classes="sm" b:Pr.Icon="f-grid" Content="看气路图" Command="{Binding ShowGasCommand}" ToolTip.Tip="切到气路图：阀门、管路和手动操作" />
           </StackPanel>
         </DockPanel>

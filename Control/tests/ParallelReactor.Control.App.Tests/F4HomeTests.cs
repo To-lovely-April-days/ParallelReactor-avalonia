@@ -79,7 +79,9 @@ public class F4HomeTests
     {
         Assert.Equal("共用气路总管 HDR-01 · 气体 A", MonText.Header("气体 A"));
         Assert.Equal("共用气路总管 HDR-01 · 气源全关", MonText.Header(null));
-        Assert.Contains("触屏操作", MonText.ValveTip("进气阀 SV1", true));
+        Assert.EndsWith("点击关闭", MonText.ValveTip("进气阀 SV1", true));
+        Assert.EndsWith("点击打开（要控制权）", MonText.ValveTip("进气阀 SV1", false));
+        Assert.EndsWith("先申请控制权", MonText.ValveTip("进气阀 SV1", false, "先申请控制权"));
         Assert.StartsWith("进气阀 SV1 · 开 · ", MonText.ValveTip("进气阀 SV1", true));
     }
 
@@ -153,19 +155,45 @@ public class F4HomeTests
         Assert.Equal(new[] { 1, 2, 3, 6 }, h.Tiles.Where(t => t.Flow).Select(t => t.N));
         Assert.True(T(1).Bubbles);
         Assert.Equal("SV4", T(4).SvLabel);
-        Assert.Contains("触屏操作", T(4).SvTip);
+        Assert.StartsWith("进气阀 SV4 · 关 · ", T(4).SvTip);            // RV4 报警中：写原因，不写「触屏操作」（HMI v0.7 起可以直接点）
+        Assert.Contains("不能手动开阀", T(4).SvTip);
+        Assert.Equal("进气阀 SV1 · 开 · 点击关闭", T(1).SvTip);
         s.Dispose();
     }
 
+    /// <summary>
+    /// 阀门直接开关（HMI v0.7，用户：「我不要维护模式 我要远程控制可以控制一切操作」）：点开着的关、点关着的开；
+    /// 报警中的一路不让开（写原因、什么都不发）；气源、排空同样。演示数据（1号机远程控制中）。
+    /// </summary>
     [Fact]
-    public void Valves_AreReadOnly_ClickExplainsTheTouchscreen()
+    public void Valves_ToggleDirectly_NoMaintenanceMode()
     {
         var s = Shell("mv=gas");
         var h = Home(s);
-        var before = s.Fleet.Device(1)!.Reactor(1)!.Valve;
-        h.ValveCommand.Execute(null);
-        Assert.Equal(MonText.ValveToast, s.Toasts.Items.Last().Text);
-        Assert.Equal(before, s.Fleet.Device(1)!.Reactor(1)!.Valve);
+        var d = s.Fleet.Device(1)!;
+        void Refresh() { s.Fleet.RefreshNow(); }
+        Assert.True(d.Reactor(1)!.Valve);
+        h.ToggleSv(1, true);                                     // 关 SV1（停止类）
+        Refresh();
+        Assert.False(d.Reactor(1)!.Valve);
+        Assert.Contains(s.Toasts.Items, t => t.Text == "1号机 · SV1 已关");
+        h.ToggleSv(5, false);                                    // 开 SV5（控制类，1号机有控制权）
+        Refresh();
+        Assert.True(d.Reactor(5)!.Valve);
+        h.ToggleSv(4, false);                                    // RV4 报警：不让开
+        Refresh();
+        Assert.False(d.Reactor(4)!.Valve);
+        Assert.Contains(s.Toasts.Items, t => t.Text.Contains("不能手动开阀"));
+        // 气源 / 排空
+        var key = d.Model.GasInlets[0].Key;
+        bool was = d.Source.GasOpen(key);
+        h.ToggleGas(key, was);
+        Refresh();
+        Assert.NotEqual(was, d.Source.GasOpen(key));
+        bool vent = d.Source.GasOpen(d.Model.Vent!.Key);
+        h.ToggleVent();
+        Refresh();
+        Assert.NotEqual(vent, d.Source.GasOpen(d.Model.Vent.Key));
         s.Dispose();
     }
 

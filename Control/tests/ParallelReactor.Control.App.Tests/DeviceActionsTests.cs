@@ -478,4 +478,39 @@ public class DeviceActionsTests
         Assert.Contains(s.Toasts.Items, t => t.Text.StartsWith("测试已中止", StringComparison.Ordinal));
         s.Dispose();
     }
+
+    /// <summary>
+    /// 阀门（HMI v0.7，用户：「我不要维护模式 我要远程控制可以控制一切操作」）：关阀是停止类（没有控制权也发、不带租约），开阀是控制类
+    /// （没有控制权时守卫拦下、不发；有控制权时带租约）。气源按型号表的键发 HMI 代码（inert / A / B），排空走 /gas/vent。
+    /// </summary>
+    [Fact]
+    public async Task Live_Valves_OpenNeedsLease_CloseDoesNot()
+    {
+        var (f, d, fake, _) = await Live(h =>
+        {
+            ScriptWrites(h);
+            h.On("PUT", "/channels/2/valve", c => ScriptedHttpHandler.Command(c, false, null));
+            h.On("PUT", "/gas/inlets/.*", c => ScriptedHttpHandler.Command(c, false, null));
+            h.On("PUT", "/gas/vent", c => ScriptedHttpHandler.Command(c, false, null));
+        });
+        // 没有控制权：关可以，开不行
+        Assert.Equal("", d.Actions.Why(DeviceAction.ValveClose, ActionPayload.Ch(2)));
+        Assert.NotEqual("", d.Actions.Why(DeviceAction.ValveOpen, ActionPayload.Ch(2)));
+        Assert.True((await d.Actions.RunAsync(DeviceAction.ValveClose, ActionPayload.Ch(2))).Ok);
+        var close = Assert.Single(fake.Http.Of("PUT", "/channels/2/valve"));
+        Assert.Null(close.Lease);
+        Assert.Contains("\"open\":false", close.Body);
+        // 有控制权：开阀带租约；气源发 HMI 代码；排空走 /gas/vent
+        await HoldLease(f, d, fake);
+        Assert.True((await d.Actions.RunAsync(DeviceAction.ValveOpen, ActionPayload.Ch(2))).Ok);
+        var open = fake.Http.Of("PUT", "/channels/2/valve").Last();
+        Assert.False(string.IsNullOrEmpty(open.Lease));
+        Assert.Contains("\"open\":true", open.Body);
+        var inlet = d.Model.GasInlets.First(g => g.HmiCode != null);
+        Assert.True((await d.Actions.RunAsync(DeviceAction.GasOpen, new ActionPayload(Id: inlet.Key))).Ok);
+        Assert.Equal(1, fake.Http.Count("PUT", "/gas/inlets/" + inlet.HmiCode));
+        Assert.True((await d.Actions.RunAsync(DeviceAction.GasClose, new ActionPayload(Id: d.Model.Vent!.Key))).Ok);
+        Assert.Equal(1, fake.Http.Count("PUT", "/gas/vent"));
+        await f.DisposeAsync();
+    }
 }

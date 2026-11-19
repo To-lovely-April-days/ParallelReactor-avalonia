@@ -111,7 +111,16 @@ public partial class GasView : UserControl
 
     private void OnValve(object? sender, RoutedEventArgs e)
     {
-        if (DataContext is HomePageVm vm) vm.ValveCommand.Execute(null);
+        // HMI v0.7：点阀门直接开关（气源 / 某路 SVn / 排空，按按钮所在的数据决定是哪一个）
+        if (DataContext is HomePageVm vm && sender is Avalonia.Controls.Control c)
+        {
+            switch (c.DataContext)
+            {
+                case GasInletVm g: vm.ToggleGas(g.Key, g.IsOn); break;
+                case MonTileVm t: vm.ToggleSv(t.N, t.SvOpen); break;
+                default: vm.ToggleVent(); break;
+            }
+        }
         e.Handled = true;
     }
 }

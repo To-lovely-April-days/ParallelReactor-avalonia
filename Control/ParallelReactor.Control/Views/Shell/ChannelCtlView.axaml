@@ -258,7 +258,7 @@
           <StackPanel>
             <Border Classes="h4"><TextBlock Text="阀门" /></Border>
             <DockPanel Classes="fr">
-              <pr:PrToggle DockPanel.Dock="Right" Theme="{StaticResource PrSwitch}" IsChecked="{Binding SvOpen, Mode=OneWay}" b:Pr.Reason="{Binding SvHint}"
+              <pr:PrToggle DockPanel.Dock="Right" Theme="{StaticResource PrSwitch}" IsChecked="{Binding SvOpen, Mode=OneWay}" Command="{Binding SvCommand}" b:Pr.Reason="{Binding SvReason}"
                            AutomationProperties.Name="{Binding SvTitle}" VerticalAlignment="Center" Margin="12,0,0,0" />
               <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="{Binding SvTitle}" /><TextBlock Classes="fs" Text="{Binding SvHint}" /></StackPanel>
             </DockPanel>

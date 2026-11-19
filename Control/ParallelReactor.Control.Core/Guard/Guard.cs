@@ -466,6 +466,18 @@ public static class ActionGuard
                 if (f.Channel(p.N)!.Program is ProgramStatus.Running or ProgramStatus.Held) return Rv(p) + " 程序运行中";
                 return VolumeCheck(p.Ml);
             }
+            case DeviceAction.ValveOpen:
+            {
+                // HMI 的联锁（TrySetReactorValve）：加压 / 反应 / 报警中不许手动开 SV；超压联锁、气路序列占用由设备判（拒绝原因照常提示）
+                string r = NeedCh(f, p);
+                if (r.Length > 0) return r;
+                return f.Channel(p.N)!.State is StateKey.Press or StateKey.React or StateKey.Alarm ? Rv(p) + " 加压 / 反应 / 报警中 · 不能手动开阀" : "";
+            }
+            case DeviceAction.ValveClose:
+                return NeedCh(f, p);
+            case DeviceAction.GasOpen:
+            case DeviceAction.GasClose:
+                return string.IsNullOrEmpty(p.Id) ? "没有指定气路" : "";
             default:   // StopAll、Remove：没有自己的检查
                 return "";
         }

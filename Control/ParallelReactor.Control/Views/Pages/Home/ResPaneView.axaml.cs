@@ -21,6 +21,12 @@ public partial class ResPaneView : UserControl
         };
     }
 
+    /// <summary>点气路小块：开关这一路的阀（HMI v0.7，不经维护模式）。</summary>
+    private void OnValvePill(object? sender, TappedEventArgs e)
+    {
+        if (DataContext is ResPaneVm vm && sender is Avalonia.Controls.Control { DataContext: ValvePillVm v }) { vm.TogglePill(v); e.Handled = true; }
+    }
+
     /// <summary>窄的时候会话另起一行（样稿窄屏 .res .sess{margin-left:0} + 换行）。</summary>
     private void FitTools()
     {

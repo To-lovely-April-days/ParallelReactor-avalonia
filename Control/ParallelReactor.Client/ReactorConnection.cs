@@ -214,6 +214,9 @@ public sealed class ControlledWrites
     public Task<CommandResult<JsonElement>> StartAutotuneAsync(int id, double tempC, CancellationToken ct) => Run(l => _c.Rest.StartAutotuneAsync(l, id, tempC, ct));
     public Task<CommandResult<JsonElement>> StartAutotuneAsync(int id, double tempC, int? band, CancellationToken ct) => Run(l => _c.Rest.StartAutotuneAsync(l, id, tempC, band, ct));
     public Task<CommandResult<JsonElement>> SetStirAsync(bool? on, int? rpm, CancellationToken ct) => Run(l => _c.Rest.SetStirAsync(l, on, rpm, ct));
+    public Task<CommandResult<JsonElement>> OpenValveAsync(int id, CancellationToken ct) => Run(l => _c.Rest.OpenValveAsync(l, id, ct));
+    public Task<CommandResult<JsonElement>> OpenGasInletAsync(string gid, CancellationToken ct) => Run(l => _c.Rest.OpenGasInletAsync(l, gid, ct));
+    public Task<CommandResult<JsonElement>> OpenVentAsync(CancellationToken ct) => Run(l => _c.Rest.OpenVentAsync(l, ct));
     public Task<CommandResult<LeakTestStartResult>> StartLeakTestAsync(int[] channels, double? testPsi, string? idem, CancellationToken ct) => Run(l => _c.Rest.StartLeakTestAsync(l, channels, testPsi, idem, ct));
     public Task<CommandResult<JsonElement>> ReplaceProgramAsync(int id, ProgramDoc program, CancellationToken ct) => Run(l => _c.Rest.ReplaceProgramAsync(l, id, program, ct));
     public Task<CommandResult<ProgramRunResult>> RunProgramAsync(int id, string? sessionId, string? idem, CancellationToken ct) => Run(l => _c.Rest.RunProgramAsync(l, id, sessionId, idem, ct));

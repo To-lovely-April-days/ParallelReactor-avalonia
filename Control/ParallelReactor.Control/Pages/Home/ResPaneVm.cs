@@ -34,7 +34,7 @@ public sealed record ResEventVm(string Time, string Src, string Title, EventLeve
 
 /// <summary>
 /// 共用资源面板（融合版 F3，样稿 resPane）：气路（占用 / 排队）+ 阀门小块（惰性气 · 气体 A · 气体 B · 排空，只读）· 共用搅拌（釜转速框 + 开关 + 电流 +「全部釜共用」）·
-/// 维护模式（只读：电脑端没有接口，状态 + 「触屏操作」）· 看气路图 · 会话 · 最近事件（报警页的「全部」）。
+/// 气路小块点击开关阀门（HMI v0.7，<see cref="ValveCtl"/>，不经维护模式）· 看气路图 · 会话 · 最近事件（报警页的「全部」）。
 /// </summary>
 public sealed partial class ResPaneVm : ObservableObject
 {
@@ -50,7 +50,6 @@ public sealed partial class ResPaneVm : ObservableObject
         AllEventsCommand = new RelayCommand(() => shell.Go(AppPage.Alarms));
         StirToggleCommand = new RelayCommand(ToggleStir);
         ApplyRpmCommand = new RelayCommand(ApplyRpm);
-        MaintCommand = new RelayCommand(() => shell.Toast("远程维护模式要在设备触屏上进入 / 退出（电脑端只显示状态）", Services.ToastKind.Info));
     }
 
     public ObservableCollection<ValvePillVm> Valves { get; } = new();
@@ -59,7 +58,6 @@ public sealed partial class ResPaneVm : ObservableObject
     public ICommand AllEventsCommand { get; }
     public ICommand StirToggleCommand { get; }
     public ICommand ApplyRpmCommand { get; }
-    public ICommand MaintCommand { get; }
 
     [ObservableProperty] private string _gasState = "";
     [ObservableProperty] private bool _gasBusy;
@@ -71,7 +69,6 @@ public sealed partial class ResPaneVm : ObservableObject
     [ObservableProperty] private string? _toggleReason;
     [ObservableProperty] private string _stirTip = "";
     [ObservableProperty] private string _rpmTip = "";
-    [ObservableProperty] private string _maintTip = "";
     [ObservableProperty] private bool _recording;
     [ObservableProperty] private string _sessText = "";
     [ObservableProperty] private string _sessTip = "";
@@ -102,6 +99,12 @@ public sealed partial class ResPaneVm : ObservableObject
         _ => (name, "", false),
     };
 
+    /// <summary>点气路小块：开关这一路的阀（HMI v0.7）。</summary>
+    public void TogglePill(ValvePillVm v)
+    {
+        if (Device is { } d && !v.IsNa) ValveCtl.ToggleGas(_shell, d, v.Key, v.IsOn);
+    }
+
     internal void Refresh(DeviceVm d)
     {
         _k = d.K;
@@ -120,8 +123,8 @@ public sealed partial class ResPaneVm : ObservableObject
             var v = i < Valves.Count && Valves[i].Key == g.Key ? Valves[i] : null;
             if (v == null) { v = new ValvePillVm(g.Key); if (i < Valves.Count) Valves[i] = v; else Valves.Add(v); }
             v.Name = nm; v.Gas = gas; v.IsNa = na; v.IsOn = src.GasOpen(g.Key);
-            // 悬停同样稿：气路名 · 接什么气由工艺决定 · 开 / 关（再说明阀门在触屏上操作）
-            v.Tip = g.Name + (gas.Length > 0 ? " · " + gas : "") + " · " + DevicePaneVm.GasSourceNote + " · " + (v.IsOn ? "开" : "关") + " · 阀门在设备触屏上操作";
+            // 悬停：气路名 · 接什么气由工艺决定 · 开 / 关 · 点击开关（HMI v0.7，不经维护模式）
+            v.Tip = ValveCtl.Tip(g.Name + " · " + DevicePaneVm.GasSourceNote, v.IsOn, ValveCtl.GasReason(d, g.Key, v.IsOn));
             i++;
         }
         {
@@ -129,7 +132,7 @@ public sealed partial class ResPaneVm : ObservableObject
             var v = i < Valves.Count && Valves[i].Key == key ? Valves[i] : null;
             if (v == null) { v = new ValvePillVm(key); if (i < Valves.Count) Valves[i] = v; else Valves.Add(v); }
             v.Name = "排空"; v.Gas = ""; v.IsNa = false; v.IsOn = src.GasOpen(key);
-            v.Tip = "排空 / 泄压 · " + (v.IsOn ? "开" : "关");
+            v.Tip = ValveCtl.Tip("排空 / 泄压阀", v.IsOn, ValveCtl.GasReason(d, key, v.IsOn));
             i++;
         }
         while (Valves.Count > i) Valves.RemoveAt(Valves.Count - 1);
@@ -151,7 +154,6 @@ public sealed partial class ResPaneVm : ObservableObject
             StirTip = why.Length > 0 ? why : stir.On ? "搅拌运行中 · 点击停止（全部釜）" : "搅拌已停 · 点击开启（全部釜）";
             RpmTip = whySet.Length > 0 ? whySet : "釜转速（全部釜共用）· 0 – " + RpmMax(d).ToString(CultureInfo.InvariantCulture) + " rpm · 回车写入";
         }
-        MaintTip = "维护模式：手动开关阀门要在" + d.Alias + "触屏上进入（电脑端没有接口，只显示状态）· 触屏操作";
 
         // 会话
         Recording = d.SessionId != null;

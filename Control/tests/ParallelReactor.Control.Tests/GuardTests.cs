@@ -87,8 +87,9 @@ public class GuardTests
             ["sessionStart"] = "safe", ["sessionMark"] = "safe", ["sessionEnd"] = "safe", ["alarmAck"] = "safe", ["leaseRequest"] = "conn", ["leaseCancel"] = "none",
             ["leaseRelease"] = "none", ["disconnect"] = "none", ["reconnect"] = "none", ["rename"] = "none", ["remove"] = "none",
         };
-        // 融合版 F3 追加的「溶液体积」样稿没有（不在样稿向量里）：只从这一条对照里排除，单独断言
-        var mock = DeviceActions.All.Where(s => s.Action != DeviceAction.SetVolume).ToArray();
+        // 融合版 F3 追加的「溶液体积」、HMI v0.7 的阀门四个，样稿没有（不在样稿向量里）：只从这一条对照里排除，单独断言
+        var added = new[] { DeviceAction.SetVolume, DeviceAction.ValveOpen, DeviceAction.ValveClose, DeviceAction.GasOpen, DeviceAction.GasClose };
+        var mock = DeviceActions.All.Where(s => !added.Contains(s.Action)).ToArray();
         Assert.Equal(expected.Keys, mock.Select(s => s.Code));
         foreach (var s in mock)
         {
@@ -98,11 +99,19 @@ public class GuardTests
         }
         Assert.Equal("启动加热", DeviceActions.Label(DeviceAction.HeatStart));
         Assert.True(DeviceActions.IsStopClass(DeviceAction.AlarmAck));
-        // 追加的一行：在表的最后（前面的顺序 = 样稿 ACTIONS）、控制类、针对某个反应釜
-        var v = DeviceActions.All[^1];
+        // 追加的几行：在表的最后（前面的顺序 = 样稿 ACTIONS）；溶液体积 = 控制类、针对某个反应釜
+        Assert.Equal(added, DeviceActions.All.Skip(DeviceActions.All.Count - added.Length).Select(s => s.Action));
+        var v = DeviceActions.Spec(DeviceAction.SetVolume);
         Assert.Equal((DeviceAction.SetVolume, "setVolume", "溶液体积", GuardKind.Control, true), (v.Action, v.Code, v.Label, v.Kind, v.PerChannel));
         Assert.Equal(v, DeviceActions.Spec(DeviceAction.SetVolume));
         Assert.True(DeviceActions.TryParse("setVolume", out var sv) && sv == DeviceAction.SetVolume);
+        // 阀门（HMI v0.7）：开 = 控制类（要控制权），关 = 停止类；SVn 针对某个反应釜，气源 / 排空不针对
+        Assert.Equal((GuardKind.Control, true), (DeviceActions.Spec(DeviceAction.ValveOpen).Kind, DeviceActions.Spec(DeviceAction.ValveOpen).PerChannel));
+        Assert.Equal((GuardKind.Safe, true), (DeviceActions.Spec(DeviceAction.ValveClose).Kind, DeviceActions.Spec(DeviceAction.ValveClose).PerChannel));
+        Assert.Equal((GuardKind.Control, false), (DeviceActions.Spec(DeviceAction.GasOpen).Kind, DeviceActions.Spec(DeviceAction.GasOpen).PerChannel));
+        Assert.Equal((GuardKind.Safe, false), (DeviceActions.Spec(DeviceAction.GasClose).Kind, DeviceActions.Spec(DeviceAction.GasClose).PerChannel));
+        Assert.Equal(TokenPermission.Stop, TokenRole.PermissionOf(DeviceAction.ValveClose));
+        Assert.Equal(TokenPermission.Control, TokenRole.PermissionOf(DeviceAction.GasOpen));
         Assert.Equal(TokenPermission.Control, TokenRole.PermissionOf(DeviceAction.SetVolume));
     }
 

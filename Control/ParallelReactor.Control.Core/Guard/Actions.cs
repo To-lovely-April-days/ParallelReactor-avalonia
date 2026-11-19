@@ -14,6 +14,11 @@ public enum DeviceAction
     LeaseRequest, LeaseCancel, LeaseRelease, Disconnect, Reconnect, Rename, Remove,
     /// <summary>溶液体积（融合版 F3，样稿没有；PUT /channels/{id}/volume）。追加在最后：前面的顺序与样稿 ACTIONS 一致。</summary>
     SetVolume,
+    /// <summary>
+    /// 阀门（HMI v0.7，用户 2026-11-19：「我不要维护模式 我要远程控制可以控制一切操作」）：开 / 关第 n 路进气阀 SVn（PUT /channels/{id}/valve），
+    /// 开 / 关一路气（payload.Id = 型号表的气路键，排空也在里面：PUT /gas/inlets/{id}、/gas/vent）。开 = 控制类（要控制权），关 = 停止类。
+    /// </summary>
+    ValveOpen, ValveClose, GasOpen, GasClose,
 }
 
 /// <summary>
@@ -79,6 +84,11 @@ public static class DeviceActions
         new(DeviceAction.Remove, "remove", "移除", GuardKind.None, false),
         // 融合版 F3（样稿没有）
         new(DeviceAction.SetVolume, "setVolume", "溶液体积", GuardKind.Control, true),
+        // HMI v0.7：远程直接开关阀门（不经维护模式）
+        new(DeviceAction.ValveOpen, "valveOpen", "开阀", GuardKind.Control, true),
+        new(DeviceAction.ValveClose, "valveClose", "关阀", GuardKind.Safe, true),
+        new(DeviceAction.GasOpen, "gasOpen", "开阀", GuardKind.Control, false),
+        new(DeviceAction.GasClose, "gasClose", "关阀", GuardKind.Safe, false),
     };
 
     private static readonly Dictionary<string, ActionSpec> ByCode = BuildIndex();
@@ -135,4 +145,21 @@ public static class DeviceActions
         GuardKind.Safe => "safe",
         _ => "control",
     };
+}
+
+/// <summary>阀门的叫法（提示、确认、悬停共用）：进气阀「SVn」；气源「惰性气体 进气阀」；排空「排空阀」。不写气体种类（接什么气由工艺决定）。</summary>
+public static class ValveTexts
+{
+    public static string Sv(int n) => "SV" + n.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    /// <summary>型号表的气路键 → 阀名（排空 = 「排空阀」；进气 = 气路名 + 「 进气阀」）。</summary>
+    public static string GasValveName(Models.ModelProfile m, string key)
+    {
+        if (m.Vent is { } v && v.Key == key) return "排空阀";
+        foreach (var g in m.GasInlets) if (g.Key == key) return g.Name + " 进气阀";
+        return key + " 阀";
+    }
+
+    /// <summary>这一路是不是排空（型号表的排空键）。</summary>
+    public static bool IsVent(Models.ModelProfile m, string key) => m.Vent is { } v && v.Key == key;
 }

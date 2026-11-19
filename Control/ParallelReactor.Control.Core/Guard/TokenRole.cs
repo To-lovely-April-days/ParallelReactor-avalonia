@@ -38,7 +38,8 @@ public sealed record TokenRole(bool ReadOnly = false, bool NoEstop = false)
     public static TokenPermission PermissionOf(DeviceAction action) => action switch
     {
         DeviceAction.Disable or DeviceAction.Stop or DeviceAction.HeatStop or DeviceAction.ProgAbort
-            or DeviceAction.StirOff or DeviceAction.ChStirOff or DeviceAction.StopAll => TokenPermission.Stop,
+            or DeviceAction.StirOff or DeviceAction.ChStirOff or DeviceAction.StopAll
+            or DeviceAction.ValveClose or DeviceAction.GasClose => TokenPermission.Stop,
         DeviceAction.Estop => TokenPermission.Estop,
         DeviceAction.SessionStart or DeviceAction.SessionMark or DeviceAction.SessionEnd or DeviceAction.AlarmAck
             or DeviceAction.LeaseRequest or DeviceAction.LeaseRelease => TokenPermission.Record,

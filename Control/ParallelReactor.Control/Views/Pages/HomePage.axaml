@@ -211,16 +211,13 @@
                 <TextBlock VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding IsRunView}">
                   <Run Text="{Binding BoardTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxA}" /><Run Text="{Binding CtxRun}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding CtxSep}" /><Run Text="{Binding CtxErr}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" /><Run Text="{Binding CtxProg}" />
                 </TextBlock>
-                <!-- 气路图 / 卡片 / 棒图（融合版 F4，样稿 monTool 的另一分支）：「运行 6/8」｜ 共用搅拌 ｜ 维护模式（只读：触屏操作）；面板窄于 800 时不写运行数和电流 -->
+                <!-- 气路图 / 卡片 / 棒图（融合版 F4，样稿 monTool 的另一分支）：「运行 6/8」｜ 共用搅拌（HMI v0.7 起阀门在图上直接点，没有维护模式按钮）；面板窄于 800 时不写运行数和电流 -->
                 <StackPanel Name="MvTool" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" IsVisible="{Binding IsMvX}" ClipToBounds="True">
                   <TextBlock Name="MvRun" VerticalAlignment="Center" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}">
                     <Run Text="运行 " /><Run Text="{Binding RunCount}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text="{Binding RunOf}" />
                   </TextBlock>
                   <Border Name="MvSep1" Classes="vsep" />
                   <vp:StirCtlView Name="MvStir" DataContext="{Binding Res}" IsVisible="{Binding HasStir}" VerticalAlignment="Center" />
-                  <Border Classes="vsep" IsVisible="{Binding Res.HasStir}" />
-                  <Button Classes="sm maint" b:Pr.Icon="f-wrench" Content="维护模式" Foreground="{StaticResource TDisBrush}" Command="{Binding Res.MaintCommand}"
-                          ToolTip.Tip="{Binding Res.MaintTip}" VerticalAlignment="Center" />
                 </StackPanel>
               </Panel>
             </DockPanel>

@@ -172,6 +172,10 @@ public sealed class ReactorApiClient : IDisposable
     public Task<CommandResult<JsonElement>> CancelAutotuneAsync(int id, CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Delete, $"channels/{id}/autotune", null, null, NewKey(), ct);
     public Task<CommandResult<JsonElement>> AbortProgramAsync(int id, CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Delete, $"channels/{id}/program/run", null, null, NewKey(), ct);
     public Task<CommandResult<JsonElement>> AbortLeakTestAsync(CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Delete, "leak-tests/current", null, null, NewKey(), ct);
+    /// <summary>v0.7 关阀（停止类，免租约）：PUT /channels/{id}/valve、/gas/inlets/{gid}（inert / A / B）、/gas/vent，正文 {open:false}。</summary>
+    public Task<CommandResult<JsonElement>> CloseValveAsync(int id, CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Put, $"channels/{id}/valve", new { open = false }, null, NewKey(), ct);
+    public Task<CommandResult<JsonElement>> CloseGasInletAsync(string gid, CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Put, $"gas/inlets/{Uri.EscapeDataString(gid)}", new { open = false }, null, NewKey(), ct);
+    public Task<CommandResult<JsonElement>> CloseVentAsync(CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Put, "gas/vent", new { open = false }, null, NewKey(), ct);
     /// <summary>PUT /stir {on:false}（唯一的停止类搅拌写法）。</summary>
     public Task<CommandResult<JsonElement>> StopStirAsync(CancellationToken ct) => StopCommandAsync<JsonElement>(HttpMethod.Put, "stir", new { on = false }, null, NewKey(), ct);
 
@@ -215,6 +219,13 @@ public sealed class ReactorApiClient : IDisposable
     /// </summary>
     public Task<CommandResult<JsonElement>> StartAutotuneAsync(string lease, int id, double tempC, int? band, CancellationToken ct)
         => CommandAsync<JsonElement>(HttpMethod.Post, $"channels/{id}/autotune", band is { } b ? (object)new { tempC, band = b } : new { tempC }, lease, NewKey(), ct);
+    /// <summary>v0.7 开阀（控制类，带租约）：同上，正文 {open:true}；HMI 的联锁（超压、加压 / 反应中、气路序列占用、急停）照常拒绝。</summary>
+    public Task<CommandResult<JsonElement>> OpenValveAsync(string lease, int id, CancellationToken ct)
+        => CommandAsync<JsonElement>(HttpMethod.Put, $"channels/{id}/valve", new { open = true }, lease, NewKey(), ct);
+    public Task<CommandResult<JsonElement>> OpenGasInletAsync(string lease, string gid, CancellationToken ct)
+        => CommandAsync<JsonElement>(HttpMethod.Put, $"gas/inlets/{Uri.EscapeDataString(gid)}", new { open = true }, lease, NewKey(), ct);
+    public Task<CommandResult<JsonElement>> OpenVentAsync(string lease, CancellationToken ct)
+        => CommandAsync<JsonElement>(HttpMethod.Put, "gas/vent", new { open = true }, lease, NewKey(), ct);
     /// <summary>PUT /stir {on?, rpm?}（带 rpm 或 on=true 为控制类）。</summary>
     public Task<CommandResult<JsonElement>> SetStirAsync(string lease, bool? on, int? rpm, CancellationToken ct)
     {

@@ -130,6 +130,8 @@ public sealed partial class DemoFleet
 
     private static readonly Regex SnYear = new("-[0-9]{4}-", RegexOptions.CultureInvariant);
 
+    private static string GasValveName(DemoDevice d, string key) => ValveTexts.GasValveName(d.Model, key);
+
     private (string Msg, bool Info) Run(DemoDevice d, DeviceAction action, ActionPayload p)
     {
         var now = Now;
@@ -193,6 +195,25 @@ public sealed partial class DemoFleet
                 if (ch!.Program is not { Status: ProgramStatus.Running or ProgramStatus.Held }) return (rv + " 没有运行中的程序 · 已发送中止", true);
                 StopChannel(ch);
                 return (rv + " 程序已中止", false);
+            case DeviceAction.ValveOpen:
+            case DeviceAction.ValveClose:
+            {
+                bool open = action == DeviceAction.ValveOpen;
+                if (ch!.Sv == open) return (rv.Replace("RV", "SV") + (open ? " 已开" : " 已关") + " · 未改变", true);
+                ch.Sv = open;
+                return (rv.Replace("RV", "SV") + (open ? " 已开" : " 已关"), false);
+            }
+            case DeviceAction.GasOpen:
+            case DeviceAction.GasClose:
+            {
+                bool open = action == DeviceAction.GasOpen;
+                int i = d.GasList.FindIndex(kv => kv.Key == p.Id);
+                if (i < 0) return ("没有这路气", true);
+                string name = GasValveName(d, p.Id!);
+                if (d.GasList[i].Value == open) return (name + (open ? " 已开" : " 已关") + " · 未改变", true);
+                d.GasList[i] = new System.Collections.Generic.KeyValuePair<string, bool>(p.Id!, open);
+                return (name + (open ? " 已开" : " 已关"), false);
+            }
             case DeviceAction.StirOn:
                 d.Stir!.On = true;
                 return ("共用搅拌已启动 · " + JsNumber.ToString(d.Stir.Rpm) + " rpm", false);

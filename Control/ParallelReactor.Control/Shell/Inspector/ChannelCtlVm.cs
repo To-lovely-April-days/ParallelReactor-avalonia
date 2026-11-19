@@ -46,7 +46,7 @@ public static class VolumeText
 /// 主页检查器（融合版 F3，样稿 ctlHTML / #ctlPop.insp）：选中的一路 ——
 /// 头（「RV1」24 细体 + 状态小块 + 上一路 / 下一路）· 说明（设备 · 型号 · 程序「…」/ 第 3/4 步 恒温反应 · 剩 27 min）· 只读 / 急停条 ·
 /// 测量值（温度 / 压力 / 气体消耗）· 温度控制（升温方式、温度 SP 步进 ±1 ℃、启动 / 停止加热）· 反应配置（溶液体积 ±0.1 mL，写 PUT /channels/{id}/volume；
-/// 气相体积说明；搅拌 = 全部釜共用）· 阀门（进气阀 SVn：只读，维护模式在触屏）· 操作（停止该通道 → 停止通道对话框 / 启动该通道；停用 / 启用通道）。
+/// 气相体积说明；搅拌 = 全部釜共用）· 阀门（进气阀 SVn：开关直接开 / 关，HMI v0.7）· 操作（停止该通道 → 停止通道对话框 / 启动该通道；停用 / 启用通道）。
 /// 每次刷新就地更新（同一个实例，换通道只换数据）。
 /// </summary>
 public sealed partial class ChannelCtlVm : ObservableObject
@@ -68,6 +68,7 @@ public sealed partial class ChannelCtlVm : ObservableObject
         VolUpCommand = new RelayCommand(() => SetVol(+1));
         StopChCommand = new RelayCommand(() => shell.OpenDialog("stopch", _k.ToString(CultureInfo.InvariantCulture) + ":" + _n.ToString(CultureInfo.InvariantCulture)));
         StartChCommand = new RelayCommand(() => Act(DeviceAction.Start, new ActionPayload(N: _n, Sp: R?.SpC)));
+        SvCommand = new RelayCommand(() => { if (D is { } d && d.Reactor(_n) is { } r) Pages.Home.ValveCtl.ToggleSv(shell, d, _n, r.Valve); });
         EnableCommand = new RelayCommand(() =>
         {
             if (Disabled) Act(DeviceAction.Enable, ActionPayload.Ch(_n));
@@ -82,6 +83,8 @@ public sealed partial class ChannelCtlVm : ObservableObject
     public ICommand SpUpCommand { get; }
     public ICommand HeatStartCommand { get; }
     public ICommand HeatStopCommand { get; }
+    /// <summary>进气阀 SVn 开关（HMI v0.7）。</summary>
+    public ICommand SvCommand { get; }
     public ICommand VolDownCommand { get; }
     public ICommand VolUpCommand { get; }
     public ICommand StopChCommand { get; }
@@ -123,6 +126,8 @@ public sealed partial class ChannelCtlVm : ObservableObject
 
     [ObservableProperty] private string _svTitle = "";
     [ObservableProperty] private string _svHint = "";
+    /// <summary>SVn 开关不能点的原因（null = 能点）。</summary>
+    [ObservableProperty] private string? _svReason;
     [ObservableProperty] private bool _svOpen;
 
     [ObservableProperty] private bool _running;
@@ -185,7 +190,9 @@ public sealed partial class ChannelCtlVm : ObservableObject
 
         SvTitle = "进气阀 SV" + r.N.ToString(CultureInfo.InvariantCulture);
         SvOpen = r.Valve;
-        SvHint = d.EstopActive ? "急停中 · 阀门已全关" : "只读 · 手动开关阀门要在设备触屏上进入「远程维护模式」";
+        // HMI v0.7（用户：远程控制要能做一切操作，不要维护模式）：开关直接开 / 关 SVn；开要控制权，关不要；不能点时写原因
+        SvReason = d.EstopActive ? "急停中 · 阀门已全关" : Pages.Home.ValveCtl.SvReason(d, r.N, r.Valve);
+        SvHint = SvReason ?? (r.Valve ? "开 · 点击关闭" : "关 · 点击打开（要控制权）");
 
         Running = StateKeys.IsRunning(own);
         StopReason = Nz(d.Actions.Why(DeviceAction.Stop, ActionPayload.Ch(r.N)));

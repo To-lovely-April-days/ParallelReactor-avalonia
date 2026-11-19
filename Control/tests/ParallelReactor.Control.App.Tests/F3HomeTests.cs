@@ -158,7 +158,7 @@ public class F3HomeTests
         // 只写气路名，不猜接的是什么气、也不写「未接」（接什么气由工艺决定，2026-11-18 用户确认）
         Assert.All(r.Valves, v => Assert.False(v.IsNa));
         Assert.All(r.Valves, v => Assert.Equal("", v.Gas));
-        Assert.Equal("气体 A · 接什么气由工艺决定 · 开 · 阀门在设备触屏上操作", r.Valves[1].Tip);
+        Assert.Equal("气体 A · 接什么气由工艺决定 · 开 · 点击关闭", r.Valves[1].Tip);   // HMI v0.7：点击直接开关
         Assert.Equal(("400", "1.2 A", true), (r.RpmText, r.AmpText, r.StirOn));
         var gasRow = s.Devices.Info.Single(x => x.Key == "气源");
         Assert.Equal(("惰性气体、气体 A、气体 B", "接什么气由工艺决定"), (gasRow.Value, gasRow.Sub));

@@ -67,12 +67,8 @@ public static class MonText
     /// <summary>共用总管下的说明（样稿 hdrl）：「共用气路总管 HDR-01 · 气体 A」/「… · 气源全关」—— 只写气路名，不写接的是什么气（由工艺决定）。</summary>
     public static string Header(string? openInlet) => "共用气路总管 HDR-01 · " + (openInlet is { Length: > 0 } g ? g : "气源全关");
 
-    /// <summary>阀门的悬停提示：「进气阀 SV1 · 开 · 只显示状态 · 手动开关在设备触屏上（远程维护模式）· 触屏操作」。</summary>
-    public static string ValveTip(string name, bool open) =>
-        name + " · " + (open ? "开" : "关") + " · 只显示状态 · 手动开关要在设备触屏上进入远程维护模式 · 触屏操作";
-
-    /// <summary>点阀门的提示（电脑端没有维护模式的接口）。</summary>
-    public const string ValveToast = "阀门只显示状态 · 手动开关要在设备触屏上进入「远程维护模式」（触屏操作）";
+    /// <summary>阀门的悬停提示（HMI v0.7 起点击直接开关，见 <see cref="ValveCtl"/>）：「进气阀 SV1 · 开 · 点击关闭」。</summary>
+    public static string ValveTip(string name, bool open, string? reason = null) => ValveCtl.Tip(name, open, reason);
 }
 
 /// <summary>
@@ -140,7 +136,7 @@ public sealed partial class MonTileVm : ObservableObject
     /// </summary>
     /// <param name="devSteps">设备上主要程序的步数（这一路没有程序时卡片照样写「—/4」、画空的步骤条，同样稿用设备的程序）。</param>
     public void Apply(ReactorVm r, double tmax, double pmax, double? plim, bool srcOn, bool estop, bool selected, bool stale, TileMark mark, string? markTip,
-        int? devSteps = null)
+        int? devSteps = null, string? svReason = null)
     {
         var own = r.Own;
         IsSelected = selected;
@@ -187,7 +183,7 @@ public sealed partial class MonTileVm : ObservableObject
         SvOpen = r.Valve;
         Flow = r.Valve && srcOn && live;
         Bubbles = Flow;
-        SvTip = MonText.ValveTip("进气阀 SV" + Num, r.Valve);
+        SvTip = MonText.ValveTip("进气阀 SV" + Num, r.Valve, svReason);
     }
 }
 
@@ -204,7 +200,7 @@ public sealed partial class GasInletVm : ObservableObject
 
 /// <summary>
 /// 气路图的整机部分（融合版 F4，样稿 gasView）：气源（惰性气体 / 气体 A / 气体 B）、汇流管、共用总管 HDR-01、排空 / 泄压阀。
-/// 阀门只显示状态：电脑端没有维护模式的接口，手动开关要在设备触屏上进远程维护模式（悬停「触屏操作」）。
+/// 阀门（HMI v0.7）：点击直接开关（要控制权；关阀不要），不经维护模式（<see cref="ValveCtl"/>）。
 /// </summary>
 public sealed partial class GasNetVm : ObservableObject
 {
@@ -230,13 +226,13 @@ public sealed partial class GasNetVm : ObservableObject
             if (v == null) { v = new GasInletVm(g.Key); if (i < Inlets.Count) Inlets[i] = v; else Inlets.Add(v); }
             v.Name = g.Name;
             v.IsOn = src.GasOpen(g.Key);
-            v.Tip = MonText.ValveTip(g.Name + "（接什么气由工艺决定）", v.IsOn);
+            v.Tip = MonText.ValveTip(g.Name + " · 接什么气由工艺决定", v.IsOn, ValveCtl.GasReason(d, g.Key, v.IsOn));
             if (v.IsOn) open ??= g.Name;
             i++;
         }
         while (Inlets.Count > i) Inlets.RemoveAt(Inlets.Count - 1);
         VentOn = m.Vent is { } vl && src.GasOpen(vl.Key);
-        VentTip = MonText.ValveTip("排空 / 泄压阀", VentOn);
+        VentTip = MonText.ValveTip("排空 / 泄压阀", VentOn, m.Vent is { } vk ? ValveCtl.GasReason(d, vk.Key, VentOn) : null);
         SrcOn = open != null;
         bool anySv = d.Reactors.Any(r => r.Installed && r.Valve && r.Own is not (StateKey.Idle or StateKey.Uninstalled));
         HeaderFlow = SrcOn && (anySv || VentOn);

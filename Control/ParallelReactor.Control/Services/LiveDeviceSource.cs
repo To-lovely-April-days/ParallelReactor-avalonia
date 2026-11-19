@@ -710,6 +710,32 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 var r = await c.Rest.AbortProgramAsync(n, ct).ConfigureAwait(true);
                 return was ? Ok(rv + " 程序已中止", Hw(r, hw), ToastKind.Warn) : Ok(rv + " 没有运行中的程序 · 已发送中止", Hw(r, hw), ToastKind.Info, true);
             }
+            case DeviceAction.ValveOpen:
+            case DeviceAction.ValveClose:
+            {
+                // HMI v0.7：远程直接开关进气阀（不经维护模式）；开 = 控制类（租约），关 = 停止类
+                bool open = action == DeviceAction.ValveOpen;
+                string sv = ValveTexts.Sv(n);
+                var r = open ? await c.Control.OpenValveAsync(n, ct).ConfigureAwait(true) : await c.Rest.CloseValveAsync(n, ct).ConfigureAwait(true);
+                return Ok(sv + (open ? " 已开" : " 已关"), Hw(r, hw), open ? ToastKind.Warn : ToastKind.Ok);
+            }
+            case DeviceAction.GasOpen:
+            case DeviceAction.GasClose:
+            {
+                bool open = action == DeviceAction.GasOpen;
+                string key = a.Id ?? throw new ArgumentException("没有指定气路");
+                string name = ValveTexts.GasValveName(Model, key);
+                CommandResult<System.Text.Json.JsonElement> r;
+                if (ValveTexts.IsVent(Model, key))
+                    r = open ? await c.Control.OpenVentAsync(ct).ConfigureAwait(true) : await c.Rest.CloseVentAsync(ct).ConfigureAwait(true);
+                else
+                {
+                    // 型号表的键 → HMI 代码（inert / A / B）
+                    string gid = Model.GasInlets.FirstOrDefault(g => g.Key == key)?.HmiCode ?? key;
+                    r = open ? await c.Control.OpenGasInletAsync(gid, ct).ConfigureAwait(true) : await c.Rest.CloseGasInletAsync(gid, ct).ConfigureAwait(true);
+                }
+                return Ok(name + (open ? " 已开" : " 已关"), Hw(r, hw), open ? ToastKind.Warn : ToastKind.Ok);
+            }
             case DeviceAction.StirOn:
             {
                 int rpm = (int)Math.Round(a.Rpm ?? Latest?.Stir.RpmSp ?? 300);

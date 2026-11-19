@@ -65,6 +65,7 @@
 
   <!-- 阀门（样稿 .vlv）：28（气源 26、紧凑 22 / 19）的方块、白底、圆角 5、无边（只显示状态：维护模式在设备触屏上）；点了提示「触屏操作」。 -->
   <ControlTheme x:Key="PrValveBtn" TargetType="Button">
+    <Setter Property="Cursor" Value="Hand" />
     <Setter Property="Width" Value="28" />
     <Setter Property="Height" Value="28" />
     <Setter Property="Padding" Value="0" />
