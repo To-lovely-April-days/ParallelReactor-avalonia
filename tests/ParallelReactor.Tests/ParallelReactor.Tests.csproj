@@ -29,6 +29,9 @@
     <Compile Include="../../Service/EstopLatch.cs" Link="Src/EstopLatch.cs" />
     <Compile Include="../../Models/StepSnapshot.cs" Link="Src/StepSnapshot.cs" />
     <Compile Include="../../Models/ProgramLimits.cs" Link="Src/ProgramLimits.cs" />
+    <!-- v0.8 程序步骤（STEPS-SPEC）：字段表 / 时长估算 / 模板 + 步骤引擎（设备接口 IStepIo，测试用虚拟时钟的假设备） -->
+    <Compile Include="../../Models/StepFields.cs" Link="Src/StepFields.cs" />
+    <Compile Include="../../Models/StepEngine.cs" Link="Src/StepEngine.cs" />
     <Compile Include="../../Models/ProgramRunGuard.cs" Link="Src/ProgramRunGuard.cs" />
     <Compile Include="../../Models/GasLease.cs" Link="Src/GasLease.cs" />
     <!-- 多程序并行（api-phase3）：运行信息 / 气路排队 / 搅拌引用计数 -->

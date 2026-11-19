@@ -8,8 +8,8 @@ using ParallelReactor.Models;
 namespace ParallelReactor.Api;
 
 /// <summary>
-/// 下发快照 <see cref="StepSnapshot"/> → §6.9 程序 JSON（<see cref="ProgramStepDto"/>），是 Api/Hmi/ProgramJson.Parse 的反方向：
-/// sel 字段的界面 label 经 <see cref="ProgramSchemaCodes"/> 换成英文枚举码（已经是枚举码的、表里没有的原样输出）；数值输出为 JSON 数字；
+/// 下发快照 <see cref="StepSnapshot"/> → §6.9 程序 JSON（<see cref="ProgramStepDto"/>），是 Api/ProgramJson.Parse 的反方向：
+/// v0.8 起步骤里存的就是英文枚举码（原样输出）；万一是界面 label 经 <see cref="ProgramSchemaCodes"/> 换成码；数值输出为 JSON 数字（压力 psi）；
 /// heat 步骤总是带 mode（缺省 fixed），mode = curve 时追加 segments[{temp, rate, hold}]。纯逻辑（不依赖 StepDef.Registry），测试工程直接链接。
 /// GET /channels/{id}/program/run 用它导出运行中程序的冻结步骤（SnapshotBuilder 按步骤列表缓存，每次运行只转换一次）。
 /// </summary>

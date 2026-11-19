@@ -140,6 +140,12 @@
                            Foreground="#e0394c" VerticalAlignment="Center" />
               </StackPanel>
             </Border>
+            <!-- 已从旧格式转换（STEPS-SPEC §3）：提示检查 -->
+            <Border DockPanel.Dock="Top" IsVisible="{Binding ShowMigrated}" Background="#1FF0A830"
+                    BorderBrush="#4DF0A830" BorderThickness="0,0,0,1" Padding="16,9">
+              <TextBlock Text="{Binding MigratedHint}" FontSize="13" FontWeight="SemiBold"
+                         Foreground="{DynamicResource Amber}" TextWrapping="Wrap" VerticalAlignment="Center" />
+            </Border>
             <ScrollViewer Padding="14,12" VerticalScrollBarVisibility="Auto">
               <Panel>
               <!-- 空状态 -->
@@ -245,6 +251,12 @@
                 <TextBlock Text="应用到其他通道" VerticalAlignment="Center" />
               </StackPanel>
             </Button>
+            <Button Classes="pbtn" Margin="0,0,8,0" Command="{Binding LoadTemplateCommand}" IsEnabled="{Binding CanEdit}">
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M4 4h16v16H4z M4 9h16 M9 9v11" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
+                <TextBlock Text="加氢模板" VerticalAlignment="Center" />
+              </StackPanel>
+            </Button>
             <Button Classes="pbtn" Command="{Binding SaveTemplateCommand}">
               <StackPanel Orientation="Horizontal" Spacing="6">
                 <Viewbox Width="14" Height="14"><Canvas Width="24" Height="24"><Path Data="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z M17 21v-8H7v8 M7 3v5h8" Stroke="{DynamicResource Body}" StrokeThickness="2" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent" /></Canvas></Viewbox>
@@ -300,7 +312,7 @@
 
                   <!-- 普通字段 num/sel -->
                   <DataTemplate DataType="models:StepField">
-                    <StackPanel Margin="0,0,0,14">
+                    <StackPanel Margin="0,0,0,14" IsVisible="{Binding Shown}">
                       <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
                         <TextBlock Text="{Binding Label}" Classes="flab" />
                         <TextBlock Grid.Column="1" Text="{Binding Unit}" Classes="funit" />
@@ -310,17 +322,6 @@
                               CommandParameter="{Binding}" />
                       <ComboBox Classes="ipt" ItemsSource="{Binding Options}" HorizontalAlignment="Stretch"
                                 SelectedItem="{Binding Value, Mode=TwoWay}" IsVisible="{Binding IsSel}" />
-                    </StackPanel>
-                  </DataTemplate>
-
-                  <!-- 搅拌：全局共用转速（点按调起键盘）-->
-                  <DataTemplate DataType="vm:StirRow">
-                    <StackPanel Margin="0,0,0,14">
-                      <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
-                        <TextBlock Text="搅拌转速（全局共用）" Classes="flab" />
-                        <TextBlock Text="rpm" Classes="funit" />
-                      </Grid>
-                      <Button Classes="iptbtn" Content="{Binding RpmText}" Command="{Binding EditCommand}" />
                     </StackPanel>
                   </DataTemplate>
 

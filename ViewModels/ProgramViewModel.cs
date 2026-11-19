@@ -35,6 +35,9 @@ public partial class ProgramViewModel : ViewModelBase
     [ObservableProperty] private string _emptyHint = "";
 
     public bool HasSelection => SelectedStep != null;
+    /// <summary>当前通道的程序是从旧格式转换来的（远程 PUT 旧格式、开发钩子）：时间线顶部提示「已从旧格式转换，请检查」。</summary>
+    public bool ShowMigrated => CurrentChannel?.IsMigrated == true;
+    public string MigratedHint => "已从旧格式转换，请检查（STEPS-SPEC §3：吹扫 → 置换、等待 → 保持、结束方式拆成 保持 / 放空 / 置换）";
     public bool IsEmpty => Steps.Count == 0;
     public string SelInfo => SelectedStep == null
         ? "" : $"{SelectedStep.Ordinal:00} / {Steps.Count:00}";
@@ -59,21 +62,24 @@ public partial class ProgramViewModel : ViewModelBase
     public ProgramViewModel(MainViewModel main)
     {
         _main = main;
-        Palette = new[]
-        {
-            StepType.Purge, StepType.Heat, StepType.Press, StepType.Stir,
-            StepType.Wait, StepType.React, StepType.End
-        }.Select(t => new PaletteItem(t)).ToList();
+        // 步骤库 = v0.8 的九种（STEPS-SPEC §0，编辑器顺序）；「结束」固定在末尾，点它只是选中已有的结束步骤
+        Palette = StepTypeCodes.All.Select(t => new PaletteItem(t)).ToList();
 
-        // 每通道开机为空程序：不预置示例步骤（程序 / 模板的保存与载入随配方一起实现）
+        // 每通道开机预置「加氢筛选」默认模板（设计稿 §五，结束固定在最后）；程序 / 模板的保存与载入随配方一起实现
         foreach (var rv in _main.Reactors)
         {
-            _byRv[rv.Id] = new ObservableCollection<ProgramStep>();
+            _byRv[rv.Id] = new ObservableCollection<ProgramStep>(TemplateSteps());
             Channels.Add(new ProgramChannel(rv));
         }
 
         var first = Channels.FirstOrDefault(c => !c.Reactor.IsIdle) ?? Channels.First();
         SelectChannel(first);
+        // 压力字段按「设置 → 压力单位」显示：单位变了，步骤摘要与检查器跟着换（参数仍是 psi，不算修改）
+        Units.Changed += () =>
+        {
+            foreach (var list in _byRv.Values) foreach (var st in list) st.RefreshDetail();
+            BuildInspector();
+        };
     }
 
     // ============ 命令层（C25）============
@@ -96,7 +102,60 @@ public partial class ProgramViewModel : ViewModelBase
     {
         if (CurrentRv != rv) return;
         SelectedStep = null;
+        OnPropertyChanged(nameof(ShowMigrated));
         RenumberAndRefresh();
+    }
+
+    /// <summary>「加氢筛选」模板（设计稿 §五，<see cref="StepTemplates.Hydrogenation"/>）按全局限值裁剪后的步骤。</summary>
+    private List<ProgramStep> TemplateSteps()
+        => StepTemplates.Hydrogenation(_main.Settings.LeakRate).Select(t =>
+        {
+            var step = NewStep(t.Type);
+            foreach (var kv in t.Params) step.With(kv.Key, kv.Value);
+            return step;
+        }).ToList();
+
+    /// <summary>
+    /// 「结束」固定在最后且只有一个（STEPS-SPEC §0）：去掉多余的结束、把它挪到末尾，没有就补上。每次增删挪之后调用。
+    /// </summary>
+    internal static void PinEnd(IList<ProgramStep> steps)
+    {
+        if (steps.Count > 0 && steps[^1].Type == StepType.End && steps.Count(x => x.Type == StepType.End) == 1) return;   // 已经是唯一且最后
+        ProgramStep? end = null;
+        for (int i = steps.Count - 1; i >= 0; i--)
+        {
+            if (steps[i].Type != StepType.End) continue;
+            if (end == null) end = steps[i];
+            steps.RemoveAt(i);
+        }
+        steps.Add(end ?? ProgramStep.New(StepType.End));
+    }
+
+    /// <summary>插入位置不能越过「结束」。</summary>
+    private int ClampBeforeEnd(int at)
+    {
+        int end = -1;
+        for (int i = 0; i < Steps.Count; i++) if (Steps[i].Type == StepType.End) { end = i; break; }
+        return end < 0 ? Math.Clamp(at, 0, Steps.Count) : Math.Clamp(at, 0, end);
+    }
+
+    /// <summary>载入「加氢筛选」模板（覆盖当前通道的程序）。</summary>
+    [RelayCommand]
+    [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
+    private void LoadTemplate()
+    {
+        if (CurrentChannel == null) return;
+        _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
+        {
+            Steps.Clear();
+            foreach (var st in TemplateSteps()) Steps.Add(st);
+            SelectedStep = null;
+            if (CurrentChannel != null) CurrentChannel.IsMigrated = false;
+            OnPropertyChanged(nameof(ShowMigrated));
+            MarkModified();
+            RenumberAndRefresh();
+            return OpResult.Done("已载入「加氢筛选」模板", "ok");
+        }));
     }
 
     // ============ 通道选择 ============
@@ -112,6 +171,7 @@ public partial class ProgramViewModel : ViewModelBase
         RaiseLock();
         Steps = _byRv[ch.Reactor.Id];
         SelectedStep = null;
+        OnPropertyChanged(nameof(ShowMigrated));
         RenumberAndRefresh();
     }
 
@@ -123,9 +183,16 @@ public partial class ProgramViewModel : ViewModelBase
         if (CurrentChannel == null) return;
         _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
         {
+            if (item.Type == StepType.End)
+            {
+                // 「结束」固定在最后且只有一个：点它只是选中
+                SelectedStep = Steps.FirstOrDefault(x => x.Type == StepType.End);
+                return OpResult.Silent;
+            }
             var step = NewStep(item.Type);
-            int at = SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count;
+            int at = ClampBeforeEnd(SelectedStep != null ? Steps.IndexOf(SelectedStep) + 1 : Steps.Count);
             Steps.Insert(at, step);
+            PinEnd(Steps);
             SelectedStep = step;
             MarkModified();
             RenumberAndRefresh();
@@ -133,25 +200,25 @@ public partial class ProgramViewModel : ViewModelBase
         }));
     }
 
-    /// <summary>新建步骤：默认值（含搅拌取当前全局转速）按全局限值裁剪（C4），避免一拖进来就超限。</summary>
+    /// <summary>新建步骤：默认值按全局限值裁剪（C4），避免一拖进来就超限；气密检查的允许压降取设置里的泄漏率阈值。</summary>
     private ProgramStep NewStep(StepType t)
     {
         var step = ProgramStep.New(t);
-        if (t == StepType.Stir) step.With("rpm", (double)_main.StirRpm);
+        if (t == StepType.Leak) step.With("maxDrop", _main.Settings.LeakRate);
         var lim = Limits;
         foreach (var f in step.Def.Fields.Where(f => f.Kind == "num"))
             step.With(f.Key, ProgramLimits.ClampField(t, f.Key, step.Num(f.Key, f.Min), f.Min, f.Max, lim));
         return step;
     }
 
-    /// <summary>检查器数值字段：FieldDef 范围与全局限值取交集（屏幕键盘按此裁剪输入）。</summary>
+    /// <summary>检查器数值字段：FieldDef 范围与全局限值（以及同一步骤的跨字段规则）取交集，屏幕键盘按此裁剪输入。</summary>
     /// <remarks>字段的下拉 / 文本写入经 Gate（= TryEditProgram 闸门），被拒时控件回到原值。</remarks>
     private StepField Field(ProgramStep s, FieldDef f)
     {
         int rv = CurrentRv;
         Func<bool> gate = () => _main.LocalOk(Ops.TryEditProgram(Src, rv, () => OpResult.Silent));
         return f.Kind == "num"
-            ? new StepField(s, f, ProgramLimits.FieldRange(s.Type, f.Key, f.Min, f.Max, Limits)) { Gate = gate }
+            ? new StepField(s, f, () => ProgramLimits.FieldRange(s.Type, f.Key, f.Min, f.Max, Limits, k => s.Num(k, s.Def.Spec.Field(k)?.Default ?? 0))) { Gate = gate }
             : new StepField(s, f) { Gate = gate };
     }
 
@@ -171,29 +238,6 @@ public partial class ProgramViewModel : ViewModelBase
         int rv = CurrentRv;
         _main.Keyboard.OpenNumeric(f.Label, f.Number, f.Unit ?? "", f.Min, f.Max,
             v => Ops.TryEditProgram(Src, rv, () => { f.SetNumber(v); return OpResult.Silent; }));
-    }
-
-    // ============ 全局搅拌（程序里的「搅拌」步骤改为全局单步）============
-    private StirRow? _stirRow;
-    public string GlobalStirText => $"{_main.StirRpm} rpm";
-
-    /// <summary>
-    /// 打开全局转速键盘（检查器「搅拌」行）。apply 为命令层写入（StirRow.Edit 传入 Ops.TrySetStirRpm，与工具栏同一命令，
-    /// 因此同样记「设置 · 搅拌转速」事件）；命令成功后再同步检查器显示和当前步骤数据，成功不提示（与今天一致）。
-    /// </summary>
-    internal void EditGlobalStir(Func<int, Task<OpResult>> apply)
-    {
-        if (AnyProgramRunning) return;   // 有程序执行中只读（搅拌全机共用，全局转速请在主界面调）；通道仅在加热时仍可改全局转速
-        _main.Keyboard.OpenNumeric("搅拌转速（全局共用）", _main.StirRpm, "rpm", 0, _main.Settings.RpmMax, v =>
-        {
-            var t = apply((int)v);
-            if (!(t.IsCompletedSuccessfully && t.Result.Ok)) return t;
-            _stirRow?.Refresh();
-            // 同步当前步骤数据，使时间线中的步骤详情一致
-            if (SelectedStep?.Type == StepType.Stir) SelectedStep.SetNum("rpm", v);
-            // 程序页改转速今天没有 Toast（工具栏入口在搅拌运行中才提示）：成功结果静默，只多记一条设置事件（§10.2 第 4 条）
-            return (t.Result with { Quiet = true }).AsTask();
-        });
     }
 
     // ============ 屏幕键盘：曲线段数值（温度 / 斜率 / 保温）============
@@ -226,7 +270,7 @@ public partial class ProgramViewModel : ViewModelBase
         => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
         {
             int i = Steps.IndexOf(step);
-            if (i <= 0) return OpResult.Silent;
+            if (i <= 0 || step.Type == StepType.End) return OpResult.Silent;   // 结束固定在最后
             Steps.Move(i, i - 1);
             SelectedStep = step;
             MarkModified();
@@ -240,7 +284,7 @@ public partial class ProgramViewModel : ViewModelBase
         => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
         {
             int i = Steps.IndexOf(step);
-            if (i < 0 || i >= Steps.Count - 1) return OpResult.Silent;
+            if (i < 0 || i >= Steps.Count - 1 || Steps[i + 1].Type == StepType.End) return OpResult.Silent;   // 不能挪到结束后面
             Steps.Move(i, i + 1);
             SelectedStep = step;
             MarkModified();
@@ -255,6 +299,7 @@ public partial class ProgramViewModel : ViewModelBase
         {
             int i = Steps.IndexOf(step);
             if (i < 0) return OpResult.Silent;
+            if (step.Type == StepType.End) return OpResult.Fail(OpCodes.BadRequest, "「结束」固定在最后，不能删除", "warn");
             Steps.RemoveAt(i);
             if (SelectedStep == step) SelectedStep = null;
             MarkModified();
@@ -371,13 +416,14 @@ public partial class ProgramViewModel : ViewModelBase
         }
     }
 
+    /// <summary>占用共用气路的步骤：气密检查（充气段）、置换、充压、放空（STEPS-SPEC §0）。</summary>
     private static bool HasGasSteps(IReadOnlyList<StepSnapshot> snap)
-        => snap.Any(s => s.Type is StepType.Purge or StepType.Press or StepType.End);
+        => snap.Any(s => s.Type is StepType.Leak or StepType.Exchange or StepType.Press or StepType.Vent);
 
-    /// <summary>需要压力读数的气路步骤：升压，或以「排空 / 淬灭」收尾的结束步骤。</summary>
+    /// <summary>需要压力读数的气路步骤：气密检查、釜置换（次数 &gt; 0）、充压、放空。</summary>
     private static bool NeedsPressure(IReadOnlyList<StepSnapshot> snap)
-        => snap.Any(s => s.Type == StepType.Press
-                         || (s.Type == StepType.End && s.Str("mode", "密封 (推荐)") is "排空" or "淬灭"));
+        => snap.Any(s => s.Type is StepType.Leak or StepType.Press or StepType.Vent
+                         || (s.Type == StepType.Exchange && s.Num("cycles", 3) > 0));
 
     /// <summary>按实时状态判一次下发守卫（见 <see cref="ProgramRunGuard"/>）：null = 可运行，否则（§11 错误码, 原因）。命令层调用。</summary>
     internal (string Code, string Message)? RunGuard(int rv, IReadOnlyList<StepSnapshot> snap)
@@ -401,7 +447,7 @@ public partial class ProgramViewModel : ViewModelBase
             NeedsGas = gas,
             GasBlock = gasBlock?.Message,
             GasBlockCode = gasBlock?.Code,
-            LimitErrors = ProgramLimits.Validate(snap, Limits),
+            LimitErrors = ProgramLimits.PreRun(snap, Limits).Errors,   // 逐步限值 + 结束在最后 + 先充压后升温的估算（STEPS-SPEC §4）
         };
         return ProgramRunGuard.Check(input);
     }
@@ -415,6 +461,8 @@ public partial class ProgramViewModel : ViewModelBase
         // 入口守卫（ProgramRunGuard）已判过；这里是最后防线：不满足就不建运行对象，避免留下停在「准备执行」的孤儿运行
         if (_main.FindReactor(rv) == null || steps.Count == 0 || IsProgramOwned(rv)) return false;
         var run = new ProgramRun(rv, steps, startedBy);
+        // 已从旧格式转换的程序下发了（触屏确认或远程 run）：提示到此为止
+        if (ChannelOf(rv) is { IsMigrated: true } ch) { ch.IsMigrated = false; OnPropertyChanged(nameof(ShowMigrated)); }
         PrepareRunMonitor(run);
         _ = ExecuteAsync(run);
         return true;
@@ -433,14 +481,16 @@ public partial class ProgramViewModel : ViewModelBase
         if (!_main.LocalOk(Ops.CheckProgramRun(Src, rv, snap))) return;
 
         bool gasSteps = HasGasSteps(snap);
-        int total = (int)Steps.Sum(s => s.DurationMin);
+        var dur = StepDuration.Total(snap);
+        var warns = ProgramLimits.PreRun(snap, Limits).Warnings;
         RunConfirmTitle = $"下发并运行 RV{rv} 程序";
         RunConfirmSub = gasSteps ? "含气路步骤 · 气路按步骤排队共享" : "不含气路步骤";
         RunConfirmText =
-            $"共 {snap.Count} 步，预计约 {total / 60}h {total % 60}m。\n" +
-            "执行期间釜状态随步骤变化（升温/升压/等待/搅拌/反应/降温），可随时「中止」。" +
+            $"共 {snap.Count} 步，预计 {dur.Text}。\n" +
+            "执行期间釜状态随步骤变化（升温/升压/等待/反应），可随时「中止」。" +
             "\n确认后执行的是此刻的程序副本：运行中再编辑程序不影响本次执行。" +
-            (gasSteps ? "\n含气路步骤：气路同一时间只由一个程序占用，其他程序的气路步骤排队等待；泄漏测试 / 手动阀控仍被拒绝。" : "");
+            (gasSteps ? "\n含气路步骤：气路同一时间只由一个程序占用，其他程序的气路步骤排队等待；泄漏测试 / 手动阀控仍被拒绝。" : "") +
+            (warns.Count > 0 ? "\n提示：" + string.Join("\n提示：", warns) : "");
         _pendingRun = (rv, snap);
         IsRunConfirmOpen = true;
     }
@@ -510,9 +560,11 @@ public partial class ProgramViewModel : ViewModelBase
         if (CurrentChannel == null) return;
         _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
         {
+            if (t == StepType.End) return OpResult.Silent;   // 结束固定在最后且只有一个
             var step = NewStep(t);
-            int at = Math.Clamp(index, 0, Steps.Count);
+            int at = ClampBeforeEnd(index);
             Steps.Insert(at, step);
+            PinEnd(Steps);
             SelectedStep = step;
             MarkModified();
             RenumberAndRefresh();
@@ -525,11 +577,12 @@ public partial class ProgramViewModel : ViewModelBase
         => _main.Local(Ops.TryEditProgram(Src, CurrentRv, () =>
         {
             int from = Steps.IndexOf(step);
-            if (from < 0) return OpResult.Silent;
+            if (from < 0 || step.Type == StepType.End) return OpResult.Silent;   // 结束固定在最后
             int to = index > from ? index - 1 : index;
             Steps.RemoveAt(from);
-            to = Math.Clamp(to, 0, Steps.Count);
+            to = ClampBeforeEnd(to);
             Steps.Insert(to, step);
+            PinEnd(Steps);
             SelectedStep = step;
             MarkModified();
             RenumberAndRefresh();
@@ -550,6 +603,8 @@ public partial class ProgramViewModel : ViewModelBase
     {
         MarkModified();
         RefreshMeta();
+        // 选项改了：同一步骤里按 visibleWhen 显示 / 隐藏的字段跟着变（例如保持的「结束条件」）
+        foreach (var r in InspectorRows) if (r is StepField f) f.RefreshShown();
     }
 
     private void MarkModified()
@@ -573,8 +628,9 @@ public partial class ProgramViewModel : ViewModelBase
         if (Steps.Count == 0) { DurText = "—"; }
         else
         {
-            int total = (int)Steps.Sum(s => s.DurationMin);
-            DurText = $"{total / 60}h {total % 60}m";
+            var sum = new DurationEstimate(0, false, false);
+            foreach (var st in Steps) sum += st.Duration;
+            DurText = sum.Text;   // STEPS-SPEC §5：含按条件的保持标「约」，含反应标「≤」
         }
         EmptyHint = $"RV{rv} 当前 {Steps.Count} 步";
         OnPropertyChanged(nameof(SelInfo));
@@ -588,30 +644,15 @@ public partial class ProgramViewModel : ViewModelBase
 
         if (s.Type == StepType.Heat)
         {
-            bool fixedMode = s.Str("mode", "fixed") != "curve";
             InspectorRows.Add(new HeatModeRow(this, s));
-            if (fixedMode)
-            {
-                foreach (var f in s.Def.Fields) InspectorRows.Add(Field(s, f));
-            }
-            else
+            if (s.Str("mode", "fixed") == "curve")
             {
                 s.EnsureSegments();
                 InspectorRows.Add(new CurveRow(this, s));
             }
         }
-        else if (s.Type == StepType.Stir)
-        {
-            // 搅拌转速是全机共用设置；搅拌时长仍属于当前步骤，必须在检查器中单独显示。
-            _stirRow = new StirRow(this);
-            InspectorRows.Add(_stirRow);
-            foreach (var f in s.Def.Fields.Where(f => f.Key == "dur"))
-                InspectorRows.Add(Field(s, f));
-        }
-        else
-        {
-            foreach (var f in s.Def.Fields) InspectorRows.Add(Field(s, f));
-        }
+        // 全部字段都建行，按 visibleWhen 显示 / 隐藏（StepField.Shown）；升温方式由上面的切换行编辑
+        foreach (var f in s.Def.Fields.Where(f => !f.CustomEditor)) InspectorRows.Add(Field(s, f));
         InspectorRows.Add(new HelpRow(s.Def.Help));
     }
 
@@ -927,6 +968,8 @@ public partial class ProgramChannel : ObservableObject
     public Reactor Reactor { get; }
     [ObservableProperty] private bool _isCurrent;
     [ObservableProperty] private bool _isModified;
+    /// <summary>程序是从旧格式转换来的（STEPS-SPEC §3 的 migrated：只在编辑器内存里，不上线）。</summary>
+    [ObservableProperty] private bool _isMigrated;
     /// <summary>该通道有程序在执行（通道条右上角红点；引擎开始 / 结束时置位）。</summary>
     [ObservableProperty] private bool _isProgramRunning;
     internal void SetProgramRunning(bool on) => IsProgramRunning = on;
@@ -959,19 +1002,6 @@ public partial class HeatModeRow : ObservableObject
     [RelayCommand]
     [WriteEntry(nameof(OperatorCommands.TryEditProgram))]
     private void Curve() => _vm.Local(_vm.Ops.TryEditProgram(ProgramViewModel.Src, _vm.CurrentRv, () => _vm.SetHeatMode(_step, "curve")));
-}
-
-/// <summary>检查器：全局搅拌转速（共用一台搅拌器，所有反应釜同一转速）。</summary>
-public partial class StirRow : ObservableObject
-{
-    private readonly ProgramViewModel _vm;
-    public StirRow(ProgramViewModel vm) { _vm = vm; }
-    public string RpmText => _vm.GlobalStirText;
-    public void Refresh() => OnPropertyChanged(nameof(RpmText));
-    /// <summary>改全局转速：与工具栏同一命令（TrySetStirRpm）。</summary>
-    [RelayCommand]
-    [WriteEntry(nameof(OperatorCommands.TrySetStirRpm))]
-    private void Edit() => _vm.EditGlobalStir(rpm => _vm.Ops.TrySetStirRpm(ProgramViewModel.Src, rpm));
 }
 
 /// <summary>检查器：曲线预览卡片。</summary>

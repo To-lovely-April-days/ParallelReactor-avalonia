@@ -77,9 +77,15 @@ public sealed record PreflightCheckDto(string Kind, string Title, string Detail)
 public sealed record PreflightDto(bool CanRun, string Summary, PreflightCheckDto[] Checks, int[] Channels);
 
 // —— §6.9 /program-schema ——
+/// <summary>
+/// 字段 schema。v0.8（STEPS-SPEC §6）追加 <see cref="VisibleWhen"/>（末尾、带默认值，旧客户端不受影响）：同一步骤的选项字段 key 的码在 in 里才显示 / 起作用；
+/// 选项字段追加 <see cref="DefaultCode"/>（新建步骤的默认码）。
+/// </summary>
 public sealed record FieldSchemaDto(string Key, string Label, string Kind, string? Unit, double? Default, double? Min, double? Max,
     double? DeclaredMin, double? DeclaredMax, SchemaOption[]? Options, bool Available, string? Reason,
-    FieldSchemaDto[]? ItemFields, int? MinItems, int? MaxItems);
+    FieldSchemaDto[]? ItemFields, int? MinItems, int? MaxItems, VisibleWhenDto? VisibleWhen = null, string? DefaultCode = null);
+/// <summary>v0.8：字段显示条件 <c>{ "key": "until", "in": ["tempAbove", "tempBelow"] }</c>。</summary>
+public sealed record VisibleWhenDto(string Key, string[] In);
 public sealed record StepSchemaDto(string Type, string Label, string Chip, string Help, FieldSchemaDto[] Fields);
 public sealed record ProgramSchemaDto(string ApiVersion, long SettingsRevision, string[] StepTypes, StepSchemaDto[] Steps);
 

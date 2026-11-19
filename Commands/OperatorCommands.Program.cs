@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using ParallelReactor.Models;
+using ParallelReactor.ViewModels;
 
 namespace ParallelReactor.Commands;
 
@@ -35,10 +36,13 @@ public sealed partial class OperatorCommands
     }
 
     /// <summary>
-    /// 整体替换某通道的程序草稿（远程 <c>PUT /channels/{id}/program</c>；本期只实现方法）。
+    /// 整体替换某通道的程序草稿（远程 <c>PUT /channels/{id}/program</c>）。
     /// 可编辑检查 + 全局限值（<see cref="ProgramLimits.Validate"/>）→ PARAM_OUT_OF_RANGE。revision 留到下一期。
+    /// v0.8：steps 已由 Api/ProgramJson 转换成新格式（旧格式按 STEPS-SPEC §3）；migrated = 转换过 → 触屏时间线顶部提示「已从旧格式转换，请检查」，
+    /// 结果 <c>result{ rv, steps[], migrated }</c> 的 steps 是转换后的步骤（§6.9 格式，可原样再下发），notes 进 warnings。
     /// </summary>
-    public Task<OpResult> TryReplaceProgram(CommandSource src, int rv, IReadOnlyList<StepSnapshot> steps, long? revision = null)
+    public Task<OpResult> TryReplaceProgram(CommandSource src, int rv, IReadOnlyList<StepSnapshot> steps, long? revision = null,
+        bool migrated = false, IReadOnlyList<string>? notes = null)
     {
         if (Admit(src, ActionClass.Control) is { } deny) return deny.AsTask();
         if (ChannelOr(rv, out var c) is { } nf) return nf.AsTask();
@@ -51,10 +55,16 @@ public sealed partial class OperatorCommands
         var list = _m.Program.StepsOf(rv);
         list.Clear();
         foreach (var s in steps) list.Add(ProgramStep.FromSnapshot(s));
+        ProgramViewModel.PinEnd(list);   // 结束固定在最后（ProgramJson 已保证，这里兜底）
         for (int i = 0; i < list.Count; i++) list[i].Ordinal = i + 1;
-        if (_m.Program.ChannelOf(rv) is { } ch) ch.IsModified = true;
+        if (_m.Program.ChannelOf(rv) is { } ch) { ch.IsModified = true; ch.IsMigrated = migrated; }
         _m.Program.OnStepsReplaced(rv);
-        return OpResult.Done($"RV{rv} 程序已更新（{list.Count} 步）", "ok", new { rv, steps = list.Count }).AsTask();
+        var warnings = new List<string>();
+        if (migrated) warnings.Add("已从旧格式转换，请检查（STEPS-SPEC §3）");
+        if (notes != null) warnings.AddRange(notes);
+        var final = list.Select(x => x.ToSnapshot()).ToList();
+        return OpResult.Done($"RV{rv} 程序已更新（{list.Count} 步）" + (migrated ? " · 已从旧格式转换" : ""), "ok",
+            new { rv, steps = Api.ProgramStepFormat.Format(final), migrated }).WithWarnings(warnings.ToArray()).AsTask();
     }
 
     /// <summary>
@@ -142,7 +152,11 @@ public sealed partial class OperatorCommands
             list.Clear();
             foreach (var s in srcSteps) list.Add(s.Clone());
             for (int i = 0; i < list.Count; i++) list[i].Ordinal = i + 1;
-            if (_m.Program.ChannelOf(id) is { } ch) ch.IsModified = false;
+            if (_m.Program.ChannelOf(id) is { } ch)
+            {
+                ch.IsModified = false;
+                ch.IsMigrated = _m.Program.ChannelOf(fromRv)?.IsMigrated ?? false;   // 旧格式转换来的程序复制过去照样提示检查
+            }
         }
         return OpResult.Done($"已将 RV{fromRv} 的 {srcSteps.Count} 步程序应用到 {targets.Count} 个通道", "ok",
             new { from = fromRv, to = targets }).WithWarnings(warnings.ToArray()).AsTask();
@@ -175,7 +189,9 @@ public sealed partial class OperatorCommands
         if (_m.Program.RunGuard(rv, snap) is { } why) return RunBlocked(why).AsTask();
         // startedBy：触屏 "local"；远程带客户端名（快照 channels[i].program.startedBy）
         _m.Program.StartRun(rv, snap, src.IsRemote ? src.Label : "local");
-        return OpResult.Accepted("", "ok", new { rv, steps = snap.Count }).AsTask();
+        // 下发前检查的提示项（STEPS-SPEC §4：反应前没有充压 / 先充压后升温 / 没有放空），不拦，随结果返回
+        var warns = ProgramLimits.PreRun(snap, _m.Program.Limits).Warnings;
+        return OpResult.Accepted("", "ok", new { rv, steps = snap.Count }).WithWarnings(warns.ToArray()).AsTask();
     }
 
     /// <summary>

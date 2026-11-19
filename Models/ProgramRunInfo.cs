@@ -40,6 +40,12 @@ public sealed class ProgramRunInfo
     /// <summary>等待气路时当前占用者的通道（泄漏测试占用时为 null）。</summary>
     public int? WaitingOn { get; set; }
 
+    /// <summary>
+    /// 结束原因（STEPS-SPEC §1.7）：反应步骤写入「最长时间到」「吸气量达到 5.00 mmol」「吸气停止（30 min &lt; 0.005 mmol/min）」；
+    /// 没有反应步骤为 null。供运行记录与 PC（GET …/program/run 的 endReason）使用。
+    /// </summary>
+    public string? EndReason { get; set; }
+
     /// <summary>仍在执行（含准备 / 等待气路 / 收尾）。</summary>
     public bool IsActive => ProgramRunSet.IsActive(Phase);
 }

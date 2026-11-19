@@ -19,30 +19,21 @@ public partial class HeatSeg : ObservableObject
     public HeatSeg Clone() => new() { No = No, Temp = Temp, Rate = Rate, Hold = Hold };
 }
 
-/// <summary>检查器字段定义，对应 STEP_DEFS[x].fields 的每一项。</summary>
-public class FieldDef
-{
-    public string Key = "";
-    public string Label = "";
-    public string Kind = "num";       // num | sel
-    public string? Unit;
-    public string[]? Options;
-    public object? Default;
-    public double Min = 0;            // 数值字段范围（供屏幕键盘裁剪与提示）
-    public double Max = 9999;
-}
-
-/// <summary>步骤静态定义（名称 / 角标 / 图标 / 字段 / 详情 / 帮助），对应 STEP_DEFS。</summary>
+/// <summary>
+/// 步骤静态定义：名称 / 角标 / 帮助 / 字段 / 摘要取自纯逻辑表 <see cref="StepSpecs"/>（STEPS-SPEC §1，接口与校验共用），
+/// 这里只补触屏用的图标与颜色。只有 v0.8 的九种步骤（<see cref="StepTypeCodes.All"/>）；旧码 purge / wait 读进来即转换，不在表里。
+/// </summary>
 public class StepDef
 {
     public StepType Type;
-    public string Name = "";
-    public string Chip = "";
-    public string Help = "";
+    public StepSpec Spec = null!;
     public Geometry Icon = Geometry.Parse("M6 6h12v12H6z");
     public IBrush Brush = Brushes.Gray;
-    public List<FieldDef> Fields = new();
-    public Func<ProgramStep, string> DetailFn = _ => "";
+
+    public string Name => Spec.Name;
+    public string Chip => Spec.Chip;
+    public string Help => Spec.Help;
+    public List<FieldDef> Fields => Spec.Fields;
 
     public static readonly Dictionary<StepType, StepDef> Registry = Build();
 
@@ -50,120 +41,22 @@ public class StepDef
     private static Geometry G(string d) => Geometry.Parse(d);
 
     /// <summary>数字格式化：整数不带小数。</summary>
-    public static string N(double v) =>
-        v == Math.Floor(v) ? ((long)v).ToString(CultureInfo.InvariantCulture)
-                           : v.ToString("0.#", CultureInfo.InvariantCulture);
+    public static string N(double v) => StepSpecs.N(v);
 
-    private static Dictionary<StepType, StepDef> Build()
+    private static StepDef D(StepType t, string brush, string icon) => new() { Type = t, Spec = StepSpecs.Of(t), Brush = B(brush), Icon = G(icon) };
+
+    private static Dictionary<StepType, StepDef> Build() => new()
     {
-        var r = new Dictionary<StepType, StepDef>
-        {
-            [StepType.Purge] = new StepDef
-            {
-                Type = StepType.Purge, Name = "吹扫", Chip = "PURGE", Brush = B("#6f93b8"),
-                Icon = G("M9.6 4.6A2 2 0 1 1 11 8H2 M12.6 19.4A2 2 0 1 0 14 16H2 M17.5 8A2.5 2.5 0 1 1 19.5 12.5H2"),
-                Help = "只吹扫气路总管：8 路 SV 全程关闭，釜内气体不受影响。每次循环：开气源阀充气 → 关闭 → 开排空阀排气。" +
-                       "总管压力等于该气源减压阀的出口压力，请预先调到低压。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="gas", Label="气体", Kind="sel", Options=new[]{"惰性气体","气体 A","气体 B"} },
-                    new FieldDef{ Key="cycles", Label="循环次数", Kind="num", Unit="次", Default=10.0, Min=1, Max=50 },
-                    new FieldDef{ Key="fill", Label="充气时间", Kind="num", Unit="秒", Default=3.0, Min=1, Max=30 },
-                    new FieldDef{ Key="vent", Label="排气时间", Kind="num", Unit="秒", Default=5.0, Min=1, Max=60 },
-                },
-                DetailFn = s => $"{s.Str("gas","惰性气体")} × {N(s.Num("cycles",10))} 次 · 充 {N(s.Num("fill",3))}s / 排 {N(s.Num("vent",5))}s · 仅总管",
-            },
-            [StepType.Heat] = new StepDef
-            {
-                Type = StepType.Heat, Name = "升温", Chip = "HEAT", Brush = B("#c79450"),
-                Icon = G("M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
-                Help = "先升温至目标（实测到位 ±2℃ 才进下一步）；「等待平衡」为到位后的保温计时，用于让溶液温度均匀（建议 15-25 分钟，0 = 不平衡）。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="temp", Label="目标温度", Kind="num", Unit="°C", Default=150.0, Min=0, Max=300 },
-                    new FieldDef{ Key="wait", Label="等待平衡", Kind="num", Unit="分钟", Default=15.0, Min=0, Max=120 },
-                },
-                DetailFn = s =>
-                {
-                    if (s.Str("mode","fixed") == "curve" && s.Segments.Count > 0)
-                    {
-                        var last = s.Segments[^1];
-                        double total = 0, prevT = 25;
-                        foreach (var seg in s.Segments)
-                        {
-                            double ramp = seg.Rate > 0 ? Math.Abs(seg.Temp - prevT) / seg.Rate : 0;
-                            total += ramp + seg.Hold; prevT = seg.Temp;
-                        }
-                        return $"16 段曲线 · {s.Segments.Count} 段 · 终温 {N(last.Temp)}°C · ≈ {N(Math.Round(total))} min";
-                    }
-                    return $"定值 {N(s.Num("temp",150))}°C · 平衡 {N(s.Num("wait",15))} min";
-                },
-            },
-            [StepType.Press] = new StepDef
-            {
-                Type = StepType.Press, Name = "升压", Chip = "PRESS", Brush = B("#5f87b5"),
-                Icon = G("M12 14l4-4 M3.34 19a10 10 0 1 1 17.32 0"),
-                Help = "稳压建议：低气体消耗反应（< 0.5 mmol/h）关闭稳压可获更低 rsd。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="gas", Label="反应气", Kind="sel", Options=new[]{"气体 A","气体 B"} },
-                    new FieldDef{ Key="pres", Label="目标压力", Kind="num", Unit="psi", Default=50.0, Min=0, Max=493.1 },   // 34 bar（用户确认的升压目标上限）；实际上限还受 PMaxSp 与超压报警 × 0.9 约束（ProgramLimits.PressMax）
-                    new FieldDef{ Key="regulate", Label="压力稳压", Kind="sel", Options=new[]{"开启","关闭"} },
-                },
-                DetailFn = s => $"{s.Str("gas","气体 A")} 到 {N(s.Num("pres",50))} psi · 稳压{s.Str("regulate","开启")}",
-            },
-            [StepType.Stir] = new StepDef
-            {
-                Type = StepType.Stir, Name = "搅拌", Chip = "STIR", Brush = B("#7e86a8"),
-                Icon = G("M21 12a9 9 0 1 1-6.22-8.56 M21 3v6h-6"),
-                Help = "搅拌为全机共用一台电机。步骤持续「搅拌时长」后自动停止搅拌并进入下一步；需要持续搅拌时可在后续步骤再次添加搅拌。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="rpm", Label="转速", Kind="num", Unit="rpm", Default=1000.0, Min=0, Max=2000 },
-                    new FieldDef{ Key="dur", Label="搅拌时长", Kind="num", Unit="分钟", Default=5.0, Min=0, Max=600 },
-                },
-                DetailFn = s => $"{N(s.Num("rpm",1000))} rpm · {N(s.Num("dur",5))} min",
-            },
-            [StepType.Wait] = new StepDef
-            {
-                Type = StepType.Wait, Name = "等待", Chip = "WAIT", Brush = B("#6b7079"),
-                Icon = G("M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2"),
-                Help = "用「等待温度/压力到位」可让程序自适应实际耗时，比固定时长更稳健。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="mode", Label="条件", Kind="sel", Options=new[]{"固定时长","等待温度到位","等待压力到位"} },
-                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=30.0, Min=0, Max=600 },
-                },
-                DetailFn = s => $"{s.Str("mode","固定时长")} · {N(s.Num("time",30))} min",
-            },
-            [StepType.React] = new StepDef
-            {
-                Type = StepType.React, Name = "反应", Chip = "REACT", Brush = B("#6f9f6a"),
-                Icon = G("M8.5 2h7 M10 2v6.5L5.6 18a2 2 0 0 0 1.8 3h9.2a2 2 0 0 0 1.8-3L14 8.5V2 M7 15h10"),
-                Help = "结束条件中选「两者先到」可避免反应完成后还在继续加热消耗气体。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="endBy", Label="结束条件", Kind="sel", Options=new[]{"时间","气体消耗","两者先到"} },
-                    new FieldDef{ Key="time", Label="最长时间", Kind="num", Unit="分钟", Default=120.0, Min=0, Max=600 },
-                    new FieldDef{ Key="mmol", Label="目标 mmol", Kind="num", Unit="mmol", Default=5.0, Min=0, Max=100 },
-                },
-                DetailFn = s => $"{s.Str("endBy","两者先到")} · {N(s.Num("time",120))} min 或 {N(s.Num("mmol",5))} mmol",
-            },
-            [StepType.End] = new StepDef
-            {
-                Type = StepType.End, Name = "结束", Chip = "END", Brush = B("#b0555f"),
-                Icon = G("M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7"),
-                Help = "强烈推荐使用「密封」：高温下吹扫或排空会让溶剂蒸气污染气路 manifold。",
-                Fields = new()
-                {
-                    new FieldDef{ Key="mode", Label="方式", Kind="sel", Options=new[]{"密封 (推荐)","吹扫","淬灭","排空"} },
-                    new FieldDef{ Key="cool", Label="先降温至", Kind="num", Unit="°C", Default=40.0, Min=0, Max=300 },
-                },
-                DetailFn = s => $"先降至 {N(s.Num("cool",40))}°C · {s.Str("mode","密封 (推荐)")}",
-            },
-        };
-        return r;
-    }
+        [StepType.Leak] = D(StepType.Leak, "#5f9aa0", "M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z M9 12l2 2 4-4"),
+        [StepType.Exchange] = D(StepType.Exchange, "#6f93b8", "M9.6 4.6A2 2 0 1 1 11 8H2 M12.6 19.4A2 2 0 1 0 14 16H2 M17.5 8A2.5 2.5 0 1 1 19.5 12.5H2"),
+        [StepType.Stir] = D(StepType.Stir, "#7e86a8", "M21 12a9 9 0 1 1-6.22-8.56 M21 3v6h-6"),
+        [StepType.Heat] = D(StepType.Heat, "#c79450", "M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"),
+        [StepType.Press] = D(StepType.Press, "#5f87b5", "M12 14l4-4 M3.34 19a10 10 0 1 1 17.32 0"),
+        [StepType.Hold] = D(StepType.Hold, "#6b7079", "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2"),
+        [StepType.React] = D(StepType.React, "#6f9f6a", "M8.5 2h7 M10 2v6.5L5.6 18a2 2 0 0 0 1.8 3h9.2a2 2 0 0 0 1.8-3L14 8.5V2 M7 15h10"),
+        [StepType.Vent] = D(StepType.Vent, "#8a8f98", "M12 20V6 M6 12l6-6 6 6 M4 3h16"),
+        [StepType.End] = D(StepType.End, "#b0555f", "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z M4 22v-7"),
+    };
 }
 
 /// <summary>一个具体的程序步骤实例（携带参数值）。</summary>
@@ -184,17 +77,16 @@ public partial class ProgramStep : ObservableObject
 
     public ProgramStep(StepType type) { Type = type; }
 
-    /// <summary>按字段默认值新建步骤（对应拖入新步骤时的初始化）。</summary>
+    /// <summary>按字段默认值新建步骤（数值 = 默认值，选项 = 默认码；STEPS-SPEC §1）。</summary>
     public static ProgramStep New(StepType type)
     {
         var s = new ProgramStep(type);
-        foreach (var f in StepDef.Registry[type].Fields)
-        {
-            if (f.Default != null) s._p[f.Key] = f.Default;
-            else if (f.Options is { Length: > 0 }) s._p[f.Key] = f.Options[0];
-        }
+        foreach (var kv in StepSpecs.Defaults(type)) s._p[kv.Key] = kv.Value;
         return s;
     }
+
+    /// <summary>参数（只读视图：选项为英文码，压力为 psi）。</summary>
+    public IReadOnlyDictionary<string, object> Params => _p;
 
     public ProgramStep With(string k, object v) { _p[k] = v; return this; }
 
@@ -206,31 +98,30 @@ public partial class ProgramStep : ObservableObject
     public void SetNum(string k, double v) { _p[k] = v; RaiseChanged(); }
     public void SetStr(string k, string v) { _p[k] = v; RaiseChanged(); }
 
+    /// <summary>只刷新摘要文字（压力单位变了：摘要里的压力按新单位显示，参数本身没变，不算修改）。</summary>
+    public void RefreshDetail() => OnPropertyChanged(nameof(Detail));
+
     public void RaiseChanged()
     {
         OnPropertyChanged(nameof(Detail));
         Changed?.Invoke();
     }
 
-    public StepDef Def => StepDef.Registry[Type];
+    /// <summary>静态定义（旧码 purge / wait 不在表里：它们读进来就已转换，正常不会出现）。</summary>
+    public StepDef Def => StepDef.Registry.TryGetValue(Type, out var d) ? d : StepDef.Registry[StepType.End];
     public string Name => Def.Name;
     public string Chip => Def.Chip;
     public Geometry Icon => Def.Icon;
     public IBrush IconBrush => Def.Brush;
-    public string Detail => Def.DetailFn(this);
+    public string Detail => StepSpecs.Detail(Type, _p, SegTuples());
 
-    /// <summary>该步骤计入总时长的分钟数（对应 totalMin 估算）。</summary>
-    public double DurationMin => Type switch
-    {
-        StepType.Heat => Num("wait", 0) + 15,
-        StepType.Press => 8,
-        StepType.React => Num("time", 0),
-        StepType.Wait => Num("time", 0),
-        StepType.Stir => Num("dur", 0),
-        // 每次循环 = 充气 + 排气 + 两次 0.5s 阀态切换死区
-        StepType.Purge => Num("cycles", 10) * (Num("fill", 3) + Num("vent", 5) + 1.0) / 60.0,
-        _ => 0
-    };
+    /// <summary>时长估算（STEPS-SPEC §5，与 PC 同一套）。</summary>
+    public DurationEstimate Duration => StepDuration.Of(Type, _p, SegTuples());
+
+    /// <summary>该步骤计入总时长的分钟数。</summary>
+    public double DurationMin => Duration.Minutes;
+
+    private List<(double Temp, double Rate, double Hold)> SegTuples() => Segments.Select(g => (g.Temp, g.Rate, g.Hold)).ToList();
 
     public void EnsureSegments()
     {
@@ -284,33 +175,63 @@ public partial class ProgramStep : ObservableObject
     }
 }
 
-/// <summary>检查器里一行可编辑字段（num / sel），双向绑定回 ProgramStep。</summary>
+/// <summary>
+/// 检查器里一行可编辑字段（num / sel），双向绑定回 ProgramStep。
+/// 选项字段：步骤里存英文码，下拉框显示中文 label（<see cref="FieldDef.Options"/>）。
+/// 压力字段：步骤里存 psi，显示、屏幕键盘的初值与范围都按当前压力单位（<see cref="Units"/>），确认后换回 psi。
+/// 显示条件（visibleWhen）由 <see cref="Shown"/> 给出：同一步骤的选项改了之后，ProgramViewModel 调 <see cref="RefreshShown"/>。
+/// </summary>
 public partial class StepField : ObservableObject
 {
+    public string Key => _f.Key;
     public string Label { get; }
     public string? Unit { get; }
     public string Kind { get; }                 // num | sel
     public string[] Options { get; }
     public bool IsNum => Kind == "num";
     public bool IsSel => Kind == "sel";
+    /// <summary>压力类字段（存 psi，按压力单位显示）。</summary>
+    public bool IsPressure => _f.Pressure;
 
-    public double Min { get; }                  // 数值范围（供屏幕键盘）
-    public double Max { get; }
+    /// <summary>数值范围（供屏幕键盘；压力字段为显示单位）。每次读取重算：跨字段规则（放到 ≤ 充到 − 1、最短 ≤ 最长）跟着同一步骤的当前值。</summary>
+    public double Min => DisplayRange().Min;
+    public double Max => DisplayRange().Max;
 
     private readonly ProgramStep _s;
+    private readonly FieldDef _f;
     private readonly string _key;
+    private readonly Func<(double Min, double Max)>? _range;
 
-    /// <param name="range">数值范围覆盖（FieldDef 范围与全局限值的交集，见 ProgramLimits.FieldRange）；null = 用 FieldDef 自身范围。</param>
-    public StepField(ProgramStep s, FieldDef f, (double Min, double Max)? range = null)
+    /// <param name="range">数值范围（psi / 原单位；FieldDef 范围与全局限值的交集，见 ProgramLimits.FieldRange）；null = 用 FieldDef 自身范围。</param>
+    public StepField(ProgramStep s, FieldDef f, Func<(double Min, double Max)>? range = null)
     {
-        _s = s; _key = f.Key;
-        Label = f.Label; Unit = f.Unit; Kind = f.Kind;
-        Options = f.Options ?? Array.Empty<string>();
-        (Min, Max) = range ?? (f.Min, f.Max);
+        _s = s; _f = f; _key = f.Key; _range = range;
+        Label = f.Label; Kind = f.Kind;
+        Unit = f.Pressure ? (f.Unit == "psi/h" ? $"{Units.PLabel}/h" : Units.PLabel) : f.Unit;
+        Options = f.Options?.Select(o => o.Label).ToArray() ?? Array.Empty<string>();
     }
 
-    /// <summary>当前数值（屏幕键盘读取初值用）。</summary>
-    public double Number => _s.Num(_key);
+    private (double Min, double Max) DisplayRange()
+    {
+        var (lo, hi) = _range?.Invoke() ?? (_f.Min, _f.Max);
+        if (_f.Pressure)
+        {
+            // 换成显示单位后按显示小数位向内取整：键盘能输入的最大 / 最小值换回 psi 后仍在范围内
+            double k = Math.Pow(10, Units.PDecimals);
+            lo = Math.Ceiling(Units.P(lo) * k - 1e-9) / k;
+            hi = Math.Floor(Units.P(hi) * k + 1e-9) / k;
+            if (hi < lo) hi = lo;
+        }
+        return (lo, hi);
+    }
+
+    /// <summary>当前数值（屏幕键盘读取初值用；压力字段为显示单位）。</summary>
+    public double Number => _f.Pressure ? Math.Round(Units.P(_s.Num(_key)), Units.PDecimals) : _s.Num(_key);
+
+    /// <summary>当前参数下是否显示（visibleWhen）。</summary>
+    public bool Shown => StepSpecs.IsVisible(_s.Type, _f, _s.Params);
+
+    public void RefreshShown() => OnPropertyChanged(nameof(Shown));
 
     /// <summary>
     /// 编辑闸门（ProgramViewModel 注入为 Ops.TryEditProgram 的结果）：false = 被拒（程序执行中 / 通道运行中 / 远程控制中），
@@ -318,16 +239,20 @@ public partial class StepField : ObservableObject
     /// </summary>
     public Func<bool>? Gate { get; init; }
 
-    /// <summary>屏幕键盘确认后写回数值（调用方已经过 TryEditProgram，这里不再过闸门）。</summary>
+    /// <summary>屏幕键盘确认后写回数值（v 为显示单位；调用方已经过 TryEditProgram，这里不再过闸门）。</summary>
     public void SetNumber(double v)
     {
-        _s.SetNum(_key, v);
+        double stored = _f.Pressure ? Math.Round(Units.ToPsi(v), 3) : v;
+        if (_f.Integer) stored = Math.Round(stored);
+        _s.SetNum(_key, stored);
         OnPropertyChanged(nameof(Value));
     }
 
     public string Value
     {
-        get => IsNum ? StepDef.N(_s.Num(_key)) : _s.Str(_key);
+        get => IsNum
+            ? (_f.Pressure ? Units.PValue(_s.Num(_key)) : StepDef.N(_s.Num(_key)))
+            : _f.LabelOf(_s.Str(_key, _f.DefaultSel));
         set
         {
             if (Gate is { } gate && !gate())
@@ -340,9 +265,9 @@ public partial class StepField : ObservableObject
             if (IsNum)
             {
                 double.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d);
-                _s.SetNum(_key, d);
+                SetNumber(d);
             }
-            else _s.SetStr(_key, value ?? "");
+            else _s.SetStr(_key, _f.CodeOf(value ?? "") ?? _f.DefaultSel);
             OnPropertyChanged();
         }
     }

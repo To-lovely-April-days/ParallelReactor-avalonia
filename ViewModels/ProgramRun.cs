@@ -43,8 +43,6 @@ public sealed partial class ProgramRun : ObservableObject
     /// finally 不能复用中止时的停加热任务，必须重新下发一次。
     /// </summary>
     internal bool HeatTouchedAfterAbort;
-    /// <summary>本程序在 StirShare 里有一份搅拌请求（搅拌步骤进行中）。</summary>
-    internal bool StirHeld;
     /// <summary>后台稳压回路判定的程序故障（如等待气路超时）：取消流程令牌后由 ExecuteAsync 按失败而非手动中止收尾。</summary>
     internal string? PendingFault;
     /// <summary>本程序最近一次取到的气路租约代号（收尾只释放自己这段；0 = 还没取过）。</summary>

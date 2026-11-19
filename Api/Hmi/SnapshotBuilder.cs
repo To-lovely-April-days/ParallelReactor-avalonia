@@ -44,7 +44,7 @@ public static class SnapshotBuilder
         var ri = r.Info;
         var steps = StepsJson.GetValue(r.Steps, s => ProgramStepFormat.Format(s));
         return new ProgramRunSnap(id, ri.IsActive, ProgramRunSet.PhaseName(ri.Phase), ri.Index, ri.StepCount, ri.PhaseText, ri.Message,
-            ri.StartedBy, ri.StartedAt.UtcDateTime, ri.WaitingGas, steps);
+            ri.StartedBy, ri.StartedAt.UtcDateTime, ri.WaitingGas, steps, ri.EndReason);
     }
 
     private static ModuleCommSnap Module(bool configured, bool online, CommStats s, DateTimeOffset? valuesAt = null)

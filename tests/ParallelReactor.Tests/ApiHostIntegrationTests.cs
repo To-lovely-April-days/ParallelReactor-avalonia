@@ -60,7 +60,7 @@ public sealed class FakeApiSources : IApiSources, IDisposable
         Enumerable.Range(1, 8).Select(i => new ChannelInstalledDto(i, i <= 4)).ToArray(), new[] { 1, 2, 3, 4 },
         new HardwareDto(new(true, "sim", 19200, null), new(true, "sim", 9600, 4.137), new(true, "sim", 38400, null), new(true, "sim", 9600, null)),
         new UnitsDto("C", "psi", "rpm"), true, false, BootTime, BootId, null, Events.Head, Events.SeqEpoch);
-    public ProgramSchemaDto ProgramSchema() => new("1.0", 0, new[] { "purge" }, new[] { new StepSchemaDto("purge", "吹扫", "PURGE", "", Array.Empty<FieldSchemaDto>()) });
+    public ProgramSchemaDto ProgramSchema() => new("1.0", 0, new[] { "exchange" }, new[] { new StepSchemaDto("exchange", "置换", "EXCHANGE", "", Array.Empty<FieldSchemaDto>()) });
     public async Task<PreflightDto> PreflightAsync(string clientName, CancellationToken ct)
     {
         if (PreflightDelayMs > 0) { await Task.Delay(PreflightDelayMs, ct); throw new UiThreadTimeoutException(); }
@@ -179,7 +179,7 @@ public class ApiHostIntegrationTests
             Assert.Equal("running", run.GetProperty("state").GetString());
             Assert.Equal(1, run.GetProperty("stepIndex").GetInt32());
             Assert.Equal("远程（PC-测试工位1）", run.GetProperty("startedBy").GetString());
-            Assert.Equal("purge", run.GetProperty("steps")[0].GetProperty("type").GetString());
+            Assert.Equal("exchange", run.GetProperty("steps")[0].GetProperty("type").GetString());
             Assert.Equal("inert", run.GetProperty("steps")[0].GetProperty("params").GetProperty("gas").GetString());
 
             // 没跑过程序 → 404 NOT_FOUND；通道越界 → 404 CHANNEL_NOT_FOUND

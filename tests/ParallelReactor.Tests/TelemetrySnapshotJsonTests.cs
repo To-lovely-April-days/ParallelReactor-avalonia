@@ -66,11 +66,11 @@ public class TelemetrySnapshotJsonTests
     /// <summary>RV2 正在执行的程序（GET /channels/2/program/run）：两步，第 2 步升温中。</summary>
     public static ProgramRunSnap SampleRun(DateTime ts)
     {
-        using var p1 = JsonDocument.Parse("{\"gas\":\"inert\",\"cycles\":10,\"fill\":3,\"vent\":5}");
+        using var p1 = JsonDocument.Parse("{\"gas\":\"inert\",\"fill\":72.5,\"release\":2.9,\"cycles\":3,\"lineFlush\":2,\"maxSec\":60}");
         using var p2 = JsonDocument.Parse("{\"mode\":\"fixed\",\"temp\":150,\"wait\":15}");
         var steps = new[]
         {
-            new ProgramStepDto("purge", p1.RootElement.Clone(), "吹扫", "惰性气体 × 10 次"),
+            new ProgramStepDto("exchange", p1.RootElement.Clone(), "置换", "惰性气体 · 0.500 → 0.020 MPa × 3 · 先吹总管 2 次"),
             new ProgramStepDto("heat", p2.RootElement.Clone(), "升温", "定值 150°C · 平衡 15 min"),
         };
         return new ProgramRunSnap(2, true, "running", 1, 2, "执行第 2 步 · 升温", "148.6 / 150.0 °C", "远程（PC-测试工位1）", ts.AddMinutes(-20), false, steps);
@@ -221,8 +221,8 @@ public class TelemetrySnapshotJsonTests
         var root = doc.RootElement;
         Assert.Equal(new[] { "seq", "ts", "run" }, root.EnumerateObject().Select(p => p.Name));
         var r = root.GetProperty("run");
-        Assert.Equal(new[] { "channel", "running", "state", "stepIndex", "stepCount", "phase", "message", "startedBy", "startedAt", "waitingGas", "steps" },
-            r.EnumerateObject().Select(p => p.Name));
+        Assert.Equal(new[] { "channel", "running", "state", "stepIndex", "stepCount", "phase", "message", "startedBy", "startedAt", "waitingGas", "steps", "endReason" },
+            r.EnumerateObject().Select(p => p.Name));   // endReason：v0.8 追加在末尾（反应步骤的结束原因，没有为 null）
         Assert.Equal("running", r.GetProperty("state").GetString());
         Assert.Equal(1, r.GetProperty("stepIndex").GetInt32());
         Assert.Equal("远程（PC-测试工位1）", r.GetProperty("startedBy").GetString());
@@ -231,6 +231,7 @@ public class TelemetrySnapshotJsonTests
         Assert.Equal(new[] { "type", "params", "name", "detail" }, st[0].EnumerateObject().Select(p => p.Name));
         Assert.Equal("inert", st[0].GetProperty("params").GetProperty("gas").GetString());
         Assert.Equal(150, st[1].GetProperty("params").GetProperty("temp").GetDouble());
+        Assert.Equal(JsonValueKind.Null, r.GetProperty("endReason").ValueKind);
     }
 
     [Fact]

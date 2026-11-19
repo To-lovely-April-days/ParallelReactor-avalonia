@@ -104,10 +104,11 @@ public sealed class HmiRemoteCommands : IRemoteCommands
     // —— 程序 ——
     public Task<CommandOutcome> ReplaceProgramAsync(RemoteCaller c, int id, JsonElement steps, CancellationToken ct)
     {
-        // JSON → 快照的转换与范围校验在 Kestrel 线程做（StepDef.Registry 是静态表），只有替换本身进 UI 线程
-        var (snap, err) = ProgramJson.Parse(steps);
-        if (err != null) return Task.FromResult(CommandOutcome.Done(err));
-        return Control((o, s) => o.TryReplaceProgram(s, id, snap!), c, ct);
+        // JSON → 快照的转换（v0.8：旧格式按 STEPS-SPEC §3 转换）与范围校验在 Kestrel 线程做（StepSpecs 是静态表），只有替换本身进 UI 线程
+        double leakRate = _vm.Settings.LeakRate;   // 只读一个 double（设置改动只在 UI 线程，读到旧值也只影响缺省的允许压降）
+        var r = ProgramJson.Parse(steps, leakRate);
+        if (r.Error != null) return Task.FromResult(CommandOutcome.Done(r.Error));
+        return Control((o, s) => o.TryReplaceProgram(s, id, r.Steps!, migrated: r.Migrated, notes: r.Notes), c, ct);
     }
     public Task<CommandOutcome> RunProgramAsync(RemoteCaller c, int id, CancellationToken ct)
         => Control((o, s) =>

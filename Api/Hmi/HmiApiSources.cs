@@ -129,7 +129,7 @@ public sealed class HmiApiSources : IApiSources
 
     // ===================== /program-schema =====================
 
-    /// <summary>按当前设置修订号缓存：StepDef.Registry 是静态表，只有生效范围随设置变化。</summary>
+    /// <summary>按当前设置修订号缓存：StepSpecs 是静态表，只有生效范围（与气密检查的允许压降默认值）随设置变化。</summary>
     public ProgramSchemaDto ProgramSchema()
     {
         var snap = Snapshots.Current;
@@ -138,55 +138,14 @@ public sealed class HmiApiSources : IApiSources
         if (cached != null && Volatile.Read(ref _schemaRevision) == rev && snap != null) return cached;
         var s = snap?.Settings;
         var limits = s == null
-            ? new ProgramLimitSettings(200, 250, 1000, 500, 510)
+            ? new ProgramLimitSettings(200, 250, 450, 500, 510)
             : new ProgramLimitSettings(s.TMaxSp, s.OverTemp, s.RpmMax, s.PMaxSp, s.OverPressure);
-        var dto = BuildSchema(limits, rev);
+        var dto = BuildSchema(limits, rev, s?.LeakRate ?? StepSpecs.LeakRateDefault);
         if (snap != null) { _schema = dto; Volatile.Write(ref _schemaRevision, rev); }
         return dto;
     }
 
-    public static ProgramSchemaDto BuildSchema(ProgramLimitSettings limits, long revision)
-    {
-        var steps = new List<StepSchemaDto>();
-        foreach (var type in Enum.GetValues<StepType>())
-        {
-            if (!StepDef.Registry.TryGetValue(type, out var def)) continue;
-            string tname = type.ToString().ToLowerInvariant();
-            var fields = new List<FieldSchemaDto>();
-            if (type == StepType.Heat)
-            {
-                fields.Add(new FieldSchemaDto("mode", "升温方式", "sel", null, null, null, null, null, null,
-                    ProgramSchemaCodes.Options["heat.mode"], true, null, null, null, null));
-            }
-            foreach (var f in def.Fields)
-            {
-                string key = $"{tname}.{f.Key}";
-                bool available = !ProgramSchemaCodes.UnavailableFields.Contains(key);
-                if (f.Kind == "sel")
-                {
-                    var opts = ProgramSchemaCodes.Options.TryGetValue(key, out var o) ? o
-                        : (f.Options ?? Array.Empty<string>()).Select(l => new SchemaOption(l, l)).ToArray();
-                    fields.Add(new FieldSchemaDto(f.Key, f.Label, "sel", null, null, null, null, null, null, opts, true, null, null, null, null));
-                    continue;
-                }
-                var (lo, hi) = ProgramLimits.FieldRange(type, f.Key, f.Min, f.Max, limits);
-                double? dflt = f.Default is double d ? d : f.Default is int n ? n : null;
-                fields.Add(new FieldSchemaDto(f.Key, f.Label, "num", f.Unit, dflt, lo, hi, f.Min, f.Max, null,
-                    available, available ? null : ProgramSchemaCodes.GasUnavailableReason, null, null, null));
-            }
-            if (type == StepType.Heat)
-            {
-                // 曲线段：ProgramView 曲线编辑器的键盘范围；段温度同样受 TMaxSp / OverTemp 封顶
-                var segFields = ProgramSchemaCodes.SegmentFields.Select(sf =>
-                {
-                    double hi = sf.Key == "temp" ? Math.Min(sf.Max, ProgramLimits.HeatTempMax(limits)) : sf.Max;
-                    return new FieldSchemaDto(sf.Key, sf.Label, "num", sf.Unit, null, sf.Min, hi, sf.Min, sf.Max, null, true, null, null, null, null);
-                }).ToArray();
-                fields.Add(new FieldSchemaDto("segments", "曲线段（mode=curve 时使用）", "array", null, null, null, null, null, null, null, true, null,
-                    segFields, ProgramSchemaCodes.SegmentsMin, ProgramSchemaCodes.SegmentsMax));
-            }
-            steps.Add(new StepSchemaDto(tname, def.Name, def.Chip, def.Help, fields.ToArray()));
-        }
-        return new ProgramSchemaDto(ApiVersionInfo.ApiVersion, revision, steps.Select(x => x.Type).ToArray(), steps.ToArray());
-    }
+    /// <summary>v0.8：只列九种新步骤（STEPS-SPEC §6），构建逻辑在纯逻辑的 <see cref="ProgramSchemaBuilder"/>（有单测）。</summary>
+    public static ProgramSchemaDto BuildSchema(ProgramLimitSettings limits, long revision, double leakRate = StepSpecs.LeakRateDefault)
+        => ProgramSchemaBuilder.Build(limits, revision, leakRate);
 }

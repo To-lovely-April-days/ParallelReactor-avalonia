@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ParallelReactor.Api;
+using ParallelReactor.Models;
 using Xunit;
 
 namespace ParallelReactor.Tests;
@@ -13,7 +14,7 @@ namespace ParallelReactor.Tests;
 /// <list type="bullet">
 /// <item>Api/*.cs（纯逻辑，测试工程链接）不得引用 Avalonia 或 ViewModels——Kestrel 线程绝不碰 VM；只有 Api/Hmi/ 下的适配器可以；</item>
 /// <item>Api/Hmi/ 以外不得出现 Dispatcher 调用；Api/Hmi/HmiApiSources 里 Dispatcher 只用于 /preflight（唯一进 UI 线程的读取）；</item>
-/// <item>ProgramSchemaCodes 的枚举 label 与 Models/ProgramStep.cs 的 Options 一一对应（§6.9：协议用英文码、中文只是 label）。</item>
+/// <item>ProgramSchemaCodes 的枚举就是 Models/StepFields.cs 字段表的选项（v0.8：协议与触屏都存英文码、中文只是 label）。</item>
 /// </list>
 /// </summary>
 public class ApiArchitectureTests
@@ -89,36 +90,28 @@ public class ApiArchitectureTests
     }
 
     [Fact]
-    public void ProgramSchemaCodes_LabelsMatchStepDefOptions()
+    public void ProgramSchemaCodes_MatchStepSpecs()
     {
-        // 测试工程不能链接 Models/ProgramStep.cs（含 Avalonia 类型），改为从源码解析 [StepType.X] = … Options=new[]{…}
-        var src = File.ReadAllText(Path.Combine(SourceScan.RepoRoot, "Models", "ProgramStep.cs"));
-        var found = new Dictionary<string, string[]>(StringComparer.Ordinal);
-        string? step = null;
-        foreach (var line in src.Split('\n'))
-        {
-            var ms = Regex.Match(line, @"\[StepType\.(\w+)\]\s*=");
-            if (ms.Success) { step = ms.Groups[1].Value.ToLowerInvariant(); continue; }
-            var mf = Regex.Match(line, @"Key\s*=\s*""(\w+)"".*?Kind\s*=\s*""sel"".*?Options\s*=\s*new\[\]\s*\{([^}]*)\}");
-            if (!mf.Success || step == null) continue;
-            var labels = Regex.Matches(mf.Groups[2].Value, @"""([^""]*)""").Select(x => x.Groups[1].Value).ToArray();
-            found[$"{step}.{mf.Groups[1].Value}"] = labels;
-        }
-        Assert.True(found.Count >= 6, $"只解析到 {found.Count} 个 sel 字段");
-        foreach (var (key, labels) in found)
-        {
-            Assert.True(ProgramSchemaCodes.Options.TryGetValue(key, out var opts), $"ProgramSchemaCodes 缺少 {key}");
-            Assert.Equal(labels, opts!.Select(o => o.Label).ToArray());
-            Assert.Equal(opts.Length, opts.Select(o => o.Code).Distinct().Count());
-        }
-        // 表里多出的键只能是手工补的 heat.mode
-        var extra = ProgramSchemaCodes.Options.Keys.Except(found.Keys).ToList();
-        Assert.Equal(new[] { "heat.mode" }, extra);
+        // v0.8：触屏字段表（Models/StepFields.cs 的 StepSpecs）的选项直接取自 ProgramSchemaCodes.Options，不再各写一份 label
+        var used = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var t in StepTypeCodes.All)
+            foreach (var f in StepSpecs.Of(t).Fields.Where(f => f.IsSel))
+            {
+                string key = $"{t.ToCode()}.{f.Key}";
+                Assert.True(ProgramSchemaCodes.Options.TryGetValue(key, out var opts), $"ProgramSchemaCodes 缺少 {key}");
+                Assert.Same(opts, f.Options);
+                Assert.Equal(opts!.Length, opts.Select(o => o.Code).Distinct().Count());
+                Assert.Contains(f.DefaultSel, opts.Select(o => o.Code));
+                used.Add(key);
+            }
+        // 表里多出的键只能是旧格式（只在输入时认，转换用）
+        var extra = ProgramSchemaCodes.Options.Keys.Except(used).OrderBy(k => k, StringComparer.Ordinal).ToList();
+        Assert.Equal(ProgramSchemaCodes.LegacyKeys.OrderBy(k => k, StringComparer.Ordinal), extra);
         Assert.Equal("seal", ProgramSchemaCodes.CodeOf("end", "mode", "密封 (推荐)"));
         Assert.Equal("气体 A", ProgramSchemaCodes.LabelOf("press", "gas", "A"));
+        Assert.Equal("惰性气体", ProgramSchemaCodes.LabelOf("press", "gas", "inert"));   // v0.8 充压可以用惰性气体
         Assert.Null(ProgramSchemaCodes.CodeOf("end", "mode", "不存在"));
-        // 耗气量已实现：react.endBy 的三个选项和 react.mmol 都可用
-        Assert.All(ProgramSchemaCodes.Options["react.endBy"], o => Assert.True(o.Available));
+        Assert.All(ProgramSchemaCodes.Options.Values.SelectMany(o => o), o => Assert.True(o.Available));
         Assert.Empty(ProgramSchemaCodes.UnavailableFields);
     }
 

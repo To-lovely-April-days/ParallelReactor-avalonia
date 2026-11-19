@@ -34,6 +34,14 @@ public static class Units
         _ => psi
     };
 
+    /// <summary>当前显示单位的数值 → psi（触屏按压力单位输入的程序参数存回 psi）。</summary>
+    public static double ToPsi(double value) => Pressure switch
+    {
+        "bar" => value * PsiPerBar,
+        "MPa" => value * PsiPerMpa,
+        _ => value
+    };
+
     /// <summary>当前压力单位标签（"MPa" / "bar" / "psi"）。</summary>
     public static string PLabel => Pressure;
 

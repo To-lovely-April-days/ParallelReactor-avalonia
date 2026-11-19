@@ -7,36 +7,36 @@ using Xunit;
 
 namespace ParallelReactor.Tests;
 
-/// <summary>冻结步骤 → §6.9 程序 JSON（GET /channels/{id}/program/run 的 steps，v0.6）：sel 字段输出英文枚举码，heat 带 mode / segments。</summary>
+/// <summary>冻结步骤 → §6.9 程序 JSON（GET /channels/{id}/program/run 的 steps，v0.6 / v0.8 新步骤）：sel 字段输出英文枚举码，heat 带 mode / segments。</summary>
 public class ProgramStepFormatTests
 {
     private static StepSnapshot Step(StepType t, string name, params (string K, object V)[] p)
         => StepSnapshot.Create(t, 1, name, name + " 摘要", p.Select(x => new KeyValuePair<string, object>(x.K, x.V)));
 
     [Fact]
-    public void SelLabels_BecomeCodes_NumbersStayNumbers()
+    public void Codes_StayCodes_LabelsBecomeCodes_NumbersStayNumbers()
     {
         var steps = new[]
         {
-            Step(StepType.Purge, "吹扫", ("gas", "惰性气体"), ("cycles", 10.0), ("fill", 3.0), ("vent", 5.0)),
-            Step(StepType.Press, "升压", ("gas", "气体 B"), ("pres", 50.5), ("regulate", "关闭")),
-            Step(StepType.Wait, "等待", ("mode", "等待压力到位"), ("time", 30.0)),
-            Step(StepType.React, "反应", ("endBy", "两者先到"), ("time", 120.0), ("mmol", 1.5)),
-            Step(StepType.End, "结束", ("mode", "密封 (推荐)"), ("cool", 40.0)),
+            Step(StepType.Exchange, "置换", ("gas", "inert"), ("fill", 72.5), ("release", 2.9), ("cycles", 3.0), ("lineFlush", 2.0), ("maxSec", 60.0)),
+            Step(StepType.Press, "充压", ("gas", "B"), ("pres", 50.5), ("regulate", "off")),
+            Step(StepType.Hold, "保持", ("until", "pressAbove"), ("pres", 14.5), ("maxWait", 30.0)),
+            Step(StepType.React, "反应", ("mmolOn", "开启"), ("time", 120.0), ("mmol", 1.5)),   // 界面 label 也换成码
+            Step(StepType.End, "结束"),
         };
         var dto = ProgramStepFormat.Format(steps);
-        Assert.Equal(new[] { "purge", "press", "wait", "react", "end" }, dto.Select(d => d.Type));
+        Assert.Equal(new[] { "exchange", "press", "hold", "react", "end" }, dto.Select(d => d.Type));
         Assert.Equal("inert", dto[0].Params.GetProperty("gas").GetString());
         Assert.Equal(JsonValueKind.Number, dto[0].Params.GetProperty("cycles").ValueKind);
-        Assert.Equal(10, dto[0].Params.GetProperty("cycles").GetDouble());
+        Assert.Equal(3, dto[0].Params.GetProperty("cycles").GetDouble());
         Assert.Equal("B", dto[1].Params.GetProperty("gas").GetString());
         Assert.Equal(50.5, dto[1].Params.GetProperty("pres").GetDouble());
         Assert.Equal("off", dto[1].Params.GetProperty("regulate").GetString());
-        Assert.Equal("pressure", dto[2].Params.GetProperty("mode").GetString());
-        Assert.Equal("either", dto[3].Params.GetProperty("endBy").GetString());
-        Assert.Equal("seal", dto[4].Params.GetProperty("mode").GetString());
-        Assert.Equal("吹扫", dto[0].Name);
-        Assert.Equal("吹扫 摘要", dto[0].Detail);
+        Assert.Equal("pressAbove", dto[2].Params.GetProperty("until").GetString());
+        Assert.Equal("on", dto[3].Params.GetProperty("mmolOn").GetString());
+        Assert.Empty(dto[4].Params.EnumerateObject());
+        Assert.Equal("置换", dto[0].Name);
+        Assert.Equal("置换 摘要", dto[0].Detail);
     }
 
     [Fact]
@@ -64,8 +64,8 @@ public class ProgramStepFormatTests
     public void Output_SerializesThroughApiJson()
     {
         // 走源生成上下文：JsonElement 参数原样嵌入
-        var dto = ProgramStepFormat.Format(Step(StepType.Stir, "搅拌", ("rpm", 300.0), ("dur", 5.0)));
+        var dto = ProgramStepFormat.Format(Step(StepType.Stir, "搅拌", ("rpm", 300.0)));
         var json = ApiJson.Serialize(dto);
-        Assert.Equal("{\"type\":\"stir\",\"params\":{\"rpm\":300,\"dur\":5},\"name\":\"搅拌\",\"detail\":\"搅拌 摘要\"}", json);
+        Assert.Equal("{\"type\":\"stir\",\"params\":{\"rpm\":300},\"name\":\"搅拌\",\"detail\":\"搅拌 摘要\"}", json);
     }
 }

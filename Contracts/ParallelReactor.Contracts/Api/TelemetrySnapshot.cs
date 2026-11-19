@@ -70,9 +70,10 @@ public sealed record ChannelProgramSnap(bool Running, int StepIndex, int StepCou
 /// 其余字段每个 Tick 刷新：state = preparing / running / waitingGas / finishing / completed / failed / aborted（同 channels[i].program.state）；
 /// stepIndex 0 起（尚未开始为 −1）；phase = 监视阶段文字（「执行第 4 步 · 升温」/「程序执行完成」…）；message = 监视详情；startedBy = local / 远程来源标签。
 /// 只保留本次开机内的记录（HMI 重启后为空）。
+/// endReason（v0.8，STEPS-SPEC §1.7）：反应步骤的结束原因（「最长时间到」「吸气量达到 5.00 mmol」「吸气停止（30 min &lt; 0.005 mmol/min）」），没有反应步骤为 null。
 /// </summary>
 public sealed record ProgramRunSnap(int Channel, bool Running, string State, int StepIndex, int StepCount, string Phase, string Message,
-    string? StartedBy, DateTime StartedAt, bool WaitingGas, ProgramStepDto[] Steps);
+    string? StartedBy, DateTime StartedAt, bool WaitingGas, ProgramStepDto[] Steps, string? EndReason = null);
 
 /// <summary>§6.3 的 stir。</summary>
 public sealed record StirSnap(bool On, int RpmSp, bool Online, bool Locked, double? MotorCurrentA, double? BusVoltageV, string? Fault, int? AlarmCode, int RampMsPer1000Rpm);
