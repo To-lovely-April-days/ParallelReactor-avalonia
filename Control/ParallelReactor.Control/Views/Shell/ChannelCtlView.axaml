@@ -6,6 +6,7 @@
              xmlns:b="using:ParallelReactor.Control.Behaviors"
              xmlns:sh="using:ParallelReactor.Control.Shell"
              xmlns:h="using:ParallelReactor.Control.Pages.Home"
+             xmlns:ch="using:ParallelReactor.Control.Controls.Heat"
              x:Class="ParallelReactor.Control.Views.Shell.ChannelCtlView"
              x:DataType="sh:ChannelCtlVm">
   <!-- 读数块的单位写在小标题行的右端（「温度　°C」）、「气体消耗」写成「吸气」：样稿把单位接在数字后面，340 宽的检查器里三块放不下（会溢出），这里改成标题带单位。 -->
@@ -98,6 +99,12 @@
       <Setter Property="FontSize" Value="{StaticResource FsCell}" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cvcard">
+      <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="12,10,12,6" />
+      <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
     <Style Selector="Border.cst">
       <Setter Property="Height" Value="24" />
@@ -193,16 +200,58 @@
           <StackPanel>
             <Border Classes="h4"><TextBlock Text="温度控制" /></Border>
             <DockPanel Classes="fr">
-              <pr:SegControl DockPanel.Dock="Right" Value="fixed" VerticalAlignment="Center" Margin="12,0,0,0">
-                <pr:SegOption Value="fixed" Label="定值" />
-                <pr:SegOption Value="curve" Label="曲线" Reason="曲线升温（最多 16 段）在程序页编辑（F6）" />
-              </pr:SegControl>
+              <pr:SegControl DockPanel.Dock="Right" Value="{Binding ModeKey, Mode=TwoWay}" OptionsSource="{Binding ModeOptions}" VerticalAlignment="Center" Margin="12,0,0,0"
+                             AutomationProperties.Name="升温方式" />
               <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="升温方式" /><TextBlock Classes="fs" Text="曲线：最多 16 段，按段线性变化" /></StackPanel>
             </DockPanel>
             <DockPanel Margin="0,-2,0,10" IsVisible="{Binding ProgNote}">
               <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
               <TextBlock Classes="fs" Text="程序运行中 · 这里改的设定只到本步结束，下一步按程序走" />
             </DockPanel>
+            <!-- 曲线升温（设计稿 curve-design 方向 B）：没在走 = 摘要卡（bg-panel、圆角 4）+「编辑曲线」「启动曲线」；在走 = 第几段 / 本段剩多久 / 分段进度条 / 给定·实测 +「查看曲线」「停止曲线」 -->
+            <StackPanel IsVisible="{Binding CurveIdle}">
+              <Border Classes="cvcard">
+                <StackPanel>
+                  <TextBlock TextWrapping="Wrap" FontSize="{StaticResource FsCell}" LineHeight="20" Foreground="{StaticResource T1Brush}">
+                    <Run Text="{Binding CurveHead}" FontWeight="SemiBold" /><Run Text="{Binding CurveMax}" />
+                  </TextBlock>
+                  <TextBlock Classes="fs" Text="{Binding CurveSub}" LineHeight="19" Margin="0,0,0,6" />
+                  <ItemsControl ItemsSource="{Binding CurveSteps}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,1,0,0">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="sh:CurveStepItem">
+                        <DockPanel Height="28">
+                          <TextBlock DockPanel.Dock="Left" Width="20" Classes="num" Text="{Binding I}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          <TextBlock DockPanel.Dock="Right" Classes="num" Text="{Binding Min}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
+                          <TextBlock Classes="num" Text="{Binding Text}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+                        </DockPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+              <Grid ColumnDefinitions="*,8,*" Margin="0,0,0,10">
+                <Button Classes="wide" b:Pr.Icon="edit" Content="编辑曲线" Command="{Binding CurveEditCommand}" b:Pr.Reason="{Binding CurveEditReason}" />
+                <Button Grid.Column="2" Classes="wide" Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Content="启动曲线" Command="{Binding CurveStartCommand}" b:Pr.Reason="{Binding CurveStartReason}" />
+              </Grid>
+            </StackPanel>
+            <StackPanel IsVisible="{Binding CurveRunning}">
+              <DockPanel Margin="0,0,0,8">
+                <TextBlock DockPanel.Dock="Right" Classes="num" Text="{Binding CurveRun.Left}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Bottom" Margin="8,0,0,1" />
+                <TextBlock DockPanel.Dock="Left" Classes="num" Text="{Binding CurveRun.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Bottom" />
+                <TextBlock Classes="num" Text="{Binding CurveRun.Step}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Bottom" Margin="8,0,0,1" TextTrimming="CharacterEllipsis" />
+              </DockPanel>
+              <ch:CurveBar Items="{Binding CurveRun.Bars}" Margin="0,0,0,6" />
+              <TextBlock Classes="fs num" Text="{Binding CurveRun.Sub}" LineHeight="19" Margin="0,0,0,10" />
+              <Grid ColumnDefinitions="*,8,*" Margin="0,0,0,10">
+                <Button Classes="wide" b:Pr.Icon="trend" Content="查看曲线" Command="{Binding CurveEditCommand}" />
+                <Button Grid.Column="2" Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="停止曲线" Command="{Binding CurveStopCommand}" b:Pr.Reason="{Binding CurveStopReason}" />
+              </Grid>
+              <DockPanel Margin="0,-2,0,10">
+                <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+                <TextBlock Classes="fs" Text="曲线运行中不能改。停止曲线后加热不停，保持当前给定值" />
+              </DockPanel>
+            </StackPanel>
+            <StackPanel IsVisible="{Binding IsFixed}">
             <DockPanel Classes="fr">
               <Border DockPanel.Dock="Right" Classes="stp">
                 <StackPanel Orientation="Horizontal">
@@ -226,6 +275,7 @@
               <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
               <TextBlock Classes="fs" Text="设温度不等于启动加热；开机后所有通道默认不加热" />
             </DockPanel>
+            </StackPanel>
           </StackPanel>
         </Border>
         <!-- 反应配置 -->

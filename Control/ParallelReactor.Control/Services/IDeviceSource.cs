@@ -340,7 +340,8 @@ public sealed record ChannelReading(
     double? TempC, double? SpC, double? PressureMPa, double? PTargetMPa, double? HeaterPct, double? Rpm,
     bool Heating, bool Valve,
     HmiProgram? Hmi = null,
-    double? GasMmol = null, double? GasRate = null, double? SolutionMl = null)
+    double? GasMmol = null, double? GasRate = null, double? SolutionMl = null,
+    Core.Heat.CurveReading? Curve = null)
 {
     /// <summary>未安装的位置。</summary>
     public static ChannelReading Uninstalled(int n) => new(n, false, StateKey.Uninstalled, StateKeys.Word(StateKey.Uninstalled),

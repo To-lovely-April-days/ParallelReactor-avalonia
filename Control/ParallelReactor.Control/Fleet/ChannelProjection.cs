@@ -31,7 +31,22 @@ public static class ChannelProjection
             ch.HeatOutputPct, stir is null ? null : stir.On ? stir.RpmSp : 0,
             StateMap.IsHeating(ch), ch.ValveOpen,
             p is null ? null : new HmiProgram(p.Running, p.StepIndex, p.StepCount, p.State, p.Message, p.StartedAt, p.WaitingGas, p.StartedBy),
-            ch.GasConsumed, ch.GasRate, ch.SolutionVolume);
+            ch.GasConsumed, ch.GasRate, ch.SolutionVolume, CurveOf(ch));
+    }
+
+    /// <summary>
+    /// 实时：曲线升温现状（ChannelSnap.SpMode + Profile；定值方式时 HMI 不带 profile，段为空）。只算启用的段；
+    /// 起点温度 HMI 不上报，在第 1 段时由给定值反推（HeatCurve.InferStart）。
+    /// </summary>
+    public static Core.Heat.CurveReading CurveOf(ChannelSnap ch)
+    {
+        bool mode = ch.SpMode == "curve";
+        if (ch.Profile is not { } p) return new Core.Heat.CurveReading(mode, false, System.Array.Empty<Core.Heat.CurveSeg>());
+        var segs = new System.Collections.Generic.List<Core.Heat.CurveSeg>();
+        foreach (var s in p.Segments) if (s.Enabled) segs.Add(new Core.Heat.CurveSeg(s.TempC, s.Minutes));
+        double total = p.TotalMinutes > 0 ? p.TotalMinutes : Core.Heat.HeatCurve.Total(segs);
+        return new Core.Heat.CurveReading(mode, p.Running, segs, p.ElapsedMin, total, p.Complete,
+            p.Running ? Core.Heat.HeatCurve.InferStart(segs, p.ElapsedMin, ch.TempSpC) : null);
     }
 
     /// <summary>实时：从一帧里取第 n 路（Id = n）再投影；帧为空（从未收到数据）按 <paramref name="installed"/>。</summary>
@@ -56,7 +71,8 @@ public static class ChannelProjection
             ch.State == StateKey.Alarm ? AlarmCause.OverPressure : AlarmCause.None,
             d.Reading(ch, DemoReading.TempC), d.Reading(ch, DemoReading.SpC), d.Reading(ch, DemoReading.PressureMPa), d.Reading(ch, DemoReading.PTargetMPa),
             d.Reading(ch, DemoReading.HeaterPct), d.Reading(ch, DemoReading.Rpm), ch.Heating, ch.Sv,
-            GasMmol: d.Reading(ch, DemoReading.Mmol), GasRate: d.Reading(ch, DemoReading.Rate), SolutionMl: d.Reading(ch, DemoReading.VolumeMl));
+            GasMmol: d.Reading(ch, DemoReading.Mmol), GasRate: d.Reading(ch, DemoReading.Rate), SolutionMl: d.Reading(ch, DemoReading.VolumeMl),
+            Curve: ch.Curve(d.FleetNow));
     }
 
     /// <summary>

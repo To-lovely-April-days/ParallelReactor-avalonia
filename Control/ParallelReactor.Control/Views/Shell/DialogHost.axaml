@@ -25,6 +25,9 @@
     <DataTemplate DataType="dlg:StopConfirmDialogVm" x:DataType="dlg:StopConfirmDialogVm">
       <vd:StopInfoView />
     </DataTemplate>
+    <DataTemplate DataType="dlg:CurveDialogVm" x:DataType="dlg:CurveDialogVm">
+      <vd:CurveDialogView />
+    </DataTemplate>
     <DataTemplate DataType="dlg:LeaseDialogVm" x:DataType="dlg:LeaseDialogVm">
       <vd:LeaseDialogView />
     </DataTemplate>

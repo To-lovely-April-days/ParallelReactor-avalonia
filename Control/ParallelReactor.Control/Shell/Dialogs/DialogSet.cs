@@ -32,6 +32,9 @@ public static class DialogSet
         shell.Dialogs.Register("heatstop", arg => StopConfirmDialogVm.Create(shell, "heatstop", arg));
         shell.Dialogs.Register("disable", arg => StopConfirmDialogVm.Create(shell, "disable", arg));
         shell.Dialogs.Register("stiroff", arg => StopConfirmDialogVm.Create(shell, "stiroff", arg));
+        // 曲线升温（2026-11-21）：曲线窗口（参数 k:n）、停止曲线的确认
+        shell.Dialogs.Register("curve", arg => CurveDialogVm.Create(shell, arg));
+        shell.Dialogs.Register("curvestop", arg => StopConfirmDialogVm.Create(shell, "curvestop", arg));
         shell.Dialogs.Register("edit", arg => EditDeviceDialogVm.Create(shell, arg));
         shell.Dialogs.Register("rename", arg => RenameDialogVm.Create(shell, arg));
         shell.Dialogs.Register("remove", arg => RemoveDialogVm.Create(shell, arg));

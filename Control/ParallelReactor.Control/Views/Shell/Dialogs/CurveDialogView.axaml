@@ -1,0 +1,222 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:ch="using:ParallelReactor.Control.Controls.Heat"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
+             x:Class="ParallelReactor.Control.Views.Shell.Dialogs.CurveDialogView"
+             x:DataType="dlg:CurveDialogVm">
+  <!-- 曲线窗口（设计稿 research/fusion-port/curve-design 方向 B）：左 400 改段（表头 13 t-3 + 下线；行高 44：段号 26、目标 96、用时 96、变化、删除 28），
+       右边预览（标题行 13 + 合计，图 Controls/Heat/CurvePreview，下面一句「走完后保持 …」）；下面「同时用到」8 个一行的通道块（高 52、line-2 边、圆角 4；选中 a 边 + a-tint 底 + ✓）。
+       运行中：左边先放第几段 / 进度条，行只读（当前行 run-row-sel 底 + 左 3 px 品牌蓝 +「当前」），没有「同时用到」。 -->
+  <UserControl.Resources>
+    <ControlTheme x:Key="CurveChip" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Height" Value="52" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                  CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+            <ContentPresenter Content="{TemplateBinding Content}" />
+          </Border>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+      </Style>
+      <Style Selector="^:focus-visible">
+        <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+      </Style>
+      <Style Selector="^.on">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="Padding" Value="9,5" />
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      </Style>
+      <Style Selector="^.off">
+        <Setter Property="Background" Value="{StaticResource BgPanelBrush}" />
+        <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
+        <Setter Property="Cursor" Value="Arrow" />
+      </Style>
+      <Style Selector="^.self">
+        <Setter Property="Cursor" Value="Arrow" />
+      </Style>
+    </ControlTheme>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBlock.cvh">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cvr">
+      <Setter Property="MinHeight" Value="44" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.cvr.cur">
+      <Setter Property="Background" Value="{StaticResource RunRowSelBrush}" />
+    </Style>
+    <Style Selector="TextBlock.rate">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.rate.hold">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.rate.wr">
+      <Setter Property="Foreground" Value="{StaticResource AmbInkBrush}" />
+    </Style>
+    <Style Selector="TextBlock.rov">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Border.cvr.dn TextBlock.rov">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="TextBlock.chipn">
+      <Setter Property="FontSize" Value="{StaticResource FsCell}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T1Brush}" />
+    </Style>
+    <Style Selector="Button.on TextBlock.chipn">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="Button.off TextBlock.chipn">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+  </UserControl.Styles>
+  <StackPanel>
+    <Grid ColumnDefinitions="400,28,*">
+      <!-- 左：段 -->
+      <StackPanel>
+        <StackPanel IsVisible="{Binding IsRunning}" Margin="0,0,0,10">
+          <DockPanel Margin="0,0,0,8">
+            <TextBlock DockPanel.Dock="Right" Classes="num" Text="{Binding Run.Left}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Bottom" Margin="8,0,0,1" />
+            <TextBlock DockPanel.Dock="Left" Classes="num" Text="{Binding Run.Title}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Bottom" />
+            <TextBlock Classes="num" Text="{Binding Run.Step}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Bottom" Margin="8,0,0,1" />
+          </DockPanel>
+          <ch:CurveBar Items="{Binding Run.Bars}" Margin="0,0,0,6" />
+          <TextBlock Classes="num" Text="{Binding Run.Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="19" TextWrapping="Wrap" />
+        </StackPanel>
+        <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Height="28">
+          <Grid ColumnDefinitions="26,96,8,96,14,*,28">
+            <TextBlock Classes="cvh" Text="段" />
+            <TextBlock Grid.Column="1" Classes="cvh" Text="目标温度" />
+            <TextBlock Grid.Column="3" Classes="cvh" Text="用时" />
+            <TextBlock Grid.Column="5" Classes="cvh" Text="变化" />
+          </Grid>
+        </Border>
+        <ScrollViewer Theme="{StaticResource PrScrollViewer}" MaxHeight="356" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="dlg:CurveSegVm">
+                <Border Classes="cvr" Classes.cur="{Binding IsCur}" Classes.dn="{Binding IsDone}">
+                  <Panel>
+                    <Border Width="3" HorizontalAlignment="Left" Background="{StaticResource ABrush}" IsVisible="{Binding IsCur}" />
+                    <Grid ColumnDefinitions="26,96,8,96,14,*,Auto">
+                      <TextBlock Classes="cvh num" Text="{Binding Index}" HorizontalAlignment="Center" />
+                      <!-- 编辑 -->
+                      <pr:NumBox Grid.Column="1" Value="{Binding Temp}" Unit="°C" Minimum="0" Maximum="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).TempMax}" Step="5" Decimals="0"
+                                 ShowSteppers="False" Label="{Binding TempLabel}" VerticalAlignment="Center" IsVisible="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).IsEdit}" />
+                      <pr:NumBox Grid.Column="3" Value="{Binding Minutes}" Unit="min" Minimum="0.1" Maximum="6000" Step="5" Decimals="0"
+                                 ShowSteppers="False" Label="{Binding MinLabel}" VerticalAlignment="Center" IsVisible="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).IsEdit}" />
+                      <!-- 运行中：只读 -->
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="3" Margin="8,0,0,0" IsVisible="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).IsRunning}">
+                        <TextBlock Classes="rov num" Text="{Binding TempText}" /><TextBlock Classes="cvh" Text="°C" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="3" Orientation="Horizontal" Spacing="3" Margin="8,0,0,0" IsVisible="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).IsRunning}">
+                        <TextBlock Classes="rov num" Text="{Binding MinText}" /><TextBlock Classes="cvh" Text="min" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="5" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center" ToolTip.Tip="{Binding Warn}">
+                        <c:IconView Icon="warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Center" IsVisible="{Binding HasWarn}" />
+                        <TextBlock Classes="rate num" Classes.hold="{Binding IsHold}" Classes.wr="{Binding HasWarn}" Text="{Binding RateText}" />
+                      </StackPanel>
+                      <Panel Grid.Column="6" MinWidth="28" VerticalAlignment="Center">
+                        <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="x" Command="{Binding RemoveCommand}" b:Pr.Reason="{Binding RemoveReason}" ToolTip.Tip="删除这一段"
+                                AutomationProperties.Name="删除这一段" IsVisible="{Binding $parent[ItemsControl].((dlg:CurveDialogVm)DataContext).IsEdit}" />
+                        <Border Background="{StaticResource ABrush}" CornerRadius="2" Padding="5,0" Height="19" Margin="0,0,6,0" IsVisible="{Binding IsCur}">
+                          <TextBlock Text="当前" FontSize="{StaticResource FsBase}" Foreground="{StaticResource TInvBrush}" VerticalAlignment="Center" />
+                        </Border>
+                      </Panel>
+                    </Grid>
+                  </Panel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,10,0,0" IsVisible="{Binding IsEdit}">
+          <Button b:Pr.Icon="plus" Content="添加一段" Command="{Binding AddCommand}" b:Pr.Reason="{Binding AddReason}" VerticalAlignment="Center" />
+          <TextBlock Classes="cvh" Text="{Binding AddHint}" />
+        </StackPanel>
+        <DockPanel Margin="0,10,0,0" IsVisible="{Binding IsRunning}">
+          <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+          <TextBlock Classes="cvh" Text="曲线运行中不能改 · 先停止曲线" />
+        </DockPanel>
+        <Border Margin="0,12,0,0" Padding="10,8" CornerRadius="4" Background="{StaticResource AmbBgBrush}" BorderBrush="{StaticResource AmbNoteLineBrush}" BorderThickness="1" IsVisible="{Binding HasWarnings}">
+          <DockPanel>
+            <c:IconView DockPanel.Dock="Left" Icon="warn-f" Size="15" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,2,8,0" />
+            <ItemsControl ItemsSource="{Binding Warnings}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInk2Brush}" LineHeight="19" TextWrapping="Wrap" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </DockPanel>
+        </Border>
+      </StackPanel>
+      <!-- 右：预览 -->
+      <StackPanel Grid.Column="2">
+        <Border BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1" Height="28" Margin="0,0,0,8">
+          <DockPanel>
+            <TextBlock DockPanel.Dock="Left" Classes="cvh" Text="预览" />
+            <TextBlock Classes="num" Text="{Binding SumText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" HorizontalAlignment="Right" TextTrimming="CharacterEllipsis" Margin="12,0,0,0" />
+          </DockPanel>
+        </Border>
+        <ch:CurvePreview Plot="{Binding Plot}" />
+        <TextBlock Classes="cvh" Text="{Binding AfterText}" Margin="46,2,0,0" />
+      </StackPanel>
+    </Grid>
+    <!-- 同时用到 -->
+    <StackPanel Margin="0,16,0,0" IsVisible="{Binding IsEdit}">
+      <Border BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,1,0,0" Padding="0,12,0,10">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrLink}" Content="全选能用的" Command="{Binding SelectAllCommand}" VerticalAlignment="Center" />
+          <TextBlock DockPanel.Dock="Left" Text="同时用到" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+          <TextBlock Classes="cvh" Text="选中的通道用同一条曲线，各自从自己的当前温度开始" Margin="10,0,0,0" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+      </Border>
+      <ItemsControl ItemsSource="{Binding Chips}" Margin="0,0,-8,0">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate><UniformGrid Columns="{Binding ChipColumns}" /></ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="dlg:CurveChipVm">
+            <Button Theme="{StaticResource CurveChip}" Margin="0,0,8,8" Classes.on="{Binding IsOn}" Classes.off="{Binding IsOff}" Classes.self="{Binding IsSelf}"
+                    Command="{Binding ToggleCommand}" ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Rv}">
+              <DockPanel>
+                <c:IconView DockPanel.Dock="Right" Icon="check" Size="15" Foreground="{StaticResource ABrush}" VerticalAlignment="Top" Margin="0,2,0,0" IsVisible="{Binding IsOn}" />
+                <StackPanel Spacing="1">
+                  <TextBlock Classes="chipn num" Text="{Binding Rv}" />
+                  <TextBlock Classes="num" Text="{Binding Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+              </DockPanel>
+            </Button>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

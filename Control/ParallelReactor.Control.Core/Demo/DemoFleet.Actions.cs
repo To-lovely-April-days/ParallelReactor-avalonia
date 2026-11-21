@@ -174,6 +174,7 @@ public sealed partial class DemoFleet
                 if (!ch!.Heating) return (rv + " 未在加热 · 已发送停止加热", true);
                 ch.Heating = false;
                 ch.HeaterPct = 0;
+                ch.CurveStartAt = null;
                 if (ch.Program is { Status: ProgramStatus.Running } hp) ch.Program = hp with { Status = ProgramStatus.Held };
                 if (ch.State == StateKey.Heat) ch.State = StateKey.Ready;
                 return (rv + " 已停止加热", false);
@@ -203,6 +204,26 @@ public sealed partial class DemoFleet
                 ch.Sv = open;
                 return (rv.Replace("RV", "SV") + (open ? " 已开" : " 已关"), false);
             }
+            case DeviceAction.HeatMode:
+                ch!.CurveMode = p.Id == "curve";
+                if (!ch.CurveMode) ch.CurveStartAt = null;
+                return (rv + " 升温方式：" + (ch.CurveMode ? "曲线" : "定值"), false);
+            case DeviceAction.CurveSet:
+                ch!.CurveSegs = p.Segs!.ToArray();
+                return (rv + " 曲线已更新 · 共 " + ch.CurveSegs.Count + " 段", false);
+            case DeviceAction.CurveStart:
+                if (ch!.CurveSegs.Count == 0) ch.CurveSegs = Heat.HeatCurve.Default(d.Model.Limits.TempMaxC);
+                ch.CurveMode = true;
+                ch.CurveStartAt = now;
+                ch.CurveFromC = ch.TempC;
+                ch.SpC = Math.Round(ch.TempC, 1);
+                ch.Heating = true;
+                if (!ch.IsRunning) ch.State = StateKey.Heat;
+                return (rv + " 曲线升温已启动 · 共 " + ch.CurveSegs.Count + " 段", false);
+            case DeviceAction.CurveStop:
+                if (!ch!.CurveRunning) return (rv + " 曲线未在运行 · 已发送停止", true);
+                ch.CurveStartAt = null;
+                return (rv + " 曲线升温已停止 · 保持当前给定值", false);
             case DeviceAction.GasOpen:
             case DeviceAction.GasClose:
             {
@@ -345,6 +366,7 @@ public sealed partial class DemoFleet
         if (ch.Program is { Status: ProgramStatus.Running or ProgramStatus.Held } p) ch.Program = p with { Status = ProgramStatus.Aborted, EndedAt = Now };
         ch.Heating = false;
         ch.HeaterPct = 0;
+        ch.CurveStartAt = null;
         ch.Sv = false;
         ch.Cooling = false;
         if (ch.IsRunning) ch.State = StateKey.Stopped;

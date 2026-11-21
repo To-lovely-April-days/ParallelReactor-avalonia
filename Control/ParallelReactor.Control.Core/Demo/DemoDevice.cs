@@ -40,6 +40,8 @@ public sealed class DemoDevice
     }
 
     internal DemoFleet Fleet { get; }
+    /// <summary>演示时钟（曲线升温的进度按它算）。</summary>
+    public DateTime FleetNow => Fleet.Now;
 
     /// <summary>位置（1 起，设备列表里的序号；路由 #/device/&lt;k&gt; 用它）。</summary>
     public int K { get; }
@@ -294,7 +296,7 @@ public sealed class DemoDevice
         Model = Model,
         SharedStir = Stir != null,
         StirOn = Stir?.On ?? false,
-        Channels = ChannelList.Select(c => new ChannelFacts(c.N, c.Installed, c.State, c.Heating, c.StirOn, c.Program?.Status, c.SpC)).ToArray(),
+        Channels = ChannelList.Select(c => new ChannelFacts(c.N, c.Installed, c.State, c.Heating, c.StirOn, c.Program?.Status, c.SpC, CurveMode: c.CurveMode, CurveRunning: c.CurveRunning)).ToArray(),
         ProgramIds = ProgramList.Select(p => p.Id).ToArray(),
         SessionActive = Session is { Active: true },
         SessionId = Session?.Id,

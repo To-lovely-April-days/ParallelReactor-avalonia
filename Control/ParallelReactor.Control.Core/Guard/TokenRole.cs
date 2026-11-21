@@ -39,7 +39,7 @@ public sealed record TokenRole(bool ReadOnly = false, bool NoEstop = false)
     {
         DeviceAction.Disable or DeviceAction.Stop or DeviceAction.HeatStop or DeviceAction.ProgAbort
             or DeviceAction.StirOff or DeviceAction.ChStirOff or DeviceAction.StopAll
-            or DeviceAction.ValveClose or DeviceAction.GasClose => TokenPermission.Stop,
+            or DeviceAction.ValveClose or DeviceAction.GasClose or DeviceAction.CurveStop => TokenPermission.Stop,
         DeviceAction.Estop => TokenPermission.Estop,
         DeviceAction.SessionStart or DeviceAction.SessionMark or DeviceAction.SessionEnd or DeviceAction.AlarmAck
             or DeviceAction.LeaseRequest or DeviceAction.LeaseRelease => TokenPermission.Record,

@@ -31,6 +31,15 @@ public static class StopTexts
         R("之后", T("可以重新启动该路")),
     };
 
+    /// <summary>停止曲线升温。</summary>
+    public static IReadOnlyList<StopRow> CurveStop { get; } = new[]
+    {
+        R("曲线", T("停在当前这一点，后面的段不再走")),
+        R("加热", B("不停"), T(" · 按当前给定值保温")),
+        R("搅拌 / 气路", T("不变")),
+        R("之后", T("可以修改曲线，再从当前温度重新启动")),
+    };
+
     /// <summary>全部停止（<paramref name="stopsStirring"/> = 全部停止连搅拌一起停，用户已定：是）。</summary>
     public static IReadOnlyList<StopRow> All(bool stopsStirring) => new[]
     {
@@ -194,11 +203,12 @@ public sealed partial class StopConfirmDialogVm : DialogVm
     private bool _closed;
 
     public StopConfirmDialogVm(ShellVm shell, string name, string title, string goLabel,
-        IReadOnlyList<TextSeg> lead, IReadOnlyList<StopRow> rows, Func<string?> reason, Func<Task> go)
+        IReadOnlyList<TextSeg> lead, IReadOnlyList<StopRow> rows, Func<string?> reason, Func<Task> go, IReadOnlyList<TextSeg>? note = null)
     {
         _shell = shell;
         _reason = reason;
         _go = go;
+        _note = note;
         Name = name;
         Title = title;
         Sub = null;
@@ -216,7 +226,8 @@ public sealed partial class StopConfirmDialogVm : DialogVm
     public FootButton GoButton { get; }
     public IReadOnlyList<TextSeg> Lead { get; }
     public IReadOnlyList<StopRow> Rows { get; }
-    public IReadOnlyList<TextSeg> StopNote => StopTexts.NoteNoVent;
+    private readonly IReadOnlyList<TextSeg>? _note;
+    public IReadOnlyList<TextSeg> StopNote => _note ?? StopTexts.NoteNoVent;
 
     public override void Refresh()
     {
@@ -245,7 +256,7 @@ public sealed partial class StopConfirmDialogVm : DialogVm
         if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var k) || shell.Fleet.Device(k) is not { } d) return null;
         if (name == "stiroff") return d.Stir != null ? StirOff(shell, d, () => Pages.Home.ResPaneVm.StirLockReason(d)) : null;
         if (parts.Length < 2 || !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) || d.Reactor(n) is not { Installed: true }) return null;
-        return name == "disable" ? Disable(shell, d, n) : HeatStop(shell, d, n);
+        return name == "disable" ? Disable(shell, d, n) : name == "curvestop" ? CurveStop(shell, d, n) : HeatStop(shell, d, n);
     }
 
     private static string Rv(int n) => "RV" + n.ToString(CultureInfo.InvariantCulture);
@@ -257,6 +268,15 @@ public sealed partial class StopConfirmDialogVm : DialogVm
         StopTexts.HeatStop,
         () => d.Actions.Why(DeviceAction.HeatStop, ActionPayload.Ch(n)),
         async () => await d.Actions.RunAsync(DeviceAction.HeatStop, ActionPayload.Ch(n)).ConfigureAwait(true));
+
+    /// <summary>停止一路的曲线升温（检查器 / 曲线窗口「停止曲线」）：只是不再按曲线改给定值，加热不停。</summary>
+    public static StopConfirmDialogVm CurveStop(ShellVm shell, DeviceVm d, int n) => new(shell, "curvestop",
+        "停止 " + d.Alias + " " + Rv(n) + " 曲线升温", "停止曲线",
+        new[] { new TextSeg("曲线停在当前这一点，"), new TextSeg("加热不停", Bold: true), new TextSeg("，按现在的给定值继续保温。要停止加热请另点「停止加热」。停止不需要控制权。") },
+        StopTexts.CurveStop,
+        () => d.Actions.Why(DeviceAction.CurveStop, ActionPayload.Ch(n)),
+        async () => await d.Actions.RunAsync(DeviceAction.CurveStop, ActionPayload.Ch(n)).ConfigureAwait(true),
+        new[] { new TextSeg("加热还在继续。", Bold: true), new TextSeg("要让这一路完全停下来，用「停止加热」或「停止该通道」。") });
 
     /// <summary>停用一路（检查器「停用通道」）：同停止该通道，再设为停用。启用不确认。</summary>
     public static StopConfirmDialogVm Disable(ShellVm shell, DeviceVm d, int n) => new(shell, "disable",

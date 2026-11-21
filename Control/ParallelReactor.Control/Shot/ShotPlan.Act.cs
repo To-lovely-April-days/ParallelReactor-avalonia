@@ -22,6 +22,13 @@ public static partial class ShotPlan
 
     private static readonly Spec[] PartAct =
     {
+        // 曲线升温（设计稿 curve-design 方向 B）：检查器摘要 / 运行中；曲线窗口（选了 RV6、RV8）/ 带提示 / 运行中查看；停止曲线的确认
+        new("curve-insp", "main", "dev=1&apop=0&ch=5&po=insp&cv=5&cvfree=2,6,8", Sz),
+        new("curve-insp-run", "main", "dev=1&apop=0&ch=5&po=insp&cv=5:run&cvfree=2,6,8", Sz),
+        new("curve-dlg", "main", "dev=1&apop=0&ch=5&cv=5&cvfree=2,6,8&dialog=curve:1:5:6,8", Sz),
+        new("curve-dlg-warn", "main", "dev=1&apop=0&ch=5&cv=5:warn&cvfree=2,6,8&dialog=curve:1:5", Sz),
+        new("curve-dlg-run", "main", "dev=1&apop=0&ch=5&cv=5:run&cvfree=2,6,8&dialog=curve:1:5", Sz),
+        new("curve-stop-dlg", "main", "dev=1&apop=0&ch=5&cv=5:run&dialog=curvestop:1:5", Sz),
         new("act-leak-run", "main", "dev=1&apop=0&act=leak-run", Sz),
         new("act-leak-done", "main", "dev=1&apop=0&act=leak-done", Sz),
         new("act-leak-fail", "main", "dev=1&apop=0&act=leak-fail", Sz),

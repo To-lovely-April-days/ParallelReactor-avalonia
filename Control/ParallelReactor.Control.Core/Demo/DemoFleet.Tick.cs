@@ -240,6 +240,18 @@ public sealed partial class DemoFleet
 
     private void IdlePhysics(DemoChannel ch)
     {
+        if (ch.CurveStartAt is DateTime c0 && ch.Heating)
+        {
+            // 曲线升温：给定值按段线性走，实测温度跟着给定值（落后一点），走完保持最后一段
+            var at = Heat.HeatCurve.At(Heat.HeatCurve.Rows(ch.CurveSegs, ch.CurveFromC), (Now - c0).TotalMinutes);
+            if (at != null)
+            {
+                ch.SpC = Math.Round(at.SpC, 1);
+                ch.TempC += Math.Clamp(at.SpC - 1.2 - ch.TempC, -0.05, Math.Max(ch.HeatRate, 0.2));
+                ch.HeaterPct = at.Row.Kind == Heat.CurveKind.Up ? 72 : at.Row.Kind == Heat.CurveKind.Hold ? 35 : 0;
+                return;
+            }
+        }
         if (ch.Heating && ch.SpC is double sp)
         {
             if (ch.TempC < sp - 5) { ch.TempC += ch.HeatRate; ch.HeaterPct = 100; }

@@ -147,6 +147,14 @@ public sealed partial class ShellVm
     {
         static int Int(string? s) => int.TryParse(s, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : 0;
         if (Fleet.DemoData is not { } demo || demo.Device(1) is not { } d1) return;
+        // 曲线升温：cv=5（RV5 曲线方式）| cv=5:run（走到第 3 段）| cv=5:warn（带提示的曲线）；cvfree=2,6,8（这几路改成空闲）
+        if (x("cv") is { Length: > 0 } cv)
+        {
+            var parts = cv.Split(':');
+            var free = (x("cvfree") ?? "").Split(',', System.StringSplitOptions.RemoveEmptyEntries).Select(Int).Where(v => v > 0).ToArray();
+            demo.SeedCurve(d1, Int(parts[0]), parts.Length > 1 && parts[1] == "run", parts.Length > 1 && parts[1] == "warn", free);
+            Fleet.RefreshNow();
+        }
         var act = x("act");
         bool tune = x("tune") == "1";
         bool any = act != null || x("stirfault") == "1" || x("manual") == "1" || x("estoppart") == "1" || tune;

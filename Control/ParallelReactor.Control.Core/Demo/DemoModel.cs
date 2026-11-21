@@ -180,6 +180,21 @@ public sealed class DemoChannel
 
     /// <summary>占用通道（样稿 isRunning：已安装且状态属于 RUNNING，报警也算）。</summary>
     public bool IsRunning => Installed && StateKeys.IsRunning(State);
+
+    // ———— 曲线升温（2026-11-21）：升温方式、各段、启动时刻（null = 没在走）、启动时的实测温度 ————
+    public bool CurveMode { get; internal set; }
+    public IReadOnlyList<Heat.CurveSeg> CurveSegs { get; internal set; } = Array.Empty<Heat.CurveSeg>();
+    public DateTime? CurveStartAt { get; internal set; }
+    public double CurveFromC { get; internal set; }
+    public bool CurveRunning => CurveStartAt != null;
+
+    /// <summary>曲线现状（给界面）；<paramref name="now"/> = 演示时钟。走完后保持最后一段的温度，仍算在运行（同 HMI：直到停止曲线 / 停止加热）。</summary>
+    public Heat.CurveReading Curve(DateTime now)
+    {
+        double total = Heat.HeatCurve.Total(CurveSegs);
+        double el = CurveStartAt is DateTime t ? Math.Max(0, (now - t).TotalMinutes) : 0;
+        return new Heat.CurveReading(CurveMode, CurveRunning, CurveSegs, Math.Min(el, total), total, CurveRunning && el >= total, CurveRunning ? CurveFromC : null);
+    }
 }
 
 /// <summary>设备的统计（样稿 counts）：已安装、运行中、已启用（非停用）、报警条数（错误 + 提醒）、未确认、错误报警。</summary>

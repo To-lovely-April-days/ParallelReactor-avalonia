@@ -555,7 +555,8 @@ public sealed partial class LiveDeviceSource : IDeviceSource
             // Checking：连上之后离线期间的事件还没核对完 ——「启动」先禁用（复核 R5）。
             // LocalControl：下发之后触屏端接管过控制（触屏可能改过程序）——「启动」禁用、「全部运行」不算它，要重新下发（复核）
             chans.Add(new ChannelFacts(n, r.Installed, r.Own, r.Heating, false, prog, snap?.TempSpC, Downloaded: mine, Checking: match.Kind == LedgerMatchKind.Checking,
-                LocalControl: match is { Usable: true, Entry.LocalControl: true }));
+                LocalControl: match is { Usable: true, Entry.LocalControl: true },
+                CurveMode: snap?.SpMode == "curve", CurveRunning: snap?.Profile?.Running ?? false));
         }
         var conn = Conn;
         return new GuardFacts
@@ -727,6 +728,29 @@ public sealed partial class LiveDeviceSource : IDeviceSource
                 bool was = Latest?.Channels.FirstOrDefault(x => x.Id == n)?.Program?.Running ?? false;
                 var r = await c.Rest.AbortProgramAsync(n, ct).ConfigureAwait(true);
                 return was ? Ok(rv + " 程序已中止", Hw(r, hw), ToastKind.Warn) : Ok(rv + " 没有运行中的程序 · 已发送中止", Hw(r, hw), ToastKind.Info, true);
+            }
+            case DeviceAction.HeatMode:
+            {
+                string mode = a.Id is "fixed" or "curve" ? a.Id : throw new ArgumentException("没有指定升温方式");
+                var r = await c.Control.SetSpModeAsync(n, mode, ct).ConfigureAwait(true);
+                return Ok(rv + " 升温方式：" + (mode == "curve" ? "曲线" : "定值"), Hw(r, hw));
+            }
+            case DeviceAction.CurveSet:
+            {
+                var segs = a.Segs ?? throw new ArgumentException("曲线至少要有 1 段");
+                var r = await c.Control.ReplaceProfileAsync(n, segs.Select(s => (s.TempC, s.Minutes)), ct).ConfigureAwait(true);
+                return Ok(rv + " 曲线已更新 · 共 " + segs.Count + " 段", Hw(r, hw));
+            }
+            case DeviceAction.CurveStart:
+            {
+                var r = await c.Control.StartProfileAsync(n, ct).ConfigureAwait(true);
+                return Ok(rv + " 曲线升温已启动", Hw(r, hw));
+            }
+            case DeviceAction.CurveStop:
+            {
+                bool was = Latest?.Channels.FirstOrDefault(x => x.Id == n)?.Profile?.Running ?? false;
+                var r = await c.Rest.StopProfileAsync(n, ct).ConfigureAwait(true);
+                return was ? Ok(rv + " 曲线升温已停止 · 保持当前给定值", Hw(r, hw), ToastKind.Warn) : Ok(rv + " 曲线未在运行 · 已发送停止", Hw(r, hw), ToastKind.Info, true);
             }
             case DeviceAction.ValveOpen:
             case DeviceAction.ValveClose:

@@ -30,6 +30,8 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
     public int N { get; }
     /// <summary>'RV1'。</summary>
     public string Rv { get; }
+    /// <summary>曲线升温现状（升温方式、各段、进度）；没有数据为 null。每次刷新换一份。</summary>
+    public Core.Heat.CurveReading? Curve { get; private set; }
     /// <summary>压力单位（PressureDisplay.Unit：'MPa'，D8 的唯一设置）。</summary>
     public string PressUnit => PressureDisplay.Unit;
 
@@ -124,6 +126,7 @@ public sealed partial class ReactorVm : ObservableObject, IFleetChannel
         Rpm = r.Rpm;
         Heating = r.Heating;
         Valve = r.Valve;
+        Curve = r.Curve;
         Hmi = r.Hmi;
         Extras = extras;
         Cooling = extras?.Cooling ?? false;

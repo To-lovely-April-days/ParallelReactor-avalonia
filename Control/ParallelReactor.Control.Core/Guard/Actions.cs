@@ -19,6 +19,11 @@ public enum DeviceAction
     /// 开 / 关一路气（payload.Id = 型号表的气路键，排空也在里面：PUT /gas/inlets/{id}、/gas/vent）。开 = 控制类（要控制权），关 = 停止类。
     /// </summary>
     ValveOpen, ValveClose, GasOpen, GasClose,
+    /// <summary>
+    /// 曲线升温（2026-11-21，设计稿 curve-design 方向 B）：升温方式（payload.Id = fixed / curve，PUT /channels/{id}/temperature/mode）、
+    /// 整条曲线（payload.Segs，PUT /channels/{id}/profile）、启动 / 停止曲线（POST …/profile/start、…/profile/stop；停曲线不停加热）。
+    /// </summary>
+    HeatMode, CurveSet, CurveStart, CurveStop,
 }
 
 /// <summary>
@@ -39,7 +44,8 @@ public sealed record ActionSpec(DeviceAction Action, string Code, string Label, 
 /// 操作的参数（样稿 payload）：N = 反应釜号；Sp = 设定温度 ℃；Rpm = 转速；Id = 程序 id（下发）或报警 id（确认）；Alias = 新名称（重命名）；Text = 标记文字；
 /// Ml = 溶液体积 mL（融合版 F3，<see cref="DeviceAction.SetVolume"/>）。
 /// </summary>
-public sealed record ActionPayload(int? N = null, double? Sp = null, double? Rpm = null, string? Id = null, string? Alias = null, string? Text = null, double? Ml = null)
+public sealed record ActionPayload(int? N = null, double? Sp = null, double? Rpm = null, string? Id = null, string? Alias = null, string? Text = null, double? Ml = null,
+    System.Collections.Generic.IReadOnlyList<Heat.CurveSeg>? Segs = null)
 {
     public static readonly ActionPayload Empty = new();
 
@@ -89,6 +95,11 @@ public static class DeviceActions
         new(DeviceAction.ValveClose, "valveClose", "关阀", GuardKind.Safe, true),
         new(DeviceAction.GasOpen, "gasOpen", "开阀", GuardKind.Control, false),
         new(DeviceAction.GasClose, "gasClose", "关阀", GuardKind.Safe, false),
+        // 曲线升温（检查器 + 曲线窗口）
+        new(DeviceAction.HeatMode, "heatMode", "升温方式", GuardKind.Control, true),
+        new(DeviceAction.CurveSet, "curveSet", "保存曲线", GuardKind.Control, true),
+        new(DeviceAction.CurveStart, "curveStart", "启动曲线", GuardKind.Control, true),
+        new(DeviceAction.CurveStop, "curveStop", "停止曲线", GuardKind.Safe, true),
     };
 
     private static readonly Dictionary<string, ActionSpec> ByCode = BuildIndex();

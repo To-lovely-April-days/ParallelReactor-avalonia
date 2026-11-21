@@ -25,7 +25,8 @@ namespace ParallelReactor.Control.Core.Guard;
 /// 「启动」禁用并写 <see cref="ProgramLedger.LocalControlReason"/>（不运行它、也不改成启用 + 加热），「全部运行」不算它；重新下发之后照常。演示数据恒为 false。
 /// </param>
 public sealed record ChannelFacts(int N, bool Installed, StateKey State = StateKey.Idle, bool Heating = false, bool StirOn = false,
-    ProgramStatus? Program = null, double? Sp = null, bool? Downloaded = null, bool Checking = false, bool LocalControl = false)
+    ProgramStatus? Program = null, double? Sp = null, bool? Downloaded = null, bool Checking = false, bool LocalControl = false,
+    bool CurveMode = false, bool CurveRunning = false)
 {
     /// <summary>占用通道（样稿 isRunning：已安装且状态属于 RUNNING，报警也算）。</summary>
     public bool IsRunning => Installed && StateKeys.IsRunning(State);
@@ -478,6 +479,40 @@ public static class ActionGuard
             case DeviceAction.GasOpen:
             case DeviceAction.GasClose:
                 return string.IsNullOrEmpty(p.Id) ? "没有指定气路" : "";
+            case DeviceAction.HeatMode:
+            {
+                // HMI：程序占用的通道不能改；加热 / 曲线运行中不能切换（CHANNEL_BUSY：切走会让仪表保持最后一次给定值没人管）
+                string r = NeedCh(f, p);
+                if (r.Length > 0) return r;
+                var ch = f.Channel(p.N)!;
+                if (p.Id is not ("fixed" or "curve")) return "没有指定升温方式";
+                if (ProgramOwned(ch)) return Rv(p) + " 程序运行中";
+                if ((p.Id == "curve") == ch.CurveMode) return "";
+                return ch.CurveRunning ? Rv(p) + " 曲线运行中 · 先停止曲线" : ch.Heating ? Rv(p) + " 加热中 · 先停止加热" : "";
+            }
+            case DeviceAction.CurveSet:
+            {
+                string r = NeedCh(f, p);
+                if (r.Length > 0) return r;
+                var ch = f.Channel(p.N)!;
+                if (ProgramOwned(ch)) return Rv(p) + " 程序运行中";
+                if (ch.CurveRunning) return Rv(p) + " 曲线运行中 · 先停止曲线";
+                return Heat.HeatCurve.Error(p.Segs, f.Model?.Limits.TempMaxC ?? 1000);
+            }
+            case DeviceAction.CurveStart:
+            {
+                string r = NeedCh(f, p);
+                if (r.Length > 0) return r;
+                var ch = f.Channel(p.N)!;
+                if (ch.State == StateKey.Idle) return Rv(p) + " 已停用 · 先启用";
+                if (ch.State == StateKey.Alarm) return Rv(p) + " 报警中 · 先处理";
+                if (ProgramOwned(ch)) return Rv(p) + " 程序运行中";
+                if (ch.CurveRunning) return Rv(p) + " 曲线已在运行";
+                if (!ch.CurveMode && ch.Heating) return Rv(p) + " 定值加热中 · 先停止加热";
+                return "";
+            }
+            case DeviceAction.CurveStop:
+                return NeedCh(f, p);
             default:   // StopAll、Remove：没有自己的检查
                 return "";
         }
@@ -496,6 +531,8 @@ public static class ActionGuard
     }
 
     private static string Rv(ActionPayload p) => "RV" + p.N;
+
+    private static bool ProgramOwned(ChannelFacts ch) => ch.Program is ProgramStatus.Running or ProgramStatus.Held;
 
     /// <summary>
     /// 「全部运行」/「启动」能再跑的程序（样稿：loaded / aborted / done；真机的报警中止 Failed 同 aborted）。

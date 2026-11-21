@@ -88,7 +88,8 @@ public class GuardTests
             ["leaseRelease"] = "none", ["disconnect"] = "none", ["reconnect"] = "none", ["rename"] = "none", ["remove"] = "none",
         };
         // 融合版 F3 追加的「溶液体积」、HMI v0.7 的阀门四个，样稿没有（不在样稿向量里）：只从这一条对照里排除，单独断言
-        var added = new[] { DeviceAction.SetVolume, DeviceAction.ValveOpen, DeviceAction.ValveClose, DeviceAction.GasOpen, DeviceAction.GasClose };
+        var added = new[] { DeviceAction.SetVolume, DeviceAction.ValveOpen, DeviceAction.ValveClose, DeviceAction.GasOpen, DeviceAction.GasClose,
+            DeviceAction.HeatMode, DeviceAction.CurveSet, DeviceAction.CurveStart, DeviceAction.CurveStop };
         var mock = DeviceActions.All.Where(s => !added.Contains(s.Action)).ToArray();
         Assert.Equal(expected.Keys, mock.Select(s => s.Code));
         foreach (var s in mock)

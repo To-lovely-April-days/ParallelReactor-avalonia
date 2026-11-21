@@ -74,7 +74,6 @@ public sealed partial class ChannelCtlVm : ObservableObject
             if (Disabled) Act(DeviceAction.Enable, ActionPayload.Ch(_n));
             else if (D is { } d) shell.ShowDialog(Dialogs.StopConfirmDialogVm.Disable(shell, d, _n));
         });
-        CurveCommand = new RelayCommand(() => shell.Toast("曲线升温（最多 16 段）在程序页编辑（F6）", ToastKind.Info));
     }
 
     public ICommand PrevCommand { get; }
@@ -90,7 +89,6 @@ public sealed partial class ChannelCtlVm : ObservableObject
     public ICommand StopChCommand { get; }
     public ICommand StartChCommand { get; }
     public ICommand EnableCommand { get; }
-    public ICommand CurveCommand { get; }
 
     private DeviceVm? D => _k > 0 ? _shell.Fleet.Device(_k) : null;
     private ReactorVm? R => D?.Reactor(_n);
@@ -181,6 +179,8 @@ public sealed partial class ChannelCtlVm : ObservableObject
         SpReason = Nz(why);
         HeatStartReason = Nz(d.Actions.Why(DeviceAction.HeatStart, new ActionPayload(N: r.N, Sp: r.SpC ?? 25)));
         HeatStopReason = Nz(d.Actions.Why(DeviceAction.HeatStop, ActionPayload.Ch(r.N)));
+
+        RefreshCurve(d, r);
 
         var vol = d.Source.Plant.Volume;
         VolText = r.SolutionMl is double v ? v.ToString("0.0", CultureInfo.InvariantCulture) : Fmt.Dash;

@@ -98,6 +98,47 @@ public sealed partial class DemoFleet
     }
 
     /// <summary>搅拌电机故障（驱动器报警码 0x80「锁轴/缺相（堵转）」）：搅拌停、记 err 报警（同 HMI 的标题）和事件。</summary>
+    /// <summary>
+    /// 曲线升温的演示状态（截图 / 地址参数 cv=…）：第 n 路切到曲线方式、放上一条 4 段的曲线（80 ℃ 20 min → 保温 30 → 150 ℃ 35 → 保温 60；
+    /// <paramref name="warn"/> = 带「升得太快」和降温段的 5 段）；<paramref name="run"/> = 已经走了 73 min（第 3 段），实测 124.8 ℃。
+    /// <paramref name="free"/> 里的通道改成空闲（已就绪、不加热、没有程序），好演示「同时用到」。
+    /// </summary>
+    public void SeedCurve(DemoDevice d, int n, bool run, bool warn = false, IEnumerable<int>? free = null)
+    {
+        if (free != null)
+            foreach (int m in free)
+            {
+                if (d.Channel(m) is not { Installed: true } f || f.N == n) continue;
+                StopChannel(f);
+                f.Program = null;
+                f.State = StateKey.Ready;
+                f.TempC = 25.5 + m * 0.3;
+                f.SpC = 25;
+                f.PTargetMPa = null;
+                f.Mmol = 0;
+                f.Rate = null;
+            }
+        if (d.Channel(n) is not { Installed: true } ch) return;
+        StopChannel(ch);
+        ch.Program = null;
+        ch.State = StateKey.Ready;
+        ch.CurveMode = true;
+        ch.CurveSegs = warn
+            ? new[] { new Heat.CurveSeg(80, 20), new Heat.CurveSeg(80, 30), new Heat.CurveSeg(150, 10), new Heat.CurveSeg(150, 60), new Heat.CurveSeg(60, 30) }
+            : new[] { new Heat.CurveSeg(80, 20), new Heat.CurveSeg(80, 30), new Heat.CurveSeg(150, 35), new Heat.CurveSeg(150, 60) };
+        if (run)
+        {
+            ch.CurveStartAt = AddMs(Now, -73 * MinMs);
+            ch.CurveFromC = 25.6;
+            ch.TempC = 124.8;
+            ch.SpC = 126.0;
+            ch.Heating = true;
+            ch.HeaterPct = 72;
+            ch.State = StateKey.Heat;
+        }
+        Changed?.Invoke(this, new DemoChangedEventArgs(DemoChangeKind.State, d));
+    }
+
     public void SeedStirFault(DemoDevice d)
     {
         var at = DemoFusion.At(14, 27, 12);
