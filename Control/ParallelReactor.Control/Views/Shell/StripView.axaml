@@ -30,10 +30,10 @@
         </Button>
       </StackPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-info" Content="关于" Command="{Binding AboutCommand}" />
-        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-gear" Content="设置" Command="{Binding SettingsCommand}" />
-        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-help" Content="帮助" Command="{Binding HelpCommand}" />
-        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="f-wrench" Content="工具" Command="{Binding ToolsCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="info" Content="关于" Command="{Binding AboutCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="gear" Content="设置" Command="{Binding SettingsCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="help" Content="帮助" Command="{Binding HelpCommand}" />
+        <Button Theme="{StaticResource PrStripLink}" b:Pr.Icon="wrench" Content="工具" Command="{Binding ToolsCommand}" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
         <Border Name="MacInset" Width="0" IsVisible="False" />

@@ -352,7 +352,7 @@ public sealed partial class RibbonVm : ObservableObject
     [ObservableProperty] private bool _isRemote;
     [ObservableProperty] private string _leaseText = "";
     [ObservableProperty] private string _leaseTip = "";
-    [ObservableProperty] private string _leaseIcon = "f-lock";
+    [ObservableProperty] private string _leaseIcon = "lock";
     /// <summary>行内按钮：release / cancel / request / null。</summary>
     [ObservableProperty] private string? _button;
     [ObservableProperty] private string? _buttonReason;
@@ -422,7 +422,7 @@ public sealed partial class RibbonVm : ObservableObject
         if (d.IsOffline)
         {
             LeaseText = d.ConnShort.Length > 0 ? d.ConnShort : d.ConnText;
-            LeaseIcon = "f-lock";
+            LeaseIcon = "lock";
             LeaseTip = d.ConnText;
         }
         else
@@ -430,15 +430,15 @@ public sealed partial class RibbonVm : ObservableObject
             switch (d.Lease)
             {
                 case LeaseState.Remote:
-                    LeaseText = "远程控制中"; LeaseIcon = "f-plug"; LeaseTip = "本机正在远程控制" + d.Alias; btn = "release"; break;
+                    LeaseText = "远程控制中"; LeaseIcon = "plug"; LeaseTip = "本机正在远程控制" + d.Alias; btn = "release"; break;
                 case LeaseState.Requested:
-                    LeaseText = d.LeaseShort; LeaseIcon = "f-plug"; LeaseTip = "等待设备触屏允许 · " + d.LeaseText; btn = "cancel"; break;
+                    LeaseText = d.LeaseShort; LeaseIcon = "plug"; LeaseTip = "等待设备触屏允许 · " + d.LeaseText; btn = "cancel"; break;
                 case LeaseState.Lost:
-                    LeaseText = d.LeaseShort; LeaseIcon = "f-plug"; LeaseTip = d.LeaseText; btn = "release"; break;
+                    LeaseText = d.LeaseShort; LeaseIcon = "plug"; LeaseTip = d.LeaseText; btn = "release"; break;
                 case LeaseState.Other:
-                    LeaseText = d.LeaseShort; LeaseIcon = "f-lock"; LeaseTip = d.LeaseText; btn = "request"; break;
+                    LeaseText = d.LeaseShort; LeaseIcon = "lock"; LeaseTip = d.LeaseText; btn = "request"; break;
                 default:
-                    LeaseText = "本地只读"; LeaseIcon = "f-lock"; LeaseTip = "本机只能查看" + d.Alias; btn = "request"; break;
+                    LeaseText = "本地只读"; LeaseIcon = "lock"; LeaseTip = "本机只能查看" + d.Alias; btn = "request"; break;
             }
         }
         Button = btn;
@@ -621,10 +621,10 @@ public sealed partial class DevicePaneVm : ObservableObject
         if (d.EstopActive && m.Estop is { } es && es.AnyUnconfirmed(now))
         {
             var bad = es.Rows(now).First(r => r.Bad);
-            list.Add(new ActLineVm("r", "f-err-f", bad.Done + " · 到设备旁确认", "急停后设备没有收到这个部件的确认 · 点开看详情", true, () => _shell.AlarmPop.ShowEstop(k), k + ":estop"));
+            list.Add(new ActLineVm("r", "err-f", bad.Done + " · 到设备旁确认", "急停后设备没有收到这个部件的确认 · 点开看详情", true, () => _shell.AlarmPop.ShowEstop(k), k + ":estop"));
         }
         if (m.HasStirFault)
-            list.Add(new ActLineVm("r", "f-err-f", "搅拌电机故障 · 在触屏清除", "电机故障 " + (m.StirCodeText ?? "") + (m.StirFault is { } f ? " · " + f : "") + " · 只能在设备触屏上清除",
+            list.Add(new ActLineVm("r", "err-f", "搅拌电机故障 · 在触屏清除", "电机故障 " + (m.StirCodeText ?? "") + (m.StirFault is { } f ? " · " + f : "") + " · 只能在设备触屏上清除",
                 false, null, k + ":stir"));
         if (d.Act is { } a && _shell.Activity.Shown(k) != null)
         {
@@ -634,11 +634,11 @@ public sealed partial class DevicePaneVm : ObservableObject
         if (m.Autotune.Count > 0)
         {
             var sp = m.Autotune[0].SpC;
-            list.Add(new ActLineVm("b", "f-trend", "PID 自整定 " + ActivityText.Range(m.Autotune.Select(x => x.N).ToList()) + (sp is double v ? " · " + v.ToString("0", CultureInfo.InvariantCulture) + " °C" : ""),
+            list.Add(new ActLineVm("b", "trend", "PID 自整定 " + ActivityText.Range(m.Autotune.Select(x => x.N).ToList()) + (sp is double v ? " · " + v.ToString("0", CultureInfo.InvariantCulture) + " °C" : ""),
                 "在「设置 → 温控 / PID」里查看", true, () => { _shell.SelectDevice(k); _shell.OpenSettings("pid"); }, k + ":tune"));
         }
         if (m.ManualValve)
-            list.Add(new ActLineVm("a", "f-wrench", "触屏手动阀控中", "有人在设备触屏上手动开关阀门 · 程序升压会排队", false, null, k + ":manual"));
+            list.Add(new ActLineVm("a", "wrench", "触屏手动阀控中", "有人在设备触屏上手动开关阀门 · 程序升压会排队", false, null, k + ":manual"));
         return list;
     }
 
@@ -748,7 +748,7 @@ public sealed partial class StatusBarVm : ObservableObject
     /// <summary>有 F3 的状态项（没有时那一格不占位置）。</summary>
     public bool HasExtra => Extra.Count > 0;
 
-    [ObservableProperty] private StatusItem _conn = new("f-link", "");
+    [ObservableProperty] private StatusItem _conn = new("link", "");
 
     /// <summary>「运行中 · 已阻止睡眠」（样稿 SETP.nosleep：有设备在运行，本机不会进入睡眠，屏幕可以关闭）。</summary>
     public const string SleepText = "运行中 · 已阻止睡眠";
@@ -774,12 +774,12 @@ public sealed partial class StatusBarVm : ObservableObject
         int on = ds.Count(d => !d.IsOffline);
         var lost = ds.FirstOrDefault(d => d.IsOffline && d.EverOnline && d.ConnStatus != ConnStatus.Disconnected);
         Conn = on == ds.Count || lost == null
-            ? new StatusItem("f-link", "已连接 " + on + "/" + ds.Count + " 台")
-            : new StatusItem("f-warn-f", "已连接 " + on + "/" + ds.Count + " 台 · " + lost.Alias + "重连中", Alert: true);
+            ? new StatusItem("link", "已连接 " + on + "/" + ds.Count + " 台")
+            : new StatusItem("warn-f", "已连接 " + on + "/" + ds.Count + " 台 · " + lost.Alias + "重连中", Alert: true);
         // 融合版 F8：只在真的阻止着系统睡眠时写「运行中 · 已阻止睡眠」（设置开 + 有设备在运行 + 系统接受了申请，见 ShellVm.Sleep）
         bool sleepBlock = _shell.Sleep.Held;
         bool has = Extra.Any(x => x.Text == SleepText);
-        if (sleepBlock && !has) Extra.Add(new StatusItem("f-pc", SleepText, Tip: "有设备在运行，本机不会进入睡眠；屏幕可以关闭 · 全部结束后恢复系统设置"));
+        if (sleepBlock && !has) Extra.Add(new StatusItem("pc", SleepText, Tip: "有设备在运行，本机不会进入睡眠；屏幕可以关闭 · 全部结束后恢复系统设置"));
         else if (!sleepBlock && has) Extra.Remove(Extra.First(x => x.Text == SleepText));
         RemoteText = "远程控制 " + ds.Count(d => !d.IsOffline && d.Lease == LeaseState.Remote) + " 台";
         RecordText = "记录 " + ds.Count(d => d.SessionId != null) + "/" + ds.Count + " 台";
@@ -795,7 +795,7 @@ public sealed partial class StatusBarVm : ObservableObject
         bool narrow = !_shell.Layout.IsWide;
         var acts = _shell.Activity.Deck.Visible(f.Now).Where(x => x.Folded && f.Device(x.K) != null)
             .Select(x => new ActStatusVm(x.K, ActivityText.Status(f.Device(x.K)!.Alias, x.Activity, narrow), x.Activity.Waiting,
-                x.Activity.Kind == ActKind.Leak ? "f-timer" : "f-beaker", ActivityText.Title(f.Device(x.K)!.Alias, x.Activity) + " · 点击打开浮动面板",
+                x.Activity.Kind == ActKind.Leak ? "timer" : "beaker", ActivityText.Title(f.Device(x.K)!.Alias, x.Activity) + " · 点击打开浮动面板",
                 _shell.Activity)).ToList();
         if (!acts.SequenceEqual(Acts)) { Acts.Clear(); foreach (var a in acts) Acts.Add(a); }
         HasActs = Acts.Count > 0;

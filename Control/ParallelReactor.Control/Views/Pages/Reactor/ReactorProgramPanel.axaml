@@ -170,7 +170,7 @@
                        pr:FlexRow.FitOpt="True" pr:FlexRow.PushRight="True" />
             <!-- 工具只在有步骤卡片时（对不上台账的降级显示没有卡片可放大 / 定位，复核） -->
             <StackPanel Name="Tools" Orientation="Horizontal" Spacing="2" pr:FlexRow.PushRight="True" IsVisible="{Binding ShowFlow}">
-              <Button Name="Locate" Theme="{StaticResource PrIconButton}" b:Pr.Icon="target" ToolTip.Tip="定位当前步" AutomationProperties.Name="定位当前步"
+              <Button Name="Locate" Theme="{StaticResource PrIconButton}" b:Pr.Icon="locate" ToolTip.Tip="定位当前步" AutomationProperties.Name="定位当前步"
                       Command="{Binding LocateCommand}" IsVisible="{Binding CanLocate}" />
               <Button Name="ZoomIn" Theme="{StaticResource PrIconButton}" b:Pr.Icon="zoomin" ToolTip.Tip="放大画布" AutomationProperties.Name="放大画布"
                       Command="{Binding ZoomInCommand}" b:Pr.Reason="{Binding ZoomInReason}" />
@@ -207,7 +207,7 @@
               <!-- 没有程序：程序库 + 预览（样稿 noProgHTML；.reactor-noprog：上 18 下 8，间距 10） -->
               <StackPanel Name="NoProg" Margin="0,18,0,8" Spacing="10" IsVisible="{Binding HasNoProgram}">
                 <pr:FlexRow Spacing="12" Margin="16,0,16,2">
-                  <c:IconView Icon="program" Size="28" Foreground="{StaticResource T3Brush}" />
+                  <c:IconView Icon="program-lg" Size="28" Foreground="{StaticResource T3Brush}" />
                   <StackPanel Spacing="2" pr:FlexRow.Shrink="1">
                     <pr:PrText Classes="nph" Text="{Binding NoProgTitle}" ToolTip.Tip="{Binding NoProgTitle}" />
                     <pr:PrText Classes="nps" Text="{Binding NoProgLead}" />

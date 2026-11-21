@@ -36,13 +36,13 @@
     <Border Name="Edge2" Width="4" Margin="-16,-7,0,-7" HorizontalAlignment="Left" CornerRadius="4,0,0,4" Background="{StaticResource GDotBrush}" IsVisible="{Binding IsBack}" />
     <DockPanel>
       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Margin="10,0,0,0">
-        <Button Classes="sm" b:Pr.Icon="f-refresh" Content="立即重连" Command="{Binding RetryCommand}" IsVisible="{Binding IsLost}" />
+        <Button Classes="sm" b:Pr.Icon="refresh" Content="立即重连" Command="{Binding RetryCommand}" IsVisible="{Binding IsLost}" />
         <Button Classes="sm" Content="断线设置" Command="{Binding SettingsCommand}" IsVisible="{Binding IsLost}" ToolTip.Tip="设置 › 无人值守：断线重连、补拉数据" />
-        <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-x" Command="{Binding DismissCommand}" IsVisible="{Binding IsBack}" ToolTip.Tip="知道了" />
+        <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="x" Command="{Binding DismissCommand}" IsVisible="{Binding IsBack}" ToolTip.Tip="知道了" />
       </StackPanel>
       <Panel DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,10,0" VerticalAlignment="Center">
-        <c:IconView Icon="f-warn-f" Size="18" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding IsLost}" />
-        <c:IconView Icon="f-ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsBack}" />
+        <c:IconView Icon="warn-f" Size="18" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding IsLost}" />
+        <c:IconView Icon="ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsBack}" />
       </Panel>
       <Panel VerticalAlignment="Center">
         <!-- 宽屏：标题和说明接在一行里（说明折行）；窄屏（&lt; 1600）：分两行（HomePage 的样式切换） -->

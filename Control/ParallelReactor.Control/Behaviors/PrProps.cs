@@ -13,7 +13,7 @@ namespace ParallelReactor.Control.Behaviors;
 /// </summary>
 public static partial class Pr
 {
-    /// <summary>图标名（ui.js ICONS 的键；资源 Icon.名字）。PrButton / PrIconButton / PrChip / PrMenuItem / PrRibbonButton / PrStripLink 的模板显示它（「f-」开头 = 融合版的 Fluent 图标）。</summary>
+    /// <summary>图标名（ui.js ICONS 的键；资源 Icon.名字）。PrButton / PrIconButton / PrChip / PrMenuItem / PrRibbonButton / PrStripLink 的模板显示它（统一 Phosphor Icons，见 Styles/Icons.axaml）。</summary>
     public static readonly AttachedProperty<string?> IconProperty =
         AvaloniaProperty.RegisterAttached<AvaloniaObject, string?>("Icon", typeof(Pr));
 

@@ -156,7 +156,7 @@
             <!-- v0.8.1：触屏手动阀控（样稿 .tag.warn.axchip：琥珀底、amb-line 边、amb-ink 600、扳手 14） -->
             <Border Classes="mtag" IsVisible="{Binding ManualValve}" ToolTip.Tip="有人在设备触屏上手动开关阀门；PC 上的阀门状态跟着触屏变">
               <StackPanel Orientation="Horizontal" Spacing="5">
-                <c:IconView Icon="f-wrench" Size="14" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+                <c:IconView Icon="wrench" Size="14" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
                 <TextBlock Text="触屏手动阀控中" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
               </StackPanel>
             </Border>
@@ -208,7 +208,7 @@
         <Border Margin="0,8,0,0" Padding="10,5" BorderThickness="1" BorderBrush="{StaticResource RLineBrush}" CornerRadius="4" Background="{StaticResource RBgBrush}"
                 IsVisible="{Binding StirFault}" ToolTip.Tip="搅拌电机故障 · 只能在设备触屏上清除">
           <DockPanel>
-            <c:IconView DockPanel.Dock="Left" Icon="f-err-f" Size="15" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+            <c:IconView DockPanel.Dock="Left" Icon="err-f" Size="15" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Top" Margin="0,1,6,0" />
             <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource RInkBrush}" TextWrapping="Wrap" LineHeight="18">
               <Run Text="{Binding StirFaultTitle}" FontWeight="SemiBold" /><Run Text="{Binding StirFaultRest}" />
             </TextBlock>
@@ -216,15 +216,13 @@
         </Border>
         </StackPanel>
       </Border>
-      <!-- 看气路图 · 会话（HMI v0.7：阀门直接点，去掉了「维护模式」按钮） -->
+      <!-- 会话 -->
       <Border Classes="sec" Name="Tools">
         <DockPanel Name="ToolsRow">
-          <StackPanel Name="Sess" DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding SessTip}" Margin="8,0,0,0">
+          <TextBlock DockPanel.Dock="Left" Classes="h6" Text="会话" />
+          <StackPanel Name="Sess" HorizontalAlignment="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding SessTip}" Margin="8,0,0,0">
             <Ellipse Width="7" Height="7" Fill="{StaticResource GDotBrush}" VerticalAlignment="Center" IsVisible="{Binding Recording}" />
             <TextBlock Text="{Binding SessText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
-          </StackPanel>
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <Button Classes="sm" b:Pr.Icon="f-grid" Content="看气路图" Command="{Binding ShowGasCommand}" ToolTip.Tip="切到气路图：阀门、管路和手动操作" />
           </StackPanel>
         </DockPanel>
       </Border>

@@ -18,7 +18,7 @@
   <Grid Name="Root" RowDefinitions="Auto,Auto,*" Classes.pidnar="{Binding IsNarrow}">
     <Border Classes="lockbar" Margin="16,10,16,0" IsVisible="{Binding LockText, Converter={x:Static ObjectConverters.IsNotNull}}">
       <DockPanel>
-        <c:IconView Icon="f-lock" DockPanel.Dock="Left" />
+        <c:IconView Icon="lock" DockPanel.Dock="Left" />
         <TextBlock Classes="lbt" Text="{Binding LockText}" />
       </DockPanel>
     </Border>
@@ -82,11 +82,11 @@
                 <TextBlock Grid.Row="4" Grid.Column="2" Classes="mut" Text="{Binding AfterText}" TextWrapping="Wrap" />
               </Grid>
               <DockPanel Classes="note2">
-                <c:IconView Icon="f-info" />
+                <c:IconView Icon="info" />
                 <TextBlock b:Pr.CjkRuns="True"><Run Text="整定温度选这一档里" /><Run Text="平时最常用的反应温度" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" /><Run Text="：整出的" /><Run Text="{Binding FormNoteC}" /></TextBlock>
               </DockPanel>
               <Grid ColumnDefinitions="*,8,*" Margin="0,12,0,0">
-                <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Height="34" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,0"
+                <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Height="34" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="14,0"
                         Content="{Binding StartLabel}" Command="{Binding StartCommand}" b:Pr.Reason="{Binding StartReason}" ToolTip.Tip="{Binding StartReason}" />
               </Grid>
             </StackPanel>
@@ -94,7 +94,7 @@
             <!-- 整定监视 -->
             <StackPanel IsVisible="{Binding ShowMonitor}">
               <DockPanel Margin="0,0,0,8">
-                <Button Name="CancelBtn" DockPanel.Dock="Right" Theme="{StaticResource PrButton}" Classes="sm" b:Pr.Icon="f-stop" Content="取消整定"
+                <Button Name="CancelBtn" DockPanel.Dock="Right" Theme="{StaticResource PrButton}" Classes="sm" b:Pr.Icon="stop" Content="取消整定"
                         Command="{Binding CancelCommand}" b:Pr.Reason="{Binding CancelReason}" IsVisible="{Binding !MonDone}" VerticalAlignment="Center" />
                 <WrapPanel Name="MonHead" VerticalAlignment="Center">
                   <TextBlock Classes="pidmt" Text="{Binding MonTitle}" Margin="0,0,10,0" />
@@ -153,7 +153,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <DockPanel Classes="note2" Margin="0,12,0,0" IsVisible="{Binding HasOkNote}">
-                  <c:IconView Icon="f-ok-f" />
+                  <c:IconView Icon="ok-f" />
                   <TextBlock Text="{Binding OkNote}" />
                 </DockPanel>
               </StackPanel>
@@ -217,7 +217,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <DockPanel Classes="note2" Margin="14,10,14,12">
-                <c:IconView Icon="f-info" />
+                <c:IconView Icon="info" />
                 <TextBlock Text="{Binding TableNote}" />
               </DockPanel>
             </StackPanel>

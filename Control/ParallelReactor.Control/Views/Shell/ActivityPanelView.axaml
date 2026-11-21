@@ -257,7 +257,7 @@
                 <cs:ActRing Size="22" Stroke="4" Segs="{Binding Mini}" VerticalAlignment="Center" />
                 <TextBlock Text="{Binding Title}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
                 <TextBlock Classes="pm num" Text="{Binding Meta}" />
-                <c:IconView Icon="f-chev-d" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="2,0,0,0" RenderTransform="rotate(180deg)" />
+                <c:IconView Icon="down" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="2,0,0,0" RenderTransform="rotate(180deg)" />
               </StackPanel>
             </Border>
           </Button>
@@ -278,7 +278,7 @@
                         DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="8" Margin="0,0,12,0" VerticalAlignment="Center">
                   <c:IconView Icon="{Binding Icon}" Size="18" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <Button DockPanel.Dock="Right" Classes="fold" Theme="{StaticResource PrIconButton}" b:Pr.Icon="f-chev-d" Command="{Binding FoldCommand}"
+                <Button DockPanel.Dock="Right" Classes="fold" Theme="{StaticResource PrIconButton}" b:Pr.Icon="down" Command="{Binding FoldCommand}"
                         ToolTip.Tip="收起成右下角的小胶囊" Margin="12,0,0,0" VerticalAlignment="Center" />
                 <StackPanel VerticalAlignment="Center" Spacing="1">
                   <TextBlock Text="{Binding Title}" FontSize="{StaticResource FsPaneTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="20"
@@ -312,7 +312,7 @@
                   <StackPanel Classes="cur" Classes.amb="{Binding CurAmb}" Classes.no="{Binding CurNo}" Classes.ok="{Binding CurOk}" Classes.ab="{Binding CurAb}"
                               VerticalAlignment="Center" Spacing="3">
                     <StackPanel Orientation="Horizontal" Spacing="6">
-                      <c:IconView Icon="f-warn-f" Size="15" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Center" IsVisible="{Binding CurWarn}" />
+                      <c:IconView Icon="warn-f" Size="15" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Center" IsVisible="{Binding CurWarn}" />
                       <TextBlock Classes="us" Text="{Binding CurSmall}" />
                     </StackPanel>
                     <TextBlock Classes="ub" Text="{Binding CurBig}" />
@@ -333,7 +333,7 @@
                     <DataTemplate x:DataType="sh:ActSegVm">
                       <Border Classes="sg" Classes.done="{Binding Done}" Classes.cur="{Binding Cur}" Classes.amb="{Binding Amb}">
                         <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Center">
-                          <c:IconView Icon="f-check" Size="12" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" IsVisible="{Binding Done}" />
+                          <c:IconView Icon="check" Size="12" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" IsVisible="{Binding Done}" />
                           <TextBlock Text="{Binding Text}" />
                         </StackPanel>
                       </Border>
@@ -373,7 +373,7 @@
               <!-- 带压提示 -->
               <Border Margin="20,14,20,0" Padding="12,10" CornerRadius="6" Background="{StaticResource AxAmbWashBrush}" IsVisible="{Binding HasWarn}">
                 <DockPanel>
-                  <c:IconView DockPanel.Dock="Left" Icon="f-warn-f" Size="16" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Top" Margin="0,2,10,0" />
+                  <c:IconView DockPanel.Dock="Left" Icon="warn-f" Size="16" Foreground="{StaticResource AxAmbBrush}" VerticalAlignment="Top" Margin="0,2,10,0" />
                   <StackPanel>
                     <TextBlock Text="{Binding WarnTitle}" FontSize="{StaticResource Fs2}" FontWeight="SemiBold" Foreground="{StaticResource AxAmbHeadBrush}" LineHeight="19"
                                TextWrapping="Wrap" />
@@ -400,14 +400,14 @@
               <!-- 底行 -->
               <DockPanel Margin="20,14,16,16" MinHeight="{Binding FootMinH}">
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <Button Classes="ax2b" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="中止" Command="{Binding AbortCommand}" IsVisible="{Binding CanAbort}"
+                  <Button Classes="ax2b" Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="中止" Command="{Binding AbortCommand}" IsVisible="{Binding CanAbort}"
                           ToolTip.Tip="中止泄漏测试：阀门全关，不放空 · 先确认 · 不需要控制权" />
                   <Button Classes="ax2b" Content="关闭" Command="{Binding CloseCommand}" IsVisible="{Binding CanClose}" ToolTip.Tip="关掉这次的结果（下一次开始照常弹出）" />
                   <Button Classes="ax2b pri" Theme="{StaticResource PrPrimary}" Content="查看结果" Command="{Binding ResultsCommand}" IsVisible="{Binding CanResults}"
                           ToolTip.Tip="去 性能测试 → 泄漏测试" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-                  <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding Lock}" />
+                  <c:IconView Icon="lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" IsVisible="{Binding Lock}" />
                   <TextBlock Classes="num" Text="{Binding Foot}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                              ToolTip.Tip="{Binding Foot}" />
                 </StackPanel>

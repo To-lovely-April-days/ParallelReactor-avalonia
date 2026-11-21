@@ -51,26 +51,26 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         SetModeCommand = new RelayCommand<string>(m => SetMode(m == "one" ? "one" : "mx"));
 
         // 工具条（样稿 PAGES.prog.ribbon / mxRibbon）
-        _new = new RibbonTool("f-add-c", "新建程序", NewProgram, tip: "新建一个程序（本型号）");
-        _save = new RibbonTool("f-save", "保存", SaveProgram);
-        _dup = new RibbonTool("f-copy", "复制为新程序", Duplicate, tip: "复制成一个新程序，可以修改");
-        _imp = new RibbonTool("f-upload", "导入", () => _ = ImportProgramAsync(), tip: "导入程序（HMI 程序 JSON）");
-        _exp = new RibbonTool("f-down", "导出", () => _ = ExportProgramAsync(), tip: "导出为 HMI 程序 JSON");
-        _chk1 = new RibbonTool("f-task", "预运行检查", () => OpenCheck(), tip: "下发前检查设备、气路和目标通道");
-        _run1 = new RibbonTool("f-play", "下发并运行", () => _ = One.SendAsync(), primary: true);
-        _stop1 = new RibbonTool("f-stop", "停止程序", StopSelected, tip: "停止所选通道上的程序 · 不需要控制权");
+        _new = new RibbonTool("add-c", "新建程序", NewProgram, tip: "新建一个程序（本型号）");
+        _save = new RibbonTool("save", "保存", SaveProgram);
+        _dup = new RibbonTool("copy", "复制为新程序", Duplicate, tip: "复制成一个新程序，可以修改");
+        _imp = new RibbonTool("upload", "导入", () => _ = ImportProgramAsync(), tip: "导入程序（HMI 程序 JSON）");
+        _exp = new RibbonTool("download", "导出", () => _ = ExportProgramAsync(), tip: "导出为 HMI 程序 JSON");
+        _chk1 = new RibbonTool("task", "预运行检查", () => OpenCheck(), tip: "下发前检查设备、气路和目标通道");
+        _run1 = new RibbonTool("play", "下发并运行", () => _ = One.SendAsync(), primary: true);
+        _stop1 = new RibbonTool("stop", "停止程序", StopSelected, tip: "停止所选通道上的程序 · 不需要控制权");
         _toolsOne = new()
         {
             new RibbonGroup("程序", new[] { _new, _save, _dup }),
             new RibbonGroup("文件", new[] { _imp, _exp }),
             new RibbonGroup("运行", new[] { _chk1, _run1, _stop1 }),
         };
-        _reset = new RibbonTool("f-reset", "按模板重建", () => Mx.Rebuild(true), tip: "丢掉矩阵里的修改，按所选模板重新生成");
-        _savePlan = new RibbonTool("f-save", "保存方案", () => Mx.SavePlan(), tip: "把这份条件矩阵（含样品名）存到本机");
-        _impCsv = new RibbonTool("f-upload", "导入 CSV", () => _ = Mx.ImportCsvAsync(), tip: "导入条件矩阵：每路一列");
-        _expCsv = new RibbonTool("f-down", "导出 CSV", () => _ = Mx.ExportCsvAsync(), tip: "导出条件矩阵（CSV，每路一列）");
-        _chkMx = new RibbonTool("f-task", "预运行检查", () => OpenCheck());
-        _runMx = new RibbonTool("f-play", "下发并运行", () => _ = Mx.SendAsync(), primary: true);
+        _reset = new RibbonTool("reset", "按模板重建", () => Mx.Rebuild(true), tip: "丢掉矩阵里的修改，按所选模板重新生成");
+        _savePlan = new RibbonTool("save", "保存方案", () => Mx.SavePlan(), tip: "把这份条件矩阵（含样品名）存到本机");
+        _impCsv = new RibbonTool("upload", "导入 CSV", () => _ = Mx.ImportCsvAsync(), tip: "导入条件矩阵：每路一列");
+        _expCsv = new RibbonTool("download", "导出 CSV", () => _ = Mx.ExportCsvAsync(), tip: "导出条件矩阵（CSV，每路一列）");
+        _chkMx = new RibbonTool("task", "预运行检查", () => OpenCheck());
+        _runMx = new RibbonTool("play", "下发并运行", () => _ = Mx.SendAsync(), primary: true);
         _toolsMx = new()
         {
             new RibbonGroup("方案", new[] { _reset, _savePlan }),

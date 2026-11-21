@@ -56,7 +56,7 @@
     <Border Margin="0,0,0,16" Padding="14,12" BorderBrush="{StaticResource Line2Brush}" BorderThickness="1" CornerRadius="{StaticResource Radius}"
             Background="{StaticResource BgHeadBrush}">
       <DockPanel>
-        <c:IconView DockPanel.Dock="Left" Icon="machine" Size="24" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,12,0" />
+        <c:IconView DockPanel.Dock="Left" Icon="machine-lg" Size="24" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,12,0" />
         <Panel DockPanel.Dock="Right" VerticalAlignment="Center" Margin="12,0,0,0">
           <pr:LeaseBadge Classes="devcard" State="{Binding Badge.Lease}" Text="{Binding Badge.LeaseText}" ToolTip.Tip="{Binding Badge.LeaseTip}" IsVisible="{Binding Badge.ShowLease}" />
           <pr:ConnBadge Classes="devcard" State="{Binding Badge.Conn}" Text="{Binding Badge.ConnText}" ToolTip.Tip="{Binding Badge.ConnTip}" IsVisible="{Binding !Badge.ShowLease}" />
@@ -130,7 +130,7 @@
             Background="{StaticResource ATintBrush}">
       <DockPanel>
         <Border DockPanel.Dock="Left" Width="36" Height="36" CornerRadius="18" Background="{StaticResource ASoftBrush}" Margin="0,0,14,0" VerticalAlignment="Center">
-          <c:IconView Icon="key" Size="20" Foreground="{StaticResource ADBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          <c:IconView Icon="key-lg" Size="20" Foreground="{StaticResource ADBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Border>
         <StackPanel Spacing="2" VerticalAlignment="Center">
           <pr:PrText Text="{Binding DoneTitle}" FontSize="{StaticResource FsTitle}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />

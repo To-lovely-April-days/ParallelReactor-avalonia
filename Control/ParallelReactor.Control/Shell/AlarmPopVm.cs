@@ -377,7 +377,6 @@ public sealed partial class AlarmPopVm : ObservableObject
         _q.SnoozeKey(c.Key);
         _shell.Go(AppPage.Home);
         if (c.Ch is int n) _shell.OpenChannel(c.K, n); else _shell.SelectDevice(c.K);
-        _shell.OpenPage<HomePageVm>()?.ShowRunTable();
         Show();
     }
 

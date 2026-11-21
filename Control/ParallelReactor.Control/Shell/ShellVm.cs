@@ -272,7 +272,6 @@ public sealed partial class ShellVm : ObservableObject, IDisposable
         if (X("po") != null || X("pc") != null) Layout.ApplyParams(X("po"), X("pc"));
         if (X("alm") == "1") Alarms.IsOpen = true;
         if (X("ovm") is { Length: > 0 } ovm && OpenPage<HomePageVm>() is { } hp) hp.Curve.ModeKey = ovm;
-        if (X("mv") is { Length: > 0 } mv && OpenPage<HomePageVm>() is { } hm) hm.MonKey = mv;
         ApplyActParams(X);
         Nav.Prune();
         Page?.ApplyParams(X);

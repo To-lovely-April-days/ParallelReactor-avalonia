@@ -89,8 +89,8 @@
             BorderThickness="0,0,0,1" Padding="14,0">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-plus" ToolTip.Tip="添加设备" Command="{Binding Devices.AddCommand}" />
-          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-refresh" ToolTip.Tip="设备管理 · 重新连接" Command="{Binding Devices.RescanCommand}" />
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="plus" ToolTip.Tip="添加设备" Command="{Binding Devices.AddCommand}" />
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="refresh" ToolTip.Tip="设备管理 · 重新连接" Command="{Binding Devices.RescanCommand}" />
         </StackPanel>
         <TextBlock VerticalAlignment="Center" Foreground="{StaticResource T2Brush}">
           <Run Text="设备 " /><Run Text="{Binding Devices.Count}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" /><Run Text=" 台 · " /><Run Text="{Binding Devices.Channels}" /><Run Text=" 路" />
@@ -109,7 +109,7 @@
                   <DockPanel Height="48" IsVisible="{Binding IsAll}">
                     <Border Classes="bar" DockPanel.Dock="Left" />
                     <StackPanel Orientation="Horizontal" Spacing="10" Margin="10,0" VerticalAlignment="Center">
-                      <c:IconView Icon="f-grid" Size="18" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
+                      <c:IconView Icon="grid" Size="18" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
                       <pr:PrText Classes="nm" Text="{Binding Name}" FontSize="{StaticResource FsDevAll}" VerticalAlignment="Center" />
                       <pr:PrText Classes="md" Text="{Binding Model}" />
                     </StackPanel>
@@ -123,11 +123,11 @@
                           <Border Height="22" Padding="6,0" CornerRadius="{StaticResource RadiusStep}" BorderThickness="1" Background="{StaticResource ASoftBrush}"
                                   BorderBrush="{StaticResource ATabBrush}" IsVisible="{Binding IsRemote}" ToolTip.Tip="本机远程控制中">
                             <StackPanel Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-                              <c:IconView Icon="f-plug" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
+                              <c:IconView Icon="plug" Size="14" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
                               <pr:PrText Text="远程" FontWeight="SemiBold" Foreground="{StaticResource ABrush}" VerticalAlignment="Center" />
                             </StackPanel>
                           </Border>
-                          <c:IconView Icon="f-lock" Size="15" Foreground="{StaticResource TIconBrush}" IsVisible="{Binding !IsRemote}" ToolTip.Tip="本地只读" />
+                          <c:IconView Icon="lock" Size="15" Foreground="{StaticResource TIconBrush}" IsVisible="{Binding !IsRemote}" ToolTip.Tip="本地只读" />
                         </Panel>
                         <StackPanel Orientation="Horizontal" Spacing="8">
                           <pr:PrText Classes="nm" Text="{Binding Name}" VerticalAlignment="Center" />
@@ -148,7 +148,7 @@
                             <Button Classes="axln" Classes.a="{Binding IsA}" Classes.r="{Binding IsR}" Classes.go="{Binding Clickable}" Command="{Binding Command}"
                                     ToolTip.Tip="{Binding Tip}" AutomationProperties.Name="{Binding Text}">
                               <DockPanel>
-                                <c:IconView DockPanel.Dock="Right" Icon="f-chev-r" Size="12" Opacity="0.7" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Clickable}" />
+                                <c:IconView DockPanel.Dock="Right" Icon="right" Size="12" Opacity="0.7" VerticalAlignment="Center" Margin="6,0,0,0" IsVisible="{Binding Clickable}" />
                                 <c:IconView DockPanel.Dock="Left" Classes="li" Icon="{Binding Icon}" Size="14" VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <TextBlock Text="{Binding Text}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                               </DockPanel>

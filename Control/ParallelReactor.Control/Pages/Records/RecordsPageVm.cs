@@ -49,12 +49,12 @@ public sealed partial class RecordsPageVm : PageVm
         _shell = shell;
         Store = new RecordsStore(shell.Fleet);
         Store.Changed += () => { if (ReferenceEquals(_shell.Page, this)) Refresh(_shell.Fleet); };
-        _new = new RibbonTool("f-rec", "新建会话", NewSession, "开始新的记录会话");
-        _end = new RibbonTool("f-stop", "结束会话", EndSession, "结束所选会话");
-        _mark = new RibbonTool("f-flag", "打标记", Mark, "在所选会话里打标记");
-        _down = new RibbonTool("f-down", "下载数据", () => _ = DownloadAsync(), "把这次会话的运行记录（CSV）存到本机数据目录");
-        _report = new RibbonTool("f-pdf", "生成报告", () => _ = ReportAsync(), "导出 8 路对比结果（CSV：每路结果 + 统计）");
-        _folder = new RibbonTool("f-folder", "打开数据目录", OpenFolder, "打开本机数据目录（下载的数据、导出的报告）");
+        _new = new RibbonTool("rec", "新建会话", NewSession, "开始新的记录会话");
+        _end = new RibbonTool("stop", "结束会话", EndSession, "结束所选会话");
+        _mark = new RibbonTool("flag", "打标记", Mark, "在所选会话里打标记");
+        _down = new RibbonTool("download", "下载数据", () => _ = DownloadAsync(), "把这次会话的运行记录（CSV）存到本机数据目录");
+        _report = new RibbonTool("report", "生成报告", () => _ = ReportAsync(), "导出 8 路对比结果（CSV：每路结果 + 统计）");
+        _folder = new RibbonTool("folder", "打开数据目录", OpenFolder, "打开本机数据目录（下载的数据、导出的报告）");
         _tools = new[] { new RibbonGroup("会话", new[] { _new, _end, _mark }), new RibbonGroup("导出", new[] { _down, _report, _folder }) };
         PickModeCommand = new RelayCommand<string>(m => { if (m != null) ModeKey = m; });
         CurvesCommand = new RelayCommand(ViewCurves);

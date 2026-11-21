@@ -143,7 +143,7 @@ public sealed partial class StopChannelDialogVm : DialogVm
         Body = this;
         var cancel = new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this)));
         GoButton = new FootButton("停止 RV" + n.ToString(CultureInfo.InvariantCulture), new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions),
-            FootKind.PrimaryStop, "f-stop");
+            FootKind.PrimaryStop, "stop");
         Footer = new FootBar(cancel, GoButton);
         Refresh();
     }
@@ -208,7 +208,7 @@ public sealed partial class StopConfirmDialogVm : DialogVm
         Lead = lead;
         Rows = rows;
         var cancel = new FootButton("取消", new RelayCommand(() => shell.Dialogs.Close(this)));
-        GoButton = new FootButton(goLabel, new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "f-stop");
+        GoButton = new FootButton(goLabel, new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "stop");
         Footer = new FootBar(cancel, GoButton);
         Refresh();
     }

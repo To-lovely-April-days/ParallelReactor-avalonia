@@ -276,15 +276,9 @@ public sealed class ReactorVessel : Avalonia.Controls.Control, IAuditText
         }
     }
 
-    private static Geometry? _flame;
-
     private void DrawFlame(DrawingContext ctx, double k)
     {
-        if (_flame == null && this.TryFindResource("Icon.flame", out var g) && g is Geometry geo) _flame = geo;
-        if (_flame == null) return;
-        double s = VesselPaint.FlameSize / 24;
-        using (ctx.PushTransform(Matrix.CreateScale(s, s) * Matrix.CreateTranslation(VesselPaint.FlameX, VesselPaint.FlameY)))
-            ctx.DrawGeometry(null, VesselPaint.Pen(Palette.T2Color, 1.6, null, PenLineCap.Flat, PenLineJoin.Miter, 1 / (s * k)), _flame);
+        IconView.Draw(ctx, "flame", VesselPaint.FlameSize, Palette.T2Brush, VesselPaint.FlameX, VesselPaint.FlameY);
     }
 
     // ---------------- 角标（控件坐标里排版，字号固定 13.5 / 14 px） ----------------

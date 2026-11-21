@@ -45,9 +45,9 @@ public sealed partial class AlarmPageVm : PageVm
     public AlarmPageVm(ShellVm shell) : base(AppPage.Alarms)
     {
         _shell = shell;
-        _ackSel = new RibbonTool("f-check", "确认所选", AckSelected, "确认选中的报警 · 不需要控制权");
-        _ackAll = new RibbonTool("f-check", "全部确认", AckAll, "确认全部设备的未确认报警与提醒 · 不需要控制权");
-        _export = new RibbonTool("f-down", "导出 CSV", ExportCsv, "导出当前筛选的报警与事件（CSV）");
+        _ackSel = new RibbonTool("check", "确认所选", AckSelected, "确认选中的报警 · 不需要控制权");
+        _ackAll = new RibbonTool("check", "全部确认", AckAll, "确认全部设备的未确认报警与提醒 · 不需要控制权");
+        _export = new RibbonTool("download", "导出 CSV", ExportCsv, "导出当前筛选的报警与事件（CSV）");
         _tools = new[] { new RibbonGroup("确认", new[] { _ackSel, _ackAll }), new RibbonGroup("导出", new[] { _export }) };
         AckOneCommand = new RelayCommand<AlarmRowVm>(r => { if (r != null) Ack(r.Row); });
         AckCommand = new RelayCommand(() => { if (Current is { } r) Ack(r); });
@@ -341,13 +341,12 @@ public sealed partial class AlarmPageVm : PageVm
                 if (a.AckReason == null && a.AckCommand.CanExecute(null)) a.AckCommand.Execute(null);
     }
 
-    /// <summary>定位到通道：主页选中这一路、打开检查器、回到运行表（同报警弹窗的「定位」）。</summary>
+    /// <summary>定位到通道：主页选中这一路并打开检查器（同报警弹窗的「定位」）。</summary>
     private void Locate()
     {
         if (Current is not { N: int n } x) return;
         _shell.Go(AppPage.Home);
         _shell.OpenChannel(x.K, n);
-        _shell.OpenPage<HomePageVm>()?.ShowRunTable();
     }
 
     /// <summary>查看曲线：曲线页 · 这台设备 · 勾上这一路 · 时间范围 1 h（样稿 al-cv）。</summary>

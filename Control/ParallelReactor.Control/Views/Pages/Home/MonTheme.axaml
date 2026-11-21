@@ -44,23 +44,6 @@
     <Style Selector="^:focus-visible /template/ Border#PART_Focus">
       <Setter Property="IsVisible" Value="True" />
     </Style>
-    <!-- 棒图 -->
-    <Style Selector="^.bar">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="CornerRadius" Value="6" />
-    </Style>
-    <Style Selector="^.bar:pointerover /template/ Border#PART_Body">
-      <Setter Property="Background" Value="{StaticResource BgHoverBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource LineBrush}" />
-      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
-    </Style>
-    <Style Selector="^.bar.on /template/ Border#PART_Body">
-      <Setter Property="Background" Value="{StaticResource ASoftBrush}" />
-      <Setter Property="BorderBrush" Value="{StaticResource ADoneBrush}" />
-      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
-    </Style>
-
   </ControlTheme>
 
   <!-- 阀门（样稿 .vlv）：28（气源 26、紧凑 22 / 19）的方块、白底、圆角 5、无边（只显示状态：维护模式在设备触屏上）；点了提示「触屏操作」。 -->

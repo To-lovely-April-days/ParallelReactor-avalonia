@@ -51,11 +51,11 @@ public sealed partial class CurvePageVm : PageVm
     public CurvePageVm(ShellVm shell) : base(AppPage.Curves)
     {
         _shell = shell;
-        _followTool = new RibbonTool("f-pause", "暂停滚动", ToggleFollow, "暂停自动滚动，便于查看");
-        _latest = new RibbonTool("f-reset", "回到最新", Latest, "回到最新数据并恢复实时跟随");
-        _mark = new RibbonTool("f-flag", "打标记", Mark, "在当前时刻打标记（写入本次运行记录）");
-        _export = new RibbonTool("f-down", "导出 CSV", ExportCsv, "导出选中通道 · 当前时间范围 · CSV");
-        _copy = new RibbonTool("f-copy", "复制图片", () => _shell.Toast("复制图片还没做（Avalonia 跨平台剪贴板图片）· 先用「导出 CSV」", ToastKind.Info), "把当前曲线复制为图片");
+        _followTool = new RibbonTool("pause", "暂停滚动", ToggleFollow, "暂停自动滚动，便于查看");
+        _latest = new RibbonTool("reset", "回到最新", Latest, "回到最新数据并恢复实时跟随");
+        _mark = new RibbonTool("flag", "打标记", Mark, "在当前时刻打标记（写入本次运行记录）");
+        _export = new RibbonTool("download", "导出 CSV", ExportCsv, "导出选中通道 · 当前时间范围 · CSV");
+        _copy = new RibbonTool("copy", "复制图片", () => _shell.Toast("复制图片还没做（Avalonia 跨平台剪贴板图片）· 先用「导出 CSV」", ToastKind.Info), "把当前曲线复制为图片");
         _tools = new[]
         {
             new RibbonGroup("时间", new[] { _followTool, _latest }),
@@ -369,7 +369,7 @@ public sealed partial class CurvePageVm : PageVm
 
     private void RefreshTools()
     {
-        _followTool.Icon = Follow ? "f-pause" : "f-play";
+        _followTool.Icon = Follow ? "pause" : "play";
         _followTool.Label = Follow ? "暂停滚动" : "实时跟随";
         _followTool.Tip = Follow ? "暂停自动滚动，便于查看" : "恢复跟随最新数据";
         var d = _dev;

@@ -38,7 +38,7 @@
     <DockPanel>
       <Border DockPanel.Dock="Top" Height="50" Padding="16,0,6,0" BorderBrush="{StaticResource LineBrush}" BorderThickness="0,0,0,1">
         <DockPanel>
-          <Button DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="f-x" Width="32" Height="32" CornerRadius="2"
+          <Button DockPanel.Dock="Right" Theme="{StaticResource PrIconButton}" b:Pr.Icon="x" Width="32" Height="32" CornerRadius="2"
                   ToolTip.Tip="关闭" Command="{Binding Alarms.CloseCommand}" VerticalAlignment="Center" />
           <pr:PrText Text="报警" FontSize="{StaticResource FsDlgTitle}" FontWeight="Light" VerticalAlignment="Center" />
         </DockPanel>
@@ -81,8 +81,8 @@
                   <Border Classes="arow">
                     <DockPanel>
                       <Panel DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,12,0" VerticalAlignment="Top">
-                        <c:IconView Icon="f-err-f" Size="20" Foreground="{StaticResource RBtnBrush}" IsVisible="{Binding IsErr}" />
-                        <c:IconView Icon="f-warn-f" Size="20" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding !IsErr}" />
+                        <c:IconView Icon="err-f" Size="20" Foreground="{StaticResource RBtnBrush}" IsVisible="{Binding IsErr}" />
+                        <c:IconView Icon="warn-f" Size="20" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding !IsErr}" />
                       </Panel>
                       <StackPanel>
                         <DockPanel>
@@ -93,8 +93,8 @@
                         <TextBlock Text="{Binding More}" Foreground="{StaticResource T3Brush}" Margin="0,2,0,0" TextWrapping="Wrap" IsVisible="{Binding HasMore}" />
                         <DockPanel Margin="0,8,0,0" Height="28">
                           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6">
-                            <Button Classes="sm" b:Pr.Icon="f-locate" Content="定位" Command="{Binding LocateCommand}" ToolTip.Tip="在主页选中这一路" />
-                            <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="f-check" Content="确认" Command="{Binding AckCommand}"
+                            <Button Classes="sm" b:Pr.Icon="locate" Content="定位" Command="{Binding LocateCommand}" ToolTip.Tip="在主页选中这一路" />
+                            <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="check" Content="确认" Command="{Binding AckCommand}"
                                     b:Pr.Reason="{Binding AckReason}" IsVisible="{Binding !Acked}" ToolTip.Tip="确认这条报警 · 不需要控制权" />
                           </StackPanel>
                           <pr:PrText Text="未确认" FontWeight="SemiBold" Foreground="{StaticResource RInk2Brush}" VerticalAlignment="Center" IsVisible="{Binding !Acked}" />

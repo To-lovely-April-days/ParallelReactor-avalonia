@@ -56,7 +56,7 @@
           <StackPanel Orientation="Horizontal" IsVisible="{Binding IsUptake}" VerticalAlignment="Center" Background="Transparent"
                       ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}" Cursor="Help">
             <pr:PrText Text=" · " FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" />
-            <c:IconView Icon="f-info" Size="13" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,3,0" />
+            <c:IconView Icon="info" Size="13" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" Margin="0,0,3,0" />
             <pr:PrText Text="设备按压降计算" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
           </StackPanel>
         </StackPanel>

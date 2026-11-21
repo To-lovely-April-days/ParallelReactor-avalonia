@@ -210,7 +210,7 @@ public sealed partial class RecColumns : ObservableObject
 /// <summary>「标记与事件」的一行（样稿 .rcev：图标 16 · 时刻 64 宽 t-3 · 来源 52 宽 600 · 文字 t-2，行高 32、下边 line-faint）。</summary>
 public sealed record RecEventVm(string Time, string Src, string Text, RecEventKind Kind)
 {
-    public string Icon => Kind switch { RecEventKind.Mark or RecEventKind.MarkErr => "f-flag", RecEventKind.Err => "f-err-f", RecEventKind.Warn => "f-warn-f", _ => "f-info-f" };
+    public string Icon => Kind switch { RecEventKind.Mark or RecEventKind.MarkErr => "flag", RecEventKind.Err => "err-f", RecEventKind.Warn => "warn-f", _ => "info-f" };
 
     /// <summary>图标颜色：标记 t-2、报警时刻的标记 / 报警 r-btn、提醒 amb、信息 t-3。</summary>
     public IBrush IconBrush => Kind switch

@@ -33,20 +33,17 @@ public sealed record ResEventVm(string Time, string Src, string Title, EventLeve
 }
 
 /// <summary>
-/// 共用资源面板（融合版 F3，样稿 resPane）：气路（占用 / 排队）+ 阀门小块（惰性气 · 气体 A · 气体 B · 排空，只读）· 共用搅拌（釜转速框 + 开关 + 电流 +「全部釜共用」）·
-/// 气路小块点击开关阀门（HMI v0.7，<see cref="ValveCtl"/>，不经维护模式）· 看气路图 · 会话 · 最近事件（报警页的「全部」）。
+/// 共用资源面板：气路（占用 / 排队）+ 阀门小块（惰性气 · 气体 A · 气体 B · 排空）· 共用搅拌（釜转速框 + 开关 + 电流 +「全部釜共用」）·
+/// 气路小块点击开关阀门（HMI v0.7，<see cref="ValveCtl"/>）· 会话 · 最近事件（报警页的「全部」）。
 /// </summary>
 public sealed partial class ResPaneVm : ObservableObject
 {
     private readonly ShellVm _shell;
-    private readonly Action _showGas;
     private int _k;
 
-    public ResPaneVm(ShellVm shell, Action showGas)
+    public ResPaneVm(ShellVm shell)
     {
         _shell = shell;
-        _showGas = showGas;
-        ShowGasCommand = new RelayCommand(() => _showGas());
         AllEventsCommand = new RelayCommand(() => shell.Go(AppPage.Alarms));
         StirToggleCommand = new RelayCommand(ToggleStir);
         ApplyRpmCommand = new RelayCommand(ApplyRpm);
@@ -54,7 +51,6 @@ public sealed partial class ResPaneVm : ObservableObject
 
     public ObservableCollection<ValvePillVm> Valves { get; } = new();
     public ObservableCollection<ResEventVm> Events { get; } = new();
-    public ICommand ShowGasCommand { get; }
     public ICommand AllEventsCommand { get; }
     public ICommand StirToggleCommand { get; }
     public ICommand ApplyRpmCommand { get; }

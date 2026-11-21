@@ -24,7 +24,7 @@
     </ItemsControl>
     <Border Margin="0,10,0,0" Padding="10,7" CornerRadius="4" Background="{StaticResource AmbBgBrush}" BorderBrush="{StaticResource AmbNoteLineBrush}" BorderThickness="1">
       <DockPanel>
-        <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource AmbInk2Brush}" VerticalAlignment="Top" Margin="0,2,6,0" />
+        <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource AmbInk2Brush}" VerticalAlignment="Top" Margin="0,2,6,0" />
         <pr:SegText Name="NoteText" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInk2Brush}" LineHeight="20" TextWrapping="Wrap" />
       </DockPanel>
     </Border>

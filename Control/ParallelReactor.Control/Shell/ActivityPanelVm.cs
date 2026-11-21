@@ -46,7 +46,7 @@ public sealed record ActCardVm
 {
     public int K { get; init; }
     public string Tone { get; init; } = "run";
-    public string Icon { get; init; } = "f-timer";
+    public string Icon { get; init; } = "timer";
     public string Title { get; init; } = "";
     public string Sub { get; init; } = "";
     /// <summary>主角区整块浅琥珀底（等人操作）。</summary>
@@ -254,9 +254,9 @@ public sealed partial class ActivityPanelVm : ObservableObject
         var ch = ActivityText.Chip(a, c);
         var (kind, icon) = ch.Kind switch
         {
-            ChipKind.Ok => ("ok", (string?)"f-ok-f"),
-            ChipKind.No => ("no", "f-no-f"),
-            ChipKind.Amb => ("amb", "f-warn-f"),
+            ChipKind.Ok => ("ok", (string?)"ok-f"),
+            ChipKind.No => ("no", "no-f"),
+            ChipKind.Amb => ("amb", "warn-f"),
             ChipKind.Neutral => ("n", null),
             _ => ("run", null),
         };

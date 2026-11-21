@@ -10,9 +10,9 @@ public static class AlarmConverters
 {
     public static readonly IValueConverter LevelIcon = new FuncValueConverter<AlarmLogLevel, string>(l => l switch
     {
-        AlarmLogLevel.Hi => "f-err-f",
-        AlarmLogLevel.Lo => "f-warn-f",
-        _ => "f-info-f",
+        AlarmLogLevel.Hi => "err-f",
+        AlarmLogLevel.Lo => "warn-f",
+        _ => "info-f",
     });
 
     public static readonly IValueConverter LevelBrush = new FuncValueConverter<AlarmLogLevel, IBrush>(l => l switch

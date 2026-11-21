@@ -40,10 +40,10 @@ public sealed partial class SettingsPageVm : PageVm
     public SettingsPageVm(ShellVm shell) : base(AppPage.Settings)
     {
         _shell = shell;
-        _save = new RibbonTool("f-save", "保存", Save, tip: "保存本机设置");
-        _reset = new RibbonTool("f-reset", "恢复默认", RestoreDefaults, tip: "本机设置恢复为默认值（保存后写进文件；设备列表不变）");
-        _export = new RibbonTool("f-down", "导出配置", () => ExportConfig(), tip: "导出本机配置（不含令牌）");
-        _import = new RibbonTool("f-upload", "导入配置", () => _ = ImportConfigAsync(), tip: "从导出的配置文件读入本机设置（保存后生效到文件）");
+        _save = new RibbonTool("save", "保存", Save, tip: "保存本机设置");
+        _reset = new RibbonTool("reset", "恢复默认", RestoreDefaults, tip: "本机设置恢复为默认值（保存后写进文件；设备列表不变）");
+        _export = new RibbonTool("download", "导出配置", () => ExportConfig(), tip: "导出本机配置（不含令牌）");
+        _import = new RibbonTool("upload", "导入配置", () => _ = ImportConfigAsync(), tip: "从导出的配置文件读入本机设置（保存后生效到文件）");
         _tools = new List<RibbonGroup> { new("设置", new[] { _save, _reset }), new("配置", new[] { _export, _import }) };
 
         foreach (var (k, l, ro) in SettingsTexts.Local) _navLocal.Add(new SetNavVm(k, l, ro, Pick));

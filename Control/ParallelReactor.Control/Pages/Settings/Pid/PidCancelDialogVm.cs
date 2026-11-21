@@ -36,7 +36,7 @@ public sealed partial class PidCancelDialogVm : DialogVm
         Sub = null;
         Text = PidTexts.Rvs(chs) + " 的自整定（" + run.BandName + " · " + PidTexts.Num(run.Sp) + " °C）会中止：通道停止加热，自然降温。";
         Warn = "PID 不改：" + run.BandName + "保持原来的值。以后要整定，需要从头再来一次（约 20–40 min）。";
-        GoButton = new FootButton("取消整定", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "f-stop");
+        GoButton = new FootButton("取消整定", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.PrimaryStop, "stop");
         Footer = new FootBar(new FootButton("继续整定", new RelayCommand(() => shell.Dialogs.Close(this))), GoButton);
         Body = new Views.Pages.Settings.PidCancelView { DataContext = this };
         Refresh();

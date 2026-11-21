@@ -27,15 +27,15 @@
           <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
             <pr:PrText Text="{Binding Capsule.Label}" FontSize="{StaticResource FsCap}" Foreground="{StaticResource TInvBrush}" LetterSpacing="0.4"
                        Margin="0,0,6,0" VerticalAlignment="Center" />
-            <Button Name="CapStart" Theme="{StaticResource PrCapButton}" Classes="go" b:Pr.Icon="f-play" AutomationProperties.Name="启动"
+            <Button Name="CapStart" Theme="{StaticResource PrCapButton}" Classes="go" b:Pr.Icon="play" AutomationProperties.Name="启动"
                     b:Pr.Reason="{Binding Capsule.StartReason}" ToolTip.Tip="{Binding Capsule.StartTip}" Command="{Binding Capsule.StartCommand}" />
-            <Button Name="CapStop" Theme="{StaticResource PrCapButton}" b:Pr.Icon="f-stop" AutomationProperties.Name="全部停止"
+            <Button Name="CapStop" Theme="{StaticResource PrCapButton}" b:Pr.Icon="stop" AutomationProperties.Name="全部停止"
                     b:Pr.Reason="{Binding Capsule.StopReason}" ToolTip.Tip="{x:Static sh:CapsuleVm.StopAllTip}" Command="{Binding Capsule.StopAllCommand}" />
-            <Button Name="CapRec" Theme="{StaticResource PrCapButton}" b:Pr.Icon="f-rec" AutomationProperties.Name="开始记录"
+            <Button Name="CapRec" Theme="{StaticResource PrCapButton}" b:Pr.Icon="rec" AutomationProperties.Name="开始记录"
                     b:Pr.Reason="{Binding Capsule.RecordReason}" ToolTip.Tip="{Binding Capsule.RecordTip}" Command="{Binding Capsule.RecordCommand}" />
             <Panel>
               <Border Classes="estop-ring" IsVisible="{Binding Capsule.AnyEstop}" />
-              <Button Name="CapEstop" Theme="{StaticResource PrCapEstop}" b:Pr.Icon="f-power" Margin="4,0,0,0" AutomationProperties.Name="急停"
+              <Button Name="CapEstop" Theme="{StaticResource PrCapEstop}" b:Pr.Icon="estop" Margin="4,0,0,0" AutomationProperties.Name="急停"
                       b:Pr.Reason="{Binding Capsule.StopReason}" ToolTip.Tip="{x:Static sh:CapsuleVm.EstopTip}" Command="{Binding Capsule.EstopCommand}">
                 <pr:PrText Text="急停" />
               </Button>
@@ -47,7 +47,7 @@
                 Command="{Binding Alarms.ToggleCommand}" ToolTip.Tip="{Binding Alarms.Tip}" AutomationProperties.Name="{Binding Alarms.Tip}">
           <StackPanel Orientation="Horizontal" Spacing="9">
             <Panel Width="30" Height="30">
-              <c:IconView Icon="f-bell" Size="24" Foreground="{StaticResource GbgIconBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+              <c:IconView Icon="bell-lg" Size="24" Foreground="{StaticResource GbgIconBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
               <Border MinWidth="20" Height="20" CornerRadius="10" Padding="5,0" Background="{StaticResource RBrush}"
                       HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-7,0" IsVisible="{Binding Alarms.HasUnacked}" Classes="audit-layer">
                 <TextBlock Text="{Binding Alarms.Unacked}" Classes="num" FontSize="{StaticResource FsNum}" FontWeight="SemiBold"
@@ -63,7 +63,7 @@
         </Button>
         <!-- 本机 -->
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,0,4,0" VerticalAlignment="Center" ToolTip.Tip="{Binding ClientName, StringFormat='本机：{0}'}">
-          <c:IconView Icon="f-pc" Size="26" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
+          <c:IconView Icon="pc-lg" Size="26" Foreground="{StaticResource GbgIconBrush}" VerticalAlignment="Center" />
           <StackPanel Name="UserText" VerticalAlignment="Center">
             <pr:PrText Text="本机" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="17" />
             <pr:PrText Text="{Binding ClientName}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" LineHeight="17" />

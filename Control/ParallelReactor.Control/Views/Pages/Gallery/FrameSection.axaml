@@ -43,7 +43,7 @@
             <Button Theme="{StaticResource PrCapButton}" Classes="go" b:Pr.Icon="play" ToolTip.Tip="启动" AutomationProperties.Name="启动" />
             <Button Theme="{StaticResource PrCapButton}" b:Pr.Icon="stop" ToolTip.Tip="全部停止" AutomationProperties.Name="全部停止" />
             <Button Theme="{StaticResource PrCapButton}" b:Pr.Icon="rec" ToolTip.Tip="记录" AutomationProperties.Name="记录" />
-            <Button Theme="{StaticResource PrCapEstop}" b:Pr.Icon="power" Content="急停" Margin="4,0,0,0" />
+            <Button Theme="{StaticResource PrCapEstop}" b:Pr.Icon="estop" Content="急停" Margin="4,0,0,0" />
           </StackPanel>
         </Border>
         <StackPanel Orientation="Horizontal" VerticalAlignment="Stretch">

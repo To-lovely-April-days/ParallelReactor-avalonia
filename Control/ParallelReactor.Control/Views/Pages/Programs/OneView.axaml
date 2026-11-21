@@ -167,17 +167,17 @@
         <Border Classes="sub" DockPanel.Dock="Top">
           <DockPanel VerticalAlignment="Center">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
-              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-up" Content="上移" Command="{Binding One.UpCommand}" b:Pr.Reason="{Binding One.UpReason}" />
-              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-dn" Content="下移" Command="{Binding One.DownCommand}" b:Pr.Reason="{Binding One.DownReason}" />
-              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="f-delete" Content="删除" Command="{Binding One.DeleteCommand}" b:Pr.Reason="{Binding One.DeleteReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="arrow-up" Content="上移" Command="{Binding One.UpCommand}" b:Pr.Reason="{Binding One.UpReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="arrow-dn" Content="下移" Command="{Binding One.DownCommand}" b:Pr.Reason="{Binding One.DownReason}" />
+              <Button Theme="{StaticResource PrLink}" Classes="slnk" b:Pr.Icon="trash" Content="删除" Command="{Binding One.DeleteCommand}" b:Pr.Reason="{Binding One.DeleteReason}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10">
               <TextBlock Text="{Binding One.TotalText}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
               <Border Width="1" Height="16" Background="{StaticResource LineSoftBrush}" VerticalAlignment="Center" />
               <Border Classes="tag" Classes.run="{Binding One.Valid}" Classes.warn="{Binding !One.Valid}">
                 <StackPanel Orientation="Horizontal" Spacing="4">
-                  <c:IconView Icon="f-check" IsVisible="{Binding One.Valid}" />
-                  <c:IconView Icon="f-warn-f" IsVisible="{Binding !One.Valid}" />
+                  <c:IconView Icon="check" IsVisible="{Binding One.Valid}" />
+                  <c:IconView Icon="warn-f" IsVisible="{Binding !One.Valid}" />
                   <TextBlock Text="{Binding One.IssueTag}" />
                 </StackPanel>
               </Border>
@@ -188,15 +188,15 @@
         <!-- 运行中的程序锁住（样稿 .lockbar.amb） -->
         <Border Classes="lockbar amb" DockPanel.Dock="Top" Margin="16,10,16,0" IsVisible="{Binding One.Locked}">
           <DockPanel>
-            <Button DockPanel.Dock="Right" b:Pr.Icon="f-copy" Content="复制为新程序" Command="{Binding One.DupCommand}" Margin="10,0,0,0" />
-            <c:IconView Icon="f-lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <Button DockPanel.Dock="Right" b:Pr.Icon="copy" Content="复制为新程序" Command="{Binding One.DupCommand}" Margin="10,0,0,0" />
+            <c:IconView Icon="lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
             <TextBlock Text="{Binding One.LockText}" />
           </DockPanel>
         </Border>
         <!-- 从旧格式转换来的程序（STEPS-SPEC §3：转换只在内存里，保存后按新格式存） -->
         <Border Classes="lockbar amb" DockPanel.Dock="Top" Margin="16,10,16,0" IsVisible="{Binding One.Migrated}" Name="MigBar">
           <DockPanel>
-            <c:IconView Icon="f-warn-f" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <c:IconView Icon="warn-f" DockPanel.Dock="Left" Margin="0,0,8,0" />
             <StackPanel Spacing="2">
               <TextBlock>
                 <Run Text="已从旧格式转换，请检查" FontWeight="SemiBold" />
@@ -220,7 +220,7 @@
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="pg:AddStepVm">
-                  <Button b:Pr.Icon="f-plus" Content="{Binding Label}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}" Padding="9,0" Margin="0,0,6,6" />
+                  <Button b:Pr.Icon="plus" Content="{Binding Label}" Command="{Binding Command}" b:Pr.Reason="{Binding Reason}" Padding="9,0" Margin="0,0,6,6" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
@@ -237,12 +237,12 @@
                           AutomationProperties.Name="{Binding Name}">
                     <Button.ContextMenu>
                       <ContextMenu>
-                        <MenuItem Header="上移" b:Pr.Icon="f-up" Command="{Binding UpCommand}" IsEnabled="{Binding CanUp}"
+                        <MenuItem Header="上移" b:Pr.Icon="arrow-up" Command="{Binding UpCommand}" IsEnabled="{Binding CanUp}"
                                   ToolTip.Tip="{Binding UpReason}" ToolTip.ShowOnDisabled="True" />
-                        <MenuItem Header="下移" b:Pr.Icon="f-dn" Command="{Binding DownCommand}" IsEnabled="{Binding CanDown}"
+                        <MenuItem Header="下移" b:Pr.Icon="arrow-dn" Command="{Binding DownCommand}" IsEnabled="{Binding CanDown}"
                                   ToolTip.Tip="{Binding DownReason}" ToolTip.ShowOnDisabled="True" />
                         <Separator />
-                        <MenuItem Header="删除这一步" b:Pr.Icon="f-delete" b:Pr.Hint="Delete" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"
+                        <MenuItem Header="删除这一步" b:Pr.Icon="trash" b:Pr.Hint="Delete" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"
                                   ToolTip.Tip="{Binding DeleteReason}" ToolTip.ShowOnDisabled="True" />
                       </ContextMenu>
                     </Button.ContextMenu>
@@ -250,7 +250,7 @@
                       <TextBlock DockPanel.Dock="Right" Text="{Binding Dur}" Width="92" TextAlignment="Right" FontSize="{StaticResource FsBase}"
                                  Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                       <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="3" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="10,0,0,0">
-                        <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Center" />
+                        <c:IconView Icon="warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Center" />
                         <TextBlock Text="待改" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
                       </StackPanel>
                       <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center" ClipToBounds="True">
@@ -284,7 +284,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="x:String">
                       <DockPanel>
-                        <c:IconView Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,3,6,0" />
+                        <c:IconView Icon="warn-f" Size="14" Foreground="{StaticResource AmbBrush}" VerticalAlignment="Top" Margin="0,3,6,0" />
                         <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource AmbInk2Brush}" TextWrapping="Wrap" />
                       </DockPanel>
                     </DataTemplate>
@@ -298,7 +298,7 @@
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="x:String">
                       <DockPanel>
-                        <c:IconView Icon="f-info" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,6,0" />
+                        <c:IconView Icon="info" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,3,6,0" />
                         <TextBlock Text="{Binding}" FontSize="{StaticResource FsBase}" LineHeight="20" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" />
                       </DockPanel>
                     </DataTemplate>
@@ -344,7 +344,7 @@
                     <DockPanel Grid.Column="2" IsVisible="{Binding IsNum}" Classes.bad="{Binding Bad}">
                       <TextBox DockPanel.Dock="Left" Theme="{StaticResource PgUnit}" Text="{Binding Text, UpdateSourceTrigger=LostFocus}" b:Pr.Unit="{Binding Unit}"
                                Classes.bad="{Binding Bad}" IsEnabled="{Binding !Locked}" Classes="pgnum" Width="{Binding InputWidth}" />
-                      <c:IconView DockPanel.Dock="Left" Icon="f-warn-f" Size="14" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="8,0,-4,0" />
+                      <c:IconView DockPanel.Dock="Left" Icon="warn-f" Size="14" Foreground="{StaticResource AmbBrush}" IsVisible="{Binding Bad}" VerticalAlignment="Center" Margin="8,0,-4,0" />
                       <TextBlock Classes="rng" Text="{Binding RangeShown}" TextWrapping="Wrap" Margin="8,0,0,0" />
                     </DockPanel>
                   </Grid>
@@ -352,7 +352,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <DockPanel Classes="note2" IsVisible="{Binding One.Note, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" Margin="0,2,0,0">
-              <c:IconView Icon="f-info" />
+              <c:IconView Icon="info" />
               <TextBlock Text="{Binding One.Note}" />
             </DockPanel>
             <!-- 曲线升温的段（最多 16 段） -->
@@ -372,12 +372,12 @@
                       <TextBox Grid.Column="1" Theme="{StaticResource PgCell}" Text="{Binding Temp, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadTemp}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
                       <TextBox Grid.Column="2" Theme="{StaticResource PgCell}" Text="{Binding Rate, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadRate}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
                       <TextBox Grid.Column="3" Theme="{StaticResource PgCell}" Text="{Binding Hold, UpdateSourceTrigger=LostFocus}" Classes.bad="{Binding BadHold}" Margin="0,0,4,0" IsEnabled="{Binding !Locked}" />
-                      <Button Grid.Column="4" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-delete" Command="{Binding DeleteCommand}" ToolTip.Tip="删除这一段" IsEnabled="{Binding !Locked}" />
+                      <Button Grid.Column="4" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="trash" Command="{Binding DeleteCommand}" ToolTip.Tip="删除这一段" IsEnabled="{Binding !Locked}" />
                     </Grid>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <Button Theme="{StaticResource PrLink}" Classes="lnk" b:Pr.Icon="f-plus" Content="添加段" Command="{Binding One.AddSegCommand}" HorizontalAlignment="Left"
+              <Button Theme="{StaticResource PrLink}" Classes="lnk" b:Pr.Icon="plus" Content="添加段" Command="{Binding One.AddSegCommand}" HorizontalAlignment="Left"
                       b:Pr.Reason="{Binding One.Locked, Converter={x:Static pg:ProgramConverters.LockReason}}" />
             </StackPanel>
           </StackPanel>
@@ -397,7 +397,7 @@
         <Border Classes="lockbar" DockPanel.Dock="Top" Margin="16,10,16,0" Classes.amb="{Binding One.SendBarAmb}"
                 IsVisible="{Binding One.SendBar, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
           <DockPanel>
-            <c:IconView Icon="f-lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
+            <c:IconView Icon="lock" DockPanel.Dock="Left" Margin="0,0,8,0" />
             <TextBlock Text="{Binding One.SendBar}" />
           </DockPanel>
         </Border>
@@ -429,12 +429,12 @@
           <TextBlock Text="{Binding One.VolHint}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" TextWrapping="Wrap" Margin="0,8,0,0"
                      Classes.bad="{Binding One.VolBad}" Name="VolHint" />
           <DockPanel Classes="note2">
-            <c:IconView Icon="f-info" />
+            <c:IconView Icon="info" />
             <TextBlock Text="下发会覆盖通道上已有的程序；运行中的通道不能下发" />
           </DockPanel>
           <UniformGrid Classes="pgbtn" Columns="2" Margin="0,12,-8,0">
-            <Button b:Pr.Icon="f-task" Content="预运行检查" Command="{Binding One.CheckCommand}" b:Pr.Reason="{Binding One.CheckReason}" Margin="0,0,8,0" />
-            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="下发并运行" Command="{Binding One.RunCommand}" b:Pr.Reason="{Binding One.RunReason}"
+            <Button b:Pr.Icon="task" Content="预运行检查" Command="{Binding One.CheckCommand}" b:Pr.Reason="{Binding One.CheckReason}" Margin="0,0,8,0" />
+            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Content="下发并运行" Command="{Binding One.RunCommand}" b:Pr.Reason="{Binding One.RunReason}"
                     ToolTip.Tip="{Binding One.RunTip}" Margin="0,0,8,0" />
           </UniformGrid>
         </StackPanel>

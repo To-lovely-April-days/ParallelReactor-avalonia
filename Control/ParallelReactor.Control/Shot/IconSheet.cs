@@ -7,15 +7,14 @@ using ParallelReactor.Control.Theme;
 namespace ParallelReactor.Control.Shot;
 
 /// <summary>
-/// 图标核对表（PR_CONTROL_DEMO=1 + PR_CONTROL_ICON_SHEET=1）：76 个 pc-v3 图标按 8 列排开，每格 150×96，
-/// 同一图标画 18 / 24 / 32 px（描边都应是 1.6 px），格子下方写名字。样稿用 snap 注入同样排布的 SVG 拍参照，左右对照检查 gen-icons.py 的换算。
-/// 下方另有填充用法（停止方块、录制点）；旧界面的 Ico* 键在融合版 F8 删掉了。
+/// 图标核对表（PR_CONTROL_DEMO=1 + PR_CONTROL_ICON_SHEET=1）：全部统一 Phosphor Icons 按 8 列排开，每格 150×96，
+/// 同一图标画 14 / 18 / 28 px，格子下方写名字。
 /// </summary>
 public static class IconSheet
 {
     public const int Cols = 8, CellW = 150, CellH = 96;
-    public static readonly double[] Sizes = { 18, 24, 32 };
-    public static readonly double[] Xs = { 12, 42, 78 };
+    public static readonly double[] Sizes = { 14, 18, 28 };
+    public static readonly double[] Xs = { 12, 40, 74 };
 
     public static Avalonia.Controls.Control Build()
     {
@@ -30,15 +29,16 @@ public static class IconSheet
             i++;
         }
         double y0 = (i + Cols - 1) / Cols * CellH + 16;
-        // 填充用法：停止类按钮的深灰方块（Fill + 1 px 描边，15 px）、录制点、logo（22 px，描边 1.8）
-        Add(c, new IconView { Icon = "stop", Size = 15, Fill = true, StrokeWidth = 1, Foreground = Palette.T2Brush }, 12, y0);
-        Add(c, new IconView { Icon = "rec", Size = 24, Foreground = Palette.RBrush }, 42, y0);
-        Add(c, new IconView { Icon = "logo", Size = 22, StrokeWidth = 1.8, Foreground = Palette.ADBrush }, 78, y0);
-        // 描边宽度核对：minus 在 18 / 36 / 72 px 下都应是 1.6 px 粗
-        Add(c, new IconView { Icon = "minus", Size = 18, Foreground = Palette.T1Brush }, 150, y0);
-        Add(c, new IconView { Icon = "minus", Size = 36, Foreground = Palette.T1Brush }, 180, y0);
-        Add(c, new IconView { Icon = "minus", Size = 72, Foreground = Palette.T1Brush }, 230, y0);
-        c.Height = y0 + 90;
+        // 彩色彩样：急停、录制、成功、警告、报警、品牌大图标
+        Add(c, new IconView { Icon = "estop", Size = 20, Foreground = Palette.RBrush }, 12, y0);
+        Add(c, new IconView { Icon = "rec", Size = 20, Foreground = Palette.RBrush }, 44, y0);
+        Add(c, new IconView { Icon = "ok-f", Size = 20, Foreground = Palette.GDotBrush }, 76, y0);
+        Add(c, new IconView { Icon = "warn-f", Size = 20, Foreground = Palette.AmbBrush }, 108, y0);
+        Add(c, new IconView { Icon = "err-f", Size = 20, Foreground = Palette.RBtnBrush }, 140, y0);
+        Add(c, new IconView { Icon = "bell-lg", Size = 26, Foreground = Palette.GbgIconBrush }, 176, y0 - 3);
+        Add(c, new IconView { Icon = "pc-lg", Size = 26, Foreground = Palette.GbgIconBrush }, 216, y0 - 3);
+        Add(c, new IconView { Icon = "logo", Size = 26, Foreground = Palette.ADBrush }, 256, y0 - 3);
+        c.Height = y0 + 60;
         return c;
     }
 

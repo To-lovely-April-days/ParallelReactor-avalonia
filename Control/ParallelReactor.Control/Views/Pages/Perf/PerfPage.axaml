@@ -101,7 +101,7 @@
           </DockPanel>
         </Border>
         <StackPanel HorizontalAlignment="Center" Margin="0,44,0,0" Spacing="6">
-          <c:IconView Icon="f-beaker" Size="22" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Center" />
+          <c:IconView Icon="beaker-lg" Size="22" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Center" />
           <TextBlock Text="{Binding NoPlanTitle}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" HorizontalAlignment="Center" />
           <TextBlock Text="摸底测试计划「RV1–RV4 首台摸底性能测试」只适用 HT-PR8 的 RV1–RV4。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
           <TextBlock Text="泄漏测试可以用：点右上角「泄漏测试」。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
@@ -163,9 +163,9 @@
                             <Border Width="3" Margin="-16,-6,0,-6" HorizontalAlignment="Left" Background="{StaticResource ABrush}" IsVisible="{Binding IsCur}" />
                             <Grid ColumnDefinitions="18,8,15,9,44,8,*,8,Auto">
                               <Panel Grid.Column="0" Width="18" Height="18" VerticalAlignment="Center">
-                                <c:IconView Icon="f-ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsDone}" ToolTip.Tip="完成" />
-                                <c:IconView Icon="f-next" Size="16" Foreground="{StaticResource T3Brush}" IsVisible="{Binding IsSkip}" ToolTip.Tip="跳过" />
-                                <c:IconView Icon="f-play" Size="16" Foreground="{StaticResource ABrush}" IsVisible="{Binding IsCur}" ToolTip.Tip="正在测" />
+                                <c:IconView Icon="ok-f" Size="18" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsDone}" ToolTip.Tip="完成" />
+                                <c:IconView Icon="next" Size="16" Foreground="{StaticResource T3Brush}" IsVisible="{Binding IsSkip}" ToolTip.Tip="跳过" />
+                                <c:IconView Icon="play" Size="16" Foreground="{StaticResource ABrush}" IsVisible="{Binding IsCur}" ToolTip.Tip="正在测" />
                               </Panel>
                               <pr:PrCheckBox Grid.Column="2" Theme="{StaticResource PrCheck}" IsChecked="{Binding IsChecked}" IsEnabled="{Binding CanCheck}"
                                              MinHeight="0" Height="16" Padding="0" VerticalAlignment="Center" AutomationProperties.Name="{Binding Id}" />
@@ -255,7 +255,7 @@
                     </StackPanel>
                   </StackPanel>
                   <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,0">
-                    <Button Theme="{StaticResource PrPrimary}" Height="{StaticResource BtnLg}" FontSize="{StaticResource FsCell}" b:Pr.Icon="f-check" Content="{Binding ConfirmLabel}"
+                    <Button Theme="{StaticResource PrPrimary}" Height="{StaticResource BtnLg}" FontSize="{StaticResource FsCell}" b:Pr.Icon="check" Content="{Binding ConfirmLabel}"
                             Command="{Binding ConfirmCommand}" b:Pr.Reason="{Binding ConfirmReason}" />
                     <Button Theme="{StaticResource PrButton}" Height="{StaticResource BtnLg}" Content="跳过" Command="{Binding SkipPromptCommand}" IsVisible="{Binding CanSkipPrompt}"
                             ToolTip.Tip="这一步记为「跳过」" />
@@ -269,8 +269,8 @@
                   <TextBlock Text="{Binding IdleTitle}" FontSize="{StaticResource FsValue}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" TextWrapping="Wrap" />
                   <TextBlock Classes="ptp" Margin="0" Text="{Binding IdleText}" />
                   <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsFinished}" Margin="0,6,0,0">
-                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-doc" Content="打开报告" Command="{Binding OpenReportCommand}" />
-                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-reset" Content="返回测试项" Command="{Binding BackCommand}" />
+                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="doc" Content="打开报告" Command="{Binding OpenReportCommand}" />
+                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="reset" Content="返回测试项" Command="{Binding BackCommand}" />
                   </StackPanel>
                 </StackPanel>
               </Border>
@@ -290,7 +290,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <DockPanel Classes="note2" Margin="0,12,0,0" IsVisible="{Binding HasNote}">
-                <c:IconView Icon="f-info" />
+                <c:IconView Icon="info" />
                 <TextBlock Text="{Binding Note}" />
               </DockPanel>
             </StackPanel>
@@ -375,7 +375,7 @@
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <Panel Width="20" Height="20">
                       <Ellipse Fill="{StaticResource G1Brush}" IsVisible="{Binding Done}" />
-                      <c:IconView Icon="f-check" Size="12" Foreground="{StaticResource GDotBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding Done}" />
+                      <c:IconView Icon="check" Size="12" Foreground="{StaticResource GDotBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding Done}" />
                       <Ellipse Fill="{StaticResource ATintBrush}" Stroke="{StaticResource ABrush}" StrokeThickness="1" IsVisible="{Binding Cur}" />
                       <Ellipse Stroke="{StaticResource LineBrush}" StrokeThickness="1" IsVisible="{Binding Todo}" />
                     </Panel>
@@ -385,7 +385,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <Border Classes="lockbar" Margin="0,10,0,0" IsVisible="{Binding LeakState, Converter={x:Static ObjectConverters.IsNotNull}}">
-              <DockPanel><c:IconView Icon="f-clock" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakState}" /></DockPanel>
+              <DockPanel><c:IconView Icon="clock" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakState}" /></DockPanel>
             </Border>
             <TextBlock Classes="grp" Text="测试通道" />
             <ItemsControl ItemsSource="{Binding LeakChans}">
@@ -400,7 +400,7 @@
             </ItemsControl>
             <TextBlock Classes="mut" Text="{Binding LeakSelText}" />
             <DockPanel Classes="note2" Margin="0,12,0,0">
-              <c:IconView Icon="f-info" />
+              <c:IconView Icon="info" />
               <TextBlock Text="所选通道不能在运行、加热或报警中；测试期间占用气路，程序的升压步骤会排队" />
             </DockPanel>
           </StackPanel>
@@ -437,8 +437,8 @@
                         <TextBlock Classes="num r" Classes.b="{Binding IsBad}" Text="{Binding Rate}" Foreground="{Binding IsBad, Converter={x:Static p:PerfConverters.BadInk}}" />
                         <TextBlock Classes="num r m" Text="{Binding Limit}" />
                         <StackPanel Orientation="Horizontal" Spacing="6">
-                          <c:IconView Icon="f-ok-f" Size="15" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsOk}" VerticalAlignment="Center" />
-                          <c:IconView Icon="f-no-f" Size="15" Foreground="{StaticResource RBrush}" IsVisible="{Binding IsBad}" VerticalAlignment="Center" />
+                          <c:IconView Icon="ok-f" Size="15" Foreground="{StaticResource GDotBrush}" IsVisible="{Binding IsOk}" VerticalAlignment="Center" />
+                          <c:IconView Icon="no-f" Size="15" Foreground="{StaticResource RBrush}" IsVisible="{Binding IsBad}" VerticalAlignment="Center" />
                           <TextBlock Text="{Binding Verdict}" FontWeight="{Binding IsNa, Converter={x:Static p:PerfConverters.VerdictWeight}}"
                                      Foreground="{Binding Ok, Converter={x:Static p:PerfConverters.VerdictInk}}" VerticalAlignment="Center" />
                         </StackPanel>
@@ -448,10 +448,10 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <Border Classes="lockbar amb" Margin="14,10,14,10" IsVisible="{Binding LeakWarn, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <DockPanel><c:IconView Icon="f-warn-f" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakWarn}" /></DockPanel>
+                <DockPanel><c:IconView Icon="warn-f" DockPanel.Dock="Left" /><TextBlock Classes="lbt" Text="{Binding LeakWarn}" /></DockPanel>
               </Border>
               <Border Classes="lockbar" Margin="14,10,14,10" IsVisible="{Binding LeakPass, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <DockPanel><c:IconView Icon="f-ok-f" DockPanel.Dock="Left" Foreground="{StaticResource AxOkBrush}" /><TextBlock Classes="lbt" Text="{Binding LeakPass}" /></DockPanel>
+                <DockPanel><c:IconView Icon="ok-f" DockPanel.Dock="Left" Foreground="{StaticResource AxOkBrush}" /><TextBlock Classes="lbt" Text="{Binding LeakPass}" /></DockPanel>
               </Border>
             </StackPanel>
           </ScrollViewer>

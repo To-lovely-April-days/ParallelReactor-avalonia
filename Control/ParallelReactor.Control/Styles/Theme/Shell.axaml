@@ -195,7 +195,7 @@
           <StackPanel Spacing="10" Margin="{TemplateBinding Padding}" HorizontalAlignment="Center">
             <Border Name="PART_Ring" Width="{StaticResource RailBtn}" Height="{StaticResource RailBtn}" CornerRadius="9" BorderThickness="1.2"
                     BorderBrush="{TemplateBinding BorderBrush}" HorizontalAlignment="Center">
-              <c:IconView Name="PART_Chev" Icon="f-chev-r" Size="10" Foreground="{TemplateBinding Foreground}"
+              <c:IconView Name="PART_Chev" Icon="right" Size="10" Foreground="{TemplateBinding Foreground}"
                           HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="50%,50%" />
             </Border>
             <cs:VerticalText Name="PART_Text" Text="{TemplateBinding Content}" FontSize="{StaticResource FsRail}" Spacing="1.96"

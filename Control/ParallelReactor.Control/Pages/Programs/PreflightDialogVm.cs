@@ -32,7 +32,7 @@ public sealed partial class CheckRowVm : ObservableObject
     public bool IsOk => Kind == CheckKind.Ok;
     public bool IsWarn => Kind == CheckKind.Warn;
     public bool IsNo => Kind == CheckKind.No;
-    public string Icon => Kind switch { CheckKind.Ok => "f-ok-f", CheckKind.Warn => "f-warn-f", _ => "f-no-f" };
+    public string Icon => Kind switch { CheckKind.Ok => "ok-f", CheckKind.Warn => "warn-f", _ => "no-f" };
 }
 
 /// <summary>
@@ -65,7 +65,7 @@ public sealed partial class PreflightDialogVm : DialogVm
         Width = 518;
         Body = new Views.Pages.Programs.PreflightView { DataContext = this };
         var close = new FootButton("关闭", new RelayCommand(() => page.Shell.Dialogs.Close(this)));
-        GoButton = new FootButton("下发并运行", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "f-play");
+        GoButton = new FootButton("下发并运行", new AsyncRelayCommand(GoAsync, AsyncRelayCommandOptions.AllowConcurrentExecutions), FootKind.Primary, "play");
         Footer = new FootBar(close, GoButton);
         if (d.Source is LiveDeviceSource { Connection: { } c } && d.Source.Conn.Online) _ = FetchAsync(c);
         Refresh();

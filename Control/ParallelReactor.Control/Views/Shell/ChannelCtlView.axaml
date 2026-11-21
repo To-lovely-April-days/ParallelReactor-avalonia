@@ -142,8 +142,8 @@
     <Border DockPanel.Dock="Top" Height="58" Padding="16,0,12,0" BorderBrush="{StaticResource LineMenuBrush}" BorderThickness="0,0,0,1">
       <DockPanel>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
-          <Button Theme="{StaticResource PrRoundButton}" Classes="flip" b:Pr.Icon="f-chev-r" Command="{Binding PrevCommand}" ToolTip.Tip="上一路" />
-          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="f-chev-r" Command="{Binding NextCommand}" ToolTip.Tip="下一路" />
+          <Button Theme="{StaticResource PrRoundButton}" Classes="flip" b:Pr.Icon="right" Command="{Binding PrevCommand}" ToolTip.Tip="上一路" />
+          <Button Theme="{StaticResource PrRoundButton}" b:Pr.Icon="right" Command="{Binding NextCommand}" ToolTip.Tip="下一路" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
           <pr:PrText Text="{Binding Title}" FontSize="{StaticResource FsInspTitle}" FontWeight="Light" Foreground="{StaticResource GbgTitleBrush}" VerticalAlignment="Center" />
@@ -165,7 +165,7 @@
     </Border>
     <Border DockPanel.Dock="Top" Padding="16,8" Background="{StaticResource BgBarBrush}" IsVisible="{Binding Bar, Converter={x:Static ObjectConverters.IsNotNull}}">
       <StackPanel Orientation="Horizontal" Spacing="8">
-        <c:IconView Icon="f-lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+        <c:IconView Icon="lock" Size="14" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
         <TextBlock Text="{Binding Bar}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" TextWrapping="Wrap" />
       </StackPanel>
     </Border>
@@ -200,30 +200,30 @@
               <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="升温方式" /><TextBlock Classes="fs" Text="曲线：最多 16 段，按段线性变化" /></StackPanel>
             </DockPanel>
             <DockPanel Margin="0,-2,0,10" IsVisible="{Binding ProgNote}">
-              <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+              <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
               <TextBlock Classes="fs" Text="程序运行中 · 这里改的设定只到本步结束，下一步按程序走" />
             </DockPanel>
             <DockPanel Classes="fr">
               <Border DockPanel.Dock="Right" Classes="stp">
                 <StackPanel Orientation="Horizontal">
-                  <Button b:Pr.Icon="f-subtract" Theme="{StaticResource PrIconButton}" Command="{Binding SpDownCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="减 1 °C" />
+                  <Button b:Pr.Icon="minus" Theme="{StaticResource PrIconButton}" Command="{Binding SpDownCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="减 1 °C" />
                   <Border Classes="val">
                     <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
                       <TextBlock Classes="num" Text="{Binding SpText}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
                       <TextBlock Text="°C" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
                     </StackPanel>
                   </Border>
-                  <Button b:Pr.Icon="f-plus" Theme="{StaticResource PrIconButton}" Command="{Binding SpUpCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="加 1 °C" />
+                  <Button b:Pr.Icon="plus" Theme="{StaticResource PrIconButton}" Command="{Binding SpUpCommand}" b:Pr.Reason="{Binding SpReason}" ToolTip.Tip="加 1 °C" />
                 </StackPanel>
               </Border>
               <StackPanel VerticalAlignment="Center"><TextBlock Classes="fb" Text="温度 SP" /><TextBlock Classes="fs" Text="{Binding SpHint}" /></StackPanel>
             </DockPanel>
             <Grid ColumnDefinitions="*,8,*" Margin="0,0,0,10">
-              <Button Classes="wide" b:Pr.Icon="f-play" Content="启动加热" Command="{Binding HeatStartCommand}" b:Pr.Reason="{Binding HeatStartReason}" />
-              <Button Grid.Column="2" Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="停止加热" Command="{Binding HeatStopCommand}" b:Pr.Reason="{Binding HeatStopReason}" />
+              <Button Classes="wide" b:Pr.Icon="play" Content="启动加热" Command="{Binding HeatStartCommand}" b:Pr.Reason="{Binding HeatStartReason}" />
+              <Button Grid.Column="2" Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="停止加热" Command="{Binding HeatStopCommand}" b:Pr.Reason="{Binding HeatStopReason}" />
             </Grid>
             <DockPanel Margin="0,-2,0,10">
-              <c:IconView DockPanel.Dock="Left" Icon="f-info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
+              <c:IconView DockPanel.Dock="Left" Icon="info" Size="15" Foreground="{StaticResource T3Brush}" VerticalAlignment="Top" Margin="0,1,6,0" />
               <TextBlock Classes="fs" Text="设温度不等于启动加热；开机后所有通道默认不加热" />
             </DockPanel>
           </StackPanel>
@@ -235,14 +235,14 @@
             <DockPanel Classes="fr">
               <Border DockPanel.Dock="Right" Classes="stp">
                 <StackPanel Orientation="Horizontal">
-                  <Button b:Pr.Icon="f-subtract" Theme="{StaticResource PrIconButton}" Command="{Binding VolDownCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="减 0.1 mL" />
+                  <Button b:Pr.Icon="minus" Theme="{StaticResource PrIconButton}" Command="{Binding VolDownCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="减 0.1 mL" />
                   <Border Classes="val">
                     <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
                       <TextBlock Classes="num" Text="{Binding VolText}" FontSize="16" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
                       <TextBlock Text="mL" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Bottom" Margin="0,0,0,2" />
                     </StackPanel>
                   </Border>
-                  <Button b:Pr.Icon="f-plus" Theme="{StaticResource PrIconButton}" Command="{Binding VolUpCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="加 0.1 mL" />
+                  <Button b:Pr.Icon="plus" Theme="{StaticResource PrIconButton}" Command="{Binding VolUpCommand}" b:Pr.Reason="{Binding VolReason}" ToolTip.Tip="加 0.1 mL" />
                 </StackPanel>
               </Border>
               <StackPanel VerticalAlignment="Center" ToolTip.Tip="{x:Static h:HomeTexts.UptakeTip}"><TextBlock Classes="fb" Text="溶液体积" /><TextBlock Classes="fs" Text="{Binding VolHint}" /></StackPanel>
@@ -268,9 +268,9 @@
         <Border Classes="sec">
           <StackPanel Spacing="8">
             <Border Classes="h4" Margin="0,0,0,2"><TextBlock Text="操作" /></Border>
-            <Button Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="停止该通道" Command="{Binding StopChCommand}" b:Pr.Reason="{Binding StopReason}"
+            <Button Classes="wide" Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="停止该通道" Command="{Binding StopChCommand}" b:Pr.Reason="{Binding StopReason}"
                     IsVisible="{Binding Running}" ToolTip.Tip="停止该通道：中止程序、停加热、关进气阀 · 不放空" />
-            <Button Classes="wide" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="启动该通道" Command="{Binding StartChCommand}" b:Pr.Reason="{Binding StartReason}"
+            <Button Classes="wide" Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Content="启动该通道" Command="{Binding StartChCommand}" b:Pr.Reason="{Binding StartReason}"
                     IsVisible="{Binding !Running}" />
             <Button Classes="wide" Content="{Binding EnableLabel}" Command="{Binding EnableCommand}" b:Pr.Reason="{Binding EnableReason}" />
           </StackPanel>

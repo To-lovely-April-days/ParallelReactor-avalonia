@@ -31,10 +31,10 @@ public sealed partial class HomePageVm : PageVm
     public HomePageVm(ShellVm shell) : base(AppPage.Home)
     {
         _shell = shell;
-        _mark = new RibbonTool("f-flag", "打标记", Mark, "在当前时刻打标记（写进这台设备正在记录的会话）");
-        _export = new RibbonTool("f-down", "导出", () => shell.Toast("导出：CSV 数据 / PDF 报告在「记录」页（F7）", ToastKind.Info), "导出 CSV 数据 / PDF 报告");
-        _reset = new RibbonTool("f-reset", "重置布局", shell.ResetLayout, "展开所有折叠的面板，恢复默认布局");
-        _full = new RibbonTool("f-max", "全屏", shell.ToggleFullScreen, "全屏（F11）");
+        _mark = new RibbonTool("flag", "打标记", Mark, "在当前时刻打标记（写进这台设备正在记录的会话）");
+        _export = new RibbonTool("download", "导出", () => shell.Toast("导出：CSV 数据 / PDF 报告在「记录」页（F7）", ToastKind.Info), "导出 CSV 数据 / PDF 报告");
+        _reset = new RibbonTool("reset", "重置布局", shell.ResetLayout, "展开所有折叠的面板，恢复默认布局");
+        _full = new RibbonTool("max", "全屏", shell.ToggleFullScreen, "全屏（F11）");
         _tools = new[] { new RibbonGroup("数据", new[] { _mark, _export }), new RibbonGroup("视图", new[] { _reset, _full }) };
         shell.LayoutReset += (_, _) => ResetBoard();
     }

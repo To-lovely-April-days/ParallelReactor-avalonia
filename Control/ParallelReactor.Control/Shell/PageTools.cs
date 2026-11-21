@@ -25,7 +25,7 @@ public sealed partial class RibbonTool : ObservableObject
     public ICommand Command { get; }
     public bool IsPrimary { get; }
 
-    /// <summary>图标名（Fluent 图标「f-flag」或 pc-v3 线描图标名）。</summary>
+    /// <summary>统一图标名（Phosphor Icons，见 Controls/IconSet.g.cs）。</summary>
     [ObservableProperty] private string _icon;
     [ObservableProperty] private string _label;
     /// <summary>可用时的悬停提示（默认 = 文字）。</summary>

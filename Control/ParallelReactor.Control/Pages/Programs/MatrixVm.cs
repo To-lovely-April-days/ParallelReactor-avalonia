@@ -592,7 +592,7 @@ public sealed partial class MxSharedRow : MxRow
         I = i;
         Spec = f;
         Why = MatrixPlan.Why(t, f.Key);
-        WhyIcon = MatrixPlan.IsHardwareShared(t, f.Key) ? "f-link" : "f-info";
+        WhyIcon = MatrixPlan.IsHardwareShared(t, f.Key) ? "link" : "info";
     }
 
     public int I { get; }

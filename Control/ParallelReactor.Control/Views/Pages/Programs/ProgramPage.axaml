@@ -39,7 +39,7 @@
         <Border Classes="sub" DockPanel.Dock="Top">
           <Panel VerticalAlignment="Center">
             <TextBox Theme="{StaticResource PrInput}" Text="{Binding LibQuery}" Watermark="搜索程序名" Padding="28,0,9,0" Name="LibSearch" />
-            <c:IconView Icon="f-search" Size="16" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Left" Margin="9,0,0,0"
+            <c:IconView Icon="search" Size="16" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Left" Margin="9,0,0,0"
                         VerticalAlignment="Center" IsHitTestVisible="False" />
           </Panel>
         </Border>

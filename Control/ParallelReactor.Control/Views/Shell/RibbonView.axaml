@@ -96,11 +96,11 @@
             <pr:PrText Text="{Binding Ribbon.LeaseText}" VerticalAlignment="Center" />
           </StackPanel>
         </Border>
-        <Button Classes="sm" b:Pr.Icon="f-lock" Content="释放" IsVisible="{Binding Ribbon.ShowRelease}" VerticalAlignment="Center"
+        <Button Classes="sm" b:Pr.Icon="lock" Content="释放" IsVisible="{Binding Ribbon.ShowRelease}" VerticalAlignment="Center"
                 b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.ReleaseCommand}" />
-        <Button Classes="sm" b:Pr.Icon="f-x" Content="取消申请" IsVisible="{Binding Ribbon.ShowCancel}" VerticalAlignment="Center"
+        <Button Classes="sm" b:Pr.Icon="x" Content="取消申请" IsVisible="{Binding Ribbon.ShowCancel}" VerticalAlignment="Center"
                 b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.CancelCommand}" />
-        <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="f-unlock" Content="申请控制" IsVisible="{Binding Ribbon.ShowRequest}" VerticalAlignment="Center"
+        <Button Theme="{StaticResource PrPrimary}" Classes="sm" b:Pr.Icon="unlock" Content="申请控制" IsVisible="{Binding Ribbon.ShowRequest}" VerticalAlignment="Center"
                 b:Pr.Reason="{Binding Ribbon.ButtonReason}" ToolTip.Tip="{Binding Ribbon.ButtonTip}" Command="{Binding Ribbon.RequestCommand}" />
       </StackPanel>
     </DockPanel>

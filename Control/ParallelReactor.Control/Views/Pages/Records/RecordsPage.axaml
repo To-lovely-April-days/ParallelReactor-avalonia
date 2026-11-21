@@ -291,7 +291,7 @@
             </pr:SegControl>
             <Panel Margin="14,0,0,0">
               <TextBox Theme="{StaticResource PrInput}" Text="{Binding Query}" Watermark="搜索会话 / 程序" Padding="28,0,9,0" AutomationProperties.Name="搜索会话" />
-              <c:IconView Icon="f-search" Size="15" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False" />
+              <c:IconView Icon="search" Size="15" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" IsHitTestVisible="False" />
             </Panel>
           </DockPanel>
         </Border>
@@ -342,9 +342,9 @@
         <Border Classes="rch" DockPanel.Dock="Top" IsVisible="{Binding HasSel}">
           <DockPanel VerticalAlignment="Center">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="10">
-              <Button Classes="sm rbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-trend" Content="查看曲线" Command="{Binding CurvesCommand}"
+              <Button Classes="sm rbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="trend" Content="查看曲线" Command="{Binding CurvesCommand}"
                       b:Pr.Reason="{Binding CurvesReason}" ToolTip.Tip="{Binding CurvesTip}" />
-              <Button Classes="sm" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-reset" Content="{Binding RedoLabel}" Command="{Binding RedoCommand}"
+              <Button Classes="sm" Theme="{StaticResource PrPrimary}" b:Pr.Icon="reset" Content="{Binding RedoLabel}" Command="{Binding RedoCommand}"
                       b:Pr.Reason="{Binding RedoReason}" ToolTip.Tip="{Binding RedoTip}" />
             </StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="10" ClipToBounds="True">
@@ -358,7 +358,7 @@
         <!-- 中断 / 提醒说明（样稿 .lockbar.amb：上 10 左右 16、内边距 8 12、圆角 4、amb-bg、字 amb-ink-2、图标 18 琥珀） -->
         <Border DockPanel.Dock="Top" IsVisible="{Binding HasNote}" Margin="16,10,16,0" Padding="12,8" CornerRadius="{StaticResource Radius}" Background="{StaticResource AmbBgBrush}">
           <StackPanel Orientation="Horizontal" Spacing="8">
-            <c:IconView Icon="f-warn-f" Size="18" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
+            <c:IconView Icon="warn-f" Size="18" Foreground="{StaticResource AmbInkBrush}" VerticalAlignment="Center" />
             <TextBlock Text="{Binding Note}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource AmbInk2Brush}" VerticalAlignment="Center" />
           </StackPanel>
         </Border>
@@ -559,12 +559,12 @@
                     <Border Height="40" BorderBrush="{StaticResource LineFaintBrush}" BorderThickness="0,0,0,1">
                       <Grid ColumnDefinitions="*,1.4*,150,90">
                         <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" ToolTip.Tip="{Binding What}">
-                          <c:IconView Icon="f-doc" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+                          <c:IconView Icon="doc" Size="16" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
                           <TextBlock Text="{Binding File}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Classes="fwhat" Text="{Binding What}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                         <TextBlock Grid.Column="2" Classes="num" Text="{Binding Size}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,14,0" />
-                        <Button Grid.Column="3" Theme="{StaticResource PrLink}" b:Pr.Icon="f-down" Content="下载" Command="{Binding Download}" b:Pr.Reason="{Binding Reason}"
+                        <Button Grid.Column="3" Theme="{StaticResource PrLink}" b:Pr.Icon="download" Content="下载" Command="{Binding Download}" b:Pr.Reason="{Binding Reason}"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" />
                       </Grid>
                     </Border>

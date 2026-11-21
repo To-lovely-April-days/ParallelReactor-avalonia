@@ -31,23 +31,6 @@ public sealed class KeyDot : Avalonia.Controls.Control
 
     protected override Size MeasureOverride(Size availableSize) => new(Slot, Slot);
 
-    // ✓ 的几何（资源 Icon.check）：第一次画时从应用资源取一次，之后复用（R10：渲染路径里不查资源）
-    private static Geometry? _check;
-    private static bool _checkResolved;
-
-    private static Geometry? Check
-    {
-        get
-        {
-            if (!_checkResolved && Application.Current is { } app)
-            {
-                _checkResolved = true;
-                _check = app.TryFindResource("Icon.check", out var g) ? g as Geometry : null;
-            }
-            return _check;
-        }
-    }
-
     public override void Render(DrawingContext context)
     {
         var st = StateStyles.Get(Key);
@@ -55,14 +38,9 @@ public sealed class KeyDot : Avalonia.Controls.Control
         if (st.Kind == StateKind.Uninstalled) return;
         if (st.DotCheck)
         {
-            if (Check is { } geo)
-            {
-                var s = Slot / 24.0;
-                var ox = (Bounds.Width - Slot) / 2;
-                var oy = (Bounds.Height - Slot) / 2;
-                using (context.PushTransform(Matrix.CreateScale(s, s) * Matrix.CreateTranslation(ox, oy)))
-                    context.DrawGeometry(null, Palette.Pen(Palette.T3Color, 2.2 / s, cap: PenLineCap.Round), geo);
-            }
+            var ox = (Bounds.Width - Slot) / 2;
+            var oy = (Bounds.Height - Slot) / 2;
+            IconView.Draw(context, "check", Slot, Palette.T3Brush, ox, oy);
             return;
         }
         var r = Diameter / 2;

@@ -109,11 +109,7 @@ public sealed partial class MonTileVm : ObservableObject
     [ObservableProperty] private string _stepLine = "";
     [ObservableProperty] private IReadOnlyList<StepSeg> _segs = Array.Empty<StepSeg>();
 
-    /// <summary>棒图读数后的单位（16 路不写：灰带写「°C / MPa」（压力单位按设置），样稿 .fb.n16 .cb u{display:none}）。</summary>
-    [ObservableProperty] private string _barTUnit = " °C";
-    [ObservableProperty] private string _barPUnit = " " + PressureDisplay.Unit;
-
-    // 釜图 / 棒图
+    // 釜图
     [ObservableProperty] private double _heat;
     [ObservableProperty] private bool _cooling;
     [ObservableProperty] private bool _bubbles;

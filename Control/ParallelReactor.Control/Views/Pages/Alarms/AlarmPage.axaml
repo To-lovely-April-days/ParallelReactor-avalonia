@@ -187,7 +187,7 @@
           <DockPanel>
             <Panel DockPanel.Dock="Right" VerticalAlignment="Center">
               <TextBox Classes="srch" Text="{Binding Query}" Watermark="搜索" ToolTip.Tip="搜索报警名、来源、设备名" />
-              <c:IconView Icon="f-search" Size="15" Foreground="{StaticResource T3Brush}" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False" />
+              <c:IconView Icon="search" Size="15" Foreground="{StaticResource T3Brush}" Margin="8,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False" />
             </Panel>
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
               <pr:SegControl Value="{Binding RangeKey}" ToolTip.Tip="时间段">
@@ -278,7 +278,7 @@
             </ItemsControl>
           </ScrollViewer>
           <StackPanel IsVisible="{Binding IsEmpty}" HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,40,0,0" Spacing="6">
-            <c:IconView Icon="f-check" Size="28" Foreground="{StaticResource TNoneBrush}" HorizontalAlignment="Center" />
+            <c:IconView Icon="check-lg" Size="28" Foreground="{StaticResource TNoneBrush}" HorizontalAlignment="Center" />
             <TextBlock Text="暂无报警与事件" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" />
           </StackPanel>
         </Panel>
@@ -349,13 +349,13 @@
               </StackPanel>
               <!-- 按钮（.albtn：上 16、间距 8、高 32） -->
               <WrapPanel Margin="0,16,-8,-8">
-                <Button Classes="dbtn" Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-check" Content="确认" Command="{Binding AckCommand}"
+                <Button Classes="dbtn" Theme="{StaticResource PrPrimary}" b:Pr.Icon="check" Content="确认" Command="{Binding AckCommand}"
                         IsVisible="{Binding CanAck}" b:Pr.Reason="{Binding AckReason}" ToolTip.Tip="确认这条报警 · 不需要控制权" />
-                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-locate" Content="定位到通道" Command="{Binding LocateCommand}"
+                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="locate" Content="定位到通道" Command="{Binding LocateCommand}"
                         IsVisible="{Binding HasCh}" ToolTip.Tip="在主页选中这一路并打开控制面板" />
-                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="f-trend" Content="查看曲线" Command="{Binding CurveCommand}"
+                <Button Classes="dbtn" Theme="{StaticResource PrButton}" b:Pr.Icon="trend" Content="查看曲线" Command="{Binding CurveCommand}"
                         IsVisible="{Binding HasCh}" ToolTip.Tip="在曲线页看这一路最近 1 h" />
-                <Button Classes="dbtn" Theme="{StaticResource PrStop}" b:Pr.Icon="f-stop" Content="{Binding StopLabel}" Command="{Binding StopCommand}"
+                <Button Classes="dbtn" Theme="{StaticResource PrStop}" b:Pr.Icon="stop" Content="{Binding StopLabel}" Command="{Binding StopCommand}"
                         IsVisible="{Binding CanStop}" b:Pr.Reason="{Binding StopReason}" ToolTip.Tip="停止这一路（先确认）· 不需要控制权" />
               </WrapPanel>
             </StackPanel>

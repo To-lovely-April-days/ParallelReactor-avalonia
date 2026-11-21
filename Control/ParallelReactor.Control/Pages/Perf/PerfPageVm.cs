@@ -55,15 +55,15 @@ public sealed partial class PerfPageVm : PageVm, IPerfHost, IRedoTarget
     {
         _shell = shell;
         Perf = new PerfViewModel(this, LoadPlanSafe());
-        _run = new RibbonTool("f-play", "开始测试", () => _ = RunOrPauseAsync(), tip: "开始 / 继续测试");
-        _skip = new RibbonTool("f-next", "跳过本步", SkipStep, tip: "跳过当前等待确认 / 录入的步骤，结果记为「跳过」");
-        _abort = new RibbonTool("f-stop", "中止", ConfirmAbort, tip: "中止测试：停加热、关阀门 · 不需要控制权");
-        _report = new RibbonTool("f-pdf", "生成报告", Report, tip: "生成报告（HTML + 汇总 CSV）");
-        _folder = new RibbonTool("f-folder", "打开文件夹", OpenFolder, tip: "打开这次测试的输出目录");
+        _run = new RibbonTool("play", "开始测试", () => _ = RunOrPauseAsync(), tip: "开始 / 继续测试");
+        _skip = new RibbonTool("next", "跳过本步", SkipStep, tip: "跳过当前等待确认 / 录入的步骤，结果记为「跳过」");
+        _abort = new RibbonTool("stop", "中止", ConfirmAbort, tip: "中止测试：停加热、关阀门 · 不需要控制权");
+        _report = new RibbonTool("report", "生成报告", Report, tip: "生成报告（HTML + 汇总 CSV）");
+        _folder = new RibbonTool("folder", "打开文件夹", OpenFolder, tip: "打开这次测试的输出目录");
         _toolsPerf = new List<RibbonGroup> { new("测试", new[] { _run, _skip, _abort }), new("报告", new[] { _report, _folder }) };
-        _lkStart = new RibbonTool("f-play", "开始泄漏测试", () => _ = StartLeakAsync(), tip: "对选中的通道做泄漏测试", primary: true);
-        _lkAbort = new RibbonTool("f-stop", "中止", ConfirmAbortLeak, tip: "中止泄漏测试 · 不需要控制权");
-        _lkExport = new RibbonTool("f-down", "导出结果", () => ExportLeak(), tip: "导出最近一次的泄漏测试结果（CSV）");
+        _lkStart = new RibbonTool("play", "开始泄漏测试", () => _ = StartLeakAsync(), tip: "对选中的通道做泄漏测试", primary: true);
+        _lkAbort = new RibbonTool("stop", "中止", ConfirmAbortLeak, tip: "中止泄漏测试 · 不需要控制权");
+        _lkExport = new RibbonTool("download", "导出结果", () => ExportLeak(), tip: "导出最近一次的泄漏测试结果（CSV）");
         _toolsLeak = new List<RibbonGroup> { new("泄漏测试", new[] { _lkStart, _lkAbort }), new("报告", new[] { _lkExport }) };
 
         SelectAllCommand = new RelayCommand(() => { Perf.SelectAll(); RefreshItems(); });
@@ -389,7 +389,7 @@ public sealed partial class PerfPageVm : PageVm, IPerfHost, IRedoTarget
         if (demo)
         {
             bool run = _demo.Running;
-            _run.Icon = run ? "f-pause" : "f-play";
+            _run.Icon = run ? "pause" : "play";
             _run.Label = run ? "暂停" : _demo.Paused ? "继续" : "开始测试";
             _run.Reason = why;
             _skip.Reason = why;
@@ -399,7 +399,7 @@ public sealed partial class PerfPageVm : PageVm, IPerfHost, IRedoTarget
         }
         else
         {
-            _run.Icon = Perf.IsRunning && !Perf.IsPaused ? "f-pause" : "f-play";
+            _run.Icon = Perf.IsRunning && !Perf.IsPaused ? "pause" : "play";
             _run.Label = Perf.IsRunning ? (Perf.IsPaused ? "继续" : "暂停") : "开始测试";
             _run.Tip = Perf.IsRunning ? (Perf.IsPaused ? "继续测试" : "暂停在当前步骤（安全状态）") : "开始测试";
             _run.Reason = Perf.IsRunning ? null : why;

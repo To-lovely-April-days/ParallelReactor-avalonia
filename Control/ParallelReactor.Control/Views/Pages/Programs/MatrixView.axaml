@@ -184,7 +184,7 @@
         <DockPanel Classes="mrow">
           <Border Classes="lab">
             <DockPanel>
-              <Button Classes="tool" DockPanel.Dock="Right" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-copy" Command="{Binding SameCommand}"
+              <Button Classes="tool" DockPanel.Dock="Right" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="copy" Command="{Binding SameCommand}"
                       ToolTip.Tip="全部设为第一路的值" VerticalAlignment="Center" />
               <StackPanel Orientation="Horizontal"><TextBlock Classes="l" Text="溶液体积" /><TextBlock Classes="u" Text="mL" /></StackPanel>
             </DockPanel>
@@ -225,8 +225,8 @@
           <Border Classes="lab">
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-copy" Command="{Binding SameCommand}" ToolTip.Tip="全部设为第一路的值" />
-                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-trend" Command="{Binding RampCommand}" ToolTip.Tip="等差填充：从第一路到最后一路均匀变化" />
+                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="copy" Command="{Binding SameCommand}" ToolTip.Tip="全部设为第一路的值" />
+                <Button Classes="tool" Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="trend" Command="{Binding RampCommand}" ToolTip.Tip="等差填充：从第一路到最后一路均匀变化" />
               </StackPanel>
               <StackPanel Orientation="Horizontal"><TextBlock Classes="l" Text="{Binding Label}" /><TextBlock Classes="u" Text="{Binding Unit}" /></StackPanel>
             </DockPanel>
@@ -392,8 +392,8 @@
                 <DataTemplate x:DataType="pg:MxIssueVm">
                   <Border Classes="ck" Classes.no="{Binding IsNo}">
                     <DockPanel>
-                      <c:IconView Icon="f-warn-f" IsVisible="{Binding IsNo}" DockPanel.Dock="Left" />
-                      <c:IconView Icon="f-clock" IsVisible="{Binding IsWait}" DockPanel.Dock="Left" />
+                      <c:IconView Icon="warn-f" IsVisible="{Binding IsNo}" DockPanel.Dock="Left" />
+                      <c:IconView Icon="clock" IsVisible="{Binding IsWait}" DockPanel.Dock="Left" />
                       <TextBlock Text="{Binding Msg}" />
                     </DockPanel>
                   </Border>
@@ -402,7 +402,7 @@
             </ItemsControl>
             <Border Classes="ck ok" IsVisible="{Binding Mx.AllOk}">
               <DockPanel>
-                <c:IconView Icon="f-ok-f" DockPanel.Dock="Left" />
+                <c:IconView Icon="ok-f" DockPanel.Dock="Left" />
                 <TextBlock Text="参数全部在范围内，可以下发" />
               </DockPanel>
             </Border>
@@ -418,7 +418,7 @@
               <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding Mx.Longest}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
             </Grid>
             <DockPanel Classes="note2" Margin="0,8,0,0" IsVisible="{Binding Mx.QueueNote, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-              <c:IconView Icon="f-info" Size="14" Margin="0,3,6,0" />
+              <c:IconView Icon="info" Size="14" Margin="0,3,6,0" />
               <TextBlock Text="{Binding Mx.QueueNote}" LineHeight="19" />
             </DockPanel>
           </StackPanel>
@@ -448,8 +448,8 @@
             <TextBlock FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}"><Run Text="运行中 " /><Run Text="{Binding Mx.BusyCount}" FontWeight="SemiBold" Foreground="{Binding Mx.BusyCount, Converter={x:Static pg:ProgramConverters.BusyInk}}" /></TextBlock>
           </StackPanel>
           <UniformGrid Classes="pgbtn" Columns="2" Margin="0,12,-8,0">
-            <Button b:Pr.Icon="f-task" Content="预运行检查" Command="{Binding Mx.CheckCommand}" Margin="0,0,8,0" />
-            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="f-play" Content="下发并运行" Command="{Binding Mx.RunCommand}" b:Pr.Reason="{Binding Mx.RunReason}"
+            <Button b:Pr.Icon="task" Content="预运行检查" Command="{Binding Mx.CheckCommand}" Margin="0,0,8,0" />
+            <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="play" Content="下发并运行" Command="{Binding Mx.RunCommand}" b:Pr.Reason="{Binding Mx.RunReason}"
                     ToolTip.Tip="{Binding Mx.RunTip}" Margin="0,0,8,0" />
           </UniformGrid>
         </StackPanel>

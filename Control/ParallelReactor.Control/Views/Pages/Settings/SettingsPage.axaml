@@ -65,7 +65,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
             <DockPanel Classes="note2" Margin="14,12,14,12">
-              <c:IconView Icon="f-info" />
+              <c:IconView Icon="info" />
               <TextBlock Text="设备参数跟随左侧设备列表切换" />
             </DockPanel>
           </StackPanel>
@@ -100,7 +100,7 @@
                 <StackPanel Grid.Column="2">
                   <StackPanel Orientation="Horizontal" Spacing="8">
                     <TextBox Theme="{StaticResource PrInput}" Width="320" Text="{Binding DataDirText}" Watermark="{Binding DataDirWatermark}" AutomationProperties.Name="数据目录" />
-                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-folder" Content="浏览" Command="{Binding BrowseCommand}" VerticalAlignment="Center" ToolTip.Tip="选择文件夹" />
+                    <Button Theme="{StaticResource PrButton}" b:Pr.Icon="folder" Content="浏览" Command="{Binding BrowseCommand}" VerticalAlignment="Center" ToolTip.Tip="选择文件夹" />
                   </StackPanel>
                   <TextBlock Classes="hint" Text="{Binding DataDirHint}" />
                 </StackPanel>
@@ -143,8 +143,8 @@
               <DockPanel>
                 <TextBlock Classes="t2" DockPanel.Dock="Right" Text="{Binding ConnSummary}" />
                 <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                  <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-add-c" Content="添加设备" Command="{Binding AddDeviceCommand}" ToolTip.Tip="添加设备：输入地址和访问令牌 · 型号从设备读取" />
-                  <Button Theme="{StaticResource PrButton}" b:Pr.Icon="f-refresh" Content="测试连接" Command="{Binding TestAllCommand}" IsEnabled="{Binding !Testing}" ToolTip.Tip="按设备管理里的地址和令牌把每台测一次" />
+                  <Button Theme="{StaticResource PrButton}" b:Pr.Icon="add-c" Content="添加设备" Command="{Binding AddDeviceCommand}" ToolTip.Tip="添加设备：输入地址和访问令牌 · 型号从设备读取" />
+                  <Button Theme="{StaticResource PrButton}" b:Pr.Icon="refresh" Content="测试连接" Command="{Binding TestAllCommand}" IsEnabled="{Binding !Testing}" ToolTip.Tip="按设备管理里的地址和令牌把每台测一次" />
                 </StackPanel>
               </DockPanel>
             </Border>
@@ -167,13 +167,13 @@
                           <TextBlock Classes="num r" Text="{Binding Port}" />
                           <StackPanel Orientation="Horizontal" Spacing="4">
                             <TextBlock Classes="num" Text="{Binding Token}" VerticalAlignment="Center" MaxWidth="200" ToolTip.Tip="{Binding Token}" />
-                            <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="f-eye" Command="{Binding EyeCommand}" ToolTip.Tip="{Binding EyeTip}"
+                            <Button Theme="{StaticResource PrIconButtonS}" b:Pr.Icon="eye" Command="{Binding EyeCommand}" ToolTip.Tip="{Binding EyeTip}"
                                     AutomationProperties.Name="{Binding EyeTip}" VerticalAlignment="Center" />
                           </StackPanel>
                           <pr:PrToggle Theme="{StaticResource PrSwitch}" IsChecked="{Binding AutoOn, Mode=OneWay}" Command="{Binding AutoCommand}"
                                        b:Pr.Reason="{Binding AutoReason}" AutomationProperties.Name="启动时自动连接" ToolTip.Tip="启动时自动连接" HorizontalAlignment="Left" />
                           <pr:Badge Text="{Binding State}" Tone="{Binding StateTone}" ShowDot="{Binding StateDot}" />
-                          <Button Theme="{StaticResource PrLink}" b:Pr.Icon="f-edit" Content="编辑" Command="{Binding EditCommand}" HorizontalAlignment="Left"
+                          <Button Theme="{StaticResource PrLink}" b:Pr.Icon="edit" Content="编辑" Command="{Binding EditCommand}" HorizontalAlignment="Left"
                                   ToolTip.Tip="编辑：别名最多 8 个汉字 / 16 个字母；地址、端口、令牌" />
                         </ca:ColumnsPanel>
                       </Border>
@@ -181,7 +181,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <DockPanel Classes="note2" Margin="16,12,16,12">
-                  <c:IconView Icon="f-info" />
+                  <c:IconView Icon="info" />
                   <TextBlock Text="令牌在设备的「设置 → 远程接口」里生成；删除设备不影响设备本身的数据" />
                 </DockPanel>
               </StackPanel>
@@ -240,7 +240,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <DockPanel Classes="note2" Margin="0,12,0,0">
-                <c:IconView Icon="f-lock" />
+                <c:IconView Icon="lock" />
                 <Border Classes="tag mute" DockPanel.Dock="Right" Margin="8,-3,0,0" VerticalAlignment="Top"><TextBlock Text="触屏操作" /></Border>
                 <TextBlock Text="这一项在设备触屏「设置 → 远程接口」里改 · 可选：保持运行 / 停止本机启动的加热 / 急停" />
               </DockPanel>
@@ -251,7 +251,7 @@
           <DockPanel IsVisible="{Binding IsLim}">
             <Border Classes="lockbar" DockPanel.Dock="Top" Margin="16,10,16,0">
               <DockPanel>
-                <c:IconView Icon="f-lock" DockPanel.Dock="Left" />
+                <c:IconView Icon="lock" DockPanel.Dock="Left" />
                 <Border Classes="tag mute" DockPanel.Dock="Right"><TextBlock Text="触屏操作" /></Border>
                 <TextBlock Classes="lbt" Text="{Binding LockText}" />
               </DockPanel>
@@ -291,7 +291,7 @@
           <DockPanel IsVisible="{Binding IsComm}">
             <Border Classes="lockbar" DockPanel.Dock="Top" Margin="16,10,16,0">
               <DockPanel>
-                <c:IconView Icon="f-lock" DockPanel.Dock="Left" />
+                <c:IconView Icon="lock" DockPanel.Dock="Left" />
                 <Border Classes="tag mute" DockPanel.Dock="Right"><TextBlock Text="触屏操作" /></Border>
                 <TextBlock Classes="lbt" Text="{Binding LockText}" />
               </DockPanel>
@@ -339,7 +339,7 @@
           <DockPanel IsVisible="{Binding IsStore}">
             <Border Classes="lockbar" DockPanel.Dock="Top" Margin="16,10,16,0">
               <DockPanel>
-                <c:IconView Icon="f-lock" DockPanel.Dock="Left" />
+                <c:IconView Icon="lock" DockPanel.Dock="Left" />
                 <Border Classes="tag mute" DockPanel.Dock="Right"><TextBlock Text="触屏操作" /></Border>
                 <TextBlock Classes="lbt" Text="{Binding LockText}" />
               </DockPanel>
@@ -358,7 +358,7 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <DockPanel Classes="note2" Margin="0,12,0,0">
-                  <c:IconView Icon="f-info" />
+                  <c:IconView Icon="info" />
                   <TextBlock Text="设备磁盘空间、自动归档在触屏「设置 → 数据存储」里看；电脑端下载的数据存在本机数据目录" />
                 </DockPanel>
               </StackPanel>
@@ -408,7 +408,7 @@
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
                   <DockPanel Classes="note2" Margin="14,12,14,12">
-                    <c:IconView Icon="f-info" />
+                    <c:IconView Icon="info" />
                     <TextBlock Text="{Binding UptNote, Source={x:Static th:PressureText.Instance}}" />
                   </DockPanel>
                 </StackPanel>

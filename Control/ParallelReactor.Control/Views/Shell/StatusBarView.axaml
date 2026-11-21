@@ -90,17 +90,17 @@
         </ItemsControl>
         <Border Classes="sep" />
         <StackPanel Classes="it">
-          <c:IconView Icon="f-plug" />
+          <c:IconView Icon="plug" />
           <pr:PrText Text="{Binding Status.RemoteText}" VerticalAlignment="Center" />
         </StackPanel>
         <Border Classes="sep" />
         <StackPanel Classes="it">
-          <c:IconView Icon="f-rec" />
+          <c:IconView Icon="rec" />
           <pr:PrText Text="{Binding Status.RecordText}" VerticalAlignment="Center" />
         </StackPanel>
         <Border Classes="sep" />
         <StackPanel Classes="it">
-          <c:IconView Icon="f-bell" />
+          <c:IconView Icon="bell" />
           <TextBlock VerticalAlignment="Center">
             <Run Text="{Binding Status.AlarmText}" /><Run Text="{Binding Status.AlarmRed}" FontWeight="Bold" Foreground="{StaticResource RBrush}" /><Run Text="{Binding Status.AlarmTail}" />
           </TextBlock>
