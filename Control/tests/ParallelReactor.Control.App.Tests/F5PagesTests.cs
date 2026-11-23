@@ -314,7 +314,7 @@ public class F5PagesTests
         Assert.False(c.Follow);
         Assert.Equal("1号机 · 13:00 – 14:30", c.TrendSub);
         var follow = c.Tools[0].Tools[0];
-        Assert.Equal(("实时跟随", "f-play"), (follow.Label, follow.Icon));
+        Assert.Equal(("实时跟随", "play"), (follow.Label, follow.Icon));
         c.Tools[0].Tools[1].Command.Execute(null);   // 回到最新
         Assert.True(c.Follow);
         Assert.Equal("暂停滚动", follow.Label);

@@ -64,15 +64,14 @@ public sealed class PressureUnitAppTests : IDisposable
         Assert.Equal("压力 bar", PressureText.Instance.Header);
         s.Nav.Set(AppPage.Home, 1);
         var h = Assert.IsType<HomePageVm>(s.Page);
-        RunRowVm R(int n) => h.Rows.Single(r => r.N == n);
-        Assert.Equal(("23.50", "25.00"), (R(1).PressText, R(1).PSpText));
-        Assert.Equal(" bar", h.Tiles[0].BarPUnit);
+        MonTileVm R(int n) => h.Tiles.Single(r => r.N == n);
+        Assert.Equal("23.50", R(1).PressText);
 
         // 再切到 psi（设置页上切，主页不用重开）
         s.OpenSettings("gen");
         Assert.IsType<SettingsPageVm>(s.Page).UnitKey = "psi";
         s.Nav.Set(AppPage.Home, 1);
-        Assert.Equal(("340.8", "362.6"), (R(1).PressText, R(1).PSpText));       // 2.35 / 2.50 MPa × 145.04
+        Assert.Equal("340.8", R(1).PressText);       // 2.35 MPa × 145.04
         Assert.EndsWith("≤ 600 psi", s.Ribbon.ModelText);
         s.AlarmPop.Reset(false);
         Assert.Equal(new[] { "当前压力 514.9 psi", "报警上限 507.6 psi", "设定压力 362.6 psi" }, s.AlarmPop.Tiles.Select(t => t.Label + " " + t.Value + " " + t.Unit));
@@ -84,7 +83,7 @@ public sealed class PressureUnitAppTests : IDisposable
         s.Ribbon.Groups.SelectMany(g => g.Tools).First(t => t.Label == "恢复默认").Command.Execute(null);
         Assert.Equal(PressureUnit.MPa, PressureDisplay.Primary);
         s.Nav.Set(AppPage.Home, 1);
-        Assert.Equal(("2.35", "2.50"), (R(1).PressText, R(1).PSpText));
+        Assert.Equal("2.35", R(1).PressText);
         Assert.EndsWith("≤ 4.14 MPa", s.Ribbon.ModelText);
     }
 

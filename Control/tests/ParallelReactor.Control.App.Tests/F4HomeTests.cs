@@ -92,11 +92,10 @@ public class F4HomeTests
     {
         var s = Shell("mv=vessel");
         var h = Home(s);
-        Assert.Equal(MonView.Vessel, h.MonView);
         Assert.Equal(8, h.Tiles.Count);
         Assert.Equal(8, h.TilesTop.Count);
         Assert.Empty(h.TilesLow);
-        Assert.Equal((8, 8, false), (h.MonCols, h.BarCols, h.IsN16));
+        Assert.Equal((8, false), (h.MonCols, h.IsN16));
         MonTileVm T(int n) => h.Tiles.Single(t => t.N == n);
         Assert.Equal(("145.2", "目标 150.0 °C", "2.35", "400", "3/6 · 剩 27 min"), (T(1).TempText, T(1).SpLine, T(1).PressText, T(1).RpmText, T(1).StepLine));
         Assert.True(T(1).IsSelected);
@@ -130,7 +129,6 @@ public class F4HomeTests
         Assert.Equal(PaneMode.Docked, s.Layout.Mode(DockPaneId.Inspector));
         Assert.True(h.Tiles.Single(t => t.N == 6).IsSelected);
         Assert.False(h.Tiles.Single(t => t.N == 1).IsSelected);
-        Assert.Equal(MonView.Bar, h.MonView);   // 视图不切回运行表
         s.Dispose();
     }
 
@@ -198,19 +196,15 @@ public class F4HomeTests
     }
 
     [Fact]
-    public void Dev3_SixteenChannels_TwoRowsAndUnits()
+    public void Dev3_SixteenChannels_TwoRows()
     {
         var s = Shell("mv=bar", dev: 3);
         var h = Home(s);
         Assert.Equal(16, h.Tiles.Count);
         Assert.Equal(Enumerable.Range(1, 8), h.TilesTop.Select(t => t.N));
         Assert.Equal(Enumerable.Range(9, 8), h.TilesLow.Select(t => t.N));
-        Assert.Equal((8, 16, true), (h.MonCols, h.BarCols, h.IsN16));
-        Assert.True(h.ShowBarUnits);
-        Assert.All(h.Tiles, t => Assert.Equal("", t.BarTUnit));
+        Assert.Equal((8, true), (h.MonCols, h.IsN16));
         Assert.Equal(TileMark.Err, h.Tiles.Single(t => t.N == 11).Mark);
-        h.MonKey = "gas";
-        Assert.False(h.ShowBarUnits);
         s.Dispose();
     }
 
@@ -219,43 +213,16 @@ public class F4HomeTests
     {
         var s = Shell("mv=vessel", dev: 2);
         var h = Home(s);
-        Assert.Equal((4, 4, 4, true), (h.Tiles.Count, h.MonCols, h.BarCols, h.IsN4));
+        Assert.Equal((4, 4, true), (h.Tiles.Count, h.MonCols, h.IsN4));
         Assert.Equal("6/6 · 已结束", h.Tiles.Single(t => t.N == 4).StepLine);
         s.Dispose();
     }
 
-    // ———————————————————— 显示方式 / 看板两行 ————————————————————
-
     [Fact]
-    public void MonView_Switching_AndRow2OnShortScreens()
+    public void RunCount_InTheBand()
     {
         var s = Shell();
         var h = Home(s);
-        Assert.True(h.IsRunView);
-        Assert.False(h.IsMvX);
-        h.MonKey = "gas";
-        Assert.Equal((true, true, false, false), (h.IsMvX, h.IsGasView, h.IsVesselView, h.HideRow2));
-        s.Dispose();
-
-        var t = Shell("mv=vessel", w: 1366, h: 768);
-        var ht = Home(t);
-        Assert.True(ht.IsShort);
-        Assert.True(ht.HideRow2);
-        ht.MonKey = "run";
-        Assert.False(ht.HideRow2);
-        ht.MonKey = "bar";
-        t.ResetLayout();
-        Assert.Equal(MonView.Run, ht.MonView);   // 重置布局回到运行表
-        t.Dispose();
-    }
-
-    [Fact]
-    public void ResPane_SeeGasSchematic_SwitchesView()
-    {
-        var s = Shell();
-        var h = Home(s);
-        h.Res.ShowGasCommand.Execute(null);
-        Assert.Equal(MonView.Gas, h.MonView);
         Assert.Equal("6", h.RunCount);
         Assert.Equal("/8", h.RunOf);
         s.Dispose();
@@ -282,19 +249,6 @@ public class F4HomeTests
         Assert.Equal(110, GasLayout.PipeRow(513, 2 * 140, mir));
         Assert.False(GasLayout.For(1532, 523, 8).Tiny);
         Assert.True(GasLayout.For(700, 400, 8).Tiny);
-    }
-
-    [Fact]
-    public void VesselLayout_WideAndCompact()
-    {
-        var n8 = VesselLayout.For(1532, 515, 8);
-        Assert.Equal((false, false), (n8.Wide, n8.Compact));
-        Assert.Equal(179.5, n8.CardW, 1);
-        Assert.True(VesselLayout.For(1532, 515, 4).Wide);
-        Assert.True(VesselLayout.For(1244, 553, 4).Wide);
-        Assert.True(VesselLayout.For(1532, 515, 16).Compact);
-        var low = VesselLayout.For(1532, 280, 8);
-        Assert.Equal((true, false), (low.Compact, low.Wide));
     }
 
     // ———————————————————— 总览 ————————————————————

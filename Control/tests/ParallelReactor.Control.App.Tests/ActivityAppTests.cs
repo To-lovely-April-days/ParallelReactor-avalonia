@@ -62,14 +62,8 @@ public class ActivityAppTests
         // 设备栏活动行
         var line = Assert.Single(s.Devices.Rows.First(r => r.K == 1).Lines);
         Assert.Equal(("b", "泄漏测试 · 平衡 · 16 %"), (line.Tone, line.Text));
-        // 运行表：被测的四路「泄漏测试」、品牌蓝点、步骤「平衡 剩 05:20」、预计结束 15:07、吸气「—」；RV5 排队等气路
+        // （运行表已从主页去掉：主页通道只显示气路图）
         var home = Assert.IsType<HomePageVm>(s.Page);
-        var r1 = home.Rows.First(r => r.N == 1);
-        Assert.Equal(("泄漏测试", RunDot.Brand, "平衡", "剩 05:20", "15:07"), (r1.Word, r1.Dot, r1.StepName, r1.StepFrac, r1.EndText));
-        Assert.Equal(4, r1.Segs.Count);
-        Assert.Equal("—", r1.GasText);
-        var r5 = home.Rows.First(r => r.N == 5);
-        Assert.Equal(("排队等气路", "排队"), (r5.Word, r5.LeftText));
         // 共用资源 · 气路：先看 gas.owner，不再写「空闲」
         Assert.Equal(("泄漏测试占用 · RV1–4", true, "排队 RV5"), (home.Res.GasState, home.Res.GasBusy, home.Res.GasQueue));
         // 状态栏：面板展开着时没有一项；选中的通道写「泄漏测试」
@@ -211,13 +205,9 @@ public class ActivityAppTests
     }
 
     [Fact]
-    public void Tune_RunTableAndDeviceLine()
+    public void Tune_DeviceLine()
     {
         var s = Shell("apop=0&act=leak-run&tune=1&actfold=1");
-        var r5 = Assert.IsType<HomePageVm>(s.Page).Rows.First(r => r.N == 5);
-        Assert.Equal(("自整定中", RunDot.Brand, "150 °C"), (r5.Word, r5.Dot, r5.StepName));
-        var r6 = Assert.IsType<HomePageVm>(s.Page).Rows.First(r => r.N == 6);
-        Assert.Equal("排队等气路", r6.Word);
         Assert.Contains(s.Devices.Rows.First(r => r.K == 1).Lines, l => l.Text == "PID 自整定 RV5 · 150 °C");
     }
 

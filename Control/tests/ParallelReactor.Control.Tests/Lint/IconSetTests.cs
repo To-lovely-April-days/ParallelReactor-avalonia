@@ -8,94 +8,78 @@ using Xunit;
 namespace ParallelReactor.Control.Tests.Lint;
 
 /// <summary>
-/// 图标集（PORT-PLAN §5 M1「IconSetTests」）：Styles/Icons.axaml 与 Controls/IconSet.g.cs 由 tools/gen-icons.py 从样稿 js/ui.js 的 ICONS 生成。
-/// 期望名单抄自 ui.js 的 ICON_NAMES（76 个，同序）；样稿目录在仓库旁边时再直接读 ui.js 交叉核对一次。
-/// 另查：每个图标有非空几何、填充子图形（rec 的录制点）存在、旧界面的 Ico* 键只留旧视图还在用的（只许变少，M7 删除）。
+/// 图标集：Styles/Icons.axaml 与 Controls/IconSet.g.cs 同源，2026-11-21 起是 Phosphor Icons（MIT，256×256 网格；之前由样稿 js/ui.js 生成的 76 个已换掉）。
+/// 期望名单 = 现在的 87 个统一图标名（同序）；其中 8 个大图标带 Duotone 浅底纹层（资源键 Icon.名字.Tone）。
+/// 另查：每个图标有非空几何、旧界面的 Ico* 键不再有。
 /// </summary>
 public class IconSetTests
 {
-    /// <summary>ui.js ICON_NAMES（= Object.keys(ICONS)）的顺序。</summary>
+    /// <summary>IconSet.Names 的顺序。</summary>
     public static readonly string[] Expected =
     {
-        "logo", "devices", "overview", "program", "curves", "records", "bell", "perf", "settings", "collapse",
-        "expand", "down", "up", "right", "left", "x", "max", "restore", "move", "plus",
-        "minus", "play", "stop", "pause", "skip", "power", "flame", "snow", "fan", "gauge",
-        "thermo", "lock", "unlock", "key", "link", "plug", "unplug", "refresh", "warn", "alert",
-        "estop", "flag", "rec", "edit", "download", "upload", "send", "open", "eye", "eyeoff",
-        "search", "zoomin", "zoomout", "more", "tree", "monitor", "info", "trash", "check", "clock",
-        "wifioff", "cpu", "droplet", "valve", "wind", "flask", "pin", "pulse", "user", "list",
-        "layout", "tag", "hand", "target", "fit", "machine",
+        "bell-lg", "pc-lg", "beaker-lg", "program-lg", "machine-lg", "key-lg", "check-lg", "logo", "play", "stop",
+        "pause", "next", "rec", "estop", "ok-f", "warn-f", "err-f", "no-f", "info-f", "bell",
+        "pc", "gear", "wrench", "help", "info", "alert", "warn", "check", "x", "plus",
+        "add-c", "minus", "lock", "unlock", "key", "plug", "unplug", "link", "wifioff", "refresh",
+        "reset", "down", "up", "right", "left", "arrow-up", "arrow-dn", "download", "upload", "save",
+        "copy", "edit", "trash", "folder", "doc", "report", "task", "trend", "flag", "grid",
+        "gas-flow", "locate", "search", "zoomin", "zoomout", "fit", "max", "restore", "move", "eye",
+        "eyeoff", "clock", "timer", "beaker", "send", "tree", "list", "user", "flame", "snow",
+        "droplet", "hand", "gauge", "power", "open", "devices", "valve",
     };
+
+    /// <summary>带 Duotone 浅底纹层的图标（IconSet.WithTone）。</summary>
+    public static readonly string[] Toned = { "bell-lg", "pc-lg", "beaker-lg", "program-lg", "machine-lg", "key-lg", "check-lg", "logo" };
 
     private static string IconsAxaml => AppSource.Read("Styles/Icons.axaml");
 
-    private static readonly Regex Geo = new(@"<StreamGeometry\s+x:Key=""([\w.]+)"">([^<]*)</StreamGeometry>", RegexOptions.Compiled);
+    private static readonly Regex Geo = new(@"<StreamGeometry\s+x:Key=""([\w.\-]+)"">([^<]*)</StreamGeometry>", RegexOptions.Compiled);
 
     [Fact]
-    public void Expected_Has76UniqueNames()
+    public void Expected_Has87UniqueNames()
     {
-        Assert.Equal(76, Expected.Length);
-        Assert.Equal(76, Expected.Distinct().Count());
+        Assert.Equal(87, Expected.Length);
+        Assert.Equal(87, Expected.Distinct().Count());
+        Assert.All(Toned, t => Assert.Contains(t, Expected));
     }
 
     [Fact]
     public void IconsAxaml_HasEveryIcon_WithGeometry()
     {
         var geos = Geo.Matches(IconsAxaml).ToDictionary(m => m.Groups[1].Value, m => m.Groups[2].Value.Trim());
-        var icons = geos.Keys.Where(k => k.StartsWith("Icon.", StringComparison.Ordinal) && !k.EndsWith(".Fill", StringComparison.Ordinal)).Select(k => k[5..]).ToList();
+        var icons = geos.Keys.Where(k => k.StartsWith("Icon.", StringComparison.Ordinal) && !k.EndsWith(".Tone", StringComparison.Ordinal)).Select(k => k[5..]).ToList();
         Assert.Equal(Expected.OrderBy(n => n, StringComparer.Ordinal), icons.OrderBy(n => n, StringComparer.Ordinal));
         foreach (var n in Expected)
-            Assert.Matches(@"^M[\d.\- ]", geos["Icon." + n]);   // 绝对坐标、以 M 开头（gen-icons.py 全部换算成绝对命令）
-        Assert.True(geos.ContainsKey("Icon.rec.Fill"), "缺少录制点的填充子图形 Icon.rec.Fill");
+            Assert.Matches(@"^(F1 )?M[\d.\-, ]", geos["Icon." + n]);   // 以 M 开头（可带填充规则 F1）
+        var toned = geos.Keys.Where(k => k.EndsWith(".Tone", StringComparison.Ordinal)).Select(k => k[5..^5]).OrderBy(n => n, StringComparer.Ordinal);
+        Assert.Equal(Toned.OrderBy(n => n, StringComparer.Ordinal), toned);
     }
 
     [Fact]
-    public void IconSetGenerated_MatchesUiJsOrder_AndFills()
+    public void IconSetGenerated_MatchesExpectedOrder_AndTones()
     {
         var src = AppSource.Read("Controls/IconSet.g.cs");
-        var block = Regex.Match(src, @"Names = new\[\]\s*\{(.*?)\};", RegexOptions.Singleline).Groups[1].Value;
-        var names = Regex.Matches(block, @"""(\w+)""").Select(m => m.Groups[1].Value).ToArray();
-        Assert.Equal(Expected, names);
-        Assert.Contains("[\"logo\"] = (0, 0, 24, 28)", src);          // logo 的 viewBox 24×28
-        Assert.Matches(@"WithFill = new\[\] \{ ""rec"" \}", src);
+        string[] List(string field) => Regex.Matches(Regex.Match(src, field + @" = new\[\]\s*\{(.*?)\};", RegexOptions.Singleline).Groups[1].Value, @"""([\w\-]+)""").Select(m => m.Groups[1].Value).ToArray();
+        Assert.Equal(Expected, List("Names"));
+        Assert.Equal(Toned, List("WithTone"));
     }
 
-    /// <summary>
-    /// 旧界面的 Ico* 键（M7 随旧视图一起删）：旧视图引用的键都还在；而且<b>只留还有人用的</b> —— 名单只许变短：
-    /// 一个键没有任何产品代码引用了（只剩核对表 Shot/IconSheet 列着它），就从 tools/gen-icons.py 的 LEGACY 里删掉、重新生成（同 PaletteLint / TypeScaleLint 的 StillNeeded）。
-    /// </summary>
+    /// <summary>旧界面的 Ico* 键已经全部删掉：图标文件里没有，界面也不再引用。</summary>
     [Fact]
-    public void LegacyIcoKeys_PresentWhileUsed_AndOnlyWhileUsed()
+    public void LegacyIcoKeys_AreGone()
     {
-        var legacy = Geo.Matches(IconsAxaml).Select(m => m.Groups[1].Value).Where(k => k.StartsWith("Ico", StringComparison.Ordinal) && !k.StartsWith("Icon.", StringComparison.Ordinal)).ToList();
-        Assert.True(legacy.Count <= 9, $"旧 Ico* 键只许变少（M2 删到 9 个），现在 {legacy.Count} 个");
-        var used = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (rel, full) in AppSource.Sources().Where(f => f.Rel.EndsWith(".axaml", StringComparison.Ordinal) || f.Rel.EndsWith(".cs", StringComparison.Ordinal)))
-        {
-            if (rel.EndsWith("Styles/Icons.axaml", StringComparison.Ordinal) || rel.EndsWith("Shot/IconSheet.cs", StringComparison.Ordinal)) continue;
-            var text = File.ReadAllText(full);
-            // 旧视图（axaml）引用的键都还在（.cs 里只有说明用法的注释，例如 IconView 的「{StaticResource IcoX}」）
-            if (rel.EndsWith(".axaml", StringComparison.Ordinal))
-                foreach (Match m in Regex.Matches(text, @"\{(?:StaticResource|DynamicResource) (Ico[A-Z]\w*)\}"))
-                    Assert.True(legacy.Contains(m.Groups[1].Value), $"{rel} 引用的 {m.Groups[1].Value} 不在 Icons.axaml 里");
-            foreach (var k in legacy) if (Regex.IsMatch(text, @"\b" + k + @"\b")) used.Add(k);
-        }
-        var unused = legacy.Where(k => !used.Contains(k)).ToList();
-        Assert.True(unused.Count == 0, "没人用的旧图标键（从 tools/gen-icons.py 的 LEGACY 和 Shot/IconSheet 里删掉、重新生成）：" + string.Join("、", unused));
+        Assert.DoesNotContain(Geo.Matches(IconsAxaml).Select(m => m.Groups[1].Value), k => k.StartsWith("Ico", StringComparison.Ordinal) && !k.StartsWith("Icon.", StringComparison.Ordinal));
+        foreach (var (rel, full) in AppSource.Sources().Where(f => f.Rel.EndsWith(".axaml", StringComparison.Ordinal)))
+            Assert.False(Regex.IsMatch(File.ReadAllText(full), @"\{(?:StaticResource|DynamicResource) Ico[A-Z]\w*\}"), rel + " 还在引用旧的 Ico* 图标键");
     }
 
+    /// <summary>界面里写的图标名（Icon="…" / b:Pr.Icon="…"）都在图标表里。</summary>
     [Fact]
-    public void MockUiJs_IconNames_MatchExpected_WhenMockIsPresent()
+    public void IconNamesUsedInViews_Exist()
     {
-        var mock = AppSource.MockDir;
-        if (mock == null) return;   // 样稿不在这台机器上：只用上面的内嵌名单
-        var js = File.ReadAllText(Path.Combine(mock, "js", "ui.js"));
-        var start = js.IndexOf("const ICONS = {", StringComparison.Ordinal);
-        Assert.True(start >= 0, "ui.js 里找不到 const ICONS");
-        var end = js.IndexOf("\n  };", start, StringComparison.Ordinal);
-        var body = js[start..end];
-        // 一行可以有好几个键（down / up / right / left 写在同一行）：行首或逗号后的「名字: '」或「名字: [」
-        var keys = Regex.Matches(body, @"(?:^|,)\s*(\w+):\s*['\[]", RegexOptions.Multiline).Select(m => m.Groups[1].Value).ToArray();
-        Assert.Equal(Expected, keys);
+        var known = new HashSet<string>(Expected, StringComparer.Ordinal);
+        foreach (var (rel, full) in AppSource.Sources().Where(f => f.Rel.EndsWith(".axaml", StringComparison.Ordinal)))
+            foreach (Match m in Regex.Matches(File.ReadAllText(full), @"(?:\bIcon|Pr\.Icon)=""([a-z][\w\-]*)"""))
+                Assert.True(known.Contains(m.Groups[1].Value), rel + " 用了图标表里没有的图标「" + m.Groups[1].Value + "」");
     }
 }

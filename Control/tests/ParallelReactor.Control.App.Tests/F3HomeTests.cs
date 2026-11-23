@@ -59,70 +59,12 @@ public class F3HomeTests
     }
 
     [Fact]
-    public void Rows_EndTimes_LeftAndChips_MatchTheMock()
-    {
-        var s = Shell();
-        var h = Home(s);
-        Assert.Equal(8, h.Rows.Count);
-        RunRowVm R(int n) => h.Rows.Single(r => r.N == n);
-        Assert.Equal(("27", "15:22", "−4.8"), (R(1).LeftText, R(1).EndText, R(1).DevChip));   // 程序步骤 v0.8：样稿的结束时刻 + 放空 2 min + 结束 1 min
-        Assert.Equal(("7", "15:50"), (R(2).LeftText, R(2).EndText));
-        Assert.Equal(("21", "15:16"), (R(3).LeftText, R(3).EndText));
-        Assert.Equal(("21", "15:16"), (R(6).LeftText, R(6).EndText));
-        Assert.Equal(("9", "14:42", "保持", "4/6"), (R(8).LeftText, R(8).EndText, R(8).StepName, R(8).StepFrac));
-        // 报警：已暂停、没有预计结束、红行、压力红字
-        Assert.Equal((LeftKind.Paused, "已暂停", (string?)null, true, true), (R(4).Left, R(4).LeftText, R(4).EndText, R(4).IsErr, R(4).PressHot));
-        Assert.Equal(("压力超限", "恒温反应", "3/6"), (R(4).Word, R(4).StepName, R(4).StepFrac));
-        Assert.True(R(4).Segs.Single(x => x.State == SegmentState.Cur).Err);
-        // 已就绪 / 停用
-        Assert.Equal(("已就绪", false, "未运行 · 待启动", LeftKind.None), (R(5).Word, R(5).HasProg, R(5).NoProg, R(5).Left));
-        Assert.Equal(("停用", true, "已停用", true, true), (R(7).Word, R(7).IsOff, R(7).NoProg, R(7).TempNa, R(7).PressNa));
-        // 压力 2 位小数、吸气量 1 位、速率 2 位
-        Assert.Equal(("2.35", "2.50", "18.4", "0.21"), (R(1).PressText, R(1).PSpText, R(1).GasText, R(1).RateText));
-        Assert.True(R(4).RateNa);
-        // 选中 RV1（默认）
-        Assert.True(R(1).IsSelected);
-        Assert.False(R(2).IsSelected);
-        // 灰带
-        Assert.Equal(("1号机", " · 8 路 · 运行 ", "6", "报警 1", " · 程序「平行合成程序 A」"), (h.BoardTitle, h.CtxA, h.CtxRun, h.CtxErr, h.CtxProg));
-        s.Dispose();
-    }
-
-    [Fact]
-    public void Segs_WidthsFollowStepMinutes_DoneCurNext()
-    {
-        var s = Shell();
-        var segs = Home(s).Rows.Single(r => r.N == 1).Segs;
-        Assert.Equal(new[] { SegmentState.Done, SegmentState.Done, SegmentState.Cur, SegmentState.Next, SegmentState.Next, SegmentState.Next }, segs.Select(x => x.State));
-        Assert.Equal(new[] { 50.7, 3.0, 45.0, 22.0, 2.0, 1.2 }, segs.Select(x => Math.Round(x.Weight, 1)));   // 降温（保持 ≤）· 放空 · 结束（每段至少 1.2）
-        Assert.Equal(0.4, segs[2].Fill, 2);
-        Assert.Equal("第 3 步 恒温反应 · 约 45 min", segs[2].Tip);
-        s.Dispose();
-    }
-
-    [Fact]
-    public void Row_Click_SelectsAndOpensInspector()
-    {
-        var s = Shell();
-        var h = Home(s);
-        h.OpenRow(h.Rows.Single(r => r.N == 4));
-        Assert.Equal(4, s.Nav.ChannelOf(1));
-        Assert.Equal(PaneMode.Docked, s.Layout.Mode(DockPaneId.Inspector));
-        Assert.True(h.Rows.Single(r => r.N == 4).IsSelected);
-        Assert.Equal("RV4", s.Ctl.Title);
-        Assert.Equal("压力超限", s.Ctl.Word);
-        s.Dispose();
-    }
-
-    [Fact]
     public void Stale_WhenTheDeviceIsLost_ReadingsKept()
     {
         var s = Shell("net=lost");
         var h = Home(s);
-        Assert.True(h.IsStale);
-        var r1 = h.Rows.Single(r => r.N == 1);
-        Assert.True(r1.Stale);
-        Assert.Equal(("145.2", "反应中"), (r1.TempText, r1.Word));   // 自己的状态、最后的读数
+        var r1 = h.Tiles.Single(r => r.N == 1);
+        Assert.Equal("145.2", r1.TempText);   // 最后的读数还在
         Assert.True(h.Net.IsLost);
         Assert.Equal("与1号机的连接中断 1 min 26 s", h.Net.Title);
         Assert.Contains("下面的数据停在 14:28:41", h.Net.Body, StringComparison.Ordinal);
@@ -137,8 +79,7 @@ public class F3HomeTests
         var s = Shell();
         s.SelectDevice(3);
         var h = Home(s);
-        Assert.True(h.IsC16);
-        Assert.Equal(16, h.Rows.Count);
+        Assert.Equal(16, h.Tiles.Count);
         Assert.True(h.Curve.IsC16);
         Assert.Empty(h.Curve.Chips);
         Assert.Equal("RV9 升压中 · 占用", h.Res.GasState);
@@ -458,10 +399,8 @@ public class F3HomeTests
         h.ToggleResCommand.Execute(null);
         h.ToggleMonCommand.Execute(null);
         Assert.Equal((PaneMode.Collapsed, PaneMode.Collapsed, PaneMode.Collapsed), (h.MonMode, h.CurveMode, h.ResMode));
-        h.MonKey = "gas";
-        Assert.False(h.IsRunView);
         s.ResetLayout();
-        Assert.Equal((PaneMode.Docked, PaneMode.Docked, PaneMode.Docked, true), (h.MonMode, h.CurveMode, h.ResMode, h.IsRunView));
+        Assert.Equal((PaneMode.Docked, PaneMode.Docked, PaneMode.Docked), (h.MonMode, h.CurveMode, h.ResMode));
         s.Dispose();
     }
 }
