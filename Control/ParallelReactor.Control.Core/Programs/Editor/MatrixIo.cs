@@ -12,7 +12,7 @@ namespace ParallelReactor.Control.Core.Programs.Editor;
 /// <summary>
 /// 条件矩阵的 CSV（融合版 F6，样稿「导入 CSV / 导出 CSV」：每路一列）。UTF-8 带 BOM（Excel 直接打开不乱码）。
 /// <code>
-/// # 条件矩阵,催化剂 × 温度筛选 · 批次 8,模板,催化加氢筛选 · 120 ℃,HT-PR8
+/// # 条件矩阵,催化剂 × 温度筛选 · 批次 8,程序,催化加氢筛选 · 120 ℃,HT-PR8
 /// key,参数,RV1,RV2,…
 /// include,参加,1,1,0,…
 /// sample,样品 / 催化剂,Pd/C 5%,…
@@ -28,7 +28,7 @@ public static class MatrixCsv
     {
         var sb = new StringBuilder();
         void Row(IEnumerable<string> cells) => sb.Append(string.Join(",", cells.Select(Quote))).Append("\r\n");
-        Row(new[] { "# 条件矩阵", m.Name, "模板", m.Template.Name, modelLabel });
+        Row(new[] { "# 条件矩阵", m.Name, "程序", m.Template.Name, modelLabel });
         Row(new[] { "key", "参数" }.Concat(channels.Select(n => "RV" + n)));
         Row(new[] { "include", "参加" }.Concat(channels.Select(n => m.Include.Contains(n) ? "1" : "0")));
         Row(new[] { "sample", "样品 / 催化剂" }.Concat(channels.Select(n => m.Samples.TryGetValue(n, out var s) ? s : "")));
@@ -96,7 +96,7 @@ public static class MatrixCsv
                 continue;   // 不认识的行跳过（人加的备注行等）
             int i = si - 1;
             if (i < 0 || i >= m.Steps.Count || !StepTypeCodes.TryParse(parts[1], out var t) || m.Steps[i].Type != t)
-                throw new FormatException("第 " + si.ToString("00", CultureInfo.InvariantCulture) + " 步和模板的步骤对不上（CSV 是「" + parts[1] + "」）· 先选同一个模板");
+                throw new FormatException("第 " + si.ToString("00", CultureInfo.InvariantCulture) + " 步和程序的步骤对不上（CSV 是「" + parts[1] + "」）· 先选同一个程序");
             string k = parts[2];
             if (!MatrixPlan.RowKeys(t).Contains(k)) continue;
             var step = m.Steps[i];

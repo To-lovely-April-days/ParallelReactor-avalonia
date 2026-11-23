@@ -192,7 +192,7 @@ public sealed class MatrixPlan
     {
         var o = new List<MxIssue>();
         var inc = ctx.Channels.Where(c => Include.Contains(c.N)).ToList();
-        if (Template.Model != ctx.ModelKey) o.Add(new MxIssue(MxLevel.No, "模板适用 " + ModelLabelOf(Template.Model) + "，" + ctx.Alias + " 是 " + ctx.ModelLabel + " · 先选同型号的模板"));
+        if (Template.Model != ctx.ModelKey) o.Add(new MxIssue(MxLevel.No, "程序适用 " + ModelLabelOf(Template.Model) + "，" + ctx.Alias + " 是 " + ctx.ModelLabel + " · 先选同型号的程序"));
         if (inc.Count == 0) o.Add(new MxIssue(MxLevel.No, "没有参加的通道 · 在表头勾选"));
         for (int i = 0; i < Steps.Count; i++)
         {

@@ -37,6 +37,7 @@ public sealed class NumBox : TemplatedControl
     public static readonly StyledProperty<string?> UnitProperty = AvaloniaProperty.Register<NumBox, string?>(nameof(Unit));
     public static readonly StyledProperty<string?> LabelProperty = AvaloniaProperty.Register<NumBox, string?>(nameof(Label));
     public static readonly StyledProperty<bool> ShowSteppersProperty = AvaloniaProperty.Register<NumBox, bool>(nameof(ShowSteppers), true);
+    public static readonly StyledProperty<bool> LiveProperty = AvaloniaProperty.Register<NumBox, bool>(nameof(Live));
 
     public double? Value { get => GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
     /// <summary>下限（NaN = 不限）。</summary>
@@ -50,6 +51,11 @@ public sealed class NumBox : TemplatedControl
     /// <summary>无障碍名（样稿 aria-label）。</summary>
     public string? Label { get => GetValue(LabelProperty); set => SetValue(LabelProperty, value); }
     public bool ShowSteppers { get => GetValue(ShowSteppersProperty); set => SetValue(ShowSteppersProperty, value); }
+    /// <summary>
+    /// 边打字边生效（曲线窗口：预览图跟着打的数走，不用等失焦 / 回车 —— 用户 2026-11-23）：打出来的是量程内的数就立刻写进 <see cref="Value"/>，
+    /// 清空 = 没有值；打到一半、超出量程或不是数时值先不动，输入框里的字也不动（照旧在失焦 / 回车时限幅、格式化、提示）。
+    /// </summary>
+    public bool Live { get => GetValue(LiveProperty); set => SetValue(LiveProperty, value); }
 
     private TextBox? _input;
     private Button? _minus, _plus;
@@ -59,7 +65,7 @@ public sealed class NumBox : TemplatedControl
         base.OnApplyTemplate(e);
         if (_minus != null) _minus.Click -= OnMinus;
         if (_plus != null) _plus.Click -= OnPlus;
-        if (_input != null) { _input.LostFocus -= OnInputLostFocus; _input.KeyDown -= OnInputKeyDown; }
+        if (_input != null) { _input.LostFocus -= OnInputLostFocus; _input.KeyDown -= OnInputKeyDown; _input.PropertyChanged -= OnInputPropertyChanged; }
         _input = e.NameScope.Find<TextBox>("PART_Input");
         _minus = e.NameScope.Find<Button>("PART_Minus");
         _plus = e.NameScope.Find<Button>("PART_Plus");
@@ -69,6 +75,7 @@ public sealed class NumBox : TemplatedControl
         {
             _input.LostFocus += OnInputLostFocus;
             _input.KeyDown += OnInputKeyDown;
+            _input.PropertyChanged += OnInputPropertyChanged;
             Avalonia.Automation.AutomationProperties.SetName(_input, Label ?? Unit ?? "数值");
         }
         UpdateReason();
@@ -150,6 +157,14 @@ public sealed class NumBox : TemplatedControl
     }
 
     private void OnInputLostFocus(object? sender, RoutedEventArgs e) => Commit();
+
+    /// <summary>边打字边生效（<see cref="Live"/>）：只在自己有焦点时（不是程序改的字），量程内的数才写进值。</summary>
+    private void OnInputPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property != TextBox.TextProperty || !Live || _input is not { IsFocused: true } || Locked) return;
+        if (string.IsNullOrWhiteSpace(_input.Text)) Value = null;
+        else if (NumInput.TryParse(_input.Text, out var v) && !Outside(v)) Value = Clamp(v);
+    }
 
     private void OnInputKeyDown(object? sender, KeyEventArgs e)
     {

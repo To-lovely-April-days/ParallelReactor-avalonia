@@ -149,7 +149,7 @@ public sealed partial class MatrixVm : ObservableObject
         IsMany = chs.Count > 8;
         if (!IsMany && _bank != 0) { _bank = 0; OnPropertyChanged(nameof(Bank)); OnPropertyChanged(nameof(BankKey)); }
         var cols = IsMany ? chs.Skip(Bank * 8).Take(8).ToArray() : chs.ToArray();
-        TemplateSub = "模板「" + tpl.Name + "」 · " + m.Steps.Count + " 步";
+        TemplateSub = "程序「" + tpl.Name + "」 · " + m.Steps.Count + " 步";
         var ctx = Context(d, schema);
         string rk = key + "|" + Bank + "|" + string.Join(",", cols.Select(c => c.N)) + "|" + string.Join(",", m.Steps.Select(s => s.Type)) + "|" + schema.GetHashCode() + "|" + PressureDisplay.Version;
         if (rk != _rowsKey) { _rowsKey = rk; BuildRows(m, cols, schema); }

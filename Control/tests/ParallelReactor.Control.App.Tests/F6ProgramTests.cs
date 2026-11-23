@@ -42,7 +42,7 @@ public class F6ProgramTests
         var pg = Page(Shell());
         Assert.True(pg.IsMatrix);
         Assert.Equal("H1", pg.SelId);
-        Assert.Equal("模板「催化加氢筛选 · 120 ℃」 · 9 步", pg.Mx.TemplateSub);
+        Assert.Equal("程序「催化加氢筛选 · 120 ℃」 · 9 步", pg.Mx.TemplateSub);
         Assert.Equal(8, pg.Mx.Columns.Count);
         Assert.Equal("7", pg.Mx.IncText);
         Assert.Equal(new[] { "第 06 步目标压力：RV4 4.00 MPa · 超出 HT-PR8 范围 0.06 – 3.14 MPa", "RV1–RV4、RV6、RV8 正在运行，最晚约 15:50 结束 · 结束后才能下发，可以先保存" },
@@ -347,7 +347,7 @@ public class F6ProgramTests
         var m = Shell("pgm=mx&dialog=pgcheck");
         var md = Assert.IsType<PreflightDialogVm>(m.Dialogs.Current);
         Assert.Equal("预运行检查 · 条件矩阵", md.Title);
-        Assert.Equal(new[] { "急停", "控制模式", "模板", "参加通道", "每路参数", "溶液体积", "气路", "搅拌", "会话" }, md.Rows.Select(r => r.Title));
+        Assert.Equal(new[] { "急停", "控制模式", "程序", "参加通道", "每路参数", "溶液体积", "气路", "搅拌", "会话" }, md.Rows.Select(r => r.Title));
         Assert.Equal(CheckKind.No, md.Rows[3].Kind);
         Assert.Equal("RV1、RV2、RV3、RV4、RV6、RV8 正在运行", md.Rows[3].Detail);
         Assert.Equal("1 处超出范围", md.Rows[4].Detail);

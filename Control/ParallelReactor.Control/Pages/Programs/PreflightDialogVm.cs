@@ -38,7 +38,7 @@ public sealed partial class CheckRowVm : ObservableObject
 /// <summary>
 /// 预运行检查（融合版 F6，样稿 pgCheckDlg / mxCheckDlg）：两种模式共用一个对话框（名字「pgcheck」），内容按模式。
 /// <list type="bullet">
-/// <item>本机检查：急停、控制模式、气路占用、搅拌、报警通道、程序 / 模板、目标 / 参加通道、溶液体积、（矩阵）每路参数、升压排队、会话。</item>
+/// <item>本机检查：急停、控制模式、气路占用、搅拌、报警通道、程序、目标 / 参加通道、溶液体积、（矩阵）每路参数、升压排队、会话。</item>
 /// <item>程序步骤 v0.8 的下发前检查（STEPS-SPEC §4，<see cref="ProgramChecks"/>）：搅拌转速（同一批的几路必须一样，写明哪几路；和别的在跑的程序不同时提示）、
 ///   吸气计量（反应前没有充压）、升温后压力（先充压后升温：提示估算，超上限拒绝）、结束时压力（没有放空）—— 没问题的不列。</item>
 /// <item>真机另取 GET /preflight（Client 的 PreflightAsync，HMI 的硬件自检：温控、压力 / 超压监视、阀门、搅拌器）—— 取到之前写「正在读取」；
@@ -228,20 +228,20 @@ public sealed partial class PreflightDialogVm : DialogVm
         var mx = _page.Mx;
         var m = mx.Plan;
         var rows = new List<(string, CheckKind, string)> { Estop(d), Lease(d, true) };
-        if (m is null) { rows.Add(("模板", CheckKind.No, "没有选模板")); return rows; }
+        if (m is null) { rows.Add(("程序", CheckKind.No, "没有选程序")); return rows; }
         var schema = _page.SchemaOf(d);
         var ctx = mx.Context(d, schema);
         var chs = ctx.Channels;
         var inc = chs.Where(c => m.Include.Contains(c.N)).ToList();
         var busy = inc.Where(c => c.Busy).Select(c => c.N).ToArray();
         var no = m.Issues(ctx).Where(x => x.Level == MxLevel.No).ToList();
-        int param = no.Count(x => !x.Msg.StartsWith("溶液体积", StringComparison.Ordinal) && !x.Msg.StartsWith("模板", StringComparison.Ordinal) && !x.Msg.StartsWith("没有参加", StringComparison.Ordinal));
+        int param = no.Count(x => !x.Msg.StartsWith("溶液体积", StringComparison.Ordinal) && !x.Msg.StartsWith("程序适用", StringComparison.Ordinal) && !x.Msg.StartsWith("没有参加", StringComparison.Ordinal));
         var volBad = inc.Where(c => MatrixPlan.VolBad(m.Vol.TryGetValue(c.N, out var v) ? v : double.NaN, ctx.VolMax).Length > 0).Select(c => c.N).ToArray();
         var press = m.Steps.FirstOrDefault(s => s.Type == StepType.Press);
         var stirStep = m.Steps.FirstOrDefault(s => s.Type == StepType.Stir);
         string gasName = press is null ? "" : schema.Field(StepType.Press, "gas")?.LabelOf(press.S("gas")) ?? press.S("gas");
         double q = inc.Count > 1 && press != null ? (inc.Count - 1) * MatrixPlan.QueueMin : 0;
-        rows.Add(m.Template.Model == d.Model.Key ? ("模板", CheckKind.Ok, "「" + m.Template.Name + "」 · " + m.Steps.Count + " 步") : ("模板", CheckKind.No, "适用 " + MatrixPlan.ModelLabelOf(m.Template.Model)));
+        rows.Add(m.Template.Model == d.Model.Key ? ("程序", CheckKind.Ok, "「" + m.Template.Name + "」 · " + m.Steps.Count + " 步") : ("程序", CheckKind.No, "适用 " + MatrixPlan.ModelLabelOf(m.Template.Model)));
         rows.Add(inc.Count == 0 ? ("参加通道", CheckKind.No, "没有勾选")
             : busy.Length > 0 ? ("参加通道", CheckKind.No, string.Join("、", busy.Select(n => "RV" + n)) + " 正在运行")
             : ("参加通道", CheckKind.Ok, string.Join("、", inc.Select(c => "RV" + c.N)) + " 空闲"));

@@ -72,7 +72,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
             new RibbonGroup("文件", new[] { _imp, _exp }),
             new RibbonGroup("运行", new[] { _chk1, _run1, _stop1 }),
         };
-        _reset = new RibbonTool("reset", "按模板重建", () => Mx.Rebuild(true), tip: "丢掉矩阵里的修改，按所选模板重新生成");
+        _reset = new RibbonTool("reset", "按程序重建", () => Mx.Rebuild(true), tip: "丢掉矩阵里的修改，按所选程序重新生成");
         _savePlan = new RibbonTool("save", "保存方案", () => Mx.SavePlan(), tip: "把这份条件矩阵（含样品名）存到本机");
         _impCsv = new RibbonTool("upload", "导入 CSV", () => _ = Mx.ImportCsvAsync(), tip: "导入条件矩阵：每路一列");
         _expCsv = new RibbonTool("download", "导出 CSV", () => _ = Mx.ExportCsvAsync(), tip: "导出条件矩阵（CSV，每路一列）");
@@ -346,10 +346,10 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         _chkMx.Reason = p is null ? NoProgramReason : null;
         _runMx.Reason = p is null ? NoProgramReason : Mx.RunReason;
         _runMx.Tip = Mx.RunTip;
-        _impCsv.Reason = Mx.HasPlan ? null : "先选一个模板";
-        _expCsv.Reason = Mx.HasPlan ? null : "先选一个模板";
-        _savePlan.Reason = Mx.HasPlan ? null : "先选一个模板";
-        _reset.Reason = Mx.HasPlan ? null : "先选一个模板";
+        _impCsv.Reason = Mx.HasPlan ? null : "先选一个程序";
+        _expCsv.Reason = Mx.HasPlan ? null : "先选一个程序";
+        _savePlan.Reason = Mx.HasPlan ? null : "先选一个程序";
+        _reset.Reason = Mx.HasPlan ? null : "先选一个程序";
     }
 
     // ———————————————————— 程序：新建 / 保存 / 复制 / 导入 / 导出 ————————————————————

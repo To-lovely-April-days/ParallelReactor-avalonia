@@ -166,7 +166,19 @@
     </Setter>
   </ControlTheme>
 
-  <!-- 宽滚动条（样稿 ::-webkit-scrollbar 12 px：scroll-track 轨道、拇指四周内缩 3 px） -->
+  <!-- 宽滚动条的拇指：画出来四周内缩 3 px（中间 6 px 宽），但整条 12 px 宽都抓得住 ——
+       以前内缩用的是拇指的外边距，按在两边 3 px 上什么都不发生（用户 2026-11-23：报警列表的滚动条拖不动） -->
+  <ControlTheme x:Key="PrScrollThumbWide" TargetType="Thumb" BasedOn="{StaticResource PrScrollThumb}">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Background="Transparent" Padding="3">
+          <Border Background="{TemplateBinding Background}" CornerRadius="4" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- 宽滚动条（样稿 ::-webkit-scrollbar 12 px：scroll-track 轨道、拇指画出来四周内缩 3 px） -->
   <ControlTheme x:Key="PrScrollBarWide" TargetType="ScrollBar" BasedOn="{StaticResource PrScrollBar}">
     <Setter Property="Background" Value="{StaticResource ScrollTrackBrush}" />
     <Style Selector="^:vertical">
@@ -176,7 +188,7 @@
       <Setter Property="Height" Value="{StaticResource ScrollBarW}" />
     </Style>
     <Style Selector="^ /template/ Thumb#PART_Thumb">
-      <Setter Property="Margin" Value="3" />
+      <Setter Property="Theme" Value="{StaticResource PrScrollThumbWide}" />
     </Style>
   </ControlTheme>
 

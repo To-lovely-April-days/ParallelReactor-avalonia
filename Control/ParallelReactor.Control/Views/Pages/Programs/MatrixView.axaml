@@ -318,7 +318,7 @@
                 <Border Height="18" Padding="5,0" CornerRadius="2" BorderThickness="1" BorderBrush="{StaticResource LineSoftBrush}" Background="{StaticResource BgCardBrush}">
                   <TextBlock Text="120" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Text="粗体 = 已改模板值" />
+                <TextBlock Text="粗体 = 和程序里的值不同" />
               </StackPanel>
             </StackPanel>
           </DockPanel>
