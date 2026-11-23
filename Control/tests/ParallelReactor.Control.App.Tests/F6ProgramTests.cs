@@ -58,7 +58,7 @@ public class F6ProgramTests
         Assert.Equal(2 + 9 + 3 + 12, pg.Mx.Rows.Count);
         // 搅拌转速是共用的一行：写明为什么不能按路变化
         var rpm = pg.Mx.Rows.OfType<MxSharedRow>().Single(r => r.Spec.Key == "rpm");
-        Assert.Equal(("一台电机带全部釜 · 转速不能按路变化", "f-link", "400"), (rpm.Why, rpm.WhyIcon, rpm.Text));
+        Assert.Equal(("一台电机带全部釜 · 转速不能按路变化", "link", "400"), (rpm.Why, rpm.WhyIcon, rpm.Text));
         Assert.DoesNotContain(pg.Mx.Rows.OfType<MxPerRow>(), r => r.Spec.Key == "rpm");
         var temp = pg.Mx.Rows.OfType<MxPerRow>().First(r => r.Spec.Key == "temp");
         Assert.Equal(new[] { "100", "110", "120", "130", "100", "110", "120", "130" }, temp.Cells.Select(c => c.Text));
@@ -69,7 +69,7 @@ public class F6ProgramTests
         Assert.Equal("2 h 45 min", pg.Mx.Foot[0].Text);
         Assert.Equal("—", pg.Mx.Foot[6].Text);
         var stir = pg.Mx.Rows.OfType<MxSharedRow>().First(r => r.Spec.Key == "rpm");
-        Assert.Equal(("一台电机带全部釜 · 转速不能按路变化", "f-link", "400"), (stir.Why, stir.WhyIcon, stir.Text));
+        Assert.Equal(("一台电机带全部釜 · 转速不能按路变化", "link", "400"), (stir.Why, stir.WhyIcon, stir.Text));
         Assert.Contains("矩阵", string.Join(",", pg.Tools.Select(t => t.Title)) + "矩阵");
         Assert.Equal(new[] { "方案", "文件", "运行" }, pg.Tools.Select(t => t.Title));
     }
@@ -280,6 +280,10 @@ public class F6ProgramTests
         var s = Shell("pgm=one");
         var pg = Page(s);
         pg.Tools.SelectMany(g => g.Tools).First(t => t.Label == "新建程序").Command.Execute(null);
+        // 2026-11-23 模板库：「新建程序」先开窗口选模板或空白 —— 这里选空白
+        var newDlg = Assert.IsType<NewProgramDialogVm>(s.Dialogs.Current);
+        newDlg.Blank.PickCommand.Execute(null);
+        newDlg.CreateCommand.Execute(null);
         Assert.Equal("未命名程序", pg.Sel!.Name);
         // 用户 2026-11-19：新建程序是空的 —— 只有固定在最后的「结束」（模板在程序库里另有）
         Assert.Equal(new[] { StepType.End }, pg.Sel.Steps.Select(x => x.Type));
@@ -385,11 +389,12 @@ public class F6ProgramTests
             Assert.Equal("RV3 草稿 · 加氢测试-03", Assert.Single(again.Programs).Name);
             Assert.False(again.Programs[0].Migrated);                                       // 保存时已按新格式写盘
             Assert.DoesNotContain("\"endBy\"", File.ReadAllText(Path.Combine(dir, ProgramLibraryStore.FileName)));
-            // 坏文件：不覆盖，从示例开始并说明
+            // 坏文件：不覆盖，程序库先空着并说明（2026-11-23：内置的三个不再放进程序库，它们在模板库里）
             File.WriteAllText(Path.Combine(dir, ProgramLibraryStore.FileName), "{ bad");
             var bad = new ProgramLibraryStore(demo: false, firstModel: "PR8", dir: dir);
             Assert.NotNull(bad.LoadError);
-            Assert.Equal(new[] { "加氢筛选", "只做气密", "惰性气氛加热" }, bad.Programs.Select(x => x.Name));   // 设计稿的三个推荐模板
+            Assert.Empty(bad.Programs);
+            Assert.Equal("{ bad", File.ReadAllText(Path.Combine(dir, ProgramLibraryStore.FileName)));
         }
         finally { Directory.Delete(dir, true); }
     }

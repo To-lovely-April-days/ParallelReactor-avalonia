@@ -54,6 +54,15 @@
                   <Button Classes="li" Theme="{StaticResource PgRow}" Classes.on="{Binding IsSelected}"
                           Command="{Binding $parent[UserControl].((pg:ProgramPageVm)DataContext).PickLibCommand}" CommandParameter="{Binding}"
                           AutomationProperties.Name="{Binding Name}">
+                    <Button.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="复制为新程序" b:Pr.Icon="copy" Command="{Binding $parent[UserControl].((pg:ProgramPageVm)DataContext).LibDupCommand}" CommandParameter="{Binding}" />
+                        <MenuItem Header="存为模板…" b:Pr.Icon="flag" Command="{Binding $parent[UserControl].((pg:ProgramPageVm)DataContext).LibTemplateCommand}" CommandParameter="{Binding}" />
+                        <Separator />
+                        <MenuItem Header="删除程序…" b:Pr.Icon="trash" Command="{Binding $parent[UserControl].((pg:ProgramPageVm)DataContext).LibDeleteCommand}" CommandParameter="{Binding}"
+                                  IsEnabled="{Binding CanDelete}" ToolTip.Tip="{Binding DeleteReason}" ToolTip.ShowOnDisabled="True" />
+                      </ContextMenu>
+                    </Button.ContextMenu>
                     <StackPanel>
                       <DockPanel MinHeight="22">
                         <Border DockPanel.Dock="Right" Classes="tag" Classes.run="{Binding TagRun}" Classes.warn="{Binding TagWarn}"
@@ -69,12 +78,23 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <TextBlock Classes="mut" Text="没有符合条件的程序" Margin="16,14" IsVisible="{Binding LibEmpty}" />
+            <TextBlock Classes="mut" Text="{Binding LibEmptyText}" Margin="16,14" IsVisible="{Binding LibEmpty}" />
           </StackPanel>
         </ScrollViewer>
       </DockPanel>
     </Border>
-    <v:OneView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding IsOne}" Name="OnePane" />
-    <v:MatrixView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding IsMatrix}" Name="MxPane" />
+    <v:OneView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding ShowOne}" Name="OnePane" />
+    <v:MatrixView Grid.Column="2" DataContext="{Binding}" IsVisible="{Binding ShowMatrix}" Name="MxPane" />
+    <!-- 程序库是空的（新装的软件，设计稿 tpl-design A5）：从模板开始，或者从空白开始 -->
+    <Border Classes="pgpanel" Grid.Column="2" IsVisible="{Binding NoPrograms}" Name="EmptyPane">
+      <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="10">
+        <TextBlock Text="还没有程序" FontSize="20" FontWeight="Light" Foreground="{StaticResource T1Brush}" HorizontalAlignment="Center" LineHeight="26" />
+        <TextBlock Text="从模板开始最快，创建后可以随意修改；也可以从空白开始。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" LineHeight="20" />
+        <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center" Margin="0,8,0,0">
+          <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="flag" Content="从模板新建" Height="34" Padding="16,0" Command="{Binding NewFromTemplateCommand}" />
+          <Button b:Pr.Icon="plus" Content="空白程序" Height="34" Padding="16,0" Command="{Binding NewBlankCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
   </Grid>
 </UserControl>

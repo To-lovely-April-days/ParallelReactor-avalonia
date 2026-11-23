@@ -38,6 +38,10 @@ public class F9StepEditTests
         var s = Shell();
         var pg = Assert.IsType<ProgramPageVm>(s.Page);
         pg.Tools.SelectMany(g => g.Tools).First(t => t.Label == "新建程序").Command.Execute(null);
+        // 2026-11-23 模板库：「新建程序」先开窗口选模板或空白 —— 这里选空白
+        var dlg = Assert.IsType<NewProgramDialogVm>(s.Dialogs.Current);
+        dlg.Blank.PickCommand.Execute(null);
+        dlg.CreateCommand.Execute(null);
         return (s, pg);
     }
 

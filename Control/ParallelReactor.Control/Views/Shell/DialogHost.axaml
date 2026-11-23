@@ -4,6 +4,8 @@
              xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
              xmlns:b="using:ParallelReactor.Control.Behaviors"
              xmlns:sh="using:ParallelReactor.Control.Shell"
+             xmlns:pgd="using:ParallelReactor.Control.Pages.Programs"
+             xmlns:vpg="using:ParallelReactor.Control.Views.Pages.Programs"
              xmlns:dlg="using:ParallelReactor.Control.Shell.Dialogs"
              xmlns:vd="using:ParallelReactor.Control.Views.Shell.Dialogs"
              x:Class="ParallelReactor.Control.Views.Shell.DialogHost"
@@ -46,6 +48,26 @@
         <TextBlock Classes="dlgp" Text="{Binding Text}" />
         <pr:Note Tone="Warn" Content="{Binding Warn}" IsVisible="{Binding HasWarn}" />
       </StackPanel>
+    </DataTemplate>
+    <!-- 模板库（程序页，设计稿 tpl-design 方向 A）：新建程序 · 底栏左边的程序名称 · 存为模板 -->
+    <DataTemplate DataType="pgd:NewProgramDialogVm" x:DataType="pgd:NewProgramDialogVm">
+      <vpg:NewProgramView />
+    </DataTemplate>
+    <DataTemplate DataType="pgd:ProgNameFoot" x:DataType="pgd:ProgNameFoot">
+      <StackPanel Orientation="Horizontal">
+        <TextBlock Text="程序名称" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" Margin="0,0,10,0" />
+        <TextBox Theme="{StaticResource PrInput}" Width="300" MaxLength="60" Text="{Binding Owner.ProgName}" Classes.err="{Binding Owner.HasNameError}"
+                 AutomationProperties.Name="程序名称" />
+        <TextBlock Text="{Binding Owner.NameError}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" VerticalAlignment="Center"
+                   Margin="10,0,0,0" IsVisible="{Binding Owner.HasNameError}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate DataType="pgd:SaveTemplateDialogVm" x:DataType="pgd:SaveTemplateDialogVm">
+      <vpg:SaveTemplateView />
+    </DataTemplate>
+    <!-- 删除程序的确认（程序页，同移除确认的外观） -->
+    <DataTemplate DataType="pgd:DeleteProgramDialogVm" x:DataType="pgd:DeleteProgramDialogVm">
+      <TextBlock Classes="dlgp" Text="{Binding Text}" Margin="0" />
     </DataTemplate>
     <!-- 断开确认 -->
     <DataTemplate DataType="dlg:DisconnectDialogVm" x:DataType="dlg:DisconnectDialogVm">
@@ -144,6 +166,9 @@
     </Style>
     <!-- 对话框内容共用的字（样稿 base.css .pr-field-label / .pr-field-hint、dialogs.css .dlg-p / .dlg-test）。
          只按类名匹配（不用后代 TextBlock 选择器：按钮里的字也是 TextBlock，见 doc §8 第 16 条） -->
+    <Style Selector="TextBox.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
     <Style Selector="TextBlock.flabel">
       <Setter Property="FontSize" Value="{StaticResource Fs2}" />
       <Setter Property="FontWeight" Value="Medium" />
@@ -183,7 +208,7 @@
           <Panel KeyboardNavigation.TabNavigation="Cycle">
             <Border Name="FocusAnchor" Width="0" Height="0" HorizontalAlignment="Left" VerticalAlignment="Top" Focusable="True" IsTabStop="False" />
             <pr:DialogFrame Width="{Binding Width}" Title="{Binding Title}" Sub="{Binding Sub}" Icon="{Binding Icon}" IsDanger="{Binding IsDanger}"
-                            Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}"
+                            Content="{Binding Body}" Footer="{Binding Footer}" FooterLeft="{Binding FooterLeft}" Padding="{Binding BodyPadding}"
                             AutomationProperties.Name="{Binding Title}" />
           </Panel>
         </DataTemplate>

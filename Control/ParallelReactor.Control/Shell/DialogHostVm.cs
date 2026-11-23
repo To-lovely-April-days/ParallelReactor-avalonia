@@ -26,6 +26,8 @@ public partial class DialogVm : ObservableObject
     [ObservableProperty] private object? _body;
     [ObservableProperty] private object? _footer;
     [ObservableProperty] private object? _footerLeft;
+    /// <summary>内容区的内边距（默认 18 14，样稿 .dlg-b）。内容自己贴边排的对话框（新建程序：左边一整列灰底）给 0。</summary>
+    [ObservableProperty] private Avalonia.Thickness _bodyPadding = new(18, 14);
 
     /// <summary>对话框关闭之后（任何方式：×、遮罩、Esc、另开一个对话框）。</summary>
     public virtual void OnClosed() { }

@@ -17,7 +17,7 @@ namespace ParallelReactor.Control.Services;
 /// 参数键同 HMI 的程序 JSON（§6.9），sel 存协议码；压力存 MPa（下发时换算 psi）。
 /// <list type="bullet">
 /// <item>第一次打开（没有 library.json）：把旧程序页的草稿（drafts.json，每个 RV 一份）迁移成草稿程序「RV1 草稿 · 名字」，适用型号 = 当时第一台设备的型号；
-///   都没有时放设计稿的三个推荐模板（ProgramTemplates）。drafts.json 不删（旧的检查器下拉还读它）。</item>
+///   都没有时程序库是空的（内置模板在模板库里，新建程序时选 —— ProgramTemplateStore）。drafts.json 不删（旧的检查器下拉还读它）。</item>
 /// <item>程序步骤 v0.8：旧格式的程序（library.json 里的吹扫 / 等待 / 定时搅拌 / 带方式的结束、drafts.json 的旧草稿）读进来就按 STEPS-SPEC §3 转换
 ///   （PcProgram.Read / FromDoc → Contracts 的 StepMigration），标 PcProgram.Migrated，编辑器顶上提示「已从旧格式转换，请检查」；保存时按新格式写回。</item>
 /// <item>演示 / 截图（PR_CONTROL_DEMO / PR_CONTROL_SHOT）：用样稿的程序库（DemoPrograms），不读也不写文件。</item>
@@ -41,7 +41,7 @@ public sealed class ProgramLibraryStore
     /// <summary>程序（顺序 = 程序库的顺序：新建 / 复制的在最前）。</summary>
     public List<PcProgram> Programs { get; }
 
-    /// <summary>读的时候遇到的问题（文件坏了：从示例开始、不覆盖坏文件，直到第一次保存）。</summary>
+    /// <summary>读的时候遇到的问题（文件坏了：程序库先空着、不覆盖坏文件，直到第一次保存）。</summary>
     public string? LoadError { get; private set; }
 
     /// <summary>这次是从 drafts.json 迁移来的（提示一次）。</summary>
@@ -81,7 +81,7 @@ public sealed class ProgramLibraryStore
         }
         catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
         {
-            LoadError = "程序库 library.json 读不了（" + ex.Message + "）· 先用示例程序，保存时会覆盖它";
+            LoadError = "程序库 library.json 读不了（" + ex.Message + "）· 程序库先空着，保存时会覆盖它";
         }
         // 迁移旧程序页的草稿（drafts.json：{ "1": { "name", "program" } … }）
         try
@@ -107,16 +107,8 @@ public sealed class ProgramLibraryStore
             }
         }
         catch (Exception ex) when (ex is IOException or JsonException or FormatException or UnauthorizedAccessException) { }
-        if (list.Count == 0)
-        {
-            // 第一次打开、没有旧草稿：放设计稿的三个推荐模板（加氢筛选 · 只做气密 · 惰性气氛加热）
-            foreach (var t in ProgramTemplates.All(firstModel))
-            {
-                t.Modified = DateTime.Now;
-                t.By = "本机";
-                list.Add(t);
-            }
-        }
+        // 第一次打开、没有旧草稿：程序库是空的（用户 2026-11-23：模板和程序分开）—— 内置的加氢筛选 / 只做气密 / 惰性气氛加热在模板库里
+        // （ProgramTemplateStore / ProgramTemplates.BuiltIn），新建程序时选。已经存在的 library.json 原样读：之前放进去的三个留着，当作用户自己的程序。
         return list;
     }
 

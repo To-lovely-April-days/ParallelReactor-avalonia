@@ -429,6 +429,50 @@ public class F6EditorTests
         Assert.Equal(new[] { "T1", "T2", "T3" }, ProgramTemplates.All("PR8").Select(p => p.Id));
     }
 
+    /// <summary>模板库（2026-11-23，设计稿 tpl-design 方向 A）：四个内置模板、吸气量验证的步骤、用模板新建 / 存为模板都是复制、名字校验。</summary>
+    [Fact]
+    public void TemplateLibrary_BuiltIn_Instantiate_FromProgram()
+    {
+        var built = ProgramTemplates.BuiltIn("PR8");
+        Assert.Equal(new[] { "T1", "T2", "T3", "T4" }, built.Select(t => t.Id));
+        Assert.Equal(new[] { "加氢筛选", "只做气密", "惰性气氛加热", "吸气量验证" }, built.Select(t => t.Name));
+        Assert.All(built, t => { Assert.True(t.BuiltIn); Assert.NotEmpty(t.Note); Assert.Equal("PR8", t.Model); Assert.Equal(StepType.End, t.Program.Steps[^1].Type); });
+        Assert.All(built, t => Assert.Empty(ProgramIssues.Of(t.Program.Steps, Schema, "HT-PR8")));
+        // 吸气量验证：只吹总管（釜不置换）→ 充压不稳压 → 保持 10 min → 搅拌 → 反应到吸气停止 → 结束；没有升温
+        var u = built[3].Program;
+        Assert.Equal(new[] { StepType.Exchange, StepType.Press, StepType.Hold, StepType.Stir, StepType.React, StepType.End }, u.Steps.Select(s => s.Type));
+        Assert.Equal(("A", 0.0, 3.0), (u.Steps[0].S("gas"), u.Steps[0].N("cycles"), u.Steps[0].N("lineFlush")));
+        Assert.Equal(("A", 0.5, "off"), (u.Steps[1].S("gas"), u.Steps[1].N("pres"), u.Steps[1].S("regulate")));
+        Assert.Equal(("time", 10.0), (u.Steps[2].S("until"), u.Steps[2].N("time")));
+        Assert.Equal(400.0, u.Steps[3].N("rpm"));
+        Assert.Equal((120.0, 30.0, "on", "off", 15.0), (u.Steps[4].N("time"), u.Steps[4].N("minTime"), u.Steps[4].S("stallOn"), u.Steps[4].S("mmolOn"), u.Steps[4].N("stallMin")));
+        // 用模板新建：一份独立的草稿，改它不影响模板
+        var now = new DateTime(2026, 11, 23, 9, 0, 0);
+        var p = built[0].Instantiate("N1", "我的加氢", "PR8", now);
+        Assert.Equal(("N1", "我的加氢", "PR8", true, now), (p.Id, p.Name, p.Model, p.Draft, p.Modified));
+        Assert.Equal(9, p.Steps.Count);
+        p.Steps[4].Num["temp"] = 150;
+        Assert.Equal(80.0, built[0].Program.Steps[4].N("temp"));
+        // 存为模板：也是复制；型号、来源跟随程序
+        var t = PcTemplate.FromProgram(p, "U9", "加氢 150", "说明", now, "张工");
+        Assert.Equal((false, "加氢 150", "说明", "我的加氢", "PR8", "张工"), (t.BuiltIn, t.Name, t.Note, t.From, t.Model, t.Program.By));
+        p.Steps[4].Num["temp"] = 100;
+        Assert.Equal(150.0, t.Program.Steps[4].N("temp"));
+        // 没有「结束」的模板（手改过文件）：新建时补上
+        var broken = new PcTemplate(new PcProgram { Id = "U8", Name = "缺结束", Model = "PR8", Steps = { ProgramTemplates.Heat(80) } }, false);
+        Assert.Equal(new[] { StepType.Heat, StepType.End }, broken.Instantiate("N2", "x", "PR8", now).Steps.Select(s => s.Type));
+        // 名字：不能空、不能太长、不能重名（改名时不和自己比）
+        var all = built.Append(t).ToList();
+        Assert.Equal("请填模板名称", PcTemplate.NameError("  ", all));
+        Assert.Equal("名称最多 40 个字符", PcTemplate.NameError(new string('长', 41), all));
+        Assert.Equal("已有同名模板 · 换一个名字", PcTemplate.NameError(" 加氢筛选 ", all));
+        Assert.Equal("已有同名模板 · 换一个名字", PcTemplate.NameError("加氢 150", all));
+        Assert.Null(PcTemplate.NameError("加氢 150", all, selfId: "U9"));
+        Assert.Null(PcTemplate.NameError("新名字", all));
+        Assert.Equal("请填程序名称", PcTemplate.ProgramNameError(""));
+        Assert.Null(PcTemplate.ProgramNameError("未命名程序"));
+    }
+
     // ———————————————————— 下发前检查（STEPS-SPEC §4） ————————————————————
 
     private static PcProgram Prog(params PcStep[] steps) { var p = new PcProgram { Name = "t" }; p.Steps.AddRange(steps); return p; }

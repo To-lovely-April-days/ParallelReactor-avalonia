@@ -44,6 +44,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         _shell = shell;
         bool demo = shell.Fleet.IsDemo;
         Store = new ProgramLibraryStore(demo, shell.Fleet.Devices.FirstOrDefault()?.Model.Key);
+        Templates = new ProgramTemplateStore(demo);
         Experiments = new ExperimentStore(demo);
         One = new OneVm(this);
         Mx = new MatrixVm(this);
@@ -51,7 +52,13 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         SetModeCommand = new RelayCommand<string>(m => SetMode(m == "one" ? "one" : "mx"));
 
         // 工具条（样稿 PAGES.prog.ribbon / mxRibbon）
-        _new = new RibbonTool("add-c", "新建程序", NewProgram, tip: "新建一个程序（本型号）");
+        _new = new RibbonTool("add-c", "新建程序", () => OpenNew(), tip: "新建一个程序：选一个模板作为起点，或者从空白开始");
+        _tpl = new RibbonTool("flag", "存为模板", OpenSaveTemplate, tip: "把这个程序的步骤和参数存进模板库，以后新建程序时可以选");
+        NewFromTemplateCommand = new RelayCommand(() => OpenNew());
+        NewBlankCommand = new RelayCommand(() => CreateProgram(null, NewProgramDialogVm.BlankName));
+        LibDupCommand = new RelayCommand<LibItemVm>(x => { if (x != null) { Pick(x.Id); Duplicate(); } });
+        LibTemplateCommand = new RelayCommand<LibItemVm>(x => { if (x != null) { Pick(x.Id); OpenSaveTemplate(); } });
+        LibDeleteCommand = new RelayCommand<LibItemVm>(x => { if (x != null) { Pick(x.Id); OpenDelete(); } });
         _save = new RibbonTool("save", "保存", SaveProgram);
         _dup = new RibbonTool("copy", "复制为新程序", Duplicate, tip: "复制成一个新程序，可以修改");
         _imp = new RibbonTool("upload", "导入", () => _ = ImportProgramAsync(), tip: "导入程序（HMI 程序 JSON）");
@@ -61,7 +68,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         _stop1 = new RibbonTool("stop", "停止程序", StopSelected, tip: "停止所选通道上的程序 · 不需要控制权");
         _toolsOne = new()
         {
-            new RibbonGroup("程序", new[] { _new, _save, _dup }),
+            new RibbonGroup("程序", new[] { _new, _save, _dup, _tpl }),
             new RibbonGroup("文件", new[] { _imp, _exp }),
             new RibbonGroup("运行", new[] { _chk1, _run1, _stop1 }),
         };
@@ -78,16 +85,22 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
             new RibbonGroup("运行", new[] { _chkMx, _runMx }),
         };
         shell.Dialogs.Register("pgcheck", _ => CreateCheck());
+        shell.Dialogs.Register(NewProgramDialogVm.DialogName, arg => Dev is { } d ? new NewProgramDialogVm(this, d, arg) : null);
+        shell.Dialogs.Register(SaveTemplateDialogVm.DialogName, _ => Sel is { } p ? new SaveTemplateDialogVm(this, p) : null);
+        shell.Dialogs.Register(DeleteProgramDialogVm.DialogName, _ => Sel is { } p && UsedBy(p.Id).Count == 0 ? new DeleteProgramDialogVm(this, p) : null);
+        if (Templates.LoadError is { } te) shell.Toast(te, ToastKind.Warn);
         if (Store.LoadError is { } le) shell.Toast(le, ToastKind.Warn);
         else if (Store.Migrated > 0) shell.Toast("已把旧程序页的 " + Store.Migrated + " 份草稿迁移到程序库", ToastKind.Info);
         else if (!demo && Store.Programs.Count(p => p.Migrated) is int conv and > 0)
             shell.Toast("程序库里有 " + conv + " 个旧格式的程序，已按新步骤转换 · 打开检查后保存", ToastKind.Info);
     }
 
-    private readonly RibbonTool _new, _save, _dup, _imp, _exp, _chk1, _run1, _stop1, _reset, _savePlan, _impCsv, _expCsv, _chkMx, _runMx;
+    private readonly RibbonTool _new, _save, _dup, _tpl, _imp, _exp, _chk1, _run1, _stop1, _reset, _savePlan, _impCsv, _expCsv, _chkMx, _runMx;
 
     internal ShellVm Shell => _shell;
     public ProgramLibraryStore Store { get; }
+    /// <summary>模板库（内置 + 我的模板）：新建程序时选，见 <see cref="NewProgramDialogVm"/>。</summary>
+    public ProgramTemplateStore Templates { get; }
     public ExperimentStore Experiments { get; }
     public OneVm One { get; }
     public MatrixVm Mx { get; }
@@ -97,7 +110,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
     // ———————————————————— 模式 ————————————————————
 
     /// <summary>条件矩阵（默认，同样稿 MX.mode = 'mx'）；false = 单路程序。</summary>
-    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsOne), nameof(ModeKey))] private bool _isMatrix = true;
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(IsOne), nameof(ModeKey), nameof(ShowOne), nameof(ShowMatrix))] private bool _isMatrix = true;
     public bool IsOne => !IsMatrix;
     /// <summary>分段控件的值：one / mx。</summary>
     public string ModeKey { get => IsMatrix ? "mx" : "one"; set => SetMode(value); }
@@ -219,6 +232,19 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
 
     [ObservableProperty] private string _libCount = "";
     [ObservableProperty] private bool _libEmpty;
+    /// <summary>程序库里一个程序都没有（新装的软件）：中间换成「还没有程序」+「从模板新建」「空白程序」。</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(ShowOne), nameof(ShowMatrix))] private bool _noPrograms;
+    public bool ShowOne => IsOne && !NoPrograms;
+    public bool ShowMatrix => IsMatrix && !NoPrograms;
+    /// <summary>程序库空的时候列表里的那句话。</summary>
+    [ObservableProperty] private string _libEmptyText = "没有符合条件的程序";
+
+    public ICommand NewFromTemplateCommand { get; }
+    public ICommand NewBlankCommand { get; }
+    /// <summary>程序库一行的右键菜单：复制为新程序 / 存为模板 / 删除程序（先选中那一行）。</summary>
+    public ICommand LibDupCommand { get; }
+    public ICommand LibTemplateCommand { get; }
+    public ICommand LibDeleteCommand { get; }
 
     /// <summary>选中的程序 id（样稿 PG.sel，默认「平行合成程序 A」）。</summary>
     [ObservableProperty] private string? _selId = "A";
@@ -271,9 +297,12 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
             row.Line2 = p.Steps.Count + " 步 · 约 " + ProgramPlanner.Hm(ProgramPlanner.Plan(p.Steps).Total) + " · " + MatrixPlan.ModelLabelOf(p.Model)
                 + (p.Draft && (used > 0 || iss > 0) ? " · 草稿" : "") + (IsDirty(p.Id) ? " · 未保存" : "");
             row.Line3 = PcProgram.ModText(p.Modified, now) + " · " + p.By;
+            row.DeleteReason = used > 0 ? "运行中的程序不能删除" : null;
         }
         LibCount = list.Count + " 个";
         LibEmpty = list.Count == 0;
+        NoPrograms = Store.Programs.Count == 0;
+        LibEmptyText = NoPrograms ? "还没有程序" : "没有符合条件的程序";
     }
 
     // ———————————————————— 刷新 ————————————————————
@@ -306,14 +335,16 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         _save.Reason = p is null ? "先选一个程序" : run > 0 ? "运行中的程序不能直接保存 · 先复制为新程序" : !IsDirty(p.Id) && !p.Migrated ? "没有未保存的修改" : null;
         _save.Tip = "保存修改";
         _dup.Reason = p is null ? "先选一个程序" : null;
+        _tpl.Reason = p is null ? "先选一个程序" : null;
         _exp.Reason = p is null ? "先选一个程序" : null;
         string ctl = d.Actions.GuardText(GuardKind.Control);
         _chk1.Reason = ctl.Length > 0 ? ctl : null;
-        _run1.Reason = One.RunReason;
+        _run1.Reason = p is null ? NoProgramReason : One.RunReason;
         _run1.Tip = One.RunTip;
         _stop1.Reason = One.StopReason;
-        _chkMx.Reason = null;
-        _runMx.Reason = Mx.RunReason;
+        if (p is null) _chk1.Reason = NoProgramReason;
+        _chkMx.Reason = p is null ? NoProgramReason : null;
+        _runMx.Reason = p is null ? NoProgramReason : Mx.RunReason;
         _runMx.Tip = Mx.RunTip;
         _impCsv.Reason = Mx.HasPlan ? null : "先选一个模板";
         _expCsv.Reason = Mx.HasPlan ? null : "先选一个模板";
@@ -323,21 +354,65 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
 
     // ———————————————————— 程序：新建 / 保存 / 复制 / 导入 / 导出 ————————————————————
 
-    private void NewProgram()
+    private const string NoProgramReason = "还没有程序 · 先新建一个";
+
+    /// <summary>打开「新建程序」窗口（<paramref name="pick"/> = 预选项：blank / 模板 id；不给 = 第一个内置模板）。</summary>
+    public void OpenNew(string? pick = null) => _shell.OpenDialog(NewProgramDialogVm.DialogName, pick);
+
+    private void OpenSaveTemplate()
     {
-        if (Dev is not { } d) return;
-        // 新程序 = 空程序：只有固定在最后的「结束」（用户 2026-11-19：新建应该是空的，不要带模板的步骤）；模板在程序库里另有（加氢筛选 / 只做气密 / 惰性气氛加热）
-        var p = new PcProgram { Id = Store.NewId("N"), Name = "未命名程序", Model = d.Model.Key };
-        p.Steps.Add(ProgramTemplates.End());
-        p.Modified = _shell.Fleet.Now;
-        p.By = "本机";
-        p.Draft = true;
+        if (Sel is null) return;
+        _shell.OpenDialog(SaveTemplateDialogVm.DialogName);
+    }
+
+    private void OpenDelete()
+    {
+        if (Sel is not { } p) return;
+        if (UsedBy(p.Id).Count > 0) { _shell.Toast("运行中的程序不能删除", ToastKind.Warn); return; }
+        _shell.OpenDialog(DeleteProgramDialogVm.DialogName);
+    }
+
+    /// <summary>
+    /// 新建一个程序放到程序库最前（草稿、未保存）并选中、切到单路程序。<paramref name="template"/> = null：空白程序 —— 只有固定在最后的「结束」
+    /// （用户 2026-11-19：新建应该是空的）；否则把模板的步骤复制过来（之后改程序不影响模板）。型号 = 当前设备的型号。
+    /// </summary>
+    public PcProgram? CreateProgram(PcTemplate? template, string name)
+    {
+        if (Dev is not { } d) return null;
+        string id = Store.NewId("N");
+        PcProgram p;
+        if (template is null)
+        {
+            p = new PcProgram { Id = id, Name = name, Model = d.Model.Key, Modified = _shell.Fleet.Now, By = "本机", Draft = true };
+            p.Steps.Add(ProgramTemplates.End());
+        }
+        else p = template.Instantiate(id, name, d.Model.Key, _shell.Fleet.Now);
         Store.Programs.Insert(0, p);
         _dirty.Add(p.Id);
         SelId = p.Id;
         One.StepIndex = 0;
         if (IsMatrix) SetMode("one");
-        _shell.Toast("已新建空程序 · 用「添加步骤」加入步骤；右键删除，按住上下拖动排序", ToastKind.Info);
+        _shell.Toast(template is null
+            ? "已新建空程序 · 用「添加步骤」加入步骤；右键删除，按住上下拖动排序"
+            : "已用模板「" + template.Name + "」新建「" + p.Name + "」（" + p.Steps.Count + " 步）· 检查参数后保存", ToastKind.Info);
+        Refresh(_shell.Fleet);
+        return p;
+    }
+
+    /// <summary>从程序库删掉一个程序并写盘（确认之后；正在运行的不删）。删完选同型号的下一个。</summary>
+    public void DeleteProgram(string id)
+    {
+        if (Store.Find(id) is not { } p || UsedBy(id).Count > 0) return;
+        int at = Store.Programs.IndexOf(p);
+        Store.Programs.Remove(p);
+        _dirty.Remove(id);
+        if (SelId == id)
+        {
+            SelId = (Store.Programs.Skip(at).FirstOrDefault(x => x.Model == p.Model) ?? Store.Programs.LastOrDefault(x => x.Model == p.Model) ?? Store.Programs.FirstOrDefault())?.Id;
+            One.StepIndex = 0;
+        }
+        if (Store.Save() is { } err) _shell.Toast(err, ToastKind.Err);
+        else _shell.Toast("已删除程序「" + p.Name + "」", ToastKind.Info);
         Refresh(_shell.Fleet);
     }
 
@@ -436,7 +511,7 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
 
     /// <summary>
     /// 像新打开的页面（截图前）：回到默认模式（条件矩阵）、默认程序（A，进矩阵时换 H1）、第 3 步、下发面板只选 RV5、溶液体积 5.0；矩阵按模板重建。
-    /// 地址参数：pgm=one|mx（模式）、pgbank=2（16 路设备看 RV9–16）、pgvol=n:（第 n 路的溶液体积清空，演示校验）、pgstep=n（单路程序选中第 n 步，截图看那一步的参数）、
+    /// 地址参数：pgempty=1（演示：程序库清空，看「还没有程序」）、pgm=one|mx（模式）、pgbank=2（16 路设备看 RV9–16）、pgvol=n:（第 n 路的溶液体积清空，演示校验）、pgstep=n（单路程序选中第 n 步，截图看那一步的参数）、
     /// pgp=id（选这个程序，例如 H1 加氢筛选、OX 旧格式转换来的）、pgset=键:值,…（改选中那一步的参数，截图看 visibleWhen：例如 until:tempBelow、cycles:0）。
     /// </summary>
     /// <summary>
@@ -468,6 +543,8 @@ public sealed partial class ProgramPageVm : PageVm, Records.IRedoTarget
         _inited = false;
         _dirty.Clear();
         Store.ResetDemo();
+        Templates.ResetDemo();
+        if (x("pgempty") is "1" && _shell.Fleet.IsDemo) Store.Programs.Clear();   // 截图：新装的软件、程序库是空的
         SelId = "A";
         LibQuery = "";
         LibScope = "cur";
@@ -509,6 +586,9 @@ public sealed partial class LibItemVm : ObservableObject
     [ObservableProperty] [NotifyPropertyChangedFor(nameof(TagRun), nameof(TagWarn))] private string _tagKind = "";
     [ObservableProperty] private string _line2 = "";
     [ObservableProperty] private string _line3 = "";
+    /// <summary>右键「删除程序」不能做的原因（运行中）；null = 能删。</summary>
+    [ObservableProperty] [NotifyPropertyChangedFor(nameof(CanDelete))] private string? _deleteReason;
+    public bool CanDelete => DeleteReason is null;
     public bool HasTag => TagText.Length > 0;
     public bool TagRun => TagKind == "run";
     public bool TagWarn => TagKind == "warn";

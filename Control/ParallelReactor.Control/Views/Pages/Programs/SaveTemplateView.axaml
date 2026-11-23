@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.SaveTemplateView"
+             x:DataType="pg:SaveTemplateDialogVm">
+  <!-- 存为模板（设计稿 tpl-design A4）：标签列 76；模板名称（出错红边 + 下面红字）、说明（两行高，可以空）、适用型号（只读，跟随程序）、一条中性说明。 -->
+  <UserControl.Styles>
+    <Style Selector="TextBlock.lb">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="TextBox.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+    <Style Selector="TextBox.err:pointerover, TextBox.err:focus-within">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="76,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" Margin="2,4,2,2">
+    <TextBlock Classes="lb" Text="模板名称" VerticalAlignment="Center" />
+    <TextBox Grid.Column="1" Theme="{StaticResource PrInput}" Text="{Binding TplName}" Classes.err="{Binding HasError}" MaxLength="60" AutomationProperties.Name="模板名称" />
+    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Error}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" Margin="0,5,0,0"
+               IsVisible="{Binding HasError}" />
+    <TextBlock Grid.Row="2" Classes="lb" Text="说明" VerticalAlignment="Top" Margin="0,19,0,0" />
+    <TextBox Grid.Row="2" Grid.Column="1" Theme="{StaticResource PrInput}" Text="{Binding Note}" Height="62" Padding="9,7" VerticalContentAlignment="Top" TextWrapping="Wrap"
+             AcceptsReturn="False" MaxLength="120" Watermark="{Binding NoteHint}" Margin="0,12,0,0" AutomationProperties.Name="说明" />
+    <TextBlock Grid.Row="3" Classes="lb" Text="适用型号" VerticalAlignment="Center" Margin="0,14,0,0" />
+    <StackPanel Grid.Row="3" Grid.Column="1" Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+      <TextBlock Classes="num" Text="{Binding ModelText}" FontSize="{StaticResource FsCell}" Foreground="{StaticResource T1Brush}" VerticalAlignment="Center" />
+      <TextBlock Text="跟随这个程序" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" VerticalAlignment="Center" />
+    </StackPanel>
+    <pr:Note Grid.Row="4" Grid.ColumnSpan="2" Margin="0,16,0,0">
+      <TextBlock Text="{Binding Explain}" TextWrapping="Wrap" LineHeight="20" />
+    </pr:Note>
+  </Grid>
+</UserControl>

@@ -1,0 +1,230 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:c="using:ParallelReactor.Control.Controls"
+             xmlns:pr="using:ParallelReactor.Control.Controls.Pr"
+             xmlns:b="using:ParallelReactor.Control.Behaviors"
+             xmlns:pg="using:ParallelReactor.Control.Pages.Programs"
+             x:Class="ParallelReactor.Control.Views.Pages.Programs.NewProgramView"
+             x:DataType="pg:NewProgramDialogVm">
+  <!-- 新建程序（设计稿 research/fusion-port/tpl-design 方向 A）：左 392 选「空白程序」或模板（卡片：line-soft 边、圆角 4、白底；选中 a 边 + a-tint 底 + 左 3 px 品牌蓝 + ✓），
+       右边预览（标题 17/600、说明、4 个小标签、步骤表：行高 35），最下面一句说明。我的模板在标题右边「改名」「删除」（就地改名 / 就地确认）。
+       整块贴着对话框的边（NewProgramDialogVm.BodyPadding = 0），高 560，左右各自滚动。 -->
+  <UserControl.Resources>
+    <ControlTheme x:Key="TplCard" TargetType="Button">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="Padding" Value="11,9" />
+      <Setter Property="Margin" Value="0,0,0,6" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FocusAdorner" Value="{x:Null}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Panel>
+            <Border Name="PART_Box" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border Name="PART_Bar" Width="3" HorizontalAlignment="Left" Background="{StaticResource ABrush}" CornerRadius="4,0,0,4" IsVisible="False" />
+            <ContentPresenter Content="{TemplateBinding Content}" Padding="{TemplateBinding Padding}" />
+          </Panel>
+        </ControlTemplate>
+      </Setter>
+      <Style Selector="^:pointerover">
+        <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+      </Style>
+      <Style Selector="^:focus-visible">
+        <Setter Property="BorderBrush" Value="{StaticResource FocusBrush}" />
+      </Style>
+      <Style Selector="^.on">
+        <Setter Property="BorderBrush" Value="{StaticResource ABrush}" />
+        <Setter Property="Background" Value="{StaticResource ATintBrush}" />
+      </Style>
+      <Style Selector="^.on /template/ Border#PART_Bar">
+        <Setter Property="IsVisible" Value="True" />
+      </Style>
+    </ControlTheme>
+    <DataTemplate x:Key="TplItem" x:DataType="pg:TplItemVm">
+      <Button Theme="{StaticResource TplCard}" Classes.on="{Binding IsSelected}" Command="{Binding PickCommand}" AutomationProperties.Name="{Binding Name}">
+        <DockPanel>
+          <Border DockPanel.Dock="Left" Classes="gy" Classes.on="{Binding IsSelected}" VerticalAlignment="Top" Margin="0,1,11,0">
+            <c:IconView Icon="{Binding Icon}" Size="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <c:IconView DockPanel.Dock="Right" Icon="check" Size="15" Foreground="{StaticResource ABrush}" VerticalAlignment="Top" Margin="8,3,0,0" IsVisible="{Binding IsSelected}" />
+          <StackPanel Spacing="1">
+            <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsCell}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="20" TextTrimming="CharacterEllipsis" />
+            <TextBlock Classes="num" Text="{Binding Sub}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="18" TextTrimming="CharacterEllipsis" />
+          </StackPanel>
+        </DockPanel>
+      </Button>
+    </DataTemplate>
+  </UserControl.Resources>
+  <UserControl.Styles>
+    <StyleInclude Source="avares://ParallelReactor.Control/Views/Pages/Programs/ProgramStyles.axaml" />
+    <Style Selector="Border.gy">
+      <Setter Property="Width" Value="30" />
+      <Setter Property="Height" Value="30" />
+      <Setter Property="CornerRadius" Value="{StaticResource Radius}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineSoftBrush}" />
+      <Setter Property="Background" Value="{StaticResource BgSunkenBrush}" />
+    </Style>
+    <Style Selector="Border.gy c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+    </Style>
+    <Style Selector="Border.gy.on">
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource ALineBrush}" />
+    </Style>
+    <Style Selector="Border.gy.on c|IconView">
+      <Setter Property="Foreground" Value="{StaticResource ABrush}" />
+    </Style>
+    <Style Selector="TextBlock.gl">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.gl.b">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{StaticResource T2Brush}" />
+    </Style>
+    <Style Selector="Border.srow">
+      <Setter Property="Height" Value="35" />
+      <Setter Property="Padding" Value="10,0,12,0" />
+      <Setter Property="BorderBrush" Value="{StaticResource LineFaintBrush}" />
+      <Setter Property="BorderThickness" Value="0,0,0,1" />
+    </Style>
+    <Style Selector="Border.sno">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="{StaticResource Line2Brush}" />
+      <Setter Property="Background" Value="{StaticResource BgCardBrush}" />
+    </Style>
+    <Style Selector="Border.sty">
+      <Setter Property="Width" Value="70" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="CornerRadius" Value="{StaticResource RadiusS}" />
+      <Setter Property="Background" Value="{StaticResource BgSideBrush}" />
+    </Style>
+    <Style Selector="TextBlock.skv">
+      <Setter Property="FontSize" Value="{StaticResource FsBase}" />
+      <Setter Property="Foreground" Value="{StaticResource T3Brush}" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBox.err">
+      <Setter Property="BorderBrush" Value="{StaticResource RBrush}" />
+    </Style>
+  </UserControl.Styles>
+  <Grid ColumnDefinitions="392,*" Height="560">
+    <!-- 左：空白 / 模板 -->
+    <Border Background="{StaticResource BgHeadBrush}" BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="0,0,1,0">
+      <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+        <StackPanel Margin="14,14,14,10">
+          <ContentControl Content="{Binding Blank}" ContentTemplate="{StaticResource TplItem}" />
+          <DockPanel Margin="4,8,4,6">
+            <TextBlock DockPanel.Dock="Right" Classes="gl" Text="随软件提供" />
+            <TextBlock DockPanel.Dock="Left" Classes="gl b" Text="内置模板" Margin="0,0,6,0" />
+            <TextBlock Classes="gl num" Text="{Binding BuiltInCount}" />
+          </DockPanel>
+          <ItemsControl ItemsSource="{Binding BuiltIns}" ItemTemplate="{StaticResource TplItem}" />
+          <DockPanel Margin="4,8,4,6">
+            <TextBlock DockPanel.Dock="Right" Classes="gl" Text="存在本机" />
+            <TextBlock DockPanel.Dock="Left" Classes="gl b" Text="我的模板" Margin="0,0,6,0" />
+            <TextBlock Classes="gl num" Text="{Binding MineCount}" />
+          </DockPanel>
+          <ItemsControl ItemsSource="{Binding Mine}" ItemTemplate="{StaticResource TplItem}" />
+          <TextBlock Classes="gl" Text="还没有自己的模板 · 选中一个程序后点工具条的「存为模板」" TextWrapping="Wrap" LineHeight="19" Margin="4,2,4,0" IsVisible="{Binding MineEmpty}" />
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+    <!-- 右：预览 -->
+    <DockPanel Grid.Column="1" Margin="22,18,22,14">
+      <StackPanel DockPanel.Dock="Top">
+        <!-- 标题 + 我的模板的「改名」「删除」 -->
+        <DockPanel MinHeight="30" IsVisible="{Binding ShowTitle}">
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding ShowManage}">
+            <Button b:Pr.Icon="edit" Content="改名" Command="{Binding StartRenameCommand}" />
+            <Button b:Pr.Icon="trash" Content="删除" Command="{Binding StartDeleteCommand}" />
+          </StackPanel>
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" IsVisible="{Binding IsDeleting}">
+            <TextBlock Text="删除这个模板？" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" VerticalAlignment="Center" Margin="0,0,4,0" />
+            <Button Theme="{StaticResource PrDanger}" b:Pr.Icon="trash" Content="删除" Command="{Binding ConfirmDeleteCommand}" />
+            <Button Content="不删" Command="{Binding CancelDeleteCommand}" />
+          </StackPanel>
+          <TextBlock Text="{Binding PvTitle}" FontSize="17" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" LineHeight="24" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+        <StackPanel IsVisible="{Binding IsRenaming}">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="6" Margin="8,0,0,0">
+              <Button Theme="{StaticResource PrPrimary}" b:Pr.Icon="check" Content="确定" Command="{Binding CommitRenameCommand}" />
+              <Button Content="取消" Command="{Binding CancelRenameCommand}" />
+            </StackPanel>
+            <TextBox Theme="{StaticResource PrInput}" Name="RenameBox" Text="{Binding RenameText}" Classes.err="{Binding HasRenameError}" MaxLength="60" AutomationProperties.Name="模板名称" />
+          </DockPanel>
+          <TextBlock Text="{Binding RenameError}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource RInkBrush}" Margin="0,5,0,0" IsVisible="{Binding HasRenameError}" />
+        </StackPanel>
+        <TextBlock Text="{Binding PvNote}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" LineHeight="20" TextWrapping="Wrap" Margin="0,4,0,0" IsVisible="{Binding HasNote}" />
+        <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,12" IsVisible="{Binding IsTemplate}">
+          <Border Classes="tag" Background="{StaticResource ATintBrush}" BorderBrush="{StaticResource ALineBrush}"><TextBlock Text="{Binding KindText}" Foreground="{StaticResource ABrush}" /></Border>
+          <Border Classes="tag"><TextBlock Classes="num" Text="{Binding StepsText}" /></Border>
+          <Border Classes="tag"><TextBlock Classes="num" Text="{Binding DurText}" /></Border>
+          <Border Classes="tag"><TextBlock Classes="num" Text="{Binding ModelText}" /></Border>
+        </StackPanel>
+      </StackPanel>
+      <!-- 最下面的说明 -->
+      <DockPanel DockPanel.Dock="Bottom" Margin="0,10,0,0" IsVisible="{Binding IsTemplate}">
+        <c:IconView DockPanel.Dock="Left" Icon="info" Size="14" Foreground="{StaticResource T4Brush}" VerticalAlignment="Top" Margin="0,2,7,0" />
+        <StackPanel>
+          <TextBlock Classes="num" Text="{Binding ByText}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="18" TextTrimming="CharacterEllipsis" IsVisible="{Binding HasBy}" />
+          <TextBlock Text="创建出来的是你自己的程序，步骤和参数都可以改；模板本身不会变。" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" LineHeight="18" TextWrapping="Wrap" />
+        </StackPanel>
+      </DockPanel>
+      <Panel>
+        <!-- 模板：步骤表 -->
+        <Border BorderBrush="{StaticResource LineSoftBrush}" BorderThickness="1" CornerRadius="{StaticResource Radius}" VerticalAlignment="Top" ClipToBounds="True" IsVisible="{Binding IsTemplate}">
+          <ScrollViewer Theme="{StaticResource PrScrollViewer}" HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl ItemsSource="{Binding Steps}" Margin="0,0,0,-1">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="pg:TplStepVm">
+                  <Border Classes="srow">
+                    <DockPanel>
+                      <TextBlock DockPanel.Dock="Right" Classes="skv num" Text="{Binding Dur}" Margin="10,0,0,0" />
+                      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" ClipToBounds="True">
+                        <Border Classes="sno"><TextBlock Classes="num" Text="{Binding No}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        <Border Classes="sty" Margin="9,0,0,0"><TextBlock Text="{Binding TypeLabel}" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T2Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        <TextBlock Text="{Binding Name}" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" Width="92" Margin="11,0,0,0"
+                                   TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        <TextBlock Classes="skv num">
+                          <Run Text="{Binding K1}" /><Run Text=" " /><Run Text="{Binding V1}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                        </TextBlock>
+                        <TextBlock Classes="skv num" Margin="14,0,0,0">
+                          <Run Text="{Binding K2}" /><Run Text=" " /><Run Text="{Binding V2}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" />
+                        </TextBlock>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Border>
+        <!-- 空白程序 -->
+        <Panel Height="230" VerticalAlignment="Top" Margin="0,14,0,0" IsVisible="{Binding IsBlank}">
+          <Rectangle Stroke="{StaticResource Line2Brush}" StrokeThickness="1" StrokeDashArray="4,3" RadiusX="4" RadiusY="4" Fill="{StaticResource BgHeadBrush}" />
+          <StackPanel VerticalAlignment="Center" Spacing="10">
+            <Border Width="54" Height="54" CornerRadius="6" BorderThickness="1" BorderBrush="{StaticResource LineSoftBrush}" Background="{StaticResource BgCardBrush}" HorizontalAlignment="Center">
+              <c:IconView Icon="doc" Size="26" Foreground="{StaticResource T4Brush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <StackPanel Spacing="2">
+              <TextBlock Text="只有固定在最后的「结束」一步" FontSize="{StaticResource FsBase}" FontWeight="SemiBold" Foreground="{StaticResource T1Brush}" HorizontalAlignment="Center" LineHeight="20" />
+              <TextBlock Text="创建后用「添加步骤」一步一步加入" FontSize="{StaticResource FsBase}" Foreground="{StaticResource T3Brush}" HorizontalAlignment="Center" LineHeight="20" />
+            </StackPanel>
+          </StackPanel>
+        </Panel>
+      </Panel>
+    </DockPanel>
+  </Grid>
+</UserControl>
