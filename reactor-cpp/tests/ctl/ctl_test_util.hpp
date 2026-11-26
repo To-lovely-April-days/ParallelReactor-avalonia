@@ -14,6 +14,9 @@
 #include "hw/hardware.hpp"
 #include "hw/mock_master.hpp"
 #include "testing.hpp"
+#include <chrono>
+#include <cstdint>
+#include <string>
 
 namespace ctltest {
 

@@ -4,6 +4,9 @@
 
 #include "core/gas_uptake.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using namespace reactor::core;
 namespace gu = reactor::core::gas_uptake;

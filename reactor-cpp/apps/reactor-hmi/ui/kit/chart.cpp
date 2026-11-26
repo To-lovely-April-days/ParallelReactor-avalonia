@@ -7,6 +7,10 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi::kit {
 

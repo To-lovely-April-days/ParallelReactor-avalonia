@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "net/http.hpp"
+#include <cstdint>
 
 namespace reactor::net {
 

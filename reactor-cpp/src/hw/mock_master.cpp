@@ -4,6 +4,10 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <cstdint>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace reactor::hw {
 

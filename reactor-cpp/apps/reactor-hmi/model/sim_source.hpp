@@ -7,6 +7,10 @@
 #include "model.hpp"
 
 #include <memory>
+#include <array>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

@@ -1,6 +1,8 @@
 #include "core/over_temp_guard.hpp"
 
 #include <cmath>
+#include <cstdint>
+#include <optional>
 
 namespace reactor::core {
 

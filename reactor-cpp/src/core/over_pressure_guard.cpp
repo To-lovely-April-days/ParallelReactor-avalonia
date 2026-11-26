@@ -1,6 +1,8 @@
 #include "core/over_pressure_guard.hpp"
 
 #include <cmath>
+#include <cstdint>
+#include <optional>
 
 namespace reactor::core {
 

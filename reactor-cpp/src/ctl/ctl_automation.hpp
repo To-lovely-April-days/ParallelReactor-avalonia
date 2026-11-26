@@ -31,6 +31,7 @@
 #include "store/data_logger.hpp"
 #include "store/program_library.hpp"
 #include "store/session.hpp"
+#include <functional>
 
 namespace reactor::ctl {
 

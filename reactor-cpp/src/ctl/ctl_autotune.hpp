@@ -16,6 +16,7 @@
 
 #include "ctl/ctl_core.hpp"
 #include "ctl/ctl_op_result.hpp"
+#include <cstdint>
 
 namespace reactor::ctl {
 

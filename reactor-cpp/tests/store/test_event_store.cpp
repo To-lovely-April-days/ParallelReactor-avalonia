@@ -7,6 +7,11 @@
 #include "store/event_store.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace reactor::store;
 using store_test::contains;

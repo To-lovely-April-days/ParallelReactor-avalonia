@@ -5,6 +5,9 @@
 #include <limits>
 
 #include "core/num_format.hpp"
+#include <cstdint>
+#include <string>
+#include <utility>
 
 namespace reactor::core {
 

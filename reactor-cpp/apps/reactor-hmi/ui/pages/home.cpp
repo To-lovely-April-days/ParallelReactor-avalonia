@@ -9,6 +9,10 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi {
 

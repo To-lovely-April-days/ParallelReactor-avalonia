@@ -1,6 +1,9 @@
 #include "store/telemetry_csv.hpp"
 
 #include "store/csv.hpp"
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::store::telemetry_csv {
 

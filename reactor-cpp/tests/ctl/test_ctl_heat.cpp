@@ -2,6 +2,10 @@
 #include <cmath>
 
 #include "ctl_test_util.hpp"
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using reactor::core::ReactorState;

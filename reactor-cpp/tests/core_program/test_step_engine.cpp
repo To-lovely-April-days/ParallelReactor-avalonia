@@ -9,6 +9,11 @@
 #include "core/program/step_fields.hpp"
 #include "core/valve_frame.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace reactor::core;
 using namespace reactor::core::program;

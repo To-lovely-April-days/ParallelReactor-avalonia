@@ -7,6 +7,13 @@
 #include <cmath>
 #include <cstdio>
 #include <map>
+#include <array>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi {
 

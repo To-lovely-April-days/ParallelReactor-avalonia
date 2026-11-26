@@ -7,6 +7,11 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

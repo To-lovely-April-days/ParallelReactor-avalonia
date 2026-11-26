@@ -1,6 +1,9 @@
 #include "actions.hpp"
 
 #include <cstdio>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

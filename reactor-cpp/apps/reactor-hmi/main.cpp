@@ -43,6 +43,8 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <cstdint>
+#include <utility>
 
 using namespace reactor::hmi;
 

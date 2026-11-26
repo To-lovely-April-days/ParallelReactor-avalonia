@@ -1,5 +1,8 @@
 // 共用气路（第二阶段）：多程序排队先到先得、等待上限 → 步骤故障、稳压短租约脉冲与其他程序交替使用气路。
 #include "ctl_phase2_util.hpp"
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using prog::ProgramRunPhase;

@@ -1,6 +1,11 @@
 // 程序引擎（第二阶段）：9 种步骤端到端、PUT / 复制 / 下发守卫、中止路径与结束原因、快照新字段。
 // 模拟硬件 + 可控时钟 + 简单的气路物理（ctl_phase2_util.hpp）。
 #include "ctl_phase2_util.hpp"
+#include <algorithm>
+#include <cstdio>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using prog::ProgramRunPhase;

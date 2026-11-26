@@ -6,6 +6,10 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

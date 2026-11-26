@@ -1,6 +1,8 @@
 #include "core/program/step_type.hpp"
 
 #include <cctype>
+#include <optional>
+#include <string>
 
 namespace reactor::core::program {
 

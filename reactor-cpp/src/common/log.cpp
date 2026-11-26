@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <ctime>
 #include <mutex>
+#include <cstdarg>
 
 namespace reactor::log {
 

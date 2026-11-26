@@ -8,6 +8,12 @@
 #include "common/clock.hpp"
 #include "store/csv.hpp"
 #include "store/store_util.hpp"
+#include <array>
+#include <cstdint>
+#include <iterator>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::store {
 

@@ -18,6 +18,7 @@
 #include "ctl/ctl_io.hpp"
 #include "hw/comm_stats.hpp"
 #include "store/settings.hpp"
+#include <vector>
 
 namespace reactor::ctl {
 

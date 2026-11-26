@@ -1,6 +1,10 @@
 #include "ctl/ctl_stir_service.hpp"
 
 #include <cstdio>
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

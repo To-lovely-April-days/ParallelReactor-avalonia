@@ -4,6 +4,8 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cstdint>
+#include <string>
 
 namespace reactor {
 

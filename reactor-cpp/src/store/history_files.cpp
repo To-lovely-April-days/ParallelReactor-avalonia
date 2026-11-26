@@ -12,6 +12,11 @@
 
 #include "store/csv.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::store {
 

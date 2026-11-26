@@ -2,6 +2,10 @@
 #include "core/program/program_run_guard.hpp"
 #include "core/program/program_run_info.hpp"
 #include "testing.hpp"
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace reactor::core;
 using namespace reactor::core::program;

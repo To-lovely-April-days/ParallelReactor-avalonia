@@ -2,6 +2,10 @@
 
 #include "store/event_store.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <iterator>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

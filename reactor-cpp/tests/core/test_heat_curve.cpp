@@ -7,6 +7,8 @@
 #include "core/heat_curve_segments.hpp"
 #include "core/temp_profile.hpp"
 #include "testing.hpp"
+#include <cmath>
+#include <cstdint>
 
 using namespace reactor::core;
 

@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <random>
 #include <vector>
+#include <cstdint>
+#include <string>
 
 namespace reactor::cmd {
 

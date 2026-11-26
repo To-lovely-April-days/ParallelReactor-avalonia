@@ -9,6 +9,11 @@
 #include <cstdio>
 #include <ctime>
 #include <limits>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

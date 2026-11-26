@@ -2,6 +2,10 @@
 #include "core/program/program_limits.hpp"
 #include "core/program/step_fields.hpp"
 #include "testing.hpp"
+#include <cmath>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace reactor::core;
 using namespace reactor::core::program;

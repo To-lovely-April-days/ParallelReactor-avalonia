@@ -4,6 +4,7 @@
 #include "model.hpp"
 
 #include <string>
+#include <cstdint>
 
 namespace reactor::hmi::model {
 

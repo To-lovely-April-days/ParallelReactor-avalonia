@@ -1,6 +1,11 @@
 #include "ctl/ctl_automation.hpp"
 
 #include "common/log.hpp"
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

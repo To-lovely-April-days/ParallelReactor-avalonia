@@ -4,6 +4,10 @@
 // 以及遥测行列数、快照发布与订阅。
 #include "ctl_test_util.hpp"
 #include "store/telemetry_csv.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using reactor::ctl::ojson;

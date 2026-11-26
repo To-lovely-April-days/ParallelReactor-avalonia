@@ -7,6 +7,9 @@
 #include <array>
 #include <functional>
 #include <string>
+#include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace reactor::hmi {
 

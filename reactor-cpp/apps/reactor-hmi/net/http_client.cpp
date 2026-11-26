@@ -15,6 +15,8 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <cstdint>
+#include <string>
 
 namespace reactor::hmi::net {
 

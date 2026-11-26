@@ -9,6 +9,14 @@
 #include "core/program/step_fields.hpp"
 #include "store/history_files.hpp"
 #include "store/store_util.hpp"
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <map>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::api {
 

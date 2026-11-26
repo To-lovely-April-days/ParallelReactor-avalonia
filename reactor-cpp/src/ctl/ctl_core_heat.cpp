@@ -7,6 +7,11 @@
 
 #include "core/num_format.hpp"
 #include "ctl/ctl_core.hpp"
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

@@ -6,6 +6,7 @@
 
 #include "core/volume_calib.hpp"
 #include "testing.hpp"
+#include <optional>
 
 using namespace reactor::core;
 namespace vc = reactor::core::volume_calib;

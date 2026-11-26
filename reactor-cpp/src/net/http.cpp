@@ -10,6 +10,14 @@
 #include <ctime>
 
 #include "net/api_errors.hpp"
+#include <algorithm>
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::net {
 

@@ -3,6 +3,9 @@
 #include <thread>
 
 #include "ctl_test_util.hpp"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using reactor::core::ReactorState;

@@ -19,6 +19,9 @@
 #include "hw/rtu_master.hpp"
 #include "hw/temp_controller.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <memory>
 
 using namespace reactor::hw;
 

@@ -1,6 +1,8 @@
 #include "core/program/program_run_guard.hpp"
 
 #include "core/program/program_run_info.hpp"
+#include <optional>
+#include <string>
 
 namespace reactor::core::program {
 

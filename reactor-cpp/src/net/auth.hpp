@@ -9,6 +9,8 @@
 #include <unordered_map>
 
 #include "net/api_config.hpp"
+#include <utility>
+#include <vector>
 
 namespace reactor::net {
 

@@ -2,6 +2,10 @@
 
 #include <algorithm>
 #include <cctype>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace reactor::net {
 

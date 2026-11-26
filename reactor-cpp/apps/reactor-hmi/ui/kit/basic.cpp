@@ -3,6 +3,10 @@
 #include "widgets.hpp"
 
 #include <cstring>
+#include <algorithm>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::kit {
 

@@ -1,4 +1,5 @@
 #include "core/alarm_lifecycle.hpp"
+#include <string>
 
 namespace reactor::core::alarm_lifecycle {
 

@@ -1,6 +1,9 @@
 #include "testing.hpp"
 
 #include <cstring>
+#include <cstdio>
+#include <string>
+#include <vector>
 
 namespace testing {
 std::vector<Case>& registry() { static std::vector<Case> r; return r; }

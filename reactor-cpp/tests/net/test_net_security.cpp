@@ -18,6 +18,10 @@
 #include "net/idempotency.hpp"
 #include "net/rate_limit.hpp"
 #include "testing.hpp"
+#include <cctype>
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using namespace reactor::net;
 

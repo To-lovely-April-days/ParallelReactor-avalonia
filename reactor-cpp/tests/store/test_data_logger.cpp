@@ -5,6 +5,9 @@
 #include "store/data_logger.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using namespace reactor::store;
 using store_test::at8;

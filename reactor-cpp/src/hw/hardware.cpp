@@ -6,6 +6,10 @@
 #include "common/log.hpp"
 #include "hw/rtu_master.hpp"
 #include "hw/tracing_master.hpp"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <vector>
 
 namespace reactor::hw {
 

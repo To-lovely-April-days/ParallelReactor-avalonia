@@ -8,6 +8,8 @@
 #include "core/program/text_format.hpp"
 #include "core/temp_profile.hpp"
 #include "ctl/ctl_program_engine.hpp"
+#include <cstdint>
+#include <functional>
 
 namespace reactor::ctl {
 

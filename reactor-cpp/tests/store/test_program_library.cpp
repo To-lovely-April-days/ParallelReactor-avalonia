@@ -2,6 +2,9 @@
 #include "store/program_library.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
 
 using namespace reactor::store;
 using store_test::contains;

@@ -6,6 +6,11 @@
 
 #include <memory>
 #include <mutex>
+#include <array>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 

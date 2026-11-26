@@ -1,4 +1,6 @@
 #include "core/reactor_state.hpp"
+#include <optional>
+#include <string>
 
 namespace reactor::core {
 

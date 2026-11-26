@@ -18,6 +18,10 @@
 
 #include "common/clock.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 extern "C" char** environ;
 

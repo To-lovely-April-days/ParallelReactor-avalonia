@@ -4,6 +4,14 @@
 #include <cmath>
 
 #include "core/op_codes.hpp"
+#include <cctype>
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::api {
 

@@ -7,6 +7,9 @@
 #include <poll.h>
 #include <termios.h>
 #include <unistd.h>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hw {
 

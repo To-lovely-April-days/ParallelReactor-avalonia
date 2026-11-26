@@ -3,6 +3,8 @@
 
 #include "core/over_pressure_guard.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
 
 using namespace reactor::core;
 

@@ -3,6 +3,7 @@
 #include "api/api_routes.hpp"
 #include "cmd/cmd_util.hpp"
 #include "net/api_headers.hpp"
+#include <string>
 
 namespace reactor::api {
 

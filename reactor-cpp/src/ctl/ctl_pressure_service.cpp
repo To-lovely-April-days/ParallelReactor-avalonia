@@ -1,6 +1,7 @@
 #include "ctl/ctl_pressure_service.hpp"
 
 #include "hw/analog_module.hpp"
+#include <functional>
 
 namespace reactor::ctl {
 

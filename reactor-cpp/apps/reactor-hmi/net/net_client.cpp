@@ -11,6 +11,12 @@
 #include <fcntl.h>
 #include <poll.h>
 #include <unistd.h>
+#include <atomic>
+#include <cstdint>
+#include <deque>
+#include <mutex>
+#include <string>
+#include <thread>
 
 namespace reactor::hmi::net {
 

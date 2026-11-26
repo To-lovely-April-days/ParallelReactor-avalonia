@@ -6,6 +6,11 @@
 
 #include "core/program/step_fields.hpp"
 #include "core/valve_frame.hpp"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core::program {
 

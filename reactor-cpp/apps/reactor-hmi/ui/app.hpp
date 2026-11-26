@@ -8,6 +8,8 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <cstdint>
+#include <functional>
 
 namespace reactor::hmi {
 

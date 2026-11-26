@@ -6,6 +6,10 @@
 #include "api/api_runs.hpp"
 #include "api/api_service.hpp"
 #include "api/api_util.hpp"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
 
 namespace reactor::api {
 

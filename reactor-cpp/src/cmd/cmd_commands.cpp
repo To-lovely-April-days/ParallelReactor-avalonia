@@ -12,6 +12,12 @@
 #include "core/program/program_step_format.hpp"
 #include "core/units.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::cmd {
 

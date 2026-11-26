@@ -8,6 +8,9 @@
 #include <stdexcept>
 
 #include "nlohmann/json.hpp"
+#include <functional>
+#include <optional>
+#include <string>
 
 namespace reactor::net {
 

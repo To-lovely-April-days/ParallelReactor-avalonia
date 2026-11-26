@@ -5,6 +5,10 @@
 #include <cmath>
 #include <cstdio>
 #include <limits>
+#include <cstdint>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi {
 

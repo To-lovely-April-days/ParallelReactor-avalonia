@@ -2,6 +2,9 @@
 #include "core/chan_name.hpp"
 
 #include <algorithm>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core {
 

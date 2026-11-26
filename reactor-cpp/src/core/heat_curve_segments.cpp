@@ -1,6 +1,7 @@
 #include "core/heat_curve_segments.hpp"
 
 #include <cmath>
+#include <vector>
 
 namespace reactor::core {
 

@@ -20,6 +20,9 @@
 #include "store/event_store.hpp"
 #include "store/program_library.hpp"
 #include "store/session.hpp"
+#include <functional>
+#include <map>
+#include <optional>
 
 namespace apitest {
 

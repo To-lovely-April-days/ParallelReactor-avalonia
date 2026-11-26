@@ -4,6 +4,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi {
 

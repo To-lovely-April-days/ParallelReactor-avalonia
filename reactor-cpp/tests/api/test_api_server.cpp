@@ -5,6 +5,11 @@
 #include "common/clock.hpp"
 #include "store/history_files.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace apitest;
 

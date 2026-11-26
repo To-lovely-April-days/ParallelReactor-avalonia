@@ -1,6 +1,7 @@
 #include "ctl/ctl_clock.hpp"
 
 #include "common/clock.hpp"
+#include <cstdint>
 
 namespace reactor::ctl {
 

@@ -7,6 +7,8 @@
 #include "hw/stepper_driver.hpp"
 #include "hw/temp_controller.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <vector>
 
 using namespace reactor::hw;
 

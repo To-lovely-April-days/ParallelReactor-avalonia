@@ -3,6 +3,12 @@
 #include <cctype>
 
 #include "net/crypto.hpp"
+#include <cstdint>
+#include <iterator>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::net {
 

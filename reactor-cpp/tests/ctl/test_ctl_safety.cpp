@@ -1,6 +1,11 @@
 // 每周期安全判定：超温切断（触发 / 确认 / 重发 / 被重开 / 解除）、超压联锁（合并关阀帧、排空保持、中止气路）、
 // 模块掉线 / 恢复（开机 5 个周期宽限）、升温超时与压力偏离两种三级警告。
 #include "ctl_test_util.hpp"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace ctltest;
 using reactor::core::ReactorState;

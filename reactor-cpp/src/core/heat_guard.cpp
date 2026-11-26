@@ -6,6 +6,7 @@
 #include "core/num_format.hpp"
 #include "core/over_pressure_guard.hpp"
 #include "core/over_temp_guard.hpp"
+#include <optional>
 
 namespace reactor::core {
 

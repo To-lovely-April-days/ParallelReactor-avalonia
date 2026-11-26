@@ -44,6 +44,8 @@
 #include "store/session.hpp"
 #include "store/settings.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <optional>
 
 namespace {
 

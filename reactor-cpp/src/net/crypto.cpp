@@ -1,6 +1,10 @@
 #include "net/crypto.hpp"
 
 #include <cstring>
+#include <array>
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace reactor::net {
 

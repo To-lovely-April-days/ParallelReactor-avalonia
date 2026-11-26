@@ -1,6 +1,9 @@
 // C#: tests/ParallelReactor.Tests/StepMigrationTests.cs
 #include "core/program/step_migration.hpp"
 #include "testing.hpp"
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace reactor::core;
 using namespace reactor::core::program;

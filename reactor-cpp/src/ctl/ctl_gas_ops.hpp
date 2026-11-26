@@ -19,6 +19,7 @@
 #include "core/op_codes.hpp"
 #include "core/valve_frame.hpp"
 #include "ctl/ctl_core.hpp"
+#include <memory>
 
 namespace reactor::ctl {
 

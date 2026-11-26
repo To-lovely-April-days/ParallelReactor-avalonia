@@ -5,6 +5,12 @@
 
 #include <cmath>
 #include <cstdio>
+#include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::kit {
 

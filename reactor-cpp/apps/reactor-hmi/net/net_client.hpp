@@ -19,6 +19,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <cstdint>
 
 namespace reactor::hmi::net {
 

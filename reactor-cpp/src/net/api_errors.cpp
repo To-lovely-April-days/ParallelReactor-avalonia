@@ -1,4 +1,5 @@
 #include "net/api_errors.hpp"
+#include <string>
 
 namespace reactor::net {
 

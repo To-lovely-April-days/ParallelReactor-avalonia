@@ -8,6 +8,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <cstdint>
+#include <optional>
 
 namespace reactor::hmi::model {
 

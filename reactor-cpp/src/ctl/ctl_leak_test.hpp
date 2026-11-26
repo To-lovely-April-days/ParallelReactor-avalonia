@@ -22,6 +22,9 @@
 #include "store/data_logger.hpp"
 #include "store/leak_record.hpp"
 #include "store/session.hpp"
+#include <cstdint>
+#include <functional>
+#include <utility>
 
 namespace reactor::ctl {
 

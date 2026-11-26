@@ -9,6 +9,8 @@
 #include "core/op_codes.hpp"
 #include "core/value_rules.hpp"
 #include "testing.hpp"
+#include <optional>
+#include <utility>
 
 using namespace reactor::core;
 namespace vr = reactor::core::value_rules;

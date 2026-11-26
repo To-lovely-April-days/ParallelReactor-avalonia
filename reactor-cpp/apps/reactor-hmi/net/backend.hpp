@@ -24,6 +24,9 @@
 #include <mutex>
 #include <set>
 #include <string>
+#include <cstdint>
+#include <functional>
+#include <vector>
 
 namespace reactor::hmi::net {
 

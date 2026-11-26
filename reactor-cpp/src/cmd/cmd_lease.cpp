@@ -6,6 +6,13 @@
 #include "core/num_format.hpp"
 #include "core/op_codes.hpp"
 #include "net/crypto.hpp"
+#include <cstdint>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace reactor::cmd {
 

@@ -1,6 +1,8 @@
 #include "cmd/cmd_arbiter.hpp"
 
 #include "core/op_codes.hpp"
+#include <mutex>
+#include <string>
 
 namespace reactor::cmd {
 

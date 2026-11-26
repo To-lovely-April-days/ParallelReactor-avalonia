@@ -8,6 +8,11 @@
 #include <ctime>
 #include <cstdlib>
 #include <map>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi {
 

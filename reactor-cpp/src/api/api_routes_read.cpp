@@ -6,6 +6,11 @@
 #include "api/api_routes.hpp"
 #include "store/history_files.hpp"
 #include "store/store_util.hpp"
+#include <cctype>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::api {
 

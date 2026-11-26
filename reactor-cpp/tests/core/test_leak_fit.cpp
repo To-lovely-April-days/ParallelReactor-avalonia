@@ -8,6 +8,7 @@
 #include "core/leak_fit.hpp"
 #include "core/valve_frame.hpp"
 #include "testing.hpp"
+#include <cmath>
 
 using namespace reactor::core;
 namespace lf = reactor::core::leak_fit;

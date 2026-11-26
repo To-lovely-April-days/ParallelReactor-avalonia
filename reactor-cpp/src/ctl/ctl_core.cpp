@@ -9,6 +9,14 @@
 #include "core/num_format.hpp"
 #include "ctl/ctl_sd_notify.hpp"
 #include "store/store_util.hpp"
+#include <chrono>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

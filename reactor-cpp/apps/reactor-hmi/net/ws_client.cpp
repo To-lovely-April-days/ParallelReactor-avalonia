@@ -3,6 +3,8 @@
 #include "wire.hpp"
 
 #include <cstring>
+#include <cstdint>
+#include <string>
 
 namespace reactor::hmi::net {
 

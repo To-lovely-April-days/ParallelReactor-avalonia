@@ -7,6 +7,10 @@
 #include "core/program/program_step_format.hpp"
 #include "net/api_errors.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::api {
 

@@ -18,6 +18,7 @@
 #include "ctl/ctl_gas_ops.hpp"
 #include "ctl/ctl_op_result.hpp"
 #include "store/data_logger.hpp"
+#include <cstdint>
 
 namespace reactor::ctl {
 

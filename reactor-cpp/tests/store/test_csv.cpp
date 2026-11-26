@@ -5,6 +5,10 @@
 #include "store/csv.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace reactor::store;
 using store_test::at8;

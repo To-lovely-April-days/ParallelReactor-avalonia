@@ -14,6 +14,10 @@
 
 #include "net/http.hpp"
 #include "net/websocket.hpp"
+#include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <vector>
 
 namespace nettest {
 

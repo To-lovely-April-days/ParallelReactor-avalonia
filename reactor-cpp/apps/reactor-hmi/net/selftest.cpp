@@ -13,6 +13,13 @@
 #include <cstdio>
 #include <thread>
 #include <unistd.h>
+#include <algorithm>
+#include <array>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi::model {
 extern const char* const kSampleProgramSchema;

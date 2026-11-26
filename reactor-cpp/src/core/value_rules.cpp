@@ -5,6 +5,10 @@
 
 #include "core/num_format.hpp"
 #include "core/op_codes.hpp"
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::core::value_rules {
 

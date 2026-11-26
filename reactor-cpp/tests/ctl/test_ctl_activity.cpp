@@ -4,6 +4,16 @@
 #include "core/program/program_json.hpp"
 #include "ctl_phase2_util.hpp"
 #include "store/program_library.hpp"
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <memory>
+#include <optional>
+#include <string>
+#include <thread>
 
 using namespace ctltest;
 using prog::ProgramRunPhase;

@@ -7,6 +7,11 @@
 
 #include "core/gas_guard.hpp"
 #include "core/heat_guard.hpp"
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

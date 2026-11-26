@@ -1,4 +1,7 @@
 #include "core/leak_fit.hpp"
+#include <cmath>
+#include <utility>
+#include <vector>
 
 namespace reactor::core::leak_fit {
 

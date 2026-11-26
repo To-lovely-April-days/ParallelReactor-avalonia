@@ -9,6 +9,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <cstdint>
 
 namespace reactor::hmi::model {
 

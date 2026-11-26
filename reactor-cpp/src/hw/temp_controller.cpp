@@ -1,6 +1,9 @@
 #include "hw/temp_controller.hpp"
 
 #include <cmath>
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace reactor::hw {
 

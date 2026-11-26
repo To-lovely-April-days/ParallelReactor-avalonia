@@ -2,6 +2,8 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <string>
+#include <tuple>
 
 namespace reactor::core::program {
 

@@ -24,6 +24,14 @@
 #include "common/clock.hpp"
 #include "net/api_errors.hpp"
 #include "net/websocket.hpp"
+#include <atomic>
+#include <cstdint>
+#include <deque>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace reactor::net {
 

@@ -8,6 +8,9 @@
 #include "core/program/program_types.hpp"
 #include "core/program/schema_codes.hpp"
 #include "core/program/step_migration.hpp"
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core::program::program_json {
 

@@ -5,6 +5,10 @@
 
 #include <cctype>
 #include <cstring>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::net {
 

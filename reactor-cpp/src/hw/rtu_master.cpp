@@ -3,6 +3,9 @@
 #include <cstdio>
 
 #include "hw/modbus_rtu.hpp"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hw {
 

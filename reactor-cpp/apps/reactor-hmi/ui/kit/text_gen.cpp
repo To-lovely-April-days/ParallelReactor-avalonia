@@ -1,5 +1,6 @@
 // 生成文件（assets/text2a8.py），不要手改。
 #include "text_gen.hpp"
+#include <cstdint>
 
 namespace reactor::hmi::icons {
 

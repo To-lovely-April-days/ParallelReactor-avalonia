@@ -41,6 +41,7 @@
 #include "store/event_store.hpp"
 #include "store/program_library.hpp"
 #include "store/session.hpp"
+#include <cstdint>
 
 namespace reactor::api {
 

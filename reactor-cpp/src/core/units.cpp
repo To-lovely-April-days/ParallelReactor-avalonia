@@ -1,6 +1,7 @@
 #include "core/units.hpp"
 
 #include "core/num_format.hpp"
+#include <string>
 
 namespace reactor::core {
 

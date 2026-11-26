@@ -12,6 +12,9 @@
 #include "hw/hardware.hpp"
 #include "hw/mock_master.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <memory>
+#include <string>
 
 using namespace reactor::hw;
 

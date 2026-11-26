@@ -3,6 +3,10 @@
 #include <cstdio>
 
 #include "common/clock.hpp"
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
 
 namespace reactor::hw {
 

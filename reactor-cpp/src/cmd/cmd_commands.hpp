@@ -28,6 +28,7 @@
 #include "store/data_logger.hpp"
 #include "store/session.hpp"
 #include "store/settings.hpp"
+#include <cstdint>
 
 namespace reactor::cmd {
 

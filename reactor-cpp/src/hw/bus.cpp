@@ -5,6 +5,13 @@
 
 #include "common/clock.hpp"
 #include "common/log.hpp"
+#include <cstdint>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace reactor::hw {
 

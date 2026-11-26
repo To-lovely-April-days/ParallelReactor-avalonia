@@ -10,6 +10,11 @@
 #include "ctl/ctl_leak_test.hpp"
 #include "ctl/ctl_program_engine.hpp"
 #include "store/settings.hpp"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
 
 namespace reactor::ctl {
 

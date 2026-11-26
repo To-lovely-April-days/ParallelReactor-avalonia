@@ -5,6 +5,9 @@
 #include <memory>
 
 #include "ctl/ctl_core.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace reactor::ctl {
 

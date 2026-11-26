@@ -2,6 +2,13 @@
 #include "core/chan_name.hpp"
 
 #include <algorithm>
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace reactor::core {
 

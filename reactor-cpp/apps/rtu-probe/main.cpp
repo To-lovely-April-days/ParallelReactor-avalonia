@@ -16,6 +16,7 @@
 #include <cstring>
 #include <string>
 #include <thread>
+#include <cstdint>
 
 using namespace reactor::hw;
 

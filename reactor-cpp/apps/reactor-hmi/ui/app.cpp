@@ -5,6 +5,9 @@
 
 #include "kit/i18n.hpp"
 #include "pages/common2.hpp"
+#include <cstdint>
+#include <memory>
+#include <string>
 
 namespace reactor::hmi {
 

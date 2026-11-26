@@ -1,4 +1,7 @@
 #include "hw/analog_module.hpp"
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace reactor::hw {
 

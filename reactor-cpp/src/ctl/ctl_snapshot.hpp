@@ -19,6 +19,7 @@
 #include "ctl/ctl_alarm_table.hpp"
 #include "ctl/ctl_hooks.hpp"
 #include "store/settings.hpp"
+#include <utility>
 
 namespace reactor::ctl {
 

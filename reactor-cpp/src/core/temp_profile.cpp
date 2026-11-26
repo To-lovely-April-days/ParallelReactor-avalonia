@@ -4,6 +4,8 @@
 #include <cmath>
 
 #include "core/num_format.hpp"
+#include <cstdint>
+#include <string>
 
 namespace reactor::core {
 

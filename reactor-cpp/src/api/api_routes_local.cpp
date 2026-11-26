@@ -6,6 +6,15 @@
 #include "api/api_routes.hpp"
 #include "api/api_system.hpp"
 #include "store/store_util.hpp"
+#include <array>
+#include <chrono>
+#include <cstdint>
+#include <cstdlib>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace reactor::api {
 

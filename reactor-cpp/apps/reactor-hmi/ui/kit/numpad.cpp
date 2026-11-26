@@ -6,6 +6,9 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <algorithm>
+#include <functional>
+#include <string>
 
 namespace reactor::hmi::kit {
 

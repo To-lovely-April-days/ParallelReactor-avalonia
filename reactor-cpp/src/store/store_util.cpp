@@ -11,6 +11,10 @@
 #include <cstdio>
 #include <cstring>
 #include <ctime>
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::store {
 

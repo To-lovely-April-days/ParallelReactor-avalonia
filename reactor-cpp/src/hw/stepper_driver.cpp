@@ -1,6 +1,9 @@
 #include "hw/stepper_driver.hpp"
 
 #include <algorithm>
+#include <cstdint>
+#include <optional>
+#include <vector>
 
 namespace reactor::hw {
 

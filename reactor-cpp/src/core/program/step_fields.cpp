@@ -5,6 +5,9 @@
 #include <map>
 
 #include "core/program/step_snapshot.hpp"
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core::program {
 

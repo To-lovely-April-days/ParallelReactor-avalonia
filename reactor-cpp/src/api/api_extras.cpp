@@ -18,6 +18,16 @@
 #include "core/units.hpp"
 #include "store/history_files.hpp"
 #include "store/store_util.hpp"
+#include <array>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <map>
+#include <memory>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::api {
 

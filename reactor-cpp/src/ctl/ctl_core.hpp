@@ -38,6 +38,7 @@
 #include "store/data_logger.hpp"
 #include "store/settings.hpp"
 #include "store/telemetry_csv.hpp"
+#include <utility>
 
 namespace reactor::ctl {
 

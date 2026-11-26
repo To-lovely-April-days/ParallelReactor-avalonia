@@ -7,6 +7,10 @@
 #include "store/settings.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <optional>
+#include <string>
 
 using namespace reactor::store;
 using store_test::contains;

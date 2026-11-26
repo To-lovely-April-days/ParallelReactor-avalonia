@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "store/store_util.hpp"
+#include <utility>
 
 namespace reactor::store {
 

@@ -1,6 +1,7 @@
 #include "core/program/program_step.hpp"
 
 #include <cmath>
+#include <vector>
 
 namespace reactor::core::program {
 

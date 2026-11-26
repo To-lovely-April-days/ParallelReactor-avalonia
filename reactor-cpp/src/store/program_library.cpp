@@ -5,6 +5,13 @@
 #include <stdexcept>
 
 #include "common/clock.hpp"
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::store {
 

@@ -5,6 +5,8 @@
 #include "store/telemetry_csv.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <string>
+#include <vector>
 
 using namespace reactor::store;
 using store_test::at8;

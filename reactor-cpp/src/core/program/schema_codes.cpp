@@ -1,6 +1,9 @@
 #include "core/program/schema_codes.hpp"
 
 #include <map>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core::program::schema_codes {
 

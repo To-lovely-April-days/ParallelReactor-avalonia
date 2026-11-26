@@ -1,6 +1,9 @@
 #include "net/websocket.hpp"
 
 #include "net/crypto.hpp"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::net::ws {
 

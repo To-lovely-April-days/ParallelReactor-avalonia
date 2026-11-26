@@ -1,4 +1,9 @@
 #include "net/rate_limit.hpp"
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <string>
 
 namespace reactor::net {
 

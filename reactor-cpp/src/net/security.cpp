@@ -4,6 +4,11 @@
 #include <cctype>
 
 #include "net/api_errors.hpp"
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace reactor::net {
 

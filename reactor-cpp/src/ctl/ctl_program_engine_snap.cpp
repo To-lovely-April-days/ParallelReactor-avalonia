@@ -7,6 +7,9 @@
 #include "core/program/step_fields.hpp"
 #include "ctl/ctl_program_engine_impl.hpp"
 #include "store/store_util.hpp"
+#include <map>
+#include <memory>
+#include <string>
 
 namespace reactor::ctl {
 

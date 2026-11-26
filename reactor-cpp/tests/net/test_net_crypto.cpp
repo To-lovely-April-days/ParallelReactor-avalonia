@@ -1,6 +1,7 @@
 #include "net/crypto.hpp"
 #include "net/websocket.hpp"
 #include "testing.hpp"
+#include <string>
 
 using namespace reactor::net;
 

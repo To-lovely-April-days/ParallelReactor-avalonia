@@ -5,6 +5,10 @@
 #include <cstdlib>
 
 #include "core/program/schema_codes.hpp"
+#include <cstdint>
+#include <string>
+#include <tuple>
+#include <vector>
 
 namespace reactor::core::program {
 

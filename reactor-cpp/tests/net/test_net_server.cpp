@@ -19,6 +19,15 @@
 #include "net_test_client.hpp"
 #include "nlohmann/json.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace reactor::net;
 using nettest::HttpResp;

@@ -6,6 +6,8 @@
 
 #include "hw/hardware_config.hpp"
 #include "testing.hpp"
+#include <algorithm>
+#include <vector>
 
 using namespace reactor::hw;
 using nlohmann::json;

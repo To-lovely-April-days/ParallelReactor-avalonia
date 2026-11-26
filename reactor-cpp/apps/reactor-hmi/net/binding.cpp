@@ -9,6 +9,13 @@
 #include <cstdio>
 #include <ctime>
 #include <set>
+#include <array>
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::net {
 

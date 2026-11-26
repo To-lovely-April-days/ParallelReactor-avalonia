@@ -7,6 +7,10 @@
 #include "core/program/program_step_format.hpp"
 #include "core/program/program_types.hpp"
 #include "testing.hpp"
+#include <cmath>
+#include <string>
+#include <tuple>
+#include <vector>
 
 using namespace reactor::core;
 using namespace reactor::core::program;

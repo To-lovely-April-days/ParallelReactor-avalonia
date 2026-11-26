@@ -6,6 +6,8 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
+#include <string>
 
 namespace reactor::hw {
 

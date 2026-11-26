@@ -8,6 +8,7 @@
 #include "ctl/ctl_op_result.hpp"
 #include "net/http.hpp"
 #include "nlohmann/json.hpp"
+#include <cstdint>
 
 namespace reactor::api {
 

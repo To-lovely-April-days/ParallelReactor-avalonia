@@ -13,6 +13,12 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace reactor::hmi::net {
 

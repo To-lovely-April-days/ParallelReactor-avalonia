@@ -2,6 +2,10 @@
 #include "hw/modbus_master.hpp"
 #include "hw/modbus_rtu.hpp"
 #include "testing.hpp"
+#include <cmath>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 using namespace reactor::hw;
 

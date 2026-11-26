@@ -7,6 +7,10 @@
 #include "ctl/ctl_io.hpp"
 #include "ctl/ctl_tick_gate.hpp"
 #include "testing.hpp"
+#include <chrono>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 using namespace reactor::ctl;
 

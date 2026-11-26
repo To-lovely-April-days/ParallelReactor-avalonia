@@ -10,6 +10,10 @@
 #include "net/router.hpp"
 #include "net/websocket.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace reactor::net;
 

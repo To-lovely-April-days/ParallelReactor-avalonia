@@ -9,6 +9,12 @@
 
 #include "core/num_format.hpp"
 #include "ctl/ctl_core.hpp"
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::ctl {
 

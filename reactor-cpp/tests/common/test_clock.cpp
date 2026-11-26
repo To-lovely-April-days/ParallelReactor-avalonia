@@ -1,5 +1,7 @@
 #include "common/clock.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <string>
 
 using namespace reactor;
 

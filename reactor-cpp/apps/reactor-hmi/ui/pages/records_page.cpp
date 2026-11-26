@@ -6,6 +6,12 @@
 #include <cmath>
 #include <cstdio>
 #include <ctime>
+#include <array>
+#include <cstdint>
+#include <cstdlib>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi {
 

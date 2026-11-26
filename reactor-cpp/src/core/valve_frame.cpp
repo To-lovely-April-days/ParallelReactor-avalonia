@@ -1,6 +1,10 @@
 #include "core/valve_frame.hpp"
 
 #include <algorithm>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::core {
 

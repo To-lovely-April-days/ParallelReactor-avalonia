@@ -5,6 +5,10 @@
 #include "widgets.hpp"
 
 #include <map>
+#include <cmath>
+#include <functional>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::kit {
 

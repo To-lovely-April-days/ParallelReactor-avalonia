@@ -11,6 +11,12 @@
 #include "api/api_system.hpp"
 #include "store/history_files.hpp"
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::api {
 

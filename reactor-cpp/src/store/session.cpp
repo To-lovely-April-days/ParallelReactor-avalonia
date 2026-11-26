@@ -1,6 +1,12 @@
 #include "store/session.hpp"
 
 #include "store/store_util.hpp"
+#include <cstdint>
+#include <functional>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::store {
 

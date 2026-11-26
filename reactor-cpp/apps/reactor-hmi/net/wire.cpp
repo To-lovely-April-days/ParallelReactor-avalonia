@@ -5,6 +5,10 @@
 #include <cstring>
 #include <fstream>
 #include <random>
+#include <array>
+#include <cstdint>
+#include <optional>
+#include <string>
 
 namespace reactor::hmi::net {
 

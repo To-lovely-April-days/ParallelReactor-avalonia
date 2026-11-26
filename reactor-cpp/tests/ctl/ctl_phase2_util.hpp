@@ -16,6 +16,8 @@
 #include "ctl/ctl_automation.hpp"
 #include "ctl_test_util.hpp"
 #include "store/data_logger.hpp"
+#include <cstdint>
+#include <vector>
 
 namespace ctltest {
 

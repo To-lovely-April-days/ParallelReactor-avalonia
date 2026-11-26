@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "cmd/cmd_arbiter.hpp"
+#include <utility>
 
 namespace reactor::cmd {
 

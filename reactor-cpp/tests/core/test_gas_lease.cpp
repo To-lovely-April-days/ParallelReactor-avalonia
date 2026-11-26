@@ -5,6 +5,9 @@
 
 #include "core/gas_lease.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <optional>
+#include <utility>
 
 using namespace reactor::core;
 using RS = ReactorState;

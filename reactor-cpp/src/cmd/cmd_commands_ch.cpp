@@ -15,6 +15,13 @@
 #include "core/valve_frame.hpp"
 #include "store/store_util.hpp"
 #include "ctl/ctl_gas_ops.hpp"
+#include <cstdint>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
 
 namespace reactor::cmd {
 

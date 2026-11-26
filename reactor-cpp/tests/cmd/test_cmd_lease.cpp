@@ -7,6 +7,9 @@
 #include "cmd/cmd_lease.hpp"
 #include "cmd/cmd_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <mutex>
+#include <string>
 
 using namespace reactor;
 using namespace reactor::cmd;

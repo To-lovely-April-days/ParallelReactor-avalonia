@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
+#include <vector>
 
 namespace reactor::core {
 

@@ -4,6 +4,10 @@
 
 #include "core/program/program_step_format.hpp"
 #include "core/program/schema_codes.hpp"
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::core::program::program_schema {
 

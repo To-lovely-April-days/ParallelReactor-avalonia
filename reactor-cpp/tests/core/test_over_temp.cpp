@@ -3,6 +3,7 @@
 
 #include "core/over_temp_guard.hpp"
 #include "testing.hpp"
+#include <cstdint>
 
 using namespace reactor::core;
 using A = OverTempAction;

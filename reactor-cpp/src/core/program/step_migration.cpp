@@ -3,6 +3,10 @@
 #include <algorithm>
 
 #include "core/program/text_format.hpp"
+#include <optional>
+#include <string>
+#include <tuple>
+#include <vector>
 
 namespace reactor::core::program {
 

@@ -3,6 +3,9 @@
 #include "widgets.hpp"
 
 #include <ctime>
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace reactor::hmi::kit {
 

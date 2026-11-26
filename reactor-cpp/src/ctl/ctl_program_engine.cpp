@@ -12,6 +12,12 @@
 #include "core/program/program_step_format.hpp"
 #include "core/program/step_fields.hpp"
 #include "ctl/ctl_program_engine_impl.hpp"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 

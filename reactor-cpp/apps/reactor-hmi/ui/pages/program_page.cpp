@@ -10,6 +10,13 @@
 #include <cstdio>
 #include <ctime>
 #include <map>
+#include <array>
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::hmi {
 

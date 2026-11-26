@@ -1,4 +1,8 @@
 #include "ctl/ctl_temp_service.hpp"
+#include <cstdint>
+#include <functional>
+#include <optional>
+#include <vector>
 
 namespace reactor::ctl {
 

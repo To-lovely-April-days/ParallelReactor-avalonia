@@ -6,6 +6,8 @@
 
 #include "core/program/program_step_format.hpp"
 #include "core/units.hpp"
+#include <string>
+#include <vector>
 
 namespace reactor::ctl::builtin_templates {
 

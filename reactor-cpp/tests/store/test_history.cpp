@@ -6,6 +6,11 @@
 #include "store/store_util.hpp"
 #include "store_test_util.hpp"
 #include "testing.hpp"
+#include <cstdio>
+#include <optional>
+#include <string>
+#include <utility>
+#include <vector>
 
 using namespace reactor::store;
 using store_test::at8;

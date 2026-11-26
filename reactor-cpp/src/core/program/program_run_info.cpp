@@ -1,5 +1,7 @@
 #include "core/program/program_run_info.hpp"
 #include "core/chan_name.hpp"
+#include <string>
+#include <vector>
 
 namespace reactor::core::program {
 

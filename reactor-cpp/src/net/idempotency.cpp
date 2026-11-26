@@ -4,6 +4,13 @@
 #include <chrono>
 
 #include "net/crypto.hpp"
+#include <cstdint>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace reactor::net {
 

@@ -3,6 +3,12 @@
 #include "ctl/ctl_builtin_templates.hpp"
 #include "ctl/ctl_phase2_util.hpp"
 #include "testing.hpp"
+#include <cstdint>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 
 using namespace reactor;
 using namespace reactor::cmd;

@@ -4,6 +4,11 @@
 #include <cstdio>
 
 #include "common/clock.hpp"
+#include <cstdint>
+#include <functional>
+#include <string>
+#include <thread>
+#include <vector>
 
 namespace reactor::store {
 

@@ -1,4 +1,6 @@
 #include "hw/io_module.hpp"
+#include <optional>
+#include <vector>
 
 namespace reactor::hw {
 

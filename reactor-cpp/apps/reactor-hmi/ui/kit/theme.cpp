@@ -7,6 +7,9 @@
 #include <map>
 #include <sys/stat.h>
 #include <vector>
+#include <cstdint>
+#include <functional>
+#include <string>
 
 namespace reactor::hmi {
 

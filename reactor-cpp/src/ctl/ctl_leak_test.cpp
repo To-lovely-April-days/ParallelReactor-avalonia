@@ -9,6 +9,14 @@
 #include "core/program/text_format.hpp"
 #include "ctl/ctl_program_engine.hpp"
 #include "store/settings.hpp"
+#include <cstdint>
+#include <functional>
+#include <map>
+#include <memory>
+#include <optional>
+#include <set>
+#include <string>
+#include <vector>
 
 namespace reactor::ctl {
 
