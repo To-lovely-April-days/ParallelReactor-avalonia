@@ -62,12 +62,12 @@ public:
         box(c, (w - 78) / 2, 230, 78, 1, 0xe3e8ee);
         valve_ = col_btn(c, w / 2, 247, &ic::valve29, tr("手动阀控"));
         // 打开时：实心绿圆 + 两圈呼吸光环（画布定稿 D）
-        lv_obj_add_flag(valve_.root, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+        // 光环挂在竖栏卡片上（不挂在按钮里）：按钮区域从圆钮顶边开始，挂在里面会被裁掉顶部
         for (int i = 0; i < 2; ++i) {
             int d = 62 + 8 + i * 8;  // 70 / 78：不压下面的文字、不贴卡片边
-            halo_[i] = box(valve_.root, 50 - d / 2, 31 - d / 2, d, d, 0, d / 2, true);
+            halo_[i] = box(c, w / 2 - d / 2, 247 + 31 - d / 2, d, d, 0, d / 2, true);
             ring(halo_[i], col::GREEN, 2);
-            lv_obj_move_to_index(halo_[i], 0);  // 放在圆钮后面
+            lv_obj_move_to_index(halo_[i], lv_obj_get_index(valve_.root));  // 放在圆钮后面
             lv_obj_add_flag(halo_[i], LV_OBJ_FLAG_HIDDEN);
             lv_obj_remove_flag(halo_[i], LV_OBJ_FLAG_CLICKABLE);
         }
