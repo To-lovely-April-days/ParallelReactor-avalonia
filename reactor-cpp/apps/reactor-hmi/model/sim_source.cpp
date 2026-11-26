@@ -358,6 +358,16 @@ void SimSource::set_anti_overshoot(int ch, bool on) { m_.chanset[static_cast<siz
 void SimSource::set_profile(int ch, const std::vector<CurveSeg>& s) { m_.chanset[static_cast<size_t>(ch - 1)].curve = s; }
 void SimSource::start_profile(int ch) { heat(ch, true); }
 void SimSource::set_valve(int ch, bool open) { c(ch).valveOpen = open; }
+void SimSource::set_gas_source(int k, bool open) {
+    static const char* ids[3] = {"inert", "a", "b"};
+    if (k == 3) { m_.snap.gas.ventOpen = open; return; }
+    if (k < 0 || k > 2) return;
+    for (auto& in : m_.snap.gas.inlets) {
+        if (in.id == ids[k]) in.open = open;
+        else if (open) in.open = false;  // 气源最多开一路（后台同样规则）
+    }
+    if (open) m_.snap.gas.ventOpen = false;
+}
 void SimSource::gas_zero(int ch) { c(ch).gasConsumed = 0.0; }
 void SimSource::set_solution_volume(int ch, double ml) { c(ch).solutionVolume = ml; }
 void SimSource::channel_enable(int ch, bool on) {

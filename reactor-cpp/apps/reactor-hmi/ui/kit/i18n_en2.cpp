@@ -11,6 +11,9 @@ const std::unordered_map<std::string, const char*>& en_table2() {
         {"PC 申请远程控制", "Remote control request"}, {"「%s」申请控制这台设备", "\"%s\" asks to control this instrument"},
         {"令牌 %s", "token %s"}, {"%lld s 后自动拒绝", "auto-deny in %lld s"}, {"拒绝", "Deny"}, {"允许", "Allow"},
         {"PC 控制中", "PC in control"},
+        // ---- 气路图：点气源阀 / 排空阀 ----
+        {"气源阀和排空阀要先在主页右边打开「手动阀控」才能开关。", "Turn on Manual valves (right side of Home) before switching the gas source and vent valves."},
+        {"点反应釜进入这一路 · 点阀门开关，要先打开手动阀控", "Tap a vessel to open its channel · tap a valve to switch it (Manual valves must be on)"},
         // ---- 第一批里漏掉的（联调补）----
         {"正在连接后台服务…", "Connecting to the control service…"}, {"连上以后自动恢复，操作暂时不能用。", "Controls are locked until the connection is back."},
         {"同时停搅拌", "Also stop stirring"}, {"一台电机带全部釜：打开后 8 个釜都停转", "One motor drives all vessels: all 8 stop"},

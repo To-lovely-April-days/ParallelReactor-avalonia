@@ -48,6 +48,7 @@ public:
     void set_profile(int ch, const std::vector<CurveSeg>& segs) override;
     void start_profile(int ch) override;
     void set_valve(int ch, bool open) override;
+    void set_gas_source(int k, bool open) override;
     void gas_zero(int ch) override;
     void set_solution_volume(int ch, double ml) override;
     void channel_enable(int ch, bool on) override;

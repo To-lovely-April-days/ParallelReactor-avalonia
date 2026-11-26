@@ -849,6 +849,11 @@ void NetActions::set_profile(int ch, const std::vector<model::CurveSeg>& segs) {
 }
 void NetActions::start_profile(int ch) { cmd("POST", chp(ch, "/profile/start"), json::object()); }
 void NetActions::set_valve(int ch, bool open) { cmd("PUT", chp(ch, "/valve"), {{"open", open}}, {}, "", !open); }
+void NetActions::set_gas_source(int k, bool open) {
+    static const char* ids[3] = {"inert", "A", "B"};
+    if (k == 3) cmd("PUT", "/gas/vent", {{"open", open}}, {}, "", !open);
+    else if (k >= 0 && k < 3) cmd("PUT", std::string("/gas/inlets/") + ids[k], {{"open", open}}, {}, "", !open);
+}
 void NetActions::gas_zero(int ch) { cmd("POST", chp(ch, "/gas-counter/reset"), json::object()); }
 void NetActions::set_solution_volume(int ch, double ml) { cmd("PUT", chp(ch, "/volume"), {{"ml", ml}}); }
 void NetActions::channel_enable(int ch, bool on) {

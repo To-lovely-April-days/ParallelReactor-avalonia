@@ -28,6 +28,7 @@ void LoggingActions::set_profile(int ch, const std::vector<CurveSeg>& s) {
 }
 void LoggingActions::start_profile(int ch) { LOGA("start_profile ch%d", ch); FWD(start_profile(ch)); }
 void LoggingActions::set_valve(int ch, bool o) { LOGA("set_valve ch%d %d", ch, o); FWD(set_valve(ch, o)); }
+void LoggingActions::set_gas_source(int k, bool o) { LOGA("set_gas_source %d %d", k, o); FWD(set_gas_source(k, o)); }
 void LoggingActions::gas_zero(int ch) { LOGA("gas_zero ch%d", ch); FWD(gas_zero(ch)); }
 void LoggingActions::set_solution_volume(int ch, double ml) { LOGA("set_solution_volume ch%d %.1f", ch, ml); FWD(set_solution_volume(ch, ml)); }
 void LoggingActions::channel_enable(int ch, bool on) { LOGA("channel_enable ch%d %d", ch, on); FWD(channel_enable(ch, on)); }

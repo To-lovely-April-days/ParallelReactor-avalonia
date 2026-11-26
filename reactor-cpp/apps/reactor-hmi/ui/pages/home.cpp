@@ -344,8 +344,37 @@ private:
             src_lbl_[k] = label(gas_card_, tr(names[k]), 12, 400, col::MUT);
             lv_obj_update_layout(src_lbl_[k]);
             lv_obj_set_pos(src_lbl_[k], x - lv_obj_get_width(src_lbl_[k]) / 2, my + 76);
+            // 点阀门开 / 关（照原 C# 版：要先打开主页右边的「手动阀控」；气源互斥、气源和排空不同时开由后台把关）
+            lv_obj_t* hit = box(gas_card_, x - 24, my + 20, 48, 76, 0, 0, true);
+            App* app = app_;
+            on_tap(hit, [app, k] {
+                const Model& mm = app->m();
+                if (!mm.snap.gas.manualValve) {
+                    DialogSpec d;
+                    d.color = col::BLUE;
+                    d.icon = nullptr;
+                    d.title = tr("要先打开手动阀控");
+                    d.primary = tr("知道了");
+                    d.body = [](lv_obj_t* b, int w) {
+                        lv_obj_t* l = label_at(b, 0, 0, tr("气源阀和排空阀要先在主页右边打开「手动阀控」才能开关。"), 15, 400, col::INK);
+                        lv_obj_set_width(l, w);
+                        lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+                        return 44;
+                    };
+                    Dialog::open(d);
+                    return;
+                }
+                bool now = false;
+                if (k == 3) now = mm.snap.gas.ventOpen;
+                else {
+                    static const char* ids[3] = {"inert", "a", "b"};
+                    for (auto& in : mm.snap.gas.inlets)
+                        if (in.id == ids[k]) now = in.open;
+                }
+                app->act().set_gas_source(k, !now);
+            });
         }
-        lv_obj_t* f = label(gas_card_, tr("点反应釜进入这一路 · 阀门要先打开手动阀控"), 12.5, 400, col::MUT);
+        lv_obj_t* f = label(gas_card_, tr("点反应釜进入这一路 · 点阀门开关，要先打开手动阀控"), 12.5, 400, col::MUT);
         lv_obj_align(f, LV_ALIGN_BOTTOM_MID, 0, -14);
     }
     void update_gas(const Model& m) {

@@ -1,3 +1,4 @@
+#include <cctype>
 #include "binding.hpp"
 
 #include "wire.hpp"
@@ -215,7 +216,12 @@ bool parse_snapshot(const json& j, m::TelemetrySnapshot& s, SnapExt& ext) {
     s.stir.rampMsPer1000Rpm = static_cast<int>(j_int(st, "rampMsPer1000Rpm"));
     const json& g = sub(j, "gas");
     s.gas.inlets.clear();
-    for (auto& i : sub(g, "inlets")) s.gas.inlets.push_back({j_str(i, "id"), j_bool(i, "open")});
+    for (auto& i : sub(g, "inlets")) {
+        // 后台发的是 inert / A / B（大写），界面里一律按小写比对
+        std::string id = j_str(i, "id");
+        for (auto& ch : id) ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        s.gas.inlets.push_back({id, j_bool(i, "open")});
+    }
     s.gas.ventOpen = j_bool(g, "ventOpen");
     s.gas.manualValve = j_bool(g, "manualValve");
     s.gas.task = j_optstr(g, "task");

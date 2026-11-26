@@ -40,6 +40,8 @@ public:
     virtual void start_profile(int ch) = 0;                       // POST /channels/{id}/profile/start
     // —— 单路气体 ——
     virtual void set_valve(int ch, bool open) = 0;                // PUT /channels/{id}/valve {open}（要先开手动阀控）
+    // 气路图下面的气源阀 / 排空阀：k 0 惰性气体 1 气体 A 2 气体 B → PUT /gas/inlets/{inert|A|B}；k 3 排空 → PUT /gas/vent（要先开手动阀控）
+    virtual void set_gas_source(int k, bool open) = 0;
     virtual void gas_zero(int ch) = 0;                            // POST /channels/{id}/gas-counter/reset
     virtual void set_solution_volume(int ch, double ml) = 0;      // PUT /channels/{id}/volume
     // —— 单路其他 ——
@@ -109,6 +111,7 @@ public:
     void set_profile(int ch, const std::vector<CurveSeg>& segs) override;
     void start_profile(int ch) override;
     void set_valve(int ch, bool open) override;
+    void set_gas_source(int k, bool open) override;
     void gas_zero(int ch) override;
     void set_solution_volume(int ch, double ml) override;
     void channel_enable(int ch, bool on) override;
