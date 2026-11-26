@@ -79,7 +79,7 @@ lv_obj_t* round_btn_side(lv_obj_t* parent, int x, int y, int size, RoundStyle st
 // 竖栏里的大圆钮（62）：白圈 + 中间图标 + 右上角状态点 + 可选蓝色进度弧
 struct ColBtn {
     lv_obj_t* root = nullptr; lv_obj_t* arc = nullptr; lv_obj_t* dot = nullptr; lv_obj_t* icon = nullptr;
-    lv_obj_t* label = nullptr; lv_obj_t* value = nullptr;
+    lv_obj_t* label = nullptr; lv_obj_t* value = nullptr; lv_obj_t* circle = nullptr;
     void set(bool on, const char* value_text, uint32_t value_color, int arc_deg);
 };
 ColBtn col_btn(lv_obj_t* parent, int cx, int y, const lv_image_dsc_t* icon, const char* label);

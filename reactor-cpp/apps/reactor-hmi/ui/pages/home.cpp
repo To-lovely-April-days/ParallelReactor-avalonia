@@ -61,6 +61,16 @@ public:
         });
         box(c, (w - 78) / 2, 230, 78, 1, 0xe3e8ee);
         valve_ = col_btn(c, w / 2, 247, &ic::valve29, tr("手动阀控"));
+        // 打开时：实心绿圆 + 两圈呼吸光环（画布定稿 D）
+        lv_obj_add_flag(valve_.root, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+        for (int i = 0; i < 2; ++i) {
+            int d = 62 + 8 + i * 8;  // 70 / 78：不压下面的文字、不贴卡片边
+            halo_[i] = box(valve_.root, 50 - d / 2, 31 - d / 2, d, d, 0, d / 2, true);
+            ring(halo_[i], col::GREEN, 2);
+            lv_obj_move_to_index(halo_[i], 0);  // 放在圆钮后面
+            lv_obj_add_flag(halo_[i], LV_OBJ_FLAG_HIDDEN);
+            lv_obj_remove_flag(halo_[i], LV_OBJ_FLAG_CLICKABLE);
+        }
         on_tap(valve_.root, [this] { app_->act().manual_valve(!app_->m().snap.gas.manualValve); });
         lv_obj_t* st = box(c, (w - 68) / 2, h - 135, 68, 68, col::RED, 34);
         lv_obj_set_style_shadow_width(st, 8, 0);
@@ -86,14 +96,46 @@ public:
         lv_obj_align(rpm_v_, LV_ALIGN_LEFT_MID, (78 - tw) / 2, 0);
         lv_obj_align(rpm_u_, LV_ALIGN_LEFT_MID, (78 - tw) / 2 + lv_obj_get_width(rpm_v_) + 4, 2);
         bool mv = m.snap.gas.manualValve;
-        valve_.set(mv, tr(mv ? "开" : "关"), mv ? col::BLUE : col::SEC, 0);
+        valve_.set(mv, tr(mv ? "开" : "关"), mv ? col::ST_GRN : col::SEC, 0);
+        set_valve_look(mv);
         int n = (int)m.snap.channels.size();  // 全部停止对 8 路都发（停用的路也一起关）
         lv_label_set_text(stop_n_, trf("%d 路", n).c_str());
     }
 
 private:
+    // 手动阀控打开：圆填绿、图标变白、右上小点藏掉，两圈光环一明一暗（1.2 s 一个来回，第二圈晚半拍）
+    void set_valve_look(bool on) {
+        lv_obj_set_style_bg_color(valve_.circle, lv_color_hex(on ? col::GREEN : 0xffffff), 0);
+        ring(valve_.circle, on ? col::GREEN : 0xdbe5f0, 3);
+        icon_color(valve_.icon, on ? 0xffffff : col::ST_GRY);
+        if (on) lv_obj_add_flag(valve_.dot, LV_OBJ_FLAG_HIDDEN);
+        else lv_obj_remove_flag(valve_.dot, LV_OBJ_FLAG_HIDDEN);
+        if (on == halo_on_) return;
+        halo_on_ = on;
+        for (int i = 0; i < 2; ++i) {
+            lv_obj_t* h = halo_[i];
+            lv_anim_delete(h, nullptr);
+            if (!on) {
+                lv_obj_add_flag(h, LV_OBJ_FLAG_HIDDEN);
+                continue;
+            }
+            lv_obj_remove_flag(h, LV_OBJ_FLAG_HIDDEN);
+            lv_anim_t a;
+            lv_anim_init(&a);
+            lv_anim_set_var(&a, h);
+            lv_anim_set_values(&a, i == 0 ? 60 : 20, i == 0 ? 230 : 160);
+            lv_anim_set_duration(&a, 600);
+            lv_anim_set_playback_duration(&a, 600);
+            lv_anim_set_delay(&a, i * 300);
+            lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+            lv_anim_set_exec_cb(&a, [](void* o, int32_t v) { lv_obj_set_style_border_opa(static_cast<lv_obj_t*>(o), (lv_opa_t)v, 0); });
+            lv_anim_start(&a);
+        }
+    }
     App* app_ = nullptr;
     ColBtn stir_, valve_;
+    lv_obj_t* halo_[2] = {nullptr, nullptr};
+    bool halo_on_ = false;
     lv_obj_t *rpm_ = nullptr, *rpm_v_ = nullptr, *rpm_u_ = nullptr, *stop_n_ = nullptr;
 };
 

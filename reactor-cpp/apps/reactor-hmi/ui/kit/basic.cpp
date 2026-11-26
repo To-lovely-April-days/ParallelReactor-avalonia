@@ -121,6 +121,7 @@ ColBtn col_btn(lv_obj_t* parent, int cx, int y, const lv_image_dsc_t* im, const 
     b.root = box(parent, cx - 50, y, 100, 112, 0, 0, true);
     lv_obj_t* c = box(b.root, 19, 0, 62, 62, 0xffffff, 31);
     ring(c, 0xdbe5f0, 3);
+    b.circle = c;
     b.arc = lv_arc_create(b.root);
     lv_obj_remove_style_all(b.arc);
     lv_obj_set_pos(b.arc, 19, 0);
