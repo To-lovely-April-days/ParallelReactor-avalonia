@@ -322,7 +322,7 @@ private:
         }
         lv_obj_t* cv = round_btn_side(D, bx2, h - 80, 60, RoundStyle::White, &ic::chart26, tr("看曲线"),
                                       tr(e.quantity == "pressure" ? "报警前后的压力" : "报警前后的读数"), col::INK);
-        on_tap(cv, [app] { app->go(PageId::Curve); });
+        on_tap(cv, [app] { app->go(PageId::Curve, 3); });
         (void)m;
     }
 

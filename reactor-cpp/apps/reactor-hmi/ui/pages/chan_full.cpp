@@ -247,10 +247,10 @@ private:
         int ch = ch_;
         if (run_) {
             on_tap(round_btn(lroot_, 72, by, 52, RoundStyle::White, &ic::list22, tr("去程序页"), col::INK, 14.5), [app] { app->go(PageId::Program); });
-            on_tap(round_btn(lroot_, 186, by, 52, RoundStyle::White, &ic::chart22, tr("去曲线页"), col::INK, 14.5), [app] { app->go(PageId::Curve); });
+            on_tap(round_btn(lroot_, 186, by, 52, RoundStyle::White, &ic::chart22, tr("去曲线页"), col::INK, 14.5), [app] { app->go(PageId::Curve, 3); });
             on_tap(round_btn(lroot_, 300, by, 52, RoundStyle::Stop, nullptr, tr("中止程序…"), col::RED, 14.5), [app, ch] { app->abort_confirm(ch); });
         } else {
-            on_tap(round_btn(lroot_, 72, by, 52, RoundStyle::White, &ic::chart22, tr("去曲线页"), col::INK, 14.5), [app] { app->go(PageId::Curve); });
+            on_tap(round_btn(lroot_, 72, by, 52, RoundStyle::White, &ic::chart22, tr("去曲线页"), col::INK, 14.5), [app] { app->go(PageId::Curve, 3); });
             on_tap(round_btn(lroot_, 186, by, 52, RoundStyle::White, &ic::copy22, tr("复制到全部"), col::INK, 14.5), [app, ch] {
                 DialogSpec d;
                 d.color = col::BLUE;

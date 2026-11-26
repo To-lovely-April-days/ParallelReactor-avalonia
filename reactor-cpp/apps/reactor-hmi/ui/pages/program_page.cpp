@@ -752,17 +752,17 @@ void build_prog_editor(lv_obj_t* body, App& app, const Model& m, int ch, std::fu
     int n = (int)d.steps.size();
     int sel = e.sel[(size_t)ch - 1];
     int x0 = 60, sp = std::min(103, (cw - playW - x0 - 30) / std::max(1, n));
-    int cy = 96;
+    int cy = 106;  // 序号在圆圈上方，圆圈和连线整体下移，避免序号压住圆圈
     box(pc, x0, cy - 1, sp * n, 2, col::DIV);
     for (int k = 0; k <= n; ++k) {
         int cx = x0 + k * sp;
-        lv_obj_t* it = box(pc, cx - sp / 2, 60, sp, 140, 0, 0, true);
+        lv_obj_t* it = box(pc, cx - sp / 2, 60, sp, 150, 0, 0, true);
         if (k == n) {
             lv_obj_t* c2 = box(it, sp / 2 - 22, cy - 60 - 22, 44, 44, 0xffffff, 22);
             ring(c2, col::BLUE, 2, 150);
             lv_obj_center(icon(c2, &ic::plus26, col::BLUE));
             lv_obj_t* l = label(it, tr("添加"), 16, 700, col::BLUE);
-            lv_obj_align(l, LV_ALIGN_TOP_MID, 0, 72);
+            lv_obj_align(l, LV_ALIGN_TOP_MID, 0, 82);
             on_tap(it, [&app, ch, refresh] { open_add_step(app, ch, refresh); });
             continue;
         }
@@ -771,7 +771,7 @@ void build_prog_editor(lv_obj_t* body, App& app, const Model& m, int ch, std::fu
         char num[8];
         std::snprintf(num, sizeof num, "%02d", k + 1);
         lv_obj_t* nl = label(it, num, 12, 500, on ? col::BLUE : col::MUT);
-        lv_obj_align(nl, LV_ALIGN_TOP_MID, 0, 2);
+        lv_obj_align(nl, LV_ALIGN_TOP_MID, 0, 0);
         lv_obj_t* c2 = box(it, sp / 2 - 22, cy - 60 - 22, 44, 44, on ? col::BLUE : 0xffffff, 22);
         if (on) {
             lv_obj_set_style_outline_width(c2, 5, 0);
@@ -782,11 +782,11 @@ void build_prog_editor(lv_obj_t* body, App& app, const Model& m, int ch, std::fu
         }
         lv_obj_center(icon(c2, step_icon(st.type, 20), on ? 0xffffff : col::SEC));
         lv_obj_t* l1 = label(it, tr(model::zh_step_name(st.type).c_str()), 17, 700, on ? col::BLUE : col::INK);
-        lv_obj_align(l1, LV_ALIGN_TOP_MID, 0, 70);
+        lv_obj_align(l1, LV_ALIGN_TOP_MID, 0, 80);
         lv_obj_t* l2 = label(it, tr(model::step_value_line(st).c_str()), 14.5, 700, col::INK);
-        lv_obj_align(l2, LV_ALIGN_TOP_MID, 0, 93);
+        lv_obj_align(l2, LV_ALIGN_TOP_MID, 0, 103);
         lv_obj_t* l3 = label(it, tr(model::step_sub_line(st).c_str()), 12.5, 400, col::MUT);
-        lv_obj_align(l3, LV_ALIGN_TOP_MID, 0, 115);
+        lv_obj_align(l3, LV_ALIGN_TOP_MID, 0, 125);
         on_tap(it, [ch, k, refresh] { prog_edit().sel[(size_t)ch - 1] = k; refresh(); });
     }
     if (n == 0) return;

@@ -181,7 +181,7 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
     lv_obj_t* b1 = round_btn(p, 76, 215, 52, RoundStyle::White, &ic::list22, tr("程序页"), col::INK);
     on_tap(b1, [&app] { app.go(PageId::Program); });
     lv_obj_t* b2 = round_btn(p, 192, 215, 52, RoundStyle::White, &ic::chart22, tr("曲线"), col::INK);
-    on_tap(b2, [&app] { app.go(PageId::Curve); });
+    on_tap(b2, [&app] { app.go(PageId::Curve, 3); });
     lv_obj_t* b3 = round_btn(p, 308, 215, 52, RoundStyle::White, &ic::gear22, tr("设定(只看)"), col::INK);
     on_tap(b3, [&app, ch] { app.go(PageId::ChanFull, ch); });
     lv_obj_t* b4 = round_btn(p, 424, 215, 52, RoundStyle::Stop, nullptr, tr("中止…"), col::RED);

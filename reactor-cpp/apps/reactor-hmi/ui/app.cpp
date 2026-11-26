@@ -21,7 +21,7 @@ void App::build(lv_obj_t* screen) {
     top_.create(screen, w_);
     top_.on_nav = [this](int i) {
         static const PageId P[5] = {PageId::Home, PageId::Program, PageId::Curve, PageId::Records, PageId::Settings};
-        go(P[i], i == 0 ? home_tab : 0);
+        go(P[i], i == 0 ? home_tab : i == 2 ? 3 : 0);  // 曲线页默认打开「三项对照」
     };
     top_.on_bell = [this] { go(PageId::Alarm); };
     top_.on_lang = [this] { open_lang(); };
@@ -254,7 +254,7 @@ void App::show_alarm(const model::AlarmItem& a) {
             for (auto& x : m.alarms) more += x.dto.state == "active" && x.dto.id != a.dto.id;
             std::string id = a.dto.id;
             kit::AlarmFull::show(
-                a, more, [this, id] { act_.ack_alarm(id); }, [this] { go(PageId::Alarm); }, [this] { go(PageId::Curve); });
+                a, more, [this, id] { act_.ack_alarm(id); }, [this] { go(PageId::Alarm); }, [this] { go(PageId::Curve, 3); });
             break;
         }
         case 2: {
