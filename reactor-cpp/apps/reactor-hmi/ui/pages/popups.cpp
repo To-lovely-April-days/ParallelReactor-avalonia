@@ -256,6 +256,9 @@ lv_obj_t* open_lang_popup(App& app) {
         lv_obj_set_style_radius(chip, 6, 0);
         lv_obj_set_style_pad_hor(chip, 6, 0);
         lv_obj_set_style_pad_ver(chip, 3, 0);
+        // 标签靠右贴着单选圆圈（514）排：英文「Complete / Incomplete」比中文长，固定 x 会压到圆圈
+        lv_obj_update_layout(chip);
+        lv_obj_set_x(chip, 514 - 12 - lv_obj_get_width(chip));
         lv_obj_t* rd = box(r, 514, 15, 24, 24, 0xffffff, 12);
         ring(rd, on ? col::BLUE : 0xb8c4d1, 2);
         if (on) lv_obj_center(box(rd, 0, 0, 14, 14, col::BLUE, 7));
