@@ -30,6 +30,9 @@ struct ChartSeries {
     std::string end_label;        // 末端文字（「7 号」「阈值」）
     uint32_t end_label_color = 0;
     bool gradient_by_value = false;  // 线色按 y 值走「冷蓝 → 暖橙」（升温曲线）
+    // 什么时候算「真断了」：两个有效点之间超过这么远（横轴单位）才断开，中间零星的 NaN 直接连过去。
+    // 0 = 自动：等间隔数据取 3 × dx；不等间隔（xs）遇到 NaN 就断。负数 = 遇到 NaN 就断（老行为）
+    double max_gap = 0;
 };
 
 struct ChartPanel {
@@ -83,6 +86,9 @@ public:
     lv_area_t panel_area(int i) const;
     int x_to_px(double x) const;
     std::function<void(double x)> on_press;  // 点 / 拖：给出点到的 x（读数用）
+    std::function<void()> on_release;        // 手指抬起（或按压被打断）
+    // 只改读数竖线（不重建整张图）：拖动时跟手用；nullopt = 不画
+    void set_cursor(std::optional<double> x, const std::string& text);
 
 private:
     struct State;

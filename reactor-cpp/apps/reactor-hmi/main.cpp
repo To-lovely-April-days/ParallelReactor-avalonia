@@ -17,6 +17,9 @@
 //   --token T            TCP 入口的 Bearer 令牌（也可用环境变量 REACTOR_TOKEN）；Unix 入口不用
 //   --sim                不连后台，用模拟数据源（预览截图用这个：make -C tools/preview shots 会带上）
 //   --wait-ms N          （无屏 + 连后台）截图前最多等多久连上、取完数据，默认 3000
+//   --touch SCRIPT       （无屏）打开页面后模拟手指，再截图。逗号分隔的动作：
+//                        tX:Y 点一下；dX1:Y1:X2:Y2 按住从 1 拖到 2（不抬手）；u 抬手；wN 等 N 毫秒
+//                        例：--touch t620:20,w500（点页签）；--touch d700:400:900:400,u,w1000（拖读数线、抬手 1 s 后截）
 //   --fake-serve PATH [秒] 开发用假后台（罐头数据，Unix socket），另开一个 --server unix:PATH 的界面连它
 //   --selftest-net       网络层自检（内置假服务器：HTTP / chunked / WS 分片 / ping / 断线重连 / 重订阅 / 动作 → 端点），然后退出
 //
@@ -85,7 +88,7 @@ bool write_bmp(const std::string& path) {
 
 const std::vector<std::string>& page_names() {
     static const std::vector<std::string> v = {
-        "main-f1", "main-f2", "plan-all", "plan-one", "chan-quick", "chan-quick-off", "chan-quick-run", "chan-quick-kbd", "chan-full",
+        "main-f1", "main-f2", "plan-all", "plan-one", "chan-quick", "chan-quick-run", "chan-quick-kbd", "chan-full",
         "chan-full-curve", "chan-full-run", "alarm-page", "alarm-l1", "alarm-l2", "alarm-l3", "lang-pop", "kbd-num",
         "kbd-text", "stop-all", "abort-ask",
         // 第二批
@@ -93,7 +96,7 @@ const std::vector<std::string>& page_names() {
         "prog-param-heat", "prog-param-press", "prog-param-hold", "prog-param-react", "prog-param-vent", "prog-param-end",
         "lib-mine", "lib-tpl", "prog-run", "prog-abort-ask", "prog-done", "prog-aborted",
         "leak-setup", "leak-run", "leak-result", "leak-pass",
-        "curve-gas", "curve-temp", "curve-press", "curve-three",
+        "curve-gas", "curve-temp", "curve-press", "curve-three", "curve-cursor", "curve-three-cursor",
         "rec-list", "rec-abort", "rec-export", "rec-files", "rec-range-export",
         "set-general", "set-params", "set-pid", "set-calib", "set-channels", "set-net", "set-net-pw", "set-comm", "set-data",
         "set-user", "set-about", "set-quit",
@@ -106,7 +109,19 @@ struct Options {
     bool sim = false;
     std::string server, token;
     int wait_ms = 3000;
+    std::string touch;   // 无屏：截图前模拟的触摸（见文件头 --touch）
 };
+
+#if defined(REACTOR_HEADLESS) && REACTOR_HEADLESS
+// 无屏模拟触摸：一个 pointer 输入设备，状态由 --touch 脚本改
+struct FakeTouch { int x = 0, y = 0; bool down = false; };
+FakeTouch g_touch;
+void fake_touch_read(lv_indev_t*, lv_indev_data_t* d) {
+    d->point.x = g_touch.x;
+    d->point.y = g_touch.y;
+    d->state = g_touch.down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+#endif
 
 // 一套界面：数据源（模拟 / 后台）+ 动作 + 屏幕。成员顺序有讲究：信箱和回调队列要比 net 活得久。
 struct Session {
@@ -179,15 +194,14 @@ void setup_page_net(Session& s, const std::string& name) {
         {"set-about", {PageId::Settings, 9}}};
     for (auto& e : T)
         if (e.first == name) { app.go(e.second.first, e.second.second); return; }
+    if (name == "curve-cursor" || name == "curve-three-cursor") {  // 读数线 + 读数卡片（按住图时才有；这里直接放在 5 min 前）
+        curve_debug_cursor(m.snap.ts - 5 * 60000LL);
+        app.go(PageId::Curve, name == "curve-cursor" ? 1 : 3);
+        return;
+    }
 
     if (name == "plan-one") app.go(PageId::Home, 10 + or_(run_ch, idle_ch));
     else if (name == "chan-quick") { app.go(PageId::Home, 0); app.open_quick(idle_ch); }
-    else if (name == "chan-quick-off") {  // 停用的一路：面板里启用
-        int off = first([&](int ch) { return !m.ch(ch).installed; });
-        if (!off) note("后台没有停用的通道");
-        app.go(PageId::Home, 0);
-        app.open_quick(off ? off : 1);
-    }
     else if (name == "chan-quick-run") {
         if (!heat_ch && !run_ch) note("后台没有在加热的通道");
         app.go(PageId::Home, 0);
@@ -311,7 +325,6 @@ void setup_page(Session& s, const std::string& name) {
     else if (name == "plan-all") app.go(PageId::Home, 2);
     else if (name == "plan-one") app.go(PageId::Home, 13);
     else if (name == "chan-quick") { app.go(PageId::Home, 0); app.open_quick(5); }
-    else if (name == "chan-quick-off") { app.go(PageId::Home, 0); app.open_quick(7); }
     else if (name == "chan-quick-run") { app.go(PageId::Home, 0); app.open_quick(3); }
     else if (name == "chan-quick-kbd") {
         app.go(PageId::Home, 0);
@@ -384,6 +397,10 @@ void setup_page(Session& s, const std::string& name) {
     else if (name == "curve-temp") app.go(PageId::Curve, 1);
     else if (name == "curve-press") app.go(PageId::Curve, 2);
     else if (name == "curve-three") app.go(PageId::Curve, 3);
+    else if (name == "curve-cursor" || name == "curve-three-cursor") {
+        curve_debug_cursor(app.m().snap.ts - 5 * 60000LL);
+        app.go(PageId::Curve, name == "curve-cursor" ? 1 : 3);
+    }
     else if (name == "rec-list") { records_select() = "run-1125-1305"; app.go(PageId::Records, 0); }
     else if (name == "rec-abort") { records_select() = "run-1125-0910"; app.go(PageId::Records, 0); }
     else if (name == "rec-export") { records_select() = "run-1125-1305"; app.go(PageId::Records, 0); records_open_export(app); }
@@ -472,6 +489,7 @@ int main(int argc, char** argv) {
         else if (a == "--server") opt.server = next();
         else if (a == "--token") opt.token = next();
         else if (a == "--wait-ms") opt.wait_ms = std::atoi(next().c_str());
+        else if (a == "--touch") opt.touch = next();
         else if (a == "--selftest-net") return net::selftest_main();
         else if (a == "--fake-serve") { std::string pth = next(); return net::fake_serve_main(pth, i + 1 < argc ? std::atoi(argv[i + 1]) : 0); }
         else if (a == "--help" || a == "-h") {
@@ -495,6 +513,9 @@ int main(int argc, char** argv) {
     buf.resize(static_cast<size_t>(W) * H * 4);
     lv_display_set_buffers(disp, buf.data(), nullptr, static_cast<uint32_t>(buf.size()), LV_DISPLAY_RENDER_MODE_FULL);
     lv_display_set_flush_cb(disp, flush_cb);
+    lv_indev_t* touch = lv_indev_create();
+    lv_indev_set_type(touch, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(touch, fake_touch_read);
 #elif LV_USE_SDL
     lv_display_t* disp = lv_sdl_window_create(W, H);
     lv_sdl_mouse_create();
@@ -528,10 +549,47 @@ int main(int argc, char** argv) {
             }
         }
         setup_page(*session, name);
-        for (int i = 0; i < 6; ++i) {
-            pump(*session);
-            lv_timer_handler();
-            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        auto run_for = [&](int ms) {
+            int64_t until = tick_ms() + ms;
+            do {
+                pump(*session);
+                lv_timer_handler();
+                std::this_thread::sleep_for(std::chrono::milliseconds(15));
+            } while ((int64_t)tick_ms() < until);
+        };
+        for (int i = 0; i < 6; ++i) run_for(0);
+        // 模拟触摸脚本
+        size_t pos = 0;
+        while (pos < opt.touch.size()) {
+            size_t e = opt.touch.find(',', pos);
+            std::string a = opt.touch.substr(pos, e == std::string::npos ? std::string::npos : e - pos);
+            pos = e == std::string::npos ? opt.touch.size() : e + 1;
+            if (a.empty()) continue;
+            std::vector<int> v;
+            for (size_t k = 1; k < a.size();) {
+                size_t c = a.find(':', k);
+                v.push_back(std::atoi(a.substr(k, c == std::string::npos ? std::string::npos : c - k).c_str()));
+                k = c == std::string::npos ? a.size() : c + 1;
+            }
+            if (a[0] == 't' && v.size() >= 2) {
+                g_touch = {v[0], v[1], true};
+                run_for(80);
+                g_touch.down = false;
+                run_for(80);
+            } else if (a[0] == 'd' && v.size() >= 4) {
+                g_touch = {v[0], v[1], true};
+                run_for(80);
+                for (int k = 1; k <= 10; ++k) {
+                    g_touch.x = v[0] + (v[2] - v[0]) * k / 10;
+                    g_touch.y = v[1] + (v[3] - v[1]) * k / 10;
+                    run_for(40);
+                }
+            } else if (a[0] == 'u') {
+                g_touch.down = false;
+                run_for(80);
+            } else if (a[0] == 'w' && !v.empty()) {
+                run_for(v[0]);
+            }
         }
         lv_refr_now(nullptr);
         if (!write_bmp(path)) { std::fprintf(stderr, "写不了 %s\n", path.c_str()); return false; }

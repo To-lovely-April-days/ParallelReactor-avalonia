@@ -65,6 +65,7 @@ const std::vector<std::string> kModuleComm{"configured", "online", "polls", "fai
 TEST(ctl_snapshot, json_shape_matches_csharp_dto) {
     Rig r;
     r.ticks(6);
+    r.c().channel_mut(2).set_state(reactor::core::ReactorState::Idle);  // 开机默认启用；这里把 2 号停用验证 idle 形状
     r.c().set_sp_mode(3, "curve");
     r.c().start_curve(3, std::string("local"));
     r.c().start_fixed_heat(1, 60.0, std::string("local"));

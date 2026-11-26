@@ -11,9 +11,6 @@ const std::unordered_map<std::string, const char*>& en_table2() {
         {"PC 申请远程控制", "Remote control request"}, {"「%s」申请控制这台设备", "\"%s\" asks to control this instrument"},
         {"令牌 %s", "token %s"}, {"%lld s 后自动拒绝", "auto-deny in %lld s"}, {"拒绝", "Deny"}, {"允许", "Allow"},
         {"PC 控制中", "PC in control"},
-        // ---- 启用停用的通道（主页卡片）----
-        {"点一下启用 (卡片)", "Tap to enable"}, {"全部设定", "All settings"}, {"启用这一路 (面板)", "Enable this channel"}, {"已停用", "Disabled"},
-        {"启用后可以手动加热、进气，也能下发程序。", "Then manual heating, gas and programs become available."},
         // ---- 第一批里漏掉的（联调补）----
         {"正在连接后台服务…", "Connecting to the control service…"}, {"连上以后自动恢复，操作暂时不能用。", "Controls are locked until the connection is back."},
         {"同时停搅拌", "Also stop stirring"}, {"一台电机带全部釜：打开后 8 个釜都停转", "One motor drives all vessels: all 8 stop"},

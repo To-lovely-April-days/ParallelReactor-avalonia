@@ -16,6 +16,8 @@ TEST(ctl_stop, stop_all_urgent_then_normal_over_stale_frames) {
     auto temp_gate = g.temp_gate;
     Rig r({}, {}, std::move(g.hw));
     r.ticks(6);
+    // 开机默认全部启用：只留 1 号运行，其余停用
+    for (int i = 2; i <= 8; ++i) r.c().channel_mut(i).set_state(ReactorState::Idle);
     r.c().channel_mut(1).set_state(ReactorState::Ready);
 
     // 阀门总线：先卡住一笔，再排一帧「旧的开阀帧」（按下全部停止之前已通过判定、排在普通队列里）

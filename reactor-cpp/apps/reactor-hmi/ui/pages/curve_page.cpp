@@ -26,8 +26,9 @@ struct CurveState {
     std::array<bool, 8> hidden{};
     bool runtime_axis = false;
     std::array<int, 4> near{0, 1, 1, 0};   // 纵轴：0 全部 / 1 设定值附近（每个页签各记一份）
-    std::optional<double> cursor;          // 读数时刻（UTC 毫秒）；空 = 「现在」前 18 min
+    std::optional<double> cursor;          // 读数时刻（UTC 毫秒）：最近一次按在图上的位置
     int window_min = 60;                   // 「现在」往前看多久；往后留 30 min 空白
+    bool debug_cursor = false;             // 截图用（--page curve-*-cursor）：一进页面就显示读数，不自动收起
 };
 CurveState& cs() {
     static CurveState s;
@@ -45,6 +46,10 @@ double value_at(const model::Trend& t, int q, int ch, double at) {
     return v[(size_t)i];
 }
 
+// 每个量的最小纵轴跨度（°C / MPa / mmol）：读数只在 24.9 ↔ 25.1、0.000 ↔ 0.001 之间跳时，
+// 不把噪声放大成满屏锯齿（2026-11-27 用户截图）。数据本身跨度更大时照常自适应
+constexpr double kMinSpan[3] = {1.0, 10.0, 0.2};
+
 bool has_data(const model::Trend& t, int q, int ch, double from) {
     const auto& v = series_of(t, q, ch);
     for (size_t i = 0; i < v.size(); ++i)
@@ -57,6 +62,7 @@ bool has_data(const model::Trend& t, int q, int ch, double from) {
 class CurvePage : public Page {
 public:
     explicit CurvePage(int tab) : tab_(std::max(0, std::min(3, tab))) {}
+    ~CurvePage() override { stop_hide_timer(); }
     void build(lv_obj_t* root, App& app) override {
         app_ = &app;
         root_ = root;
@@ -66,13 +72,17 @@ public:
         tabs_.create(root, 8, 4, W_ - 16, tabs, tab_);
         tabs_.on_select = [this](int i) { tab_ = i; sig_.clear(); if (app_) update(app_->m()); };
         body_ = box(root, 0, 0, W_, H_, 0, 0, true);
+        // 读数默认不显示：按住 / 拖图时才出来（截图调试除外）
+        cur_on_ = cs().debug_cursor && cs().cursor.has_value();
     }
 
     void update(const Model& m) override {
         CurveState& s = cs();
+        // 手指还按在图上：先不重建（重建会删掉正被按着的图，拖动就断了），抬手后下一次 update 再刷新
+        if (pressing_) return;
         char sig[160];
-        std::snprintf(sig, sizeof sig, "%d/%lld/%d/%d/%d/%.0f/%d", tab_, (long long)(m.snap.ts / 5000), s.runtime_axis, s.near[(size_t)tab_],
-                      s.window_min, s.cursor.value_or(0), ver_);
+        std::snprintf(sig, sizeof sig, "%d/%lld/%d/%d/%d/%d", tab_, (long long)(m.snap.ts / 5000), s.runtime_axis, s.near[(size_t)tab_],
+                      s.window_min, ver_);
         std::string sg = sig;
         for (bool h : s.hidden) sg += h ? '1' : '0';
         if (sg == sig_) return;
@@ -84,13 +94,92 @@ public:
 private:
     void refresh() { ++ver_; if (app_) update(app_->m()); }
 
+    // ---- 读数（竖虚线 + 读数卡片）：按住 / 拖动时显示，抬手 3 s 后收起；点图外面立即收起 ----
+    void stop_hide_timer() {
+        if (hide_t_) { lv_timer_delete(hide_t_); hide_t_ = nullptr; }
+    }
+    void hide_cursor() {
+        stop_hide_timer();
+        cur_on_ = false;
+        if (tc_) tc_->set_cursor(std::nullopt, "");
+        if (pop_) { lv_obj_delete(pop_); pop_ = nullptr; }
+    }
+    void show_cursor(double at) {
+        at = std::max(x0_, std::min((double)now_, at));
+        cs().cursor = at;
+        cur_on_ = true;
+        if (tc_) tc_->set_cursor(at, hm((int64_t)at));
+        build_reading(at);
+    }
+    void on_chart_press(double xv) {
+        pressing_ = true;
+        stop_hide_timer();
+        show_cursor(xv);
+    }
+    void on_chart_release() {
+        pressing_ = false;
+        stop_hide_timer();
+        if (!cur_on_) return;
+        hide_t_ = lv_timer_create([](lv_timer_t* t) {
+            auto* self = static_cast<CurvePage*>(lv_timer_get_user_data(t));
+            self->hide_t_ = nullptr;   // 只跑一次：LVGL 跑完自己删
+            self->hide_cursor();
+        }, kHoldMs, this);
+        lv_timer_set_repeat_count(hide_t_, 1);
+    }
+    static constexpr uint32_t kHoldMs = 3000;
+
+    void build_reading(double cur) {
+        if (pop_) { lv_obj_delete(pop_); pop_ = nullptr; }
+        if (!tc_ || !card_ || !trend_ || shown_.empty()) return;
+        const model::Trend& T = *trend_;
+        int cx = tc_->x_to_px(cur);
+        int pw = 300, rows = (int)shown_.size();
+        int ph = 50 + rows * 30 + 8;
+        int px = cx - pw - 26 > 60 ? cx - pw - 26 : cx + 26;
+        lv_area_t a0 = tc_->panel_area(0);
+        lv_obj_t* pop = popover(card_, px, gy_ + a0.y1 + 50, pw, ph, 14);
+        pop_ = pop;
+        lv_obj_remove_flag(pop, LV_OBJ_FLAG_CLICKABLE);
+        label_at(pop, 14, 14, hm((int64_t)cur).c_str(), 15, 700, col::INK);
+        const char* H[3] = {"气体 mmol", "温度 °C", "压力 MPa (读数表头)"};
+        int colx[3] = {150, 214, 284};
+        int hq = tab_ == 3 ? -1 : (tab_ == 0 ? 0 : tab_ == 1 ? 1 : 2);
+        for (int q = 0; q < 3; ++q) {
+            lv_obj_t* l = label(pop, trc(H[q]), 12.5, q == hq ? 700 : 400, q == hq ? col::BLUE : col::MUT);
+            lv_obj_update_layout(l);
+            lv_obj_set_pos(l, colx[q] - lv_obj_get_width(l), 16);
+        }
+        int y = 44;
+        for (int ch : shown_) {
+            mini_vessel(pop, 14, y + 2, 18, chan_color(ch));
+            label_at(pop, 36, y + 2, trf("%d 号", ch).c_str(), 14.5, 400, col::SEC);
+            for (int q = 0; q < 3; ++q) {
+                double v = value_at(T, q, ch, cur);
+                std::string t = std::isnan(v) ? std::string("—") : model::fmt_num(v, q == 0 ? 2 : q == 1 ? 1 : 3);
+                lv_obj_t* l = label(pop, t.c_str(), 15, q == hq ? 700 : 400, q == hq ? col::INK : col::SEC);
+                lv_obj_update_layout(l);
+                lv_obj_set_pos(l, colx[q] - lv_obj_get_width(l), y + 1);
+            }
+            y += 30;
+        }
+    }
+
     void build_body(const Model& m) {
         CurveState& s = cs();
+        tc_ = nullptr; pop_ = nullptr; card_ = nullptr; trend_.reset(); shown_.clear();
         int cw = W_ - 24, chh = H_ - 56 - 12;
         lv_obj_t* c = card(body_, 12, 56, cw, chh);
+        // 点图外面（卡片空白处）：读数立即收起
+        lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
+        lv_obj_add_event_cb(c, [](lv_event_t* e) {
+            if (lv_event_get_target(e) != lv_event_get_current_target(e)) return;
+            auto* self = static_cast<CurvePage*>(lv_event_get_user_data(e));
+            if (self->cur_on_ && !cs().debug_cursor) self->hide_cursor();
+        }, LV_EVENT_CLICKED, this);
         // ---- 工具条 ----
         lv_obj_t* fit = tool_btn(c, 16, 10, tr("自适应"), &ic::fit16);
-        on_tap(fit, [this] { cs().cursor.reset(); cs().window_min = 60; cs().hidden = {}; refresh(); });
+        on_tap(fit, [this] { hide_cursor(); cs().cursor.reset(); cs().window_min = 60; cs().hidden = {}; refresh(); });
         lv_obj_update_layout(fit);
         int x = 16 + lv_obj_get_width(fit) + 10;
         lv_obj_t* ex = tool_btn(c, x, 10, tr("导出到 U 盘"), &ic::download16);
@@ -152,13 +241,13 @@ private:
         std::vector<int> shown;
         for (int ch = 1; ch <= 8; ++ch)
             if (m.ch(ch).installed && !s.hidden[(size_t)ch - 1]) shown.push_back(ch);
-        // 默认读数时刻 = 「现在」前 18 min；数据还不到 18 min（刚开机）时放在最早有数据的那一刻之后，不然读数框一排「—」
-        double first = (double)now;
-        for (int i = 0; i < tr_->size() && first == (double)now; ++i)
-            for (int ch : shown)
-                if (!std::isnan(tr_->temp[(size_t)ch - 1][(size_t)i])) { first = (double)tr_->t_at(i); break; }
-        double cur = s.cursor.value_or(std::max((double)(now - 18 * 60000LL), std::min((double)now, first + 60000.0)));
-        cur = std::max(x0, std::min((double)now, cur));
+        trend_ = m.x.trend;
+        shown_ = shown;
+        x0_ = x0; now_ = now;
+        // 读数只在按住 / 拖动之后显示（抬手后 3 s 内重建也接着显示）；默认不画
+        std::optional<double> cur;
+        if (cur_on_ && s.cursor) cur = std::max(x0, std::min((double)now, *s.cursor));
+        if (!cur) cur_on_ = false;
         // 运行时间轴：从显示中最早开始的程序算起
         int64_t run0 = now;
         for (int ch : shown) {
@@ -176,7 +265,7 @@ private:
         };
         else cfg.x_label = [](double v) { return hm((int64_t)v); };
         cfg.now = (double)now; cfg.shade_future = true; cfg.now_color = 0x4a5563;
-        cfg.cursor = cur; cfg.cursor_text = hm((int64_t)cur);
+        if (cur) { cfg.cursor = *cur; cfg.cursor_text = hm((int64_t)*cur); }
         cfg.left = 56; cfg.right = 16; cfg.top = tab_ == 3 ? 10 : 22; cfg.bottom = 30; cfg.gap = 18;
         cfg.ytick_px = 13;
         std::vector<int> qs = tab_ == 3 ? std::vector<int>{0, 1, 2} : std::vector<int>{tab_ == 0 ? 0 : tab_ == 1 ? 1 : 2};
@@ -204,6 +293,14 @@ private:
                 ++nd;
             }
             if (lo > hi) { lo = 0; hi = 1; }
+            // 最小跨度：以数据为中心撑开；吸气量从 0 起画，撑开后不往负的方向伸
+            if (hi - lo < kMinSpan[q]) {
+                double mid = (lo + hi) / 2;
+                bool nonneg = lo >= 0;
+                lo = mid - kMinSpan[q] / 2;
+                hi = mid + kMinSpan[q] / 2;
+                if (q == 0 && nonneg && lo < 0) { hi -= lo; lo = 0; }
+            }
             bool near = tab_ != 3 && s.near[(size_t)tab_] == 1 && q != 0;
             if (near) {
                 // 设定值附近：中心 = 显示中各路最常见的设定值，带宽 = 到位范围 / 压力偏离阈值
@@ -287,10 +384,11 @@ private:
         int gy = 60;
         tc->create(c, 0, gy, cw, chh - gy - 4);
         tc->set(cfg, panels);
-        tc->on_press = [this](double xv) {
-            cs().cursor = xv;
-            refresh();
-        };
+        tc->on_press = [this](double xv) { on_chart_press(xv); };
+        tc->on_release = [this] { on_chart_release(); };
+        tc_ = tc;
+        card_ = c;
+        gy_ = gy;
         if (!chip_text.empty()) {
             lv_area_t a = tc->panel_area(0);
             lv_obj_t* chip = pill(c, chip_text.c_str(), chip_fg, chip_bg, 13.5, nullptr, false, 600);
@@ -298,37 +396,7 @@ private:
             lv_obj_set_pos(chip, a.x1 + 10, gy + a.y1 + 10);
         }
         // ---- 读数卡片 ----
-        if (!shown.empty()) {
-            int cx = tc->x_to_px(cur);
-            int pw = 300, rows = (int)shown.size();
-            int ph = 50 + rows * 30 + 8;
-            int px = cx - pw - 26 > 60 ? cx - pw - 26 : cx + 26;
-            lv_area_t a0 = tc->panel_area(0);
-            lv_obj_t* pop = popover(c, px, gy + a0.y1 + 50, pw, ph, 14);
-            lv_obj_remove_flag(pop, LV_OBJ_FLAG_CLICKABLE);
-            label_at(pop, 14, 14, hm((int64_t)cur).c_str(), 15, 700, col::INK);
-            const char* H[3] = {"气体 mmol", "温度 °C", "压力 MPa (读数表头)"};
-            int colx[3] = {150, 214, 284};
-            int hq = tab_ == 3 ? -1 : (tab_ == 0 ? 0 : tab_ == 1 ? 1 : 2);
-            for (int q = 0; q < 3; ++q) {
-                lv_obj_t* l = label(pop, trc(H[q]), 12.5, q == hq ? 700 : 400, q == hq ? col::BLUE : col::MUT);
-                lv_obj_update_layout(l);
-                lv_obj_set_pos(l, colx[q] - lv_obj_get_width(l), 16);
-            }
-            int y = 44;
-            for (int ch : shown) {
-                mini_vessel(pop, 14, y + 2, 18, chan_color(ch));
-                label_at(pop, 36, y + 2, trf("%d 号", ch).c_str(), 14.5, 400, col::SEC);
-                for (int q = 0; q < 3; ++q) {
-                    double v = value_at(*tr_, q, ch, cur);
-                    std::string t = std::isnan(v) ? std::string("—") : model::fmt_num(v, q == 0 ? 2 : q == 1 ? 1 : 3);
-                    lv_obj_t* l = label(pop, t.c_str(), 15, q == hq ? 700 : 400, q == hq ? col::INK : col::SEC);
-                    lv_obj_update_layout(l);
-                    lv_obj_set_pos(l, colx[q] - lv_obj_get_width(l), y + 1);
-                }
-                y += 30;
-            }
-        }
+        if (cur) build_reading(*cur);
     }
 
     App* app_ = nullptr;
@@ -336,10 +404,26 @@ private:
     int W_ = 1280, H_ = 740, tab_ = 0, ver_ = 0;
     std::string sig_;
     TabCard tabs_;
+    // 读数
+    bool cur_on_ = false, pressing_ = false;
+    lv_timer_t* hide_t_ = nullptr;
+    TimeChart* tc_ = nullptr;          // 归卡片管（卡片删除时一起删）
+    lv_obj_t* card_ = nullptr;
+    lv_obj_t* pop_ = nullptr;
+    int gy_ = 60;
+    double x0_ = 0;
+    int64_t now_ = 0;
+    std::shared_ptr<const model::Trend> trend_;
+    std::vector<int> shown_;
 };
 
 std::unique_ptr<Page> make_curve_page(int tab) { return std::make_unique<CurvePage>(tab); }
 
 void reset_curve_state() { cs() = CurveState{}; }
+
+void curve_debug_cursor(int64_t at_ms) {
+    cs().cursor = (double)at_ms;
+    cs().debug_cursor = true;
+}
 
 }  // namespace reactor::hmi

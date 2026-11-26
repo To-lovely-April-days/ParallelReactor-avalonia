@@ -203,6 +203,9 @@ lv_obj_t* TabCard::create(lv_obj_t* parent, int x, int y, int w, const std::vect
         tabs_.push_back(t); texts_.push_back(l); icons_.push_back(im); badges_.push_back(bd); unders_.push_back(u);
         int idx = (int)i;
         on_tap(t, [this, idx] {
+            // 先把高亮切过去：曲线 / 程序 / 记录页只重建下面的内容、不重建页签（原来高亮一直停在第一次的页签上）。
+            // 必须在 on_select 之前：主页的 on_select 会换页，换完 this 已经不在了
+            select(idx);
             if (on_select) on_select(idx);
         });
         tx += w_tab;

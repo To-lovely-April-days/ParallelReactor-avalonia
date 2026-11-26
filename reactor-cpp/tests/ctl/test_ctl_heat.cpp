@@ -149,6 +149,7 @@ TEST(ctl_uptake, accumulates_drop_and_ignores_refill_with_sv_open) {
     auto set_p = [&](double psi) { press->set_input(1, 1, raw_of_psi(psi)); };
     set_p(300);
     r.ticks(2);
+    r.c().channel_mut(2).vol = 0;  // 开机默认启用时体积给 3 mL；本用例按体积 0 计算
     CHECK(r.c().start_uptake(2, "测试"));
     CHECK(r.c().channel(2).uptake.counting());
     double v = r.c().gas_volume_ml(2);

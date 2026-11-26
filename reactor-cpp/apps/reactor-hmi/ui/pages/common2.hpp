@@ -76,6 +76,8 @@ void settings_confirm_quit(App& app);
 // 页面工厂
 std::unique_ptr<Page> make_program_page(int arg);
 std::unique_ptr<Page> make_curve_page(int tab);
+// 截图调试：曲线页一进来就在 at_ms 处显示读数线 + 读数卡片（不自动收起）
+void curve_debug_cursor(int64_t at_ms);
 std::unique_ptr<Page> make_records_page(int tab);
 std::unique_ptr<Page> make_settings_page(int section);
 

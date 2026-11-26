@@ -41,6 +41,14 @@ ControlCore::ControlCore(CoreDeps deps, CoreOptions opt)
                      const std::string& kind) { file_event(level, origin, title, detail, kind); }),
       gate_(opt_.tick_ms) {
     for (int i = 0; i < 8; ++i) ch_[static_cast<size_t>(i)].id = i + 1;
+    // 开机默认启用全部已安装通道（用户 2026-11-27：不要每路手动启用）。只是 Ready（已启用、未加热）：
+    // 不下发加热、不动阀门；溶液体积和 /enable 一样默认 3 mL。停用仍在设置页 / 通道页
+    for (int id : opt_.installed) {
+        if (id < 1 || id > 8) continue;
+        auto& c = ch_[static_cast<size_t>(id - 1)];
+        c.set_state(ReactorState::Ready);
+        if (c.vol == 0) c.vol = 3;
+    }
     // C#：设置页的 MPa 量程显示值按设备层满量程回填（满量程的权威来源是 hardware.json）
     settings_.settings.press_full_scale_mpa = std::round(core::psi_to_mpa(press_.fullscale_psi()) * 1000.0) / 1000.0;
     apply_runtime_settings();

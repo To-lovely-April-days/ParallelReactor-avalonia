@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <ctime>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -90,6 +91,15 @@ lv_obj_t* TimeChart::create(lv_obj_t* parent, int x, int y, int w, int h) {
     };
     lv_obj_add_event_cb(root_, press, LV_EVENT_PRESSED, this);
     lv_obj_add_event_cb(root_, press, LV_EVENT_PRESSING, this);
+    auto release = [](lv_event_t* e) {
+        auto* self = static_cast<TimeChart*>(lv_event_get_user_data(e));
+        if (self->on_release) self->on_release();
+    };
+    lv_obj_add_event_cb(root_, release, LV_EVENT_RELEASED, this);
+    lv_obj_add_event_cb(root_, release, LV_EVENT_PRESS_LOST, this);
+    // 横向拖读数时别把外面的容器带着滚走（滚动一开始，这边就收到 PRESS_LOST，读数线不再跟手）
+    lv_obj_remove_flag(root_, LV_OBJ_FLAG_SCROLL_CHAIN_HOR);
+    lv_obj_remove_flag(root_, LV_OBJ_FLAG_SCROLL_CHAIN_VER);
     return root_;
 }
 
@@ -102,6 +112,12 @@ void TimeChart::set(const ChartConfig& cfg, const std::vector<ChartPanel>& panel
         st_->h = lv_obj_get_height(root_);
     }
     st_->layout();
+    lv_obj_invalidate(root_);
+}
+
+void TimeChart::set_cursor(std::optional<double> x, const std::string& text) {
+    st_->cfg.cursor = x;
+    st_->cfg.cursor_text = text;
     lv_obj_invalidate(root_);
 }
 
@@ -191,6 +207,10 @@ void TimeChart::draw_cb(lv_obj_t*, lv_layer_t* L, const lv_area_t& o, void* user
                     pts.clear();
                 };
                 size_t n = se.y.size();
+                // 断线门限：零星缺的点（取数时刻正好落在桶边上、某一帧没读到）连过去，只有真的缺一大段才断开
+                double gap = se.max_gap > 0 ? se.max_gap : se.max_gap < 0 || !se.xs.empty() ? -1 : 3.0 * std::fabs(se.dx);
+                double last_valid_x = 0;
+                bool any_valid = false;
                 // 太密时按像素抽稀（每像素保留最小和最大，噪声的样子不丢）
                 float lastx = -1e9f;
                 float mn = 0, mx = 0;
@@ -198,7 +218,13 @@ void TimeChart::draw_cb(lv_obj_t*, lv_layer_t* L, const lv_area_t& o, void* user
                 for (size_t k = 0; k < n; ++k) {
                     double xv = se.xs.empty() ? se.x0 + se.dx * (double)k : se.xs[k];
                     float yv = se.y[k];
-                    if (std::isnan(yv)) { flush(); have = false; continue; }
+                    if (std::isnan(yv)) {
+                        if (gap < 0) { flush(); have = false; }
+                        continue;
+                    }
+                    if (gap >= 0 && any_valid && std::fabs(xv - last_valid_x) > gap * (1 + 1e-9)) { flush(); have = false; }
+                    last_valid_x = xv;
+                    any_valid = true;
                     float xpx = s.xp(xv), ypx = s.yp(p, (int)pi, yv);
                     if (have && se.xs.empty() && xpx - lastx < 1.0f && n > 600) {
                         mn = std::min(mn, ypx); mx = std::max(mx, ypx);

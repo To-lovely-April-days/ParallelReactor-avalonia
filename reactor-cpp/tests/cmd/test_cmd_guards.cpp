@@ -179,6 +179,7 @@ TEST(cmd_guards, copy_config_strict_skips_running) {
     CRig t;
     Source holder = t.take_remote();
     t.r.core->channel_mut(1).tsp = 77;
+    t.r.core->channel_mut(1).vol = 0;  // 开机默认启用时体积给 3 mL；本用例先验证体积 0 被拒
     // 严格守卫先逐项校验源通道（体积 0 不在 1..VolMax → PARAM_OUT_OF_RANGE）
     CHECK_EQ(t.cmd->copy_channel_config(holder, 1, std::vector<int>{2}).code, std::string("PARAM_OUT_OF_RANGE"));
     t.r.core->channel_mut(1).vol = 3;

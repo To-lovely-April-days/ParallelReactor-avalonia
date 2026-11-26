@@ -667,7 +667,10 @@ void NetBackend::fetch(G g) {
             {
                 std::lock_guard<std::mutex> lk(mu_);
                 replace = !trend_ || trend_->size() == 0;
-                from = replace ? to - kTrendSpanMs : trend_->t_end() + trend_->stepMs;
+                // 增量取数从「已有的最后一桶」重新取起：上次取的时候这一桶还没走完（to = 现在），
+                // 桶里可能还没有任何一帧 → 后台给 null。原来从下一桶接着取，这个 null 就永远留下，
+                // 曲线每隔几个点断一下（2026-11-27 曲线页断成一段一段）。apply_trend 会用新数据覆盖这一桶
+                from = replace ? to - kTrendSpanMs : trend_->t_end();
             }
             from = from / kTrendStepMs * kTrendStepMs;
             if (from > to) return done(g);

@@ -104,13 +104,9 @@ public:
         ch_ = ch; w_ = w;
         root_ = card(parent, x, y, w, h);
         on_tap(root_, [&app, ch] {
-            const Model& m = app.m();
-            bool leak = false;
-            if (m.snap.leakTest.running)
-                for (auto& lc : m.snap.leakTest.channels) leak |= lc.id == ch;
-            // 泄漏测试中的路直接进整页；其余（含停用的路）都开快捷面板，停用的路在面板里启用
-            if (leak) { app.go(PageId::ChanFull, ch); return; }
-            app.open_quick(ch);
+            // 启用的路开快捷面板；停用的路进整页（启用 / 停用在整页圆钮和设置 · 通道与气路）
+            if (app.m().ch(ch).installed) app.open_quick(ch);
+            else app.go(PageId::ChanFull, ch);
         });
         lv_obj_t* hd = box(root_, 0, 0, w, 54, 0, 0, true);
         box(hd, 0, 53, w, 1, col::DIV);
@@ -126,11 +122,6 @@ public:
         vessel_.create(root_, 4, vy, Vessel::M);
         stub_ = box(root_, 4 + 59, vy + 126, 3, 8, col::LINE);
         readings_.create(root_, w - 150 - 2, 54 + (body - 182) / 2 - 2, 150, 1.0);
-        // 停用时卡片底部的提示：一眼看出点这里能启用
-        hint_ = label_at(root_, 0, h - 34, trc("点一下启用 (卡片)"), 14, 600, col::BLUE);
-        lv_obj_set_width(hint_, w);
-        lv_obj_set_style_text_align(hint_, LV_TEXT_ALIGN_CENTER, 0);
-        lv_obj_add_flag(hint_, LV_OBJ_FLAG_HIDDEN);
         ring_ = box(root_, -3, -3, w + 6, h + 6, 0, 15, true);
         ring(ring_, col::BLUE, 3);
         lv_obj_add_flag(ring_, LV_OBJ_FLAG_HIDDEN);
@@ -141,7 +132,6 @@ public:
     }
     void update(const Model& m) {
         const auto& c = m.ch(ch_);
-        if (c.program) lv_obj_add_flag(hint_, LV_OBJ_FLAG_HIDDEN);
         const auto& p = m.progress[static_cast<size_t>(ch_ - 1)];
         VState st = model::vstate(m, ch_);
         bool prog = c.program && (c.program->running || c.program->waitingGas);
@@ -174,8 +164,6 @@ public:
             if (m.snap.leakTest.running)
                 for (auto& lc : m.snap.leakTest.channels) leak |= lc.id == c.id;
             lv_label_set_text(title_, tr(leak ? "泄漏测试中" : c.installed ? "没有程序 · 手动" : "这一路已停用"));
-            if (!leak && !c.installed) lv_obj_remove_flag(hint_, LV_OBJ_FLAG_HIDDEN);
-            else lv_obj_add_flag(hint_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_set_style_text_font(title_, font(15, 400), 0);
             lv_obj_set_style_text_color(title_, lv_color_hex(col::MUT), 0);
             lv_obj_set_width(title_, w_ - 28);
@@ -196,7 +184,7 @@ public:
 private:
     int ch_ = 1, w_ = 271;
     lv_obj_t *root_ = nullptr, *title_ = nullptr, *timer_ = nullptr, *timer_i_ = nullptr, *step_ = nullptr, *right_ = nullptr,
-             *bar_ = nullptr, *stub_ = nullptr, *ring_ = nullptr, *hint_ = nullptr;
+             *bar_ = nullptr, *stub_ = nullptr, *ring_ = nullptr;
     Vessel vessel_;
     Readings readings_;
 };
