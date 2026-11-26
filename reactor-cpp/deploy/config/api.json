@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "bind": "0.0.0.0",
+  "httpPort": 8080,
+  "allowedCidrs": [],
+  "tokens": [],
+  "heartbeatTimeoutSec": 10,
+  "leaseGraceSec": 60,
+  "onRemoteLost": "keep",
+  "autoGrantRemote": false,
+  "controlRequestTimeoutSec": 60,
+  "writeRateLimitPerSec": 10,
+  "maxClients": 4
+}

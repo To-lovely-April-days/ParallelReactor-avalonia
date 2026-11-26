@@ -1,0 +1,29 @@
+# reactord-hmi：LVGL 触屏界面（程序名 reactor-hmi）。只通过 /run/reactord/hmi.sock 和 reactord 说话，不碰串口。
+#
+# 为什么不叫 reactor-hmi.service：这个名字现在是旧 C# 程序的服务（/home/teamhd/ParallelReactorProject/run.sh）。
+# 两个名字分开，安装新程序时不会覆盖旧服务文件，回退（rollback.sh）只需重新启用旧服务。
+[Unit]
+Description=Parallel Reactor touch screen UI (reactor-hmi, LVGL)
+After=graphical.target reactord.service
+Wants=graphical.target reactord.service
+# 用 Wants 不用 Requires / BindsTo：reactord 重启或停掉时界面留在屏幕上显示「正在连接后台服务…」并自动重连，
+# 而不是整个界面消失（现场看不到任何提示）。界面崩了 / 重启不影响 reactord（设计文档 §2 原则 3）。
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=teamhd
+Group=teamhd
+Environment=DISPLAY=:0
+# 如果日志里出现「无法打开显示」，按《板子联调指南》§10 加 XAUTHORITY
+WorkingDirectory=/opt/reactor/bin
+ExecStart=/opt/reactor/bin/reactor-hmi --server unix:/run/reactord/hmi.sock
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reactor-hmi
+
+[Install]
+WantedBy=graphical.target

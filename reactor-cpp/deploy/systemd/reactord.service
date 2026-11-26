@@ -1,0 +1,54 @@
+# reactord：八通道平行反应仪后台服务（唯一能碰串口的进程）。不依赖图形界面，开机即起。
+# 由 deploy/install.sh 安装到 /etc/systemd/system/；启用 / 启动由 deploy/switch-to-cpp.sh 做。
+#
+# 重要：停止 / 重启本服务 = reactord 收到 SIGTERM = 停全部加热、关全部阀门、停搅拌（和 C# 退出一样）。
+#       实验进行中不要 systemctl stop / restart，也不要重启板子。
+[Unit]
+Description=Parallel Reactor control daemon (reactord)
+After=local-fs.target
+# 不要 graphical.target：触屏没起来、崩了，控制照常运行
+StartLimitIntervalSec=0
+
+[Service]
+# reactord 自己发 READY=1 / WATCHDOG=1 / STOPPING=1（src/ctl/ctl_sd_notify.cpp，不依赖 libsystemd）
+Type=notify
+NotifyAccess=main
+# 控制周期 1.2 s，每周期喂一次狗；10 s 没喂（约 8 个周期）= 控制线程卡死 → systemd 杀掉重启
+WatchdogSec=10
+TimeoutStartSec=30
+# 退出时要等停止帧落地（最多约 11 s），留余量
+TimeoutStopSec=25
+KillSignal=SIGTERM
+Restart=always
+RestartSec=3
+
+User=teamhd
+Group=teamhd
+# 串口 /dev/ttyS* 属于 dialout 组：这里直接补上，不依赖 teamhd 是否已在 dialout 组里
+SupplementaryGroups=dialout
+
+# /run/reactord（触屏用的 Unix socket 所在目录），由 systemd 以 teamhd 身份创建，服务停止时删除
+RuntimeDirectory=reactord
+RuntimeDirectoryMode=0750
+
+# 由 install.sh 生成：REACTORD_HMI_UID=<teamhd 的 uid>。故意不加「-」前缀：文件缺了服务起不来，
+# 免得 --hmi-uid 变成空值（那样会只认 uid 0）。
+EnvironmentFile=/etc/reactord/reactord.env
+WorkingDirectory=/var/lib/reactord
+ExecStart=/opt/reactor/bin/reactord \
+    --hw /etc/reactord/hardware.json \
+    --config /etc/reactord \
+    --data /var/lib/reactord \
+    --socket /run/reactord/hmi.sock \
+    --hmi-uid ${REACTORD_HMI_UID}
+
+# 控制线程优先一点（systemd 以 root 身份设置后再降权，所以普通用户也能用负值）
+Nice=-5
+NoNewPrivileges=yes
+LimitNOFILE=4096
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reactord
+
+[Install]
+WantedBy=multi-user.target

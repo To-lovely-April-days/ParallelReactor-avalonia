@@ -1,0 +1,7 @@
+/build/
+/build-*/
+tools/build/out/
+tools/preview/out/
+*.bmp
+.DS_Store
+.vs/

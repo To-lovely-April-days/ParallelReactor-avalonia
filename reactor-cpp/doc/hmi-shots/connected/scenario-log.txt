@@ -1,0 +1,64 @@
+== A 开机、设置、启用、手动加热、曲线升温、短程序、程序库 ==
+  ok: pressure online after 2 s
+  idle pressure psi: [0.05, 0.05, 0, 0.05, 0.05, 0, 0.05, 0.05] simulated True
+  boot alarms: [('info', 0, '模拟模式'), ('info', 0, '程序启动')]
+PATCH /settings -> 200 {"ok": true, "opId": "396e3d88-23b3-4e62-bdf3-a47f9e849f5d", "status": "confirmed", "result": {"revision": 1, "changed": ["leakTest.settleMin"]}, "warnings": [], "opEventSeq": 8}
+PATCH /settings -> 200 {"ok": true, "opId": "bc4f107e-0042-4bf0-9432-434c92255061", "status": "confirmed", "result": {"revision": 2, "changed": ["leakTest.measureMin"]}, "warnings": [], "opEventSeq": 10}
+POST /channels/1/enable -> 200 {"ok": true, "opId": "ae9c843d-adc3-4586-bfc5-f5c218068402", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 11}
+POST /channels/2/enable -> 200 {"ok": true, "opId": "80a732a8-be5f-488b-a548-c6f29449d630", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 12}
+POST /channels/3/enable -> 200 {"ok": true, "opId": "5fa30eb9-3c1e-4e78-87d9-314c49e9215b", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 13}
+POST /channels/4/enable -> 200 {"ok": true, "opId": "d6918157-3c01-4475-ae16-cdb39b144ada", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 14}
+POST /channels/5/enable -> 200 {"ok": true, "opId": "38568e78-177a-47e0-b389-8466a5d94189", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 15}
+POST /channels/6/enable -> 200 {"ok": true, "opId": "82b0b281-bb56-4e5c-973a-c1ecd0d6aa2b", "status": "confirmed", "result": null, "warnings": [], "opEventSeq": 16}
+PUT /channels/1/temperature/anti-overshoot -> 200 {"ok": true, "opId": "4aa7c2ba-2bc6-44d7-aba8-d053664786e0", "status": "confirmed", "result": {"channel": 1, "antiOvershoot": false}, "warnings": [], "opEventSeq": 17}
+PUT /channels/2/temperature/anti-overshoot -> 200 {"ok": true, "opId": "241ab7d7-6109-476d-bfc8-1a91ce5c4b12", "status": "confirmed", "result": {"channel": 2, "antiOvershoot": false}, "warnings": [], "opEventSeq": 18}
+PUT /channels/3/temperature/anti-overshoot -> 200 {"ok": true, "opId": "013725d3-505a-4b40-8382-0b0f1c90fbd9", "status": "confirmed", "result": {"channel": 3, "antiOvershoot": false}, "warnings": [], "opEventSeq": 19}
+PUT /channels/5/temperature/setpoint -> 200 {"ok": true, "opId": "08b46e58-10aa-48fa-8a60-2549abb7f6c1", "status": "confirmed", "result": {"channel": 5, "tempSpC": 120, "applied": false, "coalesced": false, "approachReplanne
+POST /channels/5/heat/start -> 202 {"ok": true, "opId": "f81e0b9d-51d6-476a-aeda-58b1bb97f0cc", "status": "accepted", "result": {"tempC": 120}, "warnings": [], "opEventSeq": 21}
+PUT /channels/6/temperature/mode -> 200 {"ok": true, "opId": "caeb614e-2d16-4eaf-8738-eb48243dcb90", "status": "confirmed", "result": {"mode": "curve"}, "warnings": [], "opEventSeq": 22}
+PUT /channels/6/profile -> 200 {"ok": true, "opId": "1fcd8537-32f3-470d-b13a-3be6960a8317", "status": "confirmed", "result": {"segCount": 4}, "warnings": [], "opEventSeq": 23}
+POST /channels/6/profile/start -> 202 {"ok": true, "opId": "e3ee433c-4d68-4b81-991f-a9ca1484aa70", "status": "accepted", "result": {"segCount": 4, "startPv": 24.9}, "warnings": [], "opEventSeq": 24}
+PUT /channels/4/program -> 200 {"ok": true, "opId": "30f1350b-c930-4200-b6ce-21554f8c592f", "status": "confirmed", "result": {"rv": 4, "steps": [{"type": "stir", "params": {"rpm": 300}, "name": "搅拌", "detail": "
+POST /channels/4/program/run -> 202 {"ok": true, "opId": "a6d48a3d-d980-4759-8243-fa347c66d590", "status": "accepted", "result": {"rv": 4, "steps": 4}, "warnings": [], "opEventSeq": 29}
+POST /library/programs -> 200 {"ok": true, "opId": "38acd2ae-456d-4c90-8b27-99e391660e29", "status": "confirmed", "result": {"id": "P261126201557371", "revision": 1, "modified": "2026-11-26T20:15:57"}, "warning
+PUT /channels/1/program -> 200 {"ok": true, "opId": "6d936f38-be25-4033-a4a9-1a662f599398", "status": "confirmed", "result": {"rv": 1, "steps": [{"type": "leak", "params": {"pres": 435.1, "settle": 5, "hold": 30
+PUT /channels/2/program -> 200 {"ok": true, "opId": "96b83d09-52e0-4844-9d43-2dc213a16485", "status": "confirmed", "result": {"rv": 2, "steps": [{"type": "stir", "params": {"rpm": 300}, "name": "搅拌", "detail": "
+PUT /channels/3/program -> 200 {"ok": true, "opId": "db5a9d90-dd0b-4858-a820-344878305b14", "status": "confirmed", "result": {"rv": 3, "steps": [{"type": "stir", "params": {"rpm": 300}, "name": "搅拌", "detail": "
+POST /leak-tests -> 409 {"ok": false, "opId": "b36ecfa3-d7b6-4929-8338-00f42d50a6de", "error": {"code": "CHANNEL_BUSY", "message": "1 号 已在运行或正在执行程序 · 请重新打开泄漏测试选择通道", "detail": null}, "opEventSeq": 35}
+== B 泄漏测试（7、8 号停用的路）==
+POST /leak-tests -> 202 {"ok": true, "opId": "1c8ee3d7-91be-46af-94c6-ef37738a4853", "status": "accepted", "result": {"runId": "leak-20261126-201703", "channels": [7, 8], "testPsi": 50.0}, "warnings": [],
+  ok: leak measuring 2 min after 172 s
+  ok: leak done after 200 s
+  leak: ✓ 测试通过 全部 2 路压降均 < 0.0138 MPa/h，密封良好。 测试后已经排空阀泄压。
+== C 三路带气路的程序（排队）、PC 申请控制 ==
+PUT /channels/1/program -> 200 {"ok": true, "opId": "89c3e2f3-2be9-4741-ad39-889f81d9c8e3", "status": "confirmed", "result": {"rv": 1, "steps": [{"type": "leak", "params": {"pres": 100, "settle": 1, "hold": 5, "
+PUT /channels/2/program -> 200 {"ok": true, "opId": "45fca337-e22b-49ba-9c21-a1227a8034e3", "status": "confirmed", "result": {"rv": 2, "steps": [{"type": "leak", "params": {"pres": 100, "settle": 1, "hold": 5, "
+PUT /channels/3/program -> 200 {"ok": true, "opId": "a7a184a8-ea98-4d2e-bc2c-ab47cf1c6387", "status": "confirmed", "result": {"rv": 3, "steps": [{"type": "leak", "params": {"pres": 100, "settle": 1, "hold": 5, "
+POST /channels/1/program/run -> 202 {"ok": true, "opId": "d8d84a35-f206-42cc-808e-7a6951d86a7e", "status": "accepted", "result": {"rv": 1, "steps": 8}, "warnings": [], "opEventSeq": 83}
+POST /channels/2/program/run -> 202 {"ok": true, "opId": "e3ae10de-651b-4956-bf28-583144c1b0d6", "status": "accepted", "result": {"rv": 2, "steps": 8}, "warnings": [], "opEventSeq": 87}
+POST /channels/3/program/run -> 202 {"ok": true, "opId": "e602f40e-ff35-4cd6-94c7-0d03b485a173", "status": "accepted", "result": {"rv": 3, "steps": 8}, "warnings": [], "opEventSeq": 91}
+  ok: gas queue after 2 s
+  programs: {"running": 3, "channels": [1, 2, 3], "gasHolder": 1, "waitingGas": [2, 3], "summary": "正在运行：1、2、3 号", "gasQueue": [2, 3], "gasPending": "2 号 程序 · 等待气路"}
+  PC request: {"ok":true,"opId":"k-1795685024","status":"accepted","result":{"requestId":"99530564fa4df8c1","result":"pending","expiresAt":"2026-11-26T09:28:44.896Z","leaseId":null,"leaseExpiresAt":null,"heartbeatT
+POST /control/requests/99530564fa4df8c1/grant -> 200 {"ok": true, "opId": "17237dda-8735-4d4e-bc21-26abd59be7c6", "status": "confirmed", "result": {"requestId": "99530564fa4df8c1", "client": "实验室-PC2"}, "warnings": [], "opEventSeq": 
+== D 导出、报警（超温 / 程序故障 / 手动中止）、确认 ==
+POST /export -> 202 {"ok": true, "opId": "4e2738c7-6ec5-41e3-a0a6-f65dfa5ebeec", "status": "accepted", "result": {"exportId": "exp-20261126-202348"}, "warnings": [], "opEventSeq": 129}
+== D 导出、报警（超温 / 程序故障 / 手动中止）、确认 ==
+POST /export -> 202 {"ok": true, "opId": "9a02d619-c506-4a7d-b358-af8b8976a657", "status": "accepted", "result": {"exportId": "exp-20261126-202357-2"}, "warnings": [], "opEventSeq": 138}
+  ok: ch4 program ended after 0 s
+PUT /channels/4/program -> 409 {"ok": false, "opId": "005254aa-3734-4194-bd77-632777cad7ac", "error": {"code": "MODE_REMOTE", "message": "远程控制中（实验室-PC2）", "detail": null}, "opEventSeq": 139}
+POST /channels/4/program/run -> 409 {"ok": false, "opId": "1ff3be7c-f54c-42e3-8282-4319e2457247", "error": {"code": "MODE_REMOTE", "message": "远程控制中（实验室-PC2）", "detail": null}, "opEventSeq": 140}
+  ok: ch4 heat timeout fault after 0 s
+PATCH /settings -> 200 {"ok": true, "opId": "bf9f7461-b0a3-48c3-a247-c36953cb1846", "status": "confirmed", "result": {"revision": 4, "changed": ["limits.tempSpMaxC"]}, "warnings": [], "opEventSeq": 142}
+PATCH /settings -> 200 {"ok": true, "opId": "26b01719-d6d3-4e7a-9058-f49dab5c2fcf", "status": "confirmed", "result": {"revision": 5, "changed": ["alarms.overTempC"]}, "warnings": [], "opEventSeq": 144}
+  ok: ch5 over-temp after 2 s
+DELETE /channels/2/program/run -> 200 {"ok": true, "opId": "35ad8a5b-4586-48b6-917c-388bf9a55bf1", "status": "confirmed", "result": {"rv": 2}, "warnings": [], "opEventSeq": 152}
+POST /alarms/25/ack -> 200 {"ok": true, "opId": "de964e03-c8db-44e5-a06a-0b4d87d117ec", "status": "confirmed", "result": {"id": "25", "stat": "ack"}, "warnings": [], "opEventSeq": 155}
+PUT /channels/4/program -> 409 {"ok": false, "opId": "e0f0681b-5f45-4f62-8165-ce3d16a731d5", "error": {"code": "MODE_REMOTE", "message": "远程控制中（实验室-PC2）", "detail": null}, "opEventSeq": 156}
+POST /channels/4/program/run -> 409 {"ok": false, "opId": "afefba7b-4b1e-41f8-9435-ef323966b7c3", "error": {"code": "MODE_REMOTE", "message": "远程控制中（实验室-PC2）", "detail": null}, "opEventSeq": 157}
+PUT /channels/4/program -> 200 {"ok": true, "opId": "14e923a0-ed17-469c-a700-ec445330dfb8", "status": "confirmed", "result": {"rv": 4, "steps": [{"type": "stir", "params": {"rpm": 300}, "name": "搅拌", "detail": "
+POST /channels/4/program/run -> 202 {"ok": true, "opId": "f7f631a9-9996-4a92-8096-1ee31a8c8458", "status": "accepted", "result": {"rv": 4, "steps": 4}, "warnings": [], "opEventSeq": 164}
+  ok: ch4 rerun completed after 224 s
+== E 等 1、3 号进反应，吸气量曲线 ==
+  ok: ch1 reacting with uptake after 651 s
+usb: {'present': True, 'label': 'HTUSB', 'freeBytes': 135256281088, 'lastExport': '2026-11-26T09:03:57Z – 2026-11-26T09:23:57Z'}

@@ -1,0 +1,12 @@
+# /etc/logrotate.d/reactord —— 搅拌总线追踪文件（hardware.json stir.trace）会一直变长，这里按天轮转。
+# reactord 每笔事务都重新以追加方式打开文件，所以直接改名轮转即可，不需要 copytruncate。
+/var/lib/reactord/*-trace.log {
+    su teamhd teamhd
+    daily
+    maxsize 20M
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+}

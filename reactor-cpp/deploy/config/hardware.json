@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "sim": false,
+  "temp": {
+    "port": "/dev/ttyS5",
+    "baud": 19200,
+    "slave": 1,
+    "parity": "N",
+    "dataBits": 8,
+    "stopBits": 1,
+    "timeoutMs": 300,
+    "trace": "",
+    "dpt": 1
+  },
+  "stir": {
+    "port": "/dev/ttyS4",
+    "baud": 38400,
+    "slave": 1,
+    "parity": "N",
+    "dataBits": 8,
+    "stopBits": 1,
+    "timeoutMs": 300,
+    "trace": "/var/lib/reactord/stir-trace.log"
+  },
+  "press": {
+    "port": "/dev/ttyS6",
+    "baud": 9600,
+    "slave": 1,
+    "parity": "N",
+    "dataBits": 8,
+    "stopBits": 1,
+    "timeoutMs": 300,
+    "trace": "",
+    "signal": "4-20",
+    "fullScalePsi": 600
+  },
+  "io": {
+    "port": "/dev/ttyS8",
+    "baud": 9600,
+    "slave": 1,
+    "parity": "N",
+    "dataBits": 8,
+    "stopBits": 1,
+    "timeoutMs": 300,
+    "trace": "",
+    "energize": "open"
+  }
+}
