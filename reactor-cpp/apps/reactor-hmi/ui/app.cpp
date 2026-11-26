@@ -62,7 +62,11 @@ void App::update_topbar() {
 void App::apply(std::shared_ptr<const model::Model> m) {
     if (!m) return;
     model_ = std::move(m);
-    if (lang_code(lang()) != model_->languageCode) {
+    if (!pending_lang_.empty()) {
+        auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        if (model_->languageCode == pending_lang_ || now > pending_lang_until_) pending_lang_.clear();
+    }
+    if (pending_lang_.empty() && !model_->languageCode.empty() && lang_code(lang()) != model_->languageCode) {
         // 语言由后台保存（PUT /system/language），快照带回来以后才换
         for (Lang l : {Lang::Zh, Lang::En, Lang::Ja, Lang::Ko, Lang::De, Lang::Fr, Lang::Es, Lang::Ru})
             if (model_->languageCode == lang_code(l) && l != lang()) {
@@ -201,6 +205,8 @@ void App::go(PageId p, int arg) {
 }
 
 void App::rebuild() {
+    // 弹窗挂在 lv_layer_top() 上，lv_obj_clean(screen_) 删不到它：先关掉，不然换语言后旧弹窗会留在屏幕上、点不掉
+    close_overlays();
     if (link_) {
         lv_obj_delete(link_);
         link_ = link_sub_ = nullptr;
@@ -227,6 +233,12 @@ void App::close_overlays() {
 void App::open_quick(int ch) {
     close_overlays();
     overlay_ = open_chan_quick(*this, ch);
+}
+
+void App::set_pending_lang(const std::string& code) {
+    pending_lang_ = code;
+    pending_lang_until_ =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count() + 5000;
 }
 
 void App::open_lang() {

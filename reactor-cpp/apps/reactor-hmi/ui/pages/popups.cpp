@@ -263,6 +263,7 @@ lv_obj_t* open_lang_popup(App& app) {
         on_tap(r, [&app, ll] {
             if (ll == lang()) return;
             set_lang(ll);
+            app.set_pending_lang(lang_code(ll));
             app.act().set_language(lang_code(ll));
             app.rebuild();
             app.open_lang();

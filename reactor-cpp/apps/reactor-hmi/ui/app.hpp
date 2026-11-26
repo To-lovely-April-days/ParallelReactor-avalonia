@@ -35,6 +35,8 @@ public:
     // 弹层
     void open_quick(int ch);          // 点釜快捷面板
     void open_lang();                 // 语言弹窗
+    // 用户刚在语言弹窗里选了语言：后台确认（快照带回同一语言）之前，不拿快照里的旧语言把界面切回去
+    void set_pending_lang(const std::string& code);
     void close_overlays();
     void show_alarm(const model::AlarmItem& a);  // 按级别弹出（一级全屏 / 二级弹窗 / 三级气泡）
     void stop_all_confirm();
@@ -71,6 +73,8 @@ private:
     std::set<std::string> seen_alarms_;
     bool first_ = true;
     int64_t started_ms_ = 0;          // 界面启动时刻（墙上时间）：启动前就有的报警不弹
+    std::string pending_lang_;        // 等后台确认的语言（空 = 没有）
+    int64_t pending_lang_until_ = 0;  // 最多等到这个时刻（单调时钟 ms），超时就以后台为准
     lv_obj_t* overlay_ = nullptr;
     lv_obj_t* link_ = nullptr;        // 断线盖层（lv_layer_sys，在所有弹窗之上）
     lv_obj_t* link_sub_ = nullptr;
