@@ -268,11 +268,11 @@ OpResult Commands::start_heat(const Source& src, int id, std::optional<double> t
     auto& c = core().channel_mut(id);
     if (temp_c.value_or(c.tsp) < 35) return OpResult::fail(oc::kParamOutOfRange, "请先设置目标温度（≥35℃）再启动加热");
     if (CommandPolicy::strict(src) &&
-        !(c.state == ReactorState::Ready || c.state == ReactorState::Done || c.state == ReactorState::Heating))
+        !(c.state == ReactorState::Ready || core::state_is_ended(c.state) || c.state == ReactorState::Heating))
         return OpResult::fail(oc::kChannelStateInvalid, core::chan_name(id) + " 当前状态「" + core::state_zh(c.state, c.over_temp) +
                                                             "」不可启动加热 · 请先启用通道");
     if (temp_c) c.tsp = *temp_c;
-    if (c.state == ReactorState::Idle || c.state == ReactorState::Done || c.state == ReactorState::Ready)
+    if (c.state == ReactorState::Idle || core::state_is_ended(c.state) || c.state == ReactorState::Ready)
         c.set_state(ReactorState::Heating);   // 加热真的开始了才显示「升温中」
     c.started_by = started_by_of(src);
     heat_channel(id);

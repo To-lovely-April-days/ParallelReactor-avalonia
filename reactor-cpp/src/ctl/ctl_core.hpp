@@ -130,6 +130,8 @@ public:
     bool any_over_pressure_tripped() const;
     // 停用 / 已结束通道的超温报警（不阻塞其他通道的气路，C# IsIdleOverTempAlarm）
     bool is_idle_over_temp_alarm(int id) const;
+    // 这一路现在有没有动作（程序 / 加热温控 / 气路 / 报警态）：停止与全部停止据此决定要不要转「手动停止」
+    bool channel_has_activity(int id) const;
     bool manual_valve() const { return manual_valve_; }
     int64_t snapshot_seq() const { return snap_seq_; }
     const TickGate& tick_gate() const { return gate_; }

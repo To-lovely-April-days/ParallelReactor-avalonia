@@ -64,6 +64,7 @@ struct ChannelSnap {
     double pressure_sp_psi = 0;
     std::optional<double> gas_consumed;
     bool valve_open = false, program_owned = false;
+    bool has_activity = false;  // ControlCore::channel_has_activity（不在 C# 帧里；接口层作为扩展字段 hasActivity 输出）
     ojson program;  // ChannelProgramSnap 或 null（第二阶段提供）
     std::optional<double> gas_rate, solution_volume;
 };

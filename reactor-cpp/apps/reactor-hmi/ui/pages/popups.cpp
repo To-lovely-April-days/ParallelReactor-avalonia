@@ -94,7 +94,8 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
     label_at(p, 18, 15, trf("%d 号", ch).c_str(), 18, 700, col::INK);
     if (!run) {
         char sub[64];
-        std::snprintf(sub, sizeof sub, "%s · %s °C", tr(c.state == "heating" ? "加热中" : "手动"), model::fmt_temp(c).c_str());
+        std::snprintf(sub, sizeof sub, "%s · %s °C", tr(c.state == "heating" ? "加热中" : c.state == "stopped" ? "手动停止" : "手动"),
+                      model::fmt_temp(c).c_str());
         lv_obj_t* s = label_at(p, 61, 19, sub, 13, 400, col::MUT);
         lv_obj_t* heat_lbl = nullptr;
         bool heating = c.state == "heating";

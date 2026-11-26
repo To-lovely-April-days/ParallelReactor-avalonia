@@ -114,7 +114,7 @@ OpResult Commands::estop(const Source& src, const std::string& note) {
 
 namespace {
 bool can_start_heat(ReactorState s, bool ot, bool op, bool owned) {
-    return !owned && (s == ReactorState::Ready || s == ReactorState::Done) && !ot && !op;
+    return !owned && (s == ReactorState::Ready || core::state_is_ended(s)) && !ot && !op;
 }
 }  // namespace
 

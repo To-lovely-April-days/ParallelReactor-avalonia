@@ -85,7 +85,7 @@ std::optional<std::string> GasLease::fault_reason(
         auto st = state_of(id);
         if (!st) continue;
         if (*st == ReactorState::Alarm) return rv + " 报警，序列中止";
-        if (*st == ReactorState::Idle || *st == ReactorState::Done) {
+        if (*st == ReactorState::Idle || state_is_ended(*st)) {
             auto it = start_.find(id);
             if (it == start_.end() || it->second != *st)
                 return *st == ReactorState::Idle ? rv + " 已被停用，序列中止" : rv + " 已被停止，序列中止";

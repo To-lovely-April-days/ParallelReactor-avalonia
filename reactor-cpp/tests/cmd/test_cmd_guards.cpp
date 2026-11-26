@@ -144,8 +144,28 @@ TEST(cmd_guards, stop_all_and_stop_channel_results) {
     auto r = t.wait([&](Done d) { t.cmd->stop_all(Source::local(), false, d); });
     CHECK(r.ok);
     CHECK_EQ(r.message, std::string("已停止全部通道（含加热输出）· 阀门全关"));
-    CHECK(r.data.contains("channels") && r.data["channels"].size() == 8);
+    // 开机全部已启用、都没有动作：没有通道转「手动停止」，状态不变
+    CHECK(r.data.contains("channels") && r.data["channels"].empty());
+    for (int i = 1; i <= 8; ++i) CHECK(t.r.core->channel(i).state == core::ReactorState::Ready);
     CHECK(!r.data["stirStopped"].get<bool>());
+    // 有动作的通道（2 号加热）→ 手动停止；返回的 channels 只列它
+    CHECK(t.cmd->start_heat(Source::local(), 2, 60).ok);
+    CHECK(t.r.core->channel(2).state == core::ReactorState::Heating);
+    auto r2 = t.wait([&](Done d) { t.cmd->stop_all(Source::local(), false, d); });
+    CHECK(r2.ok);
+    CHECK_EQ(r2.data["channels"].size(), 1u);
+    CHECK(t.r.core->channel(2).state == core::ReactorState::Stopped);
+    CHECK(t.r.core->channel(3).state == core::ReactorState::Ready);
+    // 手动停止之后可以像已结束一样重新启动加热
+    CHECK(t.cmd->start_heat(Source::local(), 2, 60).ok);
+    CHECK(t.r.core->channel(2).state == core::ReactorState::Heating);
+    // 单路停止：有动作 → 手动停止；没有动作 → 不变
+    auto s2 = t.wait([&](Done d) { t.cmd->stop_channel(Source::local(), 2, false, d); });
+    CHECK(s2.ok);
+    CHECK(t.r.core->channel(2).state == core::ReactorState::Stopped);
+    auto s5 = t.wait([&](Done d) { t.cmd->stop_channel(Source::local(), 5, false, d); });
+    CHECK(s5.ok);
+    CHECK(t.r.core->channel(5).state == core::ReactorState::Ready);
     auto c = t.wait([&](Done d) { t.cmd->stop_channel(Source::remote("tok", "tok"), 4, true, d); });
     CHECK(c.ok);
     CHECK_EQ(c.message, std::string("4 号 已停用，不参与运行"));

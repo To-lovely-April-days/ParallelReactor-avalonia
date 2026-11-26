@@ -1,4 +1,6 @@
 #include "ctl/ctl_core.hpp"
+
+#include <array>
 #include "core/chan_name.hpp"
 
 #include <algorithm>
@@ -257,7 +259,7 @@ void ControlCore::tick() {
         update_uptake(c, real_t, real_p);
         check_over_temp(c, real_t);      // 所有通道（含停用 / 已结束 / 自整定中）
         check_over_pressure(c, real_p);  // 所有通道
-        if (c.state == ReactorState::Idle || c.state == ReactorState::Done) continue;
+        if (c.state == ReactorState::Idle || core::state_is_ended(c.state)) continue;
         if (real_t && c.t >= over_temp) {  // 运行中通道的超温报警
             c.set_state(ReactorState::Alarm);
             c.over_temp = true;
@@ -291,6 +293,23 @@ bool ControlCore::is_idle_over_temp_alarm(int id) const {
     const auto& c = ch_[idx(id)];
     return c.state == ReactorState::Alarm && c.over_temp && c.ot_idle_alarm && ot_guard_.is_tripped(id - 1) &&
            !op_guard_.is_tripped(id - 1);
+}
+
+// ============================ 通道有没有动作 ============================
+
+// 「全部停止」/「停止」只把正在有动作的通道转「手动停止」（决定记录 2026-11-27）。动作 = 程序（含排队等气路 / 收尾）、
+// 加热与温控（手动加热、曲线、逼近、自整定）、气路（参与气路序列 / 泄漏测试 / 容积标定、进气阀 SV 开着），以及报警态
+// （报警态要操作员停止复位，算在内）。快照 channels[i].hasActivity 给触屏算「全部停止」按钮上的路数。
+bool ControlCore::channel_has_activity(int id) const {
+    if (id < 1 || id > 8) return false;
+    const auto& c = ch_[idx(id)];
+    if (c.state == ReactorState::Alarm || core::state_is_active(c.state)) return true;
+    if (programs_ && programs_->is_owned(id)) return true;
+    if (c.profile.running() || c.approach.active()) return true;
+    if (temp_.ch(id).autotuning) return true;
+    if (lease_.busy() && lease_.includes(id)) return true;
+    if (valves_.configured() && valves_.sv_open(id)) return true;
+    return false;
 }
 
 // ============================ 全部停止 ============================
@@ -357,6 +376,9 @@ void ControlCore::request_stop_all(StopAllOptions opts, std::function<void(const
 
 void ControlCore::stop_all_cleanup(const std::shared_ptr<StopAllState>& st) {
     auto& res = st->res;
+    // 先记下每一路按下时有没有动作（下面的中止会改掉程序 / 气路 / 曲线的状态）
+    std::array<bool, 8> active{};
+    for (const auto& c : ch_) active[idx(c.id)] = channel_has_activity(c.id);
     res.gas_aborted = lease_.busy();
     res.gas_task = lease_.task();
     abort_keep_vent_ = false;  // 全部停止一律全关（含排空）
@@ -370,11 +392,13 @@ void ControlCore::stop_all_cleanup(const std::shared_ptr<StopAllState>& st) {
         c.approach.stop();
         end_heat_watch(c.id);
         end_pressure_watch(c.id);
-        if (c.state != ReactorState::Idle) {
+        // 只有按下时正在有动作的通道转「手动停止」；没有动作的（已启用待机 / 已结束 / 停用）状态不变（决定记录 2026-11-27）。
+        // 停用的通道（泄漏测试 / 自整定可以在停用通道上跑）动作照停，但保持停用
+        if (active[idx(c.id)] && c.state != ReactorState::Idle) {
             res.channels.push_back(c.id);
-            c.set_state(ReactorState::Done);
+            c.set_state(ReactorState::Stopped);
+            c.started_by.reset();
         }
-        c.started_by.reset();
         // 正在自整定的被 At=4 打断：整定簿不回读存档（第二阶段）
         if (temp_.ch(c.id).autotuning && temp_.on_autotune_aborted) temp_.on_autotune_aborted(c.id);
     }
@@ -414,8 +438,14 @@ void ControlCore::stop_channel(int id, bool disable, std::function<void(const Ch
     auto& c = ch_[idx(id)];
     auto res = std::make_shared<ChannelStopResult>();
     if (lease_.includes(id)) res->gas_aborted = lease_.task();
-    c.set_state(disable ? ReactorState::Idle : ReactorState::Done);
-    c.started_by.reset();
+    // 停用 → 停用；停止：有动作的通道转「手动停止」，没有动作的状态不变（决定记录 2026-11-27）
+    if (disable) {
+        c.set_state(ReactorState::Idle);
+        c.started_by.reset();
+    } else if (channel_has_activity(id) && c.state != ReactorState::Idle) {
+        c.set_state(ReactorState::Stopped);
+        c.started_by.reset();
+    }
     if (c.profile.running()) c.profile.stop();
     c.approach.stop();
     end_heat_watch(id);

@@ -62,6 +62,8 @@ struct ChannelSnap {
     std::optional<ChannelProgramSnap> program;
     OptD gasRate;         // mmol/min
     OptD solutionVolume;  // mL
+    // 扩展字段 hasActivity：「全部停止」会把这一路转「手动停止」（程序 / 加热温控 / 气路 / 报警）。旧后台没有 → 界面自己推（derive has_activity）
+    std::optional<bool> hasActivity;
 };
 struct StirSnap {
     bool on = false; int rpmSp = 0; bool online = true; bool locked = false; OptD motorCurrentA, busVoltageV; OptS fault;

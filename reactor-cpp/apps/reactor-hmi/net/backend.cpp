@@ -155,7 +155,7 @@ void NetBackend::refresh_derived_locked() {
     auto& sel = m_.x.leak.selectable;
     sel.clear();
     for (auto& c : m_.snap.channels)
-        if ((c.state == "idle" || c.state == "done") && !c.programOwned) sel.push_back(c.id);
+        if ((c.state == "idle" || c.state == "done" || c.state == "stopped") && !c.programOwned) sel.push_back(c.id);
     // 正用着程序库哪一条（「正用在」）：后端没给 usedBy 时按 sourceId 自己算
     for (auto* lib : {&m_.x.library, &m_.x.templates})
         for (auto& e : *lib) {

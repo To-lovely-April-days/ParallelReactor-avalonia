@@ -168,6 +168,7 @@ std::string chan_state_text(const Model& m, int ch, uint32_t* color) {
     };
     if (!c.installed) return out("停用 (状态)", col::DIS);
     if (c.program && c.program->running) return c.program->waitingGas ? out("等气路", col::AMBER) : out("运行中", col::ST_GRN);
+    if (c.state == "stopped") return out("手动停止", col::SEC);   // 停止 / 全部停止 / 中止程序时正在有动作
     if (c.program && c.program->state == "completed" && last_result(m, ch)) return out("已完成", col::ST_GRN);
     if (c.program && c.program->state == "aborted" && last_result(m, ch)) return out("已中止", col::RED);
     if (prog_edit().dirty[(size_t)ch - 1]) return out("编辑中", col::BLUE);

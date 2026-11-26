@@ -19,7 +19,7 @@ std::optional<GuardReject> check(const ProgramRunInput& i) {
     if (i.estop_locked) return GuardReject{kEstopActive, "急停状态下不可下发程序 · 请先复位"};
     if (i.state == ReactorState::Alarm || i.over_temp_tripped || i.over_pressure_tripped)
         return GuardReject{kChannelAlarm, "该通道存在报警或超温 / 超压未解除 · 请先处理并复位"};
-    if (i.state != ReactorState::Ready && i.state != ReactorState::Done)
+    if (i.state != ReactorState::Ready && !state_is_ended(i.state))
         return i.state == ReactorState::Idle ? GuardReject{kChannelStateInvalid, "该通道已停用 · 请先启用"}
                                              : GuardReject{kChannelBusy, "该通道正在运行，不能下发程序"};
     if (i.gas_busy)

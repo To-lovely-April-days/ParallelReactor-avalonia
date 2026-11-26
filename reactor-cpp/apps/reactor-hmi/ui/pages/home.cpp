@@ -82,7 +82,8 @@ public:
         lv_obj_t* l1 = label(c, tr("全部停止"), 13.5, 400, col::SEC);
         lv_obj_align(l1, LV_ALIGN_TOP_MID, 0, h - 61);
         stop_n_ = label(c, "", 14.5, 700, col::RED);
-        lv_obj_align(stop_n_, LV_ALIGN_TOP_MID, 0, h - 40);
+        stop_y_ = h - 40;
+        lv_obj_align(stop_n_, LV_ALIGN_TOP_MID, 0, stop_y_);
     }
     void update(const Model& m) {
         const auto& s = m.snap.stir;
@@ -98,8 +99,12 @@ public:
         bool mv = m.snap.gas.manualValve;
         valve_.set(mv, tr(mv ? "开" : "关"), mv ? col::ST_GRN : col::SEC, 0);
         set_valve_look(mv);
-        int n = (int)m.snap.channels.size();  // 全部停止对 8 路都发（停用的路也一起关）
-        lv_label_set_text(stop_n_, trf("%d 路", n).c_str());
+        // 停止帧对 8 路都发；按钮上写会被停下来的路数（有动作的通道，转「手动停止」），没有就写「无动作」
+        int n = (int)model::active_channels(m).size();
+        lv_label_set_text(stop_n_, n > 0 ? trf("%d 路", n).c_str() : tr("无动作"));
+        lv_obj_set_style_text_color(stop_n_, lv_color_hex(n > 0 ? col::RED : col::MUT), 0);
+        lv_obj_set_style_text_font(stop_n_, font(n > 0 ? 14.5 : 13, n > 0 ? 700 : 400), 0);
+        lv_obj_align(stop_n_, LV_ALIGN_TOP_MID, 0, stop_y_ + (n > 0 ? 0 : 1));
     }
 
 private:
@@ -137,6 +142,7 @@ private:
     lv_obj_t* halo_[2] = {nullptr, nullptr};
     bool halo_on_ = false;
     lv_obj_t *rpm_ = nullptr, *rpm_v_ = nullptr, *rpm_u_ = nullptr, *stop_n_ = nullptr;
+    int stop_y_ = 0;
 };
 
 // ============================================================ 装置总览：一张釜卡片
@@ -205,14 +211,20 @@ public:
             bool leak = false;
             if (m.snap.leakTest.running)
                 for (auto& lc : m.snap.leakTest.channels) leak |= lc.id == c.id;
-            lv_label_set_text(title_, tr(leak ? "泄漏测试中" : c.installed ? "没有程序 · 手动" : "这一路已停用"));
-            lv_obj_set_style_text_font(title_, font(15, 400), 0);
-            lv_obj_set_style_text_color(title_, lv_color_hex(col::MUT), 0);
+            bool stopped = st == VState::Stopped && !leak;
+            lv_label_set_text(title_, tr(leak ? "泄漏测试中" : stopped ? "手动停止" : c.installed ? "没有程序 · 手动" : "这一路已停用"));
+            lv_obj_set_style_text_font(title_, font(stopped ? 16 : 15, stopped ? 600 : 400), 0);
+            lv_obj_set_style_text_color(title_, lv_color_hex(stopped ? col::INK : col::MUT), 0);
             lv_obj_set_width(title_, w_ - 28);
-            lv_obj_set_y(title_, 10);
+            lv_obj_set_y(title_, stopped ? 9 : 10);
             lv_obj_add_flag(timer_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_add_flag(timer_i_, LV_OBJ_FLAG_HIDDEN);
-            lv_label_set_text(step_, "");
+            // 手动停止的副行：中止的程序名，或者「手动操作已停止」
+            std::string sub;
+            if (stopped) sub = !(c.program && c.program->state == "aborted") ? std::string(tr("加热、进气已停 · 可重新开始"))
+                               : p.programName.empty()                      ? std::string(tr("程序已中止"))
+                                                                             : trf("程序「%s」已中止", p.programName.c_str());
+            lv_label_set_text(step_, sub.c_str());
             lv_label_set_text(right_, "");
             lv_obj_set_width(bar_, 0);
         }
@@ -549,7 +561,9 @@ private:
                 lv_obj_t* row = box(c, 16, y, W - 32, 40, 0, 0, true);
                 box(row, 0, 39, W - 32, 1, 0xf0f3f6);
                 mini_vessel(row, 4, 11, 19, chan_color(ch), true);
-                label_at(row, 26, 10, trf("%d 号 · 没有程序", ch).c_str(), 14, 400, col::MUT);
+                std::string nt = trf("%d 号 · 没有程序", ch);
+                if (cs.state == "stopped") nt += std::string(" · ") + tr("手动停止");
+                label_at(row, 26, 10, nt.c_str(), 14, 400, col::MUT);
                 // 虚线（6 / 6）
                 for (int dx = 252; dx < W - 32; dx += 12) box(row, dx, 20, std::min(6, W - 32 - dx), 1, 0xe3e8ee);
                 y += 40;
@@ -569,7 +583,8 @@ private:
             nx += lv_obj_get_width(pn) + 8;
             bool waiting = cs.program && cs.program->waitingGas;
             bool run = cs.program && cs.program->running && !waiting;
-            const char* chip = run ? "运行中" : waiting ? "等气路" : "未下发";
+            bool stopped = !run && !waiting && cs.state == "stopped";
+            const char* chip = run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发";
             uint32_t cbg = run ? 0xe8f0fb : waiting ? 0xfdf1e0 : 0xeef1f5;
             uint32_t cfg = run ? col::BLUE : waiting ? col::AMBER : col::SEC;
             lv_obj_t* cp = label_at(row, nx, ty, tr(chip), 12, 700, cfg);
@@ -587,6 +602,8 @@ private:
                 l2 += " · " + trf("已 %s", model::fmt_hmin(pg.elapsedSec).c_str());
             } else if (waiting) {
                 l2 = trf("等 %s 号放开气路", chans_text(pg.waitingFor).c_str()) + " · " + trf("已等 %s", model::fmt_hmin(pg.waitedSec).c_str());
+            } else if (stopped && cs.program && cs.program->state == "aborted") {
+                l2 = std::string(tr("程序已中止")) + " · " + trf("%d 步 约 %s", pg.stepCountDraft, model::fmt_hmin(pg.draftTotalSec).c_str());
             } else {
                 l2 = std::string(tr("已编辑，还没下发")) + " · " + trf("%d 步 约 %s", pg.stepCountDraft, model::fmt_hmin(pg.draftTotalSec).c_str());
             }
@@ -805,15 +822,18 @@ private:
             int cy = rh / 2;
             if (pe2.segs.empty()) {
                 mini_vessel(r, 12, cy - 8, 17, chan_color(i), true);
-                label_at(r, 36, cy - 10, trf("%d 号 · 没有程序", i).c_str(), 13.5, 400, col::MUT);
+                std::string nt = trf("%d 号 · 没有程序", i);
+                if (c2.state == "stopped") nt += std::string(" · ") + tr("手动停止");
+                label_at(r, 36, cy - 10, nt.c_str(), 13.5, 400, col::MUT);
             } else {
                 mini_vessel(r, 12, cy - 9, 18, chan_color(i));
                 label_at(r, 37, cy - 11, trf("%d 号", i).c_str(), 14.5, 700, col::INK);
                 label_at(r, 89, cy - 10, p2.programName.c_str(), 14, 400, col::INK);
                 bool waiting = c2.program && c2.program->waitingGas;
                 bool run = c2.program && c2.program->running && !waiting;
-                label_at(r, 211, cy - 9, tr(run ? "运行中" : waiting ? "等气路" : "未下发"), 12.5, 700,
-                         run ? col::BLUE : waiting ? col::AMBER : col::MUT);
+                bool stopped = !run && !waiting && c2.state == "stopped";
+                label_at(r, 211, cy - 9, tr(run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发"), 12.5, 700,
+                         run ? col::BLUE : waiting ? col::AMBER : stopped ? col::SEC : col::MUT);
                 std::string d;
                 if (run) {
                     int si = c2.program->stepIndex;
@@ -821,6 +841,8 @@ private:
                     d = trf("第 %d/%d 步 · %s · 已 %s", si + 1, c2.program->stepCount, tr(sn.c_str()), model::fmt_hmin(p2.elapsedSec).c_str());
                 } else if (waiting) {
                     d = trf("等 %s 号放开气路", chans_text(p2.waitingFor).c_str()) + " · " + trf("已等 %s", model::fmt_hmin(p2.waitedSec).c_str());
+                } else if (stopped && c2.program && c2.program->state == "aborted") {
+                    d = tr("程序已中止");
                 } else {
                     d = tr("已编辑，还没下发");
                 }

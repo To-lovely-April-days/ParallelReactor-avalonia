@@ -163,6 +163,7 @@ public:
         std::string chip;
         if (run) chip = p.programName + " · " + tr("运行中");
         else if (!c.installed) chip = tr("已停用");
+        else if (st == VState::Stopped) chip = std::string(tr("手动停止")) + " · " + tr("没有程序（手动）");
         else chip = std::string(tr("已启用")) + " · " + tr("没有程序（手动）");
         lv_label_set_text(chip_, chip.c_str());
         lv_label_set_text(tv_, model::fmt_temp(c).c_str());

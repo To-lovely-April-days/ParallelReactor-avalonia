@@ -117,6 +117,7 @@ void ControlCore::publish_snapshot() {
         if (c.uptake.valid()) o.gas_consumed = fin(c.uptake.mmol());
         o.valve_open = shown[i];
         o.program_owned = programs_->is_owned(c.id);
+        o.has_activity = channel_has_activity(c.id);
         o.program = programs_->channel_program(c.id);
         if (auto r = c.uptake.rate_mmol_per_min()) o.gas_rate = fin(*r);
         o.solution_volume = c.vol;

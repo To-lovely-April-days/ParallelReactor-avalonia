@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace reactor::hmi {
 
@@ -270,7 +271,11 @@ void App::show_alarm(const model::AlarmItem& a) {
 }
 
 void App::stop_all_confirm() {
-    int n = (int)model_->snap.channels.size();
+    // 只有正在有动作的通道会转「手动停止」，其余状态不变；停止帧（加热 At=4、阀门全关）照样对 8 路都发
+    std::vector<int> act = model::active_channels(*model_);
+    int n = (int)act.size();
+    std::string list;
+    for (size_t i = 0; i < act.size(); ++i) list += (i ? std::string(tr("、")) : std::string()) + std::to_string(act[i]);
     bool stir_on = model_->snap.stir.on;
     // 「同时停搅拌」开关，默认关（决定记录 2026-11-26；和 C# stop-all {stopStir?} 一致）
     auto stop_stir = std::make_shared<bool>(false);
@@ -280,8 +285,10 @@ void App::stop_all_confirm() {
     s.secondary = tr("不停");
     s.primary = tr("全部停止");
     s.on_primary = [this, stop_stir] { act_.stop_all(*stop_stir); };
-    s.body = [n, stop_stir, stir_on](lv_obj_t* b, int w) {
-        lv_obj_t* l = label_at(b, 0, 0, trf("停止全部 %d 路的加热，中止正在跑的程序和气路，关闭全部阀门。", n).c_str(), 15, 400, col::INK);
+    s.body = [n, list, stop_stir, stir_on](lv_obj_t* b, int w) {
+        std::string txt = n > 0 ? trf("停止 %s 号（共 %d 路）的程序、加热和进气，这几路转为「手动停止」；其他通道状态不变。阀门全部关闭。", list.c_str(), n)
+                                : std::string(tr("现在没有通道在运行，各通道状态不变；仍会停止全部加热输出、关闭全部阀门。"));
+        lv_obj_t* l = label_at(b, 0, 0, txt.c_str(), 15, 400, col::INK);
         lv_obj_set_width(l, w);
         lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
         lv_obj_t* hl = box(b, 0, 52, w, 45, 0xfdf3f2, 10);

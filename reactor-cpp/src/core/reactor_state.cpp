@@ -16,6 +16,7 @@ const char* state_code(ReactorState s) {
         case ReactorState::Wait: return "wait";
         case ReactorState::Stir: return "stir";
         case ReactorState::Cooling: return "cooling";
+        case ReactorState::Stopped: return "stopped";
     }
     return "idle";
 }
@@ -24,7 +25,7 @@ std::optional<ReactorState> parse_state_code(const std::string& c) {
     static const ReactorState all[] = {ReactorState::React, ReactorState::Pressing, ReactorState::Heating,
                                        ReactorState::Alarm, ReactorState::Done,     ReactorState::Idle,
                                        ReactorState::Ready, ReactorState::Wait,     ReactorState::Stir,
-                                       ReactorState::Cooling};
+                                       ReactorState::Cooling, ReactorState::Stopped};
     for (auto s : all)
         if (c == state_code(s)) return s;
     return std::nullopt;
@@ -42,13 +43,16 @@ const char* state_zh(ReactorState s, bool over_temp) {
         case ReactorState::Stir: return "搅拌中";
         case ReactorState::Cooling: return "降温中";
         case ReactorState::Idle: return "停用";
+        case ReactorState::Stopped: return "手动停止";
     }
     return "停用";
 }
 
 bool state_is_running(ReactorState s) {
-    return s != ReactorState::Idle && s != ReactorState::Done;
+    return s != ReactorState::Idle && !state_is_ended(s);
 }
+
+bool state_is_ended(ReactorState s) { return s == ReactorState::Done || s == ReactorState::Stopped; }
 
 bool state_is_active(ReactorState s) {
     switch (s) {

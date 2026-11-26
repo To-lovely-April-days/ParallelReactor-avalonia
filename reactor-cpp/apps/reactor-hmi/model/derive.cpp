@@ -9,6 +9,7 @@
 #include <ctime>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace reactor::hmi::model {
 
@@ -29,6 +30,7 @@ VState vstate(const Model& m, int id) {
     if (c.state == "stir") return VState::Stirring;
     if (c.state == "cooling") return VState::Cooling;
     if (c.state == "done") return VState::Done;
+    if (c.state == "stopped") return VState::Stopped;
     return VState::Ready;
 }
 
@@ -44,6 +46,7 @@ uint32_t badge_color(VState s) {
         case VState::Cooling: return col::ST_CYN;
         case VState::QueuedGas: return col::ST_AMB;
         case VState::Done: return col::ST_GRY;
+        case VState::Stopped: return col::ST_GRY;
         case VState::OverTemp:
         case VState::OverPressure: return col::ST_RED;
         case VState::Offline: return col::ST_AMB;
@@ -90,6 +93,7 @@ Hint hint(const Model& m, int id) {
             else h = {"check", p.elapsedSec > 0 ? fmt_hmin(p.elapsedSec) : std::string(tr("已结束")), col::ST_GRY};
             break;
         }
+        case VState::Stopped: h = {"stop", tr("手动停止"), col::ST_GRY}; break;
         case VState::OverTemp: h = {"alert", trf("限 %.0f °C", m.settings.alarms.overTempC), col::ST_RED}; break;
         case VState::OverPressure:
             h = {"alert", trf("限 %.3f MPa", psi_to_mpa(m.settings.alarms.overPressurePsi)), col::ST_RED};
@@ -98,6 +102,30 @@ Hint hint(const Model& m, int id) {
         default: break;
     }
     return h;
+}
+
+bool has_activity(const Model& m, int id) {
+    const ChannelSnap& c = m.ch(id);
+    if (c.hasActivity) return *c.hasActivity;
+    // 旧后台 / 模拟源：和后台 ControlCore::channel_has_activity 同一条规则
+    static const char* busy[] = {"heating", "pressing", "react", "wait", "stir", "cooling", "alarm"};
+    for (const char* s : busy)
+        if (c.state == s) return true;
+    if (c.programOwned || (c.program && (c.program->running || c.program->waitingGas))) return true;
+    if (c.valveOpen || c.autotuning) return true;
+    if (c.approach.phase != "off" && !c.approach.phase.empty()) return true;
+    if (c.profile && c.profile->running) return true;
+    if (m.snap.leakTest.running)
+        for (const auto& lc : m.snap.leakTest.channels)
+            if (lc.id == id) return true;
+    return false;
+}
+
+std::vector<int> active_channels(const Model& m) {
+    std::vector<int> v;
+    for (int i = 1; i <= 8; ++i)
+        if (i <= (int)m.snap.channels.size() && has_activity(m, i)) v.push_back(i);
+    return v;
 }
 
 double temp_sp(const ChannelSnap& c) { return c.tempSpC > 0 ? c.tempSpC : std::numeric_limits<double>::quiet_NaN(); }

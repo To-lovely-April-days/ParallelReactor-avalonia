@@ -348,7 +348,7 @@ void SimSource::build_pages() {
 
     // ---- 泄漏测试 ----
     for (int i = 1; i <= 8; ++i)
-        if ((c(i).state == "idle" || c(i).state == "done") && !c(i).programOwned) x.leak.selectable.push_back(i);
+        if ((c(i).state == "idle" || c(i).state == "done" || c(i).state == "stopped") && !c(i).programOwned) x.leak.selectable.push_back(i);
     x.leak.history = {{day_at(8, 9, 30), "1–8 号", true, ""},
                       {day_at(15, 9, 10), "1–8 号 · 3 号超标", false, "3 号超标"},
                       {day_at(22, 9, 0), "1–8 号", true, ""}};

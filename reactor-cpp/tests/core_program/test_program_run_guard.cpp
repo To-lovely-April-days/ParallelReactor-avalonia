@@ -37,6 +37,7 @@ bool has(const std::optional<std::string>& r, const char* part) { return r && r-
 TEST(core_program_run_guard, AllClear_ReadyAndDoneAccepted) {
     CHECK(!reason(ok()).has_value());
     CHECK(!reason(ok_with([](auto& i) { i.state = ReactorState::Done; })).has_value());
+    CHECK(!reason(ok_with([](auto& i) { i.state = ReactorState::Stopped; })).has_value());  // 手动停止同已结束
 }
 
 TEST(core_program_run_guard, EachReason) {

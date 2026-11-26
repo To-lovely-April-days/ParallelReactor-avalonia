@@ -159,7 +159,7 @@ void ProgramEngine::acquire_poll(const std::shared_ptr<Run>& r, Acquire& a) {
             f(core::chan_name(r->rv) + " 超温 / 超压报警");
             return;
         }
-        if ((c.state == ReactorState::Done || c.state == ReactorState::Idle) && c.state != a.state_at) {
+        if ((core::state_is_ended(c.state) || c.state == ReactorState::Idle) && c.state != a.state_at) {
             auto f = a.aborted;
             acquire_end(r, a);
             f();
@@ -271,7 +271,7 @@ void ProgramEngine::curve_slice(const std::shared_ptr<Run>& r, uint64_t g) {
         // C# WaitSliceAsync 的 ThrowIfStepUnsafe
         const auto& ch = core_.channel(r->rv);
         if (ch.state == ReactorState::Alarm) { step_fault(r, core::chan_name(r->rv) + " 超温 / 超压报警"); return; }
-        if (ch.state == ReactorState::Done || ch.state == ReactorState::Idle) { cancel_flow(r, true); return; }
+        if (core::state_is_ended(ch.state) || ch.state == ReactorState::Idle) { cancel_flow(r, true); return; }
         curve_slice(r, g);
     });
 }
@@ -343,7 +343,7 @@ void ProgramEngine::reg_tick(const std::shared_ptr<Run>& r, uint64_t gen) {
     int rv = r->rv;
     const auto& c = core_.channel(rv);
     // 本通道报警 / 被外部置停：稳压退出即可，主流程的安全检查会按原文中止程序
-    if (c.state == ReactorState::Alarm || c.state == ReactorState::Done || c.state == ReactorState::Idle) {
+    if (c.state == ReactorState::Alarm || core::state_is_ended(c.state) || c.state == ReactorState::Idle) {
         g.active = false;
         ++g.gen;
         core_.end_pressure_watch(rv);

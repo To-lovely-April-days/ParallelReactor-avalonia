@@ -82,8 +82,8 @@ TEST(ctl_stop, stop_all_urgent_then_normal_over_stale_frames) {
     CHECK_EQ(at4_normal, 8);
     for (int ch = 1; ch <= 8; ++ch) CHECK_EQ(r.mock().holding(1, at_reg(ch)), 4);
 
-    // 控制线程收尾
-    CHECK(r.c().channel(1).state == ReactorState::Done);
+    // 控制线程收尾：1 号正在加热 → 手动停止
+    CHECK(r.c().channel(1).state == ReactorState::Stopped);
     CHECK(!r.c().channel(1).approach.active());
     CHECK(!r.c().channel(1).started_by.has_value());
     CHECK_EQ(res.channels.size(), 1u);
@@ -137,7 +137,7 @@ TEST(ctl_stop, stop_and_disable_single_channel) {
     r.c().stop_channel(3, false, [&](const reactor::ctl::ChannelStopResult& x) { res = x; got = true; });
     r.c().settle();
     CHECK(got && res.heat_ok && res.valve_ok && !res.program_aborted);
-    CHECK(r.c().channel(3).state == ReactorState::Done);
+    CHECK(r.c().channel(3).state == ReactorState::Stopped);
     CHECK(!r.c().channel(3).approach.active());
     bool at4 = false, sv_off = false;
     for (const auto& w : r.mock().writes()) {
@@ -151,4 +151,68 @@ TEST(ctl_stop, stop_and_disable_single_channel) {
     r.c().stop_channel(3, true, nullptr);
     r.c().settle();
     CHECK(r.c().channel(3).state == ReactorState::Idle);
+}
+
+// 全部停止只对有动作的通道改状态：加热 / 曲线 / 开着 SV / 报警 → 手动停止；已启用待机、已结束、停用不变；之后能重新开始
+TEST(ctl_stop, stop_all_only_changes_active_channels) {
+    Rig r;
+    r.ticks(6);
+    r.c().channel_mut(5).set_state(ReactorState::Done);
+    r.c().channel_mut(6).set_state(ReactorState::Idle);
+    r.c().channel_mut(8).set_state(ReactorState::Alarm);
+    r.c().start_fixed_heat(1, 80.0, std::string("local"));   // 1 号手动加热
+    r.c().write_valves(core::valve_frame::gas(1, {4}), {}, nullptr);  // 4 号进气阀开着（状态仍是已启用）
+    r.c().settle();
+    CHECK(r.c().channel(1).state == ReactorState::Heating);
+    CHECK(r.c().channel(4).state == ReactorState::Ready);
+    CHECK(r.c().channel_has_activity(1));
+    CHECK(r.c().channel_has_activity(4));
+    CHECK(r.c().channel_has_activity(8));
+    for (int i : {2, 3, 5, 6, 7}) CHECK(!r.c().channel_has_activity(i));
+    r.c().tick();
+    auto snap = r.c().snapshot();
+    CHECK(snap != nullptr);
+    if (snap) {
+        CHECK(snap->channels[0].has_activity);
+        CHECK(!snap->channels[1].has_activity);
+    }
+
+    bool done = false;
+    reactor::ctl::StopAllResult res;
+    r.c().request_stop_all({false, "测试"}, [&](const reactor::ctl::StopAllResult& x) { res = x; done = true; });
+    r.c().settle();
+    CHECK(done);
+    CHECK(res.channels == std::vector<int>({1, 4, 8}));
+    CHECK(r.c().channel(1).state == ReactorState::Stopped);
+    CHECK(r.c().channel(4).state == ReactorState::Stopped);
+    CHECK(r.c().channel(8).state == ReactorState::Stopped);
+    CHECK(r.c().channel(2).state == ReactorState::Ready);
+    CHECK(r.c().channel(3).state == ReactorState::Ready);
+    CHECK(r.c().channel(5).state == ReactorState::Done);
+    CHECK(r.c().channel(6).state == ReactorState::Idle);
+    CHECK(r.c().channel(7).state == ReactorState::Ready);
+    CHECK(!r.c().channel(1).started_by.has_value());
+    for (int i = 1; i <= 8; ++i) CHECK(!r.c().channel_has_activity(i));
+    CHECK(std::string(core::state_code(ReactorState::Stopped)) == "stopped");
+    CHECK(std::string(core::state_zh(ReactorState::Stopped)) == "手动停止");
+    CHECK(core::parse_state_code("stopped") == ReactorState::Stopped);
+    r.c().tick();
+    snap = r.c().snapshot();
+    if (snap) CHECK_EQ(snap->channels[0].state, std::string("stopped"));
+
+    // 再按一次：没有动作的通道，什么状态都不变
+    done = false;
+    r.c().request_stop_all({false, "测试"}, [&](const reactor::ctl::StopAllResult& x) { res = x; done = true; });
+    r.c().settle();
+    CHECK(done && res.channels.empty());
+    CHECK(r.c().channel(1).state == ReactorState::Stopped);
+
+    // 从手动停止重新开始加热（同已结束）
+    r.c().start_fixed_heat(1, 70.0, std::string("local"));
+    r.c().settle();
+    CHECK(r.c().channel(1).state == ReactorState::Heating);
+    // 单路停止没有动作的通道：状态不变
+    r.c().stop_channel(2, false, nullptr);
+    r.c().settle();
+    CHECK(r.c().channel(2).state == ReactorState::Ready);
 }

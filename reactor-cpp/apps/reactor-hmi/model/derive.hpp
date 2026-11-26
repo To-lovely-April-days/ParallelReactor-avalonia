@@ -5,6 +5,7 @@
 
 #include <string>
 #include <cstdint>
+#include <vector>
 
 namespace reactor::hmi::model {
 
@@ -19,6 +20,7 @@ enum class VState {
     Cooling,      // 降温中
     QueuedGas,    // 排队等气路
     Done,         // 已结束
+    Stopped,      // 手动停止（停止 / 全部停止 / 中止程序时正在有动作；后台 state = "stopped"）
     OverTemp,     // 超温
     OverPressure, // 超压
     Offline,      // 传感器离线
@@ -29,6 +31,10 @@ uint32_t badge_color(VState s);
 bool vs_running(VState s);      // 釜体用「运行」样式（桨叶转）
 bool vs_bubbles(VState s);
 bool vs_heater(VState s);
+
+// 「全部停止」会转「手动停止」的通道（有动作：程序 / 加热温控 / 气路 / 报警）。后台给 hasActivity 就用它，否则按快照推
+bool has_activity(const Model& m, int ch);
+std::vector<int> active_channels(const Model& m);
 
 // 数字下面那一行提示：图标名（st_*13）、文字、颜色；没有提示时 text 为空
 struct Hint { const char* icon = nullptr; std::string text; uint32_t color = 0; };

@@ -135,6 +135,7 @@ m::ChannelSnap parse_channel(const json& j) {
     c.gasConsumed = j_optnum(j, "gasConsumed");
     c.valveOpen = j_bool(j, "valveOpen");
     c.programOwned = j_bool(j, "programOwned");
+    if (j.contains("hasActivity") && j["hasActivity"].is_boolean()) c.hasActivity = j["hasActivity"].get<bool>();
     const json& pg = sub(j, "program");
     if (pg.is_object()) {
         m::ChannelProgramSnap p;

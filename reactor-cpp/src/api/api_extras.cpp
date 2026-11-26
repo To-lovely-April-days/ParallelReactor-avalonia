@@ -1,5 +1,5 @@
 // 接口契约（doc/接口契约-新增.md）里不属于单个命令的部分：
-//   §2.1 快照扩展（channels[i].bandC / antiOvershoot / heatOn、system、revs）  §2.2 WS progress  §2.3 报警扩展
+//   §2.1 快照扩展（channels[i].bandC / antiOvershoot / heatOn / hasActivity、system、revs）  §2.2 WS progress  §2.3 报警扩展
 //   §3.8 /runs  §3.9 /trend  §3.11 /leak-tests/current/samples  §3.13 /device/comm 的 modules / test / reconnect  §3.16 /storage  §3.17 /users
 // 中枢线程每帧调 on_frame：更新修订号、趋势环、泄漏采样、运行记录，再推 progress。
 #include <sys/statvfs.h>
@@ -76,6 +76,7 @@ ojson ApiService::augment_frame(const ctl::Snapshot& s) {
             c["bandC"] = jnum(p.band_c);
             c["antiOvershoot"] = p.anti_overshoot;
             c["heatOn"] = cs.temp_online && cs.at_mode && *cs.at_mode != 4;
+            c["hasActivity"] = cs.has_activity;  // 全部停止会转「手动停止」的通道（触屏按钮上的路数）
         }
     f["system"] = ojson{{"languageCode", cmd::wire_language(s.settings.settings.language)}, {"bootAt", utc_iso(boot_wall_ms_)}};
     f["revs"] = revs_json(&s);

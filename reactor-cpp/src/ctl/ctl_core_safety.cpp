@@ -73,7 +73,7 @@ void ControlCore::on_stir_alarm_code(int code) {
 // ============================ 超温切断 ============================
 
 void ControlCore::set_over_temp_alarm(Channel& c) {
-    if (c.state != ReactorState::Alarm) c.ot_idle_alarm = c.state == ReactorState::Idle || c.state == ReactorState::Done;
+    if (c.state != ReactorState::Alarm) c.ot_idle_alarm = c.state == ReactorState::Idle || core::state_is_ended(c.state);
     c.set_state(ReactorState::Alarm);
     c.over_temp = true;
 }

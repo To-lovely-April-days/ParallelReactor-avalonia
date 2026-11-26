@@ -483,7 +483,7 @@ void ProgramEngine::wake(const std::shared_ptr<Run>& r, StepEvent ev) {
         if (t == StepType::Leak || t == StepType::Heat || t == StepType::Hold || t == StepType::React) {
             // C# ThrowIfStepUnsafe：本通道报警 → 失败；被外部置停（全部停止 / 停用 / 抽屉停止）→ 手动中止
             if (c.state == ReactorState::Alarm) { step_fault(r, core::chan_name(r->rv) + " 超温 / 超压报警"); return; }
-            if (c.state == ReactorState::Done || c.state == ReactorState::Idle) { cancel_flow(r, true); return; }
+            if (core::state_is_ended(c.state) || c.state == ReactorState::Idle) { cancel_flow(r, true); return; }
         }
     }
     if (!r->want_fresh) {
@@ -802,7 +802,8 @@ void ProgramEngine::finish_tail(const std::shared_ptr<Run>& r) {
     auto& c = core_.channel_mut(rv);
     if (stir_.holds(rv)) release_stir(rv);  // 搅拌转速保持到程序结束；中止时已释放，这里兜底
     core_.stop_uptake(rv, r->fail ? "程序中止" : r->aborted ? "程序手动停止" : "程序结束");
-    if (c.state != ReactorState::Idle) c.set_state(ReactorState::Done);
+    // 正常完成 / 失败 → 已结束；用户中止（停止、全部停止、中止程序）→ 手动停止（决定记录 2026-11-27）
+    if (c.state != ReactorState::Idle) c.set_state(r->aborted && !r->fail ? ReactorState::Stopped : ReactorState::Done);
     c.rpm_sp = 0;
     int n = static_cast<int>(r->steps.size());
     r->info.status = "";

@@ -156,7 +156,7 @@ TEST(ctl_program, abort_paths_and_end_reasons) {
     CHECK(r.phase_is(1, ProgramRunPhase::Aborted));
     CHECK_EQ(r.pe().run_info(1)->message, std::string("已停止当前程序，设备已完成安全收尾"));
     CHECK(r.has_title("1 号 程序手动停止"));
-    CHECK(r.c().channel(1).state == core::ReactorState::Done);
+    CHECK(r.c().channel(1).state == core::ReactorState::Stopped);  // 用户中止 → 手动停止（不是已结束）
 
     // 2) 单路停止（停用）：核心不再自己下发 At=4，程序收尾
     r.pe().set_draft(2, press_hold(60, 10), "b");
@@ -183,6 +183,12 @@ TEST(ctl_program, abort_paths_and_end_reasons) {
     CHECK(r.phase_is(3, ProgramRunPhase::Aborted));
     CHECK(r.phase_is(4, ProgramRunPhase::Aborted));
     CHECK(!r.c().gas_lease().busy());
+    CHECK(r.c().channel(3).state == core::ReactorState::Stopped);
+    CHECK(r.c().channel(4).state == core::ReactorState::Stopped);
+    CHECK(r.c().channel(1).state == core::ReactorState::Stopped);  // 已经手动停止的：没有动作，不变
+    CHECK(r.c().channel(2).state == core::ReactorState::Idle);     // 停用的：不变
+    CHECK(r.c().channel(5).state == core::ReactorState::Ready);    // 已启用没动作：不变
+    CHECK(sres.channels == std::vector<int>({3, 4}));
 
     // 4) 执行前按当前全局限值再校验：下发后把压力上限调低 → 第 1 步失败
     r.pe().set_draft(6, steps({{StepType::Hold, {{"until", std::string("time")}, {"time", 0.1}}},

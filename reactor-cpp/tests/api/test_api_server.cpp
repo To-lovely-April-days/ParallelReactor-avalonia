@@ -495,3 +495,27 @@ TEST(api_server, sessions_and_estop_alias) {
     CHECK(wait_until([&] { return t.tcp("GET", "/api/v1/snapshot", "viewtoken").body["estop"]["active"] == false; }));
     CHECK_EQ(t.tcp("POST", "/api/v1/estop", "viewtoken", "{}").status, 403);
 }
+
+// 全部停止 / 单路停止：有动作的通道在线上是 state "stopped"（PC 端 StateMap 认得 → 「已停止」），没动作的不变；
+// 扩展字段 hasActivity 给触屏算按钮上的路数（决定记录 2026-11-27）
+TEST(api_server, stop_all_marks_only_active_channels_stopped) {
+    ApiRig t;
+    auto ch = [&](int i) { return t.tcp("GET", "/api/v1/snapshot", "viewtoken").body["channels"][static_cast<size_t>(i - 1)]; };
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/heat/start", "{\"tempC\":60}", ApiRig::idem("h1")).status / 100, 2);
+    CHECK(wait_until([&] { return ch(1)["state"] == "heating" && ch(1)["hasActivity"] == true; }));
+    CHECK(ch(3)["hasActivity"] == false);
+    CHECK_EQ(ch(3)["state"].get<std::string>(), std::string("ready"));
+    auto r = t.local("POST", "/api/v1/stop-all", "{}", ApiRig::idem("sa1"));
+    CHECK_EQ(r.status, 200);
+    CHECK_EQ(r.body["result"]["channels"].size(), 1u);
+    CHECK(wait_until([&] { return ch(1)["state"] == "stopped"; }));
+    CHECK(ch(1)["hasActivity"] == false);
+    for (int i = 2; i <= 8; ++i) CHECK_EQ(ch(i)["state"].get<std::string>(), std::string("ready"));
+    // 从手动停止重新开始加热，再单路停止 → 又是 stopped；没动作的单路停止不变
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/heat/start", "{\"tempC\":60}", ApiRig::idem("h2")).status / 100, 2);
+    CHECK(wait_until([&] { return ch(1)["state"] == "heating"; }));
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/stop", "{}", ApiRig::idem("st1")).status, 200);
+    CHECK(wait_until([&] { return ch(1)["state"] == "stopped"; }));
+    CHECK_EQ(t.local("POST", "/api/v1/channels/2/stop", "{}", ApiRig::idem("st2")).status, 200);
+    CHECK_EQ(ch(2)["state"].get<std::string>(), std::string("ready"));
+}

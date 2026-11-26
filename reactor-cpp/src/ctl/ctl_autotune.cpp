@@ -62,7 +62,7 @@ void Autotune::start(int ch, double temp_c, std::optional<int> band, bool strict
     if (strict) {
         if (core_.temp().ch(ch).autotuning) { reply(OpResult::fail(core::op_codes::kAutotuneActive, core::chan_name(ch) + " 正在自整定 · 请先取消")); return; }
         auto st = core_.channel(ch).state;
-        if (st != ReactorState::Idle && st != ReactorState::Ready && st != ReactorState::Done) {
+        if (st != ReactorState::Idle && st != ReactorState::Ready && !core::state_is_ended(st)) {
             reply(OpResult::fail(core::op_codes::kChannelStateInvalid, core::chan_name(ch) + " 正在运行，不能自整定"));
             return;
         }

@@ -34,7 +34,7 @@ core::ApproachParams approach_params(const store::AppSettings& s) {
 
 void enter_heating(Channel& c, const std::optional<std::string>& started_by) {
     if (!started_by) return;
-    if (c.state == ReactorState::Idle || c.state == ReactorState::Done || c.state == ReactorState::Ready)
+    if (c.state == ReactorState::Idle || core::state_is_ended(c.state) || c.state == ReactorState::Ready)
         c.set_state(ReactorState::Heating);  // 加热真的开始了才显示「升温中」
     c.started_by = started_by;
 }

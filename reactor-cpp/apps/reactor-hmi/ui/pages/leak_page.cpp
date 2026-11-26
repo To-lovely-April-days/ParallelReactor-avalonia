@@ -14,10 +14,10 @@
 
 namespace reactor::hmi {
 
-// 泄漏测试能不能选这一路（和后台 ctl LeakTest::start 同一条规则：停用 / 已结束、没被程序占用）
+// 泄漏测试能不能选这一路（和后台 ctl LeakTest::start 同一条规则：停用 / 已结束 / 手动停止、没被程序占用）
 static bool leak_selectable(const model::Model& m, int c) {
     const auto& ch = m.ch(c);
-    return (ch.state == "idle" || ch.state == "done") && !ch.programOwned && !(ch.program && ch.program->running);
+    return (ch.state == "idle" || ch.state == "done" || ch.state == "stopped") && !ch.programOwned && !(ch.program && ch.program->running);
 }
 // 不能选时格子里的说明
 static std::string leak_block_reason(const model::Model& m, int c) {
