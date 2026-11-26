@@ -85,7 +85,7 @@ bool write_bmp(const std::string& path) {
 
 const std::vector<std::string>& page_names() {
     static const std::vector<std::string> v = {
-        "main-f1", "main-f2", "plan-all", "plan-one", "chan-quick", "chan-quick-run", "chan-quick-kbd", "chan-full",
+        "main-f1", "main-f2", "plan-all", "plan-one", "chan-quick", "chan-quick-off", "chan-quick-run", "chan-quick-kbd", "chan-full",
         "chan-full-curve", "chan-full-run", "alarm-page", "alarm-l1", "alarm-l2", "alarm-l3", "lang-pop", "kbd-num",
         "kbd-text", "stop-all", "abort-ask",
         // 第二批
@@ -182,6 +182,12 @@ void setup_page_net(Session& s, const std::string& name) {
 
     if (name == "plan-one") app.go(PageId::Home, 10 + or_(run_ch, idle_ch));
     else if (name == "chan-quick") { app.go(PageId::Home, 0); app.open_quick(idle_ch); }
+    else if (name == "chan-quick-off") {  // 停用的一路：面板里启用
+        int off = first([&](int ch) { return !m.ch(ch).installed; });
+        if (!off) note("后台没有停用的通道");
+        app.go(PageId::Home, 0);
+        app.open_quick(off ? off : 1);
+    }
     else if (name == "chan-quick-run") {
         if (!heat_ch && !run_ch) note("后台没有在加热的通道");
         app.go(PageId::Home, 0);
@@ -305,6 +311,7 @@ void setup_page(Session& s, const std::string& name) {
     else if (name == "plan-all") app.go(PageId::Home, 2);
     else if (name == "plan-one") app.go(PageId::Home, 13);
     else if (name == "chan-quick") { app.go(PageId::Home, 0); app.open_quick(5); }
+    else if (name == "chan-quick-off") { app.go(PageId::Home, 0); app.open_quick(7); }
     else if (name == "chan-quick-run") { app.go(PageId::Home, 0); app.open_quick(3); }
     else if (name == "chan-quick-kbd") {
         app.go(PageId::Home, 0);

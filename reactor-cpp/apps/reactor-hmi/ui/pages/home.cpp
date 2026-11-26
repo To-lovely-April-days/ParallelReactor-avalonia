@@ -108,24 +108,9 @@ public:
             bool leak = false;
             if (m.snap.leakTest.running)
                 for (auto& lc : m.snap.leakTest.channels) leak |= lc.id == ch;
-            if (m.ch(ch).installed) { app.open_quick(ch); return; }
+            // 泄漏测试中的路直接进整页；其余（含停用的路）都开快捷面板，停用的路在面板里启用
             if (leak) { app.go(PageId::ChanFull, ch); return; }
-            // 停用的路：直接问要不要启用（以前只能进整页找左下角的小圆钮，不好找）
-            DialogSpec d;
-            d.color = col::BLUE;
-            d.icon = nullptr;
-            d.title = trf("启用 %d 号？", ch);
-            d.secondary = tr("全部设定");
-            d.primary = trc("启用 (按钮)");
-            d.on_primary = [&app, ch] { app.act().channel_enable(ch, true); };
-            d.on_secondary = [&app, ch] { app.go(PageId::ChanFull, ch); };
-            d.body = [](lv_obj_t* b, int w) {
-                lv_obj_t* l = label_at(b, 0, 0, tr("启用后这一路回到主页和程序里：可以手动加热、进气，也能下发程序。"), 15, 400, col::INK);
-                lv_obj_set_width(l, w);
-                lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
-                return 44;
-            };
-            Dialog::open(d);
+            app.open_quick(ch);
         });
         lv_obj_t* hd = box(root_, 0, 0, w, 54, 0, 0, true);
         box(hd, 0, 53, w, 1, col::DIV);

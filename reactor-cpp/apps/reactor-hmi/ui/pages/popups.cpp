@@ -92,6 +92,29 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
     // 盖住三角的另一半
     box(dim, right_side ? px : px + pw - 12, ay - 2, 12, 24, 0xffffff);
     label_at(p, 18, 15, trf("%d 号", ch).c_str(), 18, 700, col::INK);
+    if (!c.installed) {
+        // —— 停用的一路：面板里只给「启用这一路」和「全部设定」 ——
+        std::string sub = std::string(tr("已停用")) + " · " + model::fmt_temp(c) + " °C";
+        label_at(p, 61, 19, sub.c_str(), 13, 400, col::MUT);
+        lv_obj_t* en = box(p, 18, 55, 324, 160, col::BLUE, 12);
+        icon(en, &ic::play24, 0xffffff, 150, 30);
+        lv_obj_t* t = label(en, trc("启用这一路 (面板)"), 20, 700, 0xffffff);
+        lv_obj_align(t, LV_ALIGN_TOP_MID, 0, 66);
+        lv_obj_t* n = label(en, tr("启用后可以手动加热、进气，也能下发程序。"), 13, 400, 0xdce8f6);
+        lv_obj_set_width(n, 288);
+        lv_label_set_long_mode(n, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_align(n, LV_TEXT_ALIGN_CENTER, 0);
+        lv_obj_align(n, LV_ALIGN_TOP_MID, 0, 100);
+        on_tap(en, [&app, ch] {
+            app.act().channel_enable(ch, true);
+            app.close_overlays();
+        });
+        lv_obj_t* full = box(p, 18, 229, 324, 46, 0xffffff, 10);
+        ring(full, 0x8fb1e3, 2);
+        lv_obj_center(label(full, trf("全部设定 · 进入 %d 号 ›", ch).c_str(), 15, 400, col::BLUE));
+        on_tap(full, [&app, ch] { app.go(PageId::ChanFull, ch); });
+        return dim;
+    }
     if (!run) {
         char sub[64];
         std::snprintf(sub, sizeof sub, "%s · %s °C", tr(c.state == "heating" ? "加热中" : "手动"), model::fmt_temp(c).c_str());
