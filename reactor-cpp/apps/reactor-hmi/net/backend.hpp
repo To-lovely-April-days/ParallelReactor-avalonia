@@ -56,6 +56,7 @@ public:
         Runs, Files, Leak, LeakSamples, Calib, Trend, kGroups
     };
     void invalidate(G g);   // 任意线程：标脏，下一次 tick 重取
+    void refetch_now(G g);  // 任意线程：马上重取（正在取就标脏，取完再取一次）
 
 private:
     friend class NetActions;
@@ -85,6 +86,9 @@ private:
     std::unique_ptr<NetClient> client_;
     std::unique_ptr<NetActions> actions_;
     std::atomic<bool> connected_{false}, quit_{false};
+    // 最近一次改设置成功后后台给的 revision（受 mu_ 保护）。只给下一次 PATCH 用，
+    // 不写进 m_.settings：否则界面会拿「新 revision + 旧数值」整页重画，刚点的选项被打回去
+    int64_t settings_rev_hint_ = 0;
 
     mutable std::mutex mu_;
     model::Model m_;

@@ -98,7 +98,11 @@ void kv_row(lv_obj_t* g, int x, int y, int w, const char* k, const std::string& 
 lv_obj_t* make_switch(lv_obj_t* g, int x, int y, bool on, std::function<void(bool)> cb) {
     Switch* sw = new Switch;
     sw->create(g, x, y, on, true);
-    sw->on_change = std::move(cb);
+    // 点了先切过去，不等后台来回（后台拒绝时设置会重取，界面回到真实值）
+    sw->on_change = [sw, cb = std::move(cb)](bool v) {
+        sw->set(v);
+        if (cb) cb(v);
+    };
     lv_obj_add_event_cb(sw->obj(), [](lv_event_t* e) { delete static_cast<Switch*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, sw);
     return sw->obj();
 }
@@ -111,7 +115,10 @@ LampGroup* make_lamps(lv_obj_t* g, int right_x, int y, const std::vector<std::st
     w -= 6;
     LampGroup* lg = new LampGroup;
     lg->create(g, right_x - w, y, opts, std::vector<int>(opts.size(), 60), sel, h, 15, 6);
-    lg->on_change = std::move(cb);
+    lg->on_change = [lg, cb = std::move(cb)](int i) {
+        lg->set(i);  // 点了先切过去，不等后台来回
+        if (cb) cb(i);
+    };
     lv_obj_add_event_cb(g, [](lv_event_t* e) { delete static_cast<LampGroup*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, lg);
     return lg;
 }

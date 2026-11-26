@@ -70,6 +70,21 @@ void NetBackend::invalidate(G g) {
     grp_[g].dirty = true;
 }
 
+void NetBackend::refetch_now(G g) {
+    {
+        std::lock_guard<std::mutex> lk(mu_);
+        auto& s = grp_[g];
+        if (!connected_ || s.inflight) {
+            s.dirty = true;
+            return;
+        }
+        s.dirty = false;
+        s.inflight = true;
+        s.last = mono_ms();
+    }
+    fetch(g);
+}
+
 void NetBackend::get(const std::string& path, std::function<void(const Reply&)> fn, int timeout_ms) {
     Call c;
     c.method = "GET";
@@ -916,16 +931,16 @@ void NetActions::patch(json value, const std::string& key, bool retried) {
     // revision 在真正发出去时才取：连着改几项时，后一项要用前一项成功后的 revision
     c.body_fn = [this, value, key] {
         std::lock_guard<std::mutex> lk(b_.mu_);
-        return json{{"revision", b_.m_.settings.revision}, {"values", {{key, value}}}}.dump();
+        return json{{"revision", std::max(b_.m_.settings.revision, b_.settings_rev_hint_)}, {"values", {{key, value}}}}.dump();
     };
     c.done = [this, value, key, retried](const Reply& r) {
         if (r.ok()) {
             const json& res = r.json.is_object() && r.json.contains("result") ? r.json["result"] : json::object();
             if (res.contains("revision") && res["revision"].is_number()) {
                 std::lock_guard<std::mutex> lk(b_.mu_);
-                b_.m_.settings.revision = res["revision"].get<int64_t>();
+                b_.settings_rev_hint_ = res["revision"].get<int64_t>();
             }
-            b_.invalidate(NetBackend::Settings);
+            b_.refetch_now(NetBackend::Settings);  // 马上取回来，界面不用等下一轮定时刷新
             return;
         }
         if (r.code() == "REVISION_CONFLICT" && !retried) {
@@ -959,7 +974,7 @@ void NetActions::set_pid_bands(double lo, double hi) {
     int64_t rev;
     {
         std::lock_guard<std::mutex> lk(b_.mu_);
-        rev = b_.m_.settings.revision;
+        rev = std::max(b_.m_.settings.revision, b_.settings_rev_hint_);
     }
     cmd("PUT", "/pid/bands", {{"lowMidC", lo}, {"midHighC", hi}, {"revision", rev}}, {NetBackend::Pid, NetBackend::Settings});
 }
