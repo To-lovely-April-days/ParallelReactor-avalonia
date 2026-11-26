@@ -138,7 +138,7 @@ struct ApiRig {
         au.reset();
         logger->stop();
         events->stop();
-        std::system(("rm -rf '" + dir + "'").c_str());
+        if (std::system(("rm -rf '" + dir + "'").c_str()) != 0) {}
     }
 
     // TCP（token 为空 = 不带令牌）或 Unix（unix = true）

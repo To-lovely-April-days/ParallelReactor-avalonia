@@ -260,7 +260,7 @@ TEST(ctl_templates, builtin_seeded_read_only_and_runnable) {
             CHECK(r.pe().check_run(1).silent);
         }
     }
-    std::system(("rm -rf '" + dir + "'").c_str());
+    if (std::system(("rm -rf '" + dir + "'").c_str()) != 0) {}
 }
 
 // ============================ 任意线程包装（起控制线程） ============================
@@ -314,5 +314,5 @@ TEST(ctl_automation, threaded_async_wrappers) {
     CHECK_EQ(at.code, std::string("CHANNEL_NOT_FOUND"));
     core.shutdown(false);
     au.reset();
-    std::system(("rm -rf '" + dir + "'").c_str());
+    if (std::system(("rm -rf '" + dir + "'").c_str()) != 0) {}
 }

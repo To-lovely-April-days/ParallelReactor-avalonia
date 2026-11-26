@@ -209,7 +209,7 @@ void records_open_range_export(App& app) {
     if (di && !di->runs.empty()) {
         const auto& rr = di->runs.front();
         st->from = rr.start / 3600000 * 3600000;
-        st->to = std::min(d0 + 86400000LL, (rr.end + 3599999) / 3600000 * 3600000 - 4 * 3600000LL);
+        st->to = std::min<int64_t>(d0 + 86400000LL, (rr.end + 3599999) / 3600000 * 3600000 - 4 * 3600000LL);
         if (st->to <= st->from) st->to = st->from + 5 * 3600000LL;
     }
     std::vector<model::DayRunRef> runs = di ? di->runs : std::vector<model::DayRunRef>{};

@@ -206,7 +206,7 @@ void SimSource::rebuild_plans() {
                 sg.start = t; sg.end = t + (int64_t)(sk.minutes * 60 * scale * 1000); t = sg.end;
             } else if (k == pl.step) {
                 sg.start = waiting ? now_ : curStepStart;
-                sg.end = std::max(now_ + 60000, sg.start + sk.minutes * 60000LL);
+                sg.end = std::max<int64_t>(now_ + 60000, sg.start + sk.minutes * int64_t{60000});
                 t = sg.end;
             } else {
                 sg.start = t; sg.end = t + sk.minutes * 60000LL; t = sg.end;

@@ -94,7 +94,7 @@ struct PRig {
         au.reset();
         if (core) core->shutdown(false);
         if (logger) logger->stop();
-        if (!dir.empty()) std::system(("rm -rf '" + dir + "'").c_str());
+        if (!dir.empty() && std::system(("rm -rf '" + dir + "'").c_str()) != 0) {}
     }
 
     ctl::ControlCore& c() { return *core; }
