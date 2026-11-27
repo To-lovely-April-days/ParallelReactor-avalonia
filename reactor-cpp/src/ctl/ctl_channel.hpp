@@ -33,6 +33,7 @@ struct Channel {
     int id = 0;
     core::ReactorState state = core::ReactorState::Idle;
     bool over_temp = false;                 // 报警由超温引起（离开 Alarm 时清除；状态文字「超温」/「超压」）
+    core::ReactorState before_alarm = core::ReactorState::Ready;  // 进报警之前的状态：超限解除后据此自动恢复
     std::optional<std::string> started_by;  // "local" / 远程来源标签；停止 / 停用 / 全部停止时清空
 
     double t = 0, p = 0;                    // 最近有效读数（离线时保留旧值，用 t_online / p_online 判断）
@@ -54,6 +55,7 @@ struct Channel {
     PressWatch press_watch;
 
     void set_state(core::ReactorState s) {
+        if (s == core::ReactorState::Alarm && state != core::ReactorState::Alarm) before_alarm = state;
         state = s;
         if (s != core::ReactorState::Alarm) over_temp = false;  // C# OnStateChanged
     }

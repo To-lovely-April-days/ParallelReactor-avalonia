@@ -37,13 +37,17 @@ TEST(ctl_safety, over_temp_trip_confirm_clear) {
     r.ticks(2);
     CHECK(r.has_title("超温切断已确认"));
     CHECK_EQ(count_at4(r.mock().writes(), 2), 1);  // 确认后不再重发
-    // PV 回落到 248 以下 → 解除；通道仍保持报警（需人工复位）
+    // PV 回落到 248 以下 → 解除；通道自动离开报警（回到进报警前的状态，没有重新开始加热）
+    ReactorState before = r.c().channel(2).before_alarm;
     r.mock().set_holding(1, pv_reg(2), 2400);
     r.ticks(2);
     CHECK(!r.c().is_over_temp_tripped(2));
     CHECK_EQ(r.count_active("ot:2"), 0);
     CHECK(r.has_title("超温 · 解除"));
-    CHECK(r.c().channel(2).state == ReactorState::Alarm);
+    CHECK(r.has_title("温度回到正常 · 自动恢复"));
+    CHECK(r.c().channel(2).state != ReactorState::Alarm);
+    CHECK(r.c().channel(2).state == before || r.c().channel(2).state == ReactorState::Ready);
+    CHECK(!r.c().channel(2).over_temp);
 }
 
 namespace {
@@ -145,12 +149,16 @@ TEST(ctl_safety, over_pressure_merged_close_keeps_vent_and_aborts_gas) {
     CHECK(r.mock().coil(1, 11));  // 排空仍开着
     CHECK(count_at4(ws, 3) >= 1);  // 超压时停加热（默认开）
     CHECK_EQ(r.count_active("op:3"), 1);
-    // 回落到 98% 以下 → 解除，通道保持报警
+    // 回落到 98% 以下 → 解除，通道自动恢复（不会自己重新进气 / 加热）
+    r.mock().clear_writes();
     r.mock().set_input(1, 2, raw_of_psi(400));
     r.ticks(2);
     CHECK(!r.c().is_over_pressure_tripped(3));
     CHECK_EQ(r.count_active("op:3"), 0);
-    CHECK(r.c().channel(3).state == ReactorState::Alarm);
+    CHECK(r.c().channel(3).state != ReactorState::Alarm);
+    CHECK(r.has_title("压力回到正常 · 自动恢复"));
+    CHECK(!r.c().gas_lease().busy());
+    for (const auto& w : r.mock().writes()) CHECK(!(w.fc == hw::kFcWriteCoil && w.addr == 2 && w.bits[0]));  // SV3 没被重新打开
 }
 
 TEST(ctl_safety, over_pressure_unconfirmed_valve_resends_and_escalates) {

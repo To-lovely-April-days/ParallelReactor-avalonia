@@ -257,6 +257,9 @@ private:
     void track_module(int k, const char* name, bool configured, bool online, const hw::CommStats& s);
     void check_over_temp(Channel& c, bool real_t);
     void set_over_temp_alarm(Channel& c);
+    // 超温 / 超压都已解除（数值回到正常）：通道自动离开报警态。停用 / 已结束 / 手动停止 / 就绪回到原状态，
+    // 原来在加热、进气、跑程序的回到「就绪」——联锁时已经停掉的动作不会自己重新开始（2026-11-27 用户）
+    void auto_recover(Channel& c, const char* what);
     void send_over_temp_stop(int id, core::OverTempAction why);
     void check_over_pressure(Channel& c, bool real_p);
     void flush_over_pressure_valves();

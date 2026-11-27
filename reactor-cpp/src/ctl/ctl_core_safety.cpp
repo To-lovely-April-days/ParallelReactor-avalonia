@@ -70,6 +70,23 @@ void ControlCore::on_stir_alarm_code(int code) {
         alarms_.clear("stir:fault", "搅拌", "搅拌电机故障已清除 · 报警解除", "驱动器报警码回到 0", "alarm.stirFaultCleared");
 }
 
+// ============================ 超限解除后自动恢复 ============================
+
+void ControlCore::auto_recover(Channel& c, const char* what) {
+    int i = c.id - 1;
+    if (c.state != ReactorState::Alarm) return;
+    if (ot_guard_.is_tripped(i) || op_guard_.is_tripped(i)) return;  // 另一项还超着：继续报警
+    ReactorState b = c.before_alarm;
+    ReactorState to = (b == ReactorState::Idle || b == ReactorState::Done || b == ReactorState::Stopped || b == ReactorState::Ready)
+                          ? b
+                          : ReactorState::Ready;
+    std::string was = core::state_zh(c.state, c.over_temp);
+    c.ot_idle_alarm = false;
+    c.set_state(to);
+    alarms_.log("info", rv(c.id), std::string(what) + "回到正常 · 自动恢复",
+               "「" + was + "」→「" + core::state_zh(to) + "」· 联锁时停掉的加热 / 进气 / 程序不会自动重新开始", "alarm.autoRecover");
+}
+
 // ============================ 超温切断 ============================
 
 void ControlCore::set_over_temp_alarm(Channel& c) {
@@ -115,8 +132,9 @@ void ControlCore::check_over_temp(Channel& c, bool real_t) {
             // 只清报警列表条目；通道保持「超温」报警态，需操作员停止 / 复位
             alarms_.clear(ot_key(c.id), rv(c.id), "超温 · 解除",
                           "PV " + pv + "℃ < " + rearm + "℃（限值 − 回差 " + fmt_dec(core::over_temp::kHysteresis, 1) +
-                              "℃）· 通道状态需手动复位",
+                              "℃）· 通道自动恢复",
                           "alarm.overTempCleared");
+            auto_recover(c, "温度");
             return;
         default:
             break;
@@ -219,8 +237,9 @@ void ControlCore::check_over_pressure(Channel& c, bool real_p) {
     if (a.cleared) {
         alarms_.clear(op_key(c.id), rv(c.id), "超压 · 解除",
                       "压力 " + p + " < 超压报警值的 " + fmt_dec(core::over_pressure::kRearmRatio * 100, 0) + "%（" +
-                          fmt_p(lim * core::over_pressure::kRearmRatio) + "）· 通道状态需手动复位",
+                          fmt_p(lim * core::over_pressure::kRearmRatio) + "）· 通道自动恢复",
                       "alarm.overPressureCleared");
+        auto_recover(c, "压力");
         std::string pend;
         if (valves_.configured() && !v_conf_before) pend += "关闭 SV" + std::to_string(c.id) + " 与气源";
         if (heat_on && !h_conf_before) pend += (pend.empty() ? "" : "、") + std::string("停止加热 At=4");

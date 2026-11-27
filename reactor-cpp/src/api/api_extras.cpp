@@ -118,12 +118,12 @@ ojson ApiService::alarm_json(const ctl::AlarmItem& a, const ctl::Snapshot* s) co
         if (starts("op:")) {
             did.push_back("关闭 " + rvs(id) + "进气阀和三路气源");
             if (st.stop_heat_on_over_pressure) did.push_back("停止 " + rvs(id) + "加热");
-            next.push_back("等压力降到 " + core::format_p(st.over_pressure * 0.98, d_.unit) + " 以下自动解除");
-            next.push_back("确认后到主页手动复位");
+            next.push_back("等压力降到 " + core::format_p(st.over_pressure * 0.98, d_.unit) + " 以下自动解除，" + rvs(id) + "自动恢复");
+            next.push_back("停掉的进气、加热不会自己重新开始，需要的话再手动开");
         } else if (starts("ot:")) {
             did.push_back("停止 " + rvs(id) + "加热输出");
-            next.push_back("等温度降到 " + core::fmt_dec(st.over_temp - 2, 1) + " ℃ 以下自动解除");
-            next.push_back("确认后到主页手动复位");
+            next.push_back("等温度降到 " + core::fmt_dec(st.over_temp - 2, 1) + " ℃ 以下自动解除，" + rvs(id) + "自动恢复");
+            next.push_back("停掉的加热不会自己重新开始，需要的话再手动开");
         } else if (starts("opv:") || starts("oph:")) {
             did.push_back("每 5 s 重发一次联锁动作");
             next.push_back("检查 IO16R / AI-8 通讯，必要时点主页的「全部停止」或到现场断电");
