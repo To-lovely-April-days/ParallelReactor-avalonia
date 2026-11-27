@@ -135,7 +135,7 @@ void Vessel::stop_anims() {
         if (o) lv_anim_delete(o, nullptr);
 }
 
-void Vessel::set(VState st, int number, std::optional<double> temp, double hold_fraction) {
+void Vessel::set(VState st, int number, std::optional<double> temp, double hold_fraction, bool stirring) {
     bool off = st == VState::Disabled;
     uint32_t lc = off ? 0xd3d9e0 : liquid_color(temp ? *temp : NAN);
     icon_color(liq_, lc);
@@ -155,8 +155,10 @@ void Vessel::set(VState st, int number, std::optional<double> temp, double hold_
     } else if (ring_) {
         lv_obj_add_flag(ring_, LV_OBJ_FLAG_HIDDEN);
     }
-    if ((int)st == last_state_) return;  // 动画只在状态变化时重建
-    last_state_ = (int)st;
+    bool spin = stirring && st != VState::Disabled;
+    int key = (int)st * 2 + (spin ? 1 : 0);
+    if (key == last_state_) return;  // 动画只在状态 / 搅拌变化时重建
+    last_state_ = key;
     stop_anims();
     // 加热带：升温橙色 2 s 呼吸；超温红色 0.8 s
     if (model::vs_heater(st)) {
@@ -178,7 +180,7 @@ void Vessel::set(VState st, int number, std::optional<double> temp, double hold_
     } else {
         lv_obj_add_flag(edge_, LV_OBJ_FLAG_HIDDEN);
     }
-    if (model::vs_running(st)) {
+    if (spin) {
         lv_obj_remove_flag(imp_, LV_OBJ_FLAG_HIDDEN);
         pingpong(imp_, anim_imp_cb, 1000, 200, 1200);
     } else {

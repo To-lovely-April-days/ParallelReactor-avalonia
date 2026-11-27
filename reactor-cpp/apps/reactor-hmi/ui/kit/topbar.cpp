@@ -10,61 +10,68 @@
 namespace reactor::hmi::kit {
 
 namespace {
-const lv_image_dsc_t* NAV_ICON[5] = {&ic::nav_overview, &ic::nav_program, &ic::nav_curve, &ic::nav_records, &ic::nav_settings};
+const lv_image_dsc_t* NAV_ICON[5] = {&ic::nav_overview28, &ic::nav_program28, &ic::nav_curve28, &ic::nav_records28, &ic::nav_settings28};
 const char* NAV_TEXT[5] = {"总览", "程序", "曲线", "记录", "设置"};
 }  // namespace
 
 lv_obj_t* TopBar::create(lv_obj_t* parent, int width) {
+    // 布局（画布 Opt-TopBar2 · A2）：总高 kTopH = 24 空白 + 80 内容；内容行中线 y = 24 + 40
     width_ = width;
-    root_ = box(parent, 0, 0, width, 60, col::NAVYBAR);
-    lv_obj_t* brand = label_at(root_, 18, 19, "HTLAB", 17, 700, 0xffffff);
+    const int T = kTopSafe, MID = kTopSafe + 40;
+    root_ = box(parent, 0, 0, width, kTopH, col::NAVYBAR);
+    lv_obj_t* brand = label_at(root_, 20, MID - 12, "HTLAB", 18, 700, 0xffffff);
     lv_obj_set_style_text_letter_space(brand, 1, 0);
-    lv_obj_t* sub = label_at(root_, 96, 21, tr("八通道平行反应仪 · HT-PR8"), 13, 400, 0xffffff);
+    lv_obj_update_layout(brand);
+    lv_obj_t* sub = label_at(root_, 20 + lv_obj_get_width(brand) + 12, MID - 9, tr("八通道平行反应仪 · HT-PR8"), 13.5, 400, 0xffffff);
     lv_obj_set_style_text_opa(sub, 184, 0);
     for (int i = 0; i < 5; ++i) {
-        int bx = 345 + i * 60;
-        lv_obj_t* b = box(root_, bx, 4, 52, 54, 0, 0, true);
+        int bx = 345 + i * 86;
+        lv_obj_t* b = box(root_, bx, T + 2, 76, 76, 0, 0, true);
         on_tap(b, [this, i] { if (on_nav) on_nav(i); });
-        nav_circle_[i] = box(b, 9, 1, 34, 34, 0xffffff, 17);
+        nav_circle_[i] = box(b, 14, 3, 48, 48, 0xffffff, 24);
         nav_icon_[i] = icon(nav_circle_[i], NAV_ICON[i], 0xffffff);
         lv_obj_center(nav_icon_[i]);
-        nav_text_[i] = label(b, tr(NAV_TEXT[i]), 11, 400, 0xffffff);
-        lv_obj_align(nav_text_[i], LV_ALIGN_TOP_MID, 0, 38);
+        nav_text_[i] = label(b, tr(NAV_TEXT[i]), 14, 400, 0xffffff);
+        lv_obj_align(nav_text_[i], LV_ALIGN_TOP_MID, 0, 55);
     }
-    dot_ = box(root_, 0, 26, 8, 8, col::CONN, 4);
-    conn_ = label_at(root_, 0, 21, tr("已连接"), 13, 400, 0xffffff);
-    sim_ = label(root_, tr("模拟模式"), 12, 400, 0xffd2cf);
+    dot_ = box(root_, 0, MID - 4, 9, 9, col::CONN, 5);
+    conn_ = label_at(root_, 0, MID - 10, tr("已连接"), 14, 400, 0xffffff);
+    sim_ = label(root_, tr("模拟模式"), 13, 400, 0xffd2cf);
     lv_obj_set_style_bg_color(sim_, lv_color_hex(0xff5a4e), 0);
     lv_obj_set_style_bg_opa(sim_, 46, 0);
     lv_obj_set_style_radius(sim_, 6, 0);
-    lv_obj_set_style_pad_hor(sim_, 8, 0);
-    lv_obj_set_style_pad_ver(sim_, 3, 0);
-    remote_ = label(root_, "", 12, 600, 0xffffff);
+    lv_obj_set_style_pad_hor(sim_, 9, 0);
+    lv_obj_set_style_pad_ver(sim_, 4, 0);
+    remote_ = label(root_, "", 13, 600, 0xffffff);
     lv_obj_set_style_bg_color(remote_, lv_color_hex(col::ORANGE), 0);
     lv_obj_set_style_bg_opa(remote_, LV_OPA_COVER, 0);
     lv_obj_set_style_radius(remote_, 6, 0);
-    lv_obj_set_style_pad_hor(remote_, 8, 0);
-    lv_obj_set_style_pad_ver(remote_, 3, 0);
+    lv_obj_set_style_pad_hor(remote_, 9, 0);
+    lv_obj_set_style_pad_ver(remote_, 4, 0);
     lv_obj_add_flag(remote_, LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(remote_, LV_OBJ_FLAG_CLICKABLE);
-    lv_obj_set_ext_click_area(remote_, 10);
+    lv_obj_set_ext_click_area(remote_, 12);
     on_tap(remote_, [this] { if (on_remote) on_remote(); });
 
-    bell_ = box(root_, width - 205, 10, 40, 40, 0xffffff, 20);
-    lv_obj_set_style_bg_opa(bell_, 0, 0);
-    bell_icon_ = icon(bell_, &ic::bell, 0xffffff, 8, 8);
+    // 铃铛 / 地球：52 的圆，平时淡白底（好认出是按钮），铃铛选中时整圆变白
+    int bell_x = width - kBellFromRight - 26;
+    bell_ = box(root_, bell_x, MID - 26, 52, 52, 0xffffff, 26);
+    lv_obj_set_style_bg_opa(bell_, 26, 0);
+    bell_icon_ = icon(bell_, &ic::bell26, 0xffffff);
+    lv_obj_center(bell_icon_);
     on_tap(bell_, [this] { if (on_bell) on_bell(); });
-    bell_badge_ = box(root_, width - 183, 12, 16, 16, col::RED, 8);
-    bell_num_ = label(bell_badge_, "0", 10.5, 600, 0xffffff);
+    bell_badge_ = box(root_, bell_x + 31, MID - 25, 18, 18, col::RED, 9);
+    bell_num_ = label(bell_badge_, "0", 11.5, 600, 0xffffff);
     lv_obj_center(bell_num_);
 
-    globe_ = box(root_, width - 151, 10, 40, 40, 0, 20, true);
-    icon(globe_, &ic::globe, 0xffffff, 8, 8);
+    globe_ = box(root_, bell_x + 64, MID - 26, 52, 52, 0xffffff, 26);
+    lv_obj_set_style_bg_opa(globe_, 26, 0);
+    lv_obj_center(icon(globe_, &ic::globe26, 0xffffff));
     on_tap(globe_, [this] { if (on_lang) on_lang(); });
-    lv_obj_t* bar = box(root_, width - 95, 19, 1, 22, 0xffffff);
-    lv_obj_set_style_bg_opa(bar, 66, 0);
-    time_ = label(root_, "--:--", 16, 600, 0xffffff);
-    date_ = label(root_, "----.--.--", 12, 400, 0xffffff);
+    lv_obj_t* bar = box(root_, bell_x + 64 + 52 + 14, MID - 18, 1, 36, 0xffffff);
+    lv_obj_set_style_bg_opa(bar, 70, 0);
+    time_ = label(root_, "--:--", 20, 600, 0xffffff);
+    date_ = label(root_, "----.--.--", 12.5, 400, 0xffffff);
     lv_obj_set_style_text_opa(date_, 204, 0);
     set_nav(0);
     relayout();
@@ -72,26 +79,27 @@ lv_obj_t* TopBar::create(lv_obj_t* parent, int width) {
 }
 
 void TopBar::relayout() {
-    // 时间右对齐到 width-18；左边依次：竖线、地球、铃铛、模拟模式、已连接
+    // 时间右对齐到 width-18；左边依次：竖线、地球、铃铛、模拟模式 / PC 控制中、已连接
+    const int MID = kTopSafe + 40;
     lv_obj_update_layout(root_);
-    lv_obj_align(time_, LV_ALIGN_TOP_RIGHT, -18, 14);
-    lv_obj_align(date_, LV_ALIGN_TOP_RIGHT, -18, 33);
-    int x = width_ - 205 - 14;  // 铃铛左边
+    lv_obj_align(time_, LV_ALIGN_TOP_RIGHT, -18, MID - 23);
+    lv_obj_align(date_, LV_ALIGN_TOP_RIGHT, -18, MID + 3);
+    int x = width_ - kBellFromRight - 26 - 16;  // 铃铛左边
     if (!lv_obj_has_flag(sim_, LV_OBJ_FLAG_HIDDEN)) {
-        int sw = lv_obj_get_width(sim_);
+        int sw = lv_obj_get_width(sim_), sh = lv_obj_get_height(sim_);
         x -= sw;
-        lv_obj_set_pos(sim_, x, 19);
+        lv_obj_set_pos(sim_, x, MID - sh / 2);
         x -= 14;
     }
     if (!lv_obj_has_flag(remote_, LV_OBJ_FLAG_HIDDEN)) {
-        int rw = lv_obj_get_width(remote_);
+        int rw = lv_obj_get_width(remote_), rh = lv_obj_get_height(remote_);
         x -= rw;
-        lv_obj_set_pos(remote_, x, 19);
+        lv_obj_set_pos(remote_, x, MID - rh / 2);
         x -= 14;
     }
-    int cw = lv_obj_get_width(conn_);
-    lv_obj_set_pos(conn_, x - cw, 21);
-    lv_obj_set_pos(dot_, x - cw - 14, 26);
+    int cw = lv_obj_get_width(conn_), chh = lv_obj_get_height(conn_);
+    lv_obj_set_pos(conn_, x - cw, MID - chh / 2);
+    lv_obj_set_pos(dot_, x - cw - 15, MID - 4);
 }
 
 void TopBar::set_nav(int sel) {
@@ -102,9 +110,9 @@ void TopBar::set_nav(int sel) {
         lv_obj_set_style_border_color(nav_circle_[i], lv_color_white(), 0);
         lv_obj_set_style_border_opa(nav_circle_[i], 56, 0);
         icon_color(nav_icon_[i], on ? col::BLUE : 0xffffff);
-        lv_obj_set_style_image_opa(nav_icon_[i], on ? LV_OPA_COVER : 217, 0);
-        lv_obj_set_style_text_font(nav_text_[i], font(11, on ? 600 : 400), 0);
-        lv_obj_set_style_text_opa(nav_text_[i], on ? LV_OPA_COVER : 217, 0);
+        lv_obj_set_style_image_opa(nav_icon_[i], on ? LV_OPA_COVER : 225, 0);
+        lv_obj_set_style_text_font(nav_text_[i], font(14, on ? 600 : 400), 0);
+        lv_obj_set_style_text_opa(nav_text_[i], on ? LV_OPA_COVER : 225, 0);
     }
 }
 
@@ -130,7 +138,7 @@ void TopBar::set_remote(bool remote, const std::string& holder) {
 }
 
 void TopBar::set_bell(int count, int worst_tier, bool selected) {
-    lv_obj_set_style_bg_opa(bell_, selected ? LV_OPA_COVER : 0, 0);
+    lv_obj_set_style_bg_opa(bell_, selected ? LV_OPA_COVER : 26, 0);
     icon_color(bell_icon_, selected ? col::NAVYBAR : 0xffffff);
     if (count <= 0) {
         lv_obj_add_flag(bell_badge_, LV_OBJ_FLAG_HIDDEN);

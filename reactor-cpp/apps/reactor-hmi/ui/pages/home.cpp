@@ -229,7 +229,7 @@ public:
             lv_label_set_text(right_, "");
             lv_obj_set_width(bar_, 0);
         }
-        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? p.stepFraction : 0);
+        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? p.stepFraction : 0, m.snap.stir.on);
         uint32_t sc = st == VState::Pressing ? col::ST_GRN : st == VState::QueuedGas ? col::ST_AMB : col::LINE;
         lv_obj_set_style_bg_color(stub_, lv_color_hex(sc), 0);
         lv_obj_set_style_opa(stub_, st == VState::Disabled ? 120 : 255, 0);
@@ -277,7 +277,7 @@ public:
         const auto& c = m.ch(ch_);
         VState st = model::vstate(m, ch_);
         readings_.set(m, ch_);
-        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? m.progress[static_cast<size_t>(ch_ - 1)].stepFraction : 0);
+        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? m.progress[static_cast<size_t>(ch_ - 1)].stepFraction : 0, m.snap.stir.on);
         bool flow = st == VState::Pressing && c.valveOpen;
         bool open = c.valveOpen;
         bool queued = st == VState::QueuedGas;
@@ -339,7 +339,7 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        BH_ = app.h() - 60 - 56 - 12;
+        BH_ = app.h() - kTopH - 56 - 12;
         TabCard* tc = &tabs_;
         tc->create(root, 8, 4, W_ - 16, {{&ic::tab_vessel, "装置总览"}, {&ic::tab_gas, "气路图"}, {&ic::tab_plan, "方案总览"}}, tab_);
         tc->on_select = [this](int i) { app_->go(PageId::Home, i); };

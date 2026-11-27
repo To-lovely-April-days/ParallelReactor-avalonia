@@ -63,6 +63,14 @@ FontSet fonts_init(const std::string& explicit_dir, const std::string& exe_path)
 // px：像素大小（小数四舍五入）；weight：400 / 500 / 600 / 700。结果缓存，可以随便调。
 const lv_font_t* font(double px, int weight = 400);
 
+// ---- 顶栏 ----
+// 顶栏总高 104：最上面 24 px 被屏幕边框挡住（只铺底色），下面 80 px 放内容（2026-11-27 画布 A2）。
+// 内容区、遮罩、报警全屏都从 kTopH 往下。
+constexpr int kTopSafe = 24;
+constexpr int kTopH = kTopSafe + 80;
+// 铃铛圆心离屏幕右边的距离（气泡箭头对准它）
+constexpr int kBellFromRight = 222;
+
 // ---- 小工具 ----
 // 去掉默认主题样式、不滚动的空白容器
 lv_obj_t* box(lv_obj_t* parent, int x, int y, int w, int h, uint32_t bg = 0, int radius = 0, bool transparent = false);

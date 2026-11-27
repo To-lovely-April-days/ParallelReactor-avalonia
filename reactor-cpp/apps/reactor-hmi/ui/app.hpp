@@ -18,7 +18,7 @@ class App;
 class Page {
 public:
     virtual ~Page() = default;
-    virtual void build(lv_obj_t* root, App& app) = 0;  // root：顶栏以下的内容区（0,60 起）
+    virtual void build(lv_obj_t* root, App& app) = 0;  // root：顶栏以下的内容区（0,kTopH 起）
     virtual void update(const model::Model& m) = 0;
 };
 

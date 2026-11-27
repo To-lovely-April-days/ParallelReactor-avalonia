@@ -201,6 +201,13 @@ extern lv_image_dsc_t check_sm16;  // 16x16 A8
 extern lv_image_dsc_t qr126;  // 126x126 A8
 extern lv_image_dsc_t play_fill30;  // 30x30 A8
 extern lv_image_dsc_t play_fill36;  // 36x36 A8
+extern lv_image_dsc_t nav_overview28;  // 28x28 A8
+extern lv_image_dsc_t nav_program28;  // 28x28 A8
+extern lv_image_dsc_t nav_curve28;  // 28x28 A8
+extern lv_image_dsc_t nav_records28;  // 28x28 A8
+extern lv_image_dsc_t nav_settings28;  // 28x28 A8
+extern lv_image_dsc_t bell26;  // 26x26 A8
+extern lv_image_dsc_t globe26;  // 26x26 A8
 
 // Switch every icon to the bitmaps rendered for this UI scale (1 or 1.5); call before building any page.
 void use_scale(float s);

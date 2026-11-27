@@ -69,9 +69,7 @@ void build_prog_lib(lv_obj_t* body, App& app, const Model& m, std::function<void
         refresh();
     };
     lv_obj_t* grid = box(lc, 0, 66, lw, BH - 18 - 66 - 50, 0, 0, true);
-    lv_obj_add_flag(grid, LV_OBJ_FLAG_SCROLLABLE);
-    lv_obj_set_scroll_dir(grid, LV_DIR_VER);
-    lv_obj_set_scrollbar_mode(grid, LV_SCROLLBAR_MODE_OFF);
+    scroll_list(grid, tpl ? "lib-tpl" : "lib-mine");
     int cwid = 201, ch_ = 117, gx = 15, gy = 0;
     size_t nitems = list.size() + (tpl ? 0 : 1);
     for (size_t i = 0; i < nitems; ++i) {
@@ -109,6 +107,7 @@ void build_prog_lib(lv_obj_t* body, App& app, const Model& m, std::function<void
         std::string id = le.prog.id;
         on_tap(cb, [id, refresh] { prog_edit().lib_sel = id; refresh(); });
     }
+    restore_scroll(grid, tpl ? "lib-tpl" : "lib-mine");
     box(lc, 0, BH - 18 - 50, lw, 1, col::DIV);
     if (tpl) label_at(lc, 16, BH - 18 - 34, tr("内置模板随软件提供，不能改，也不能删"), 13.5, 400, col::SEC);
     else {

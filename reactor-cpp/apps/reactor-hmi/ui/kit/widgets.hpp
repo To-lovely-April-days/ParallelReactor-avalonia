@@ -14,7 +14,7 @@ namespace reactor::hmi::kit {
 
 namespace ic = reactor::hmi::icons;
 
-// ============================================================ 顶栏（60 高）
+// ============================================================ 顶栏（kTopH = 104 高：上面 24 留给屏幕边框）
 // 左：HTLAB + 型号；中：5 个圆形导航（总览 / 程序 / 曲线 / 记录 / 设置）；
 // 右：● 已连接 · 模拟模式 · 铃铛（带数字）· 地球（语言）| 时间 / 日期。不做急停。
 class TopBar {
@@ -231,7 +231,8 @@ class Vessel {
 public:
     enum Size { S, M, L };  // 22×25 / 120×134 / 190×212（画布的 viewBox 120×134）
     void create(lv_obj_t* parent, int x, int y, Size sz);
-    void set(model::VState st, int number, std::optional<double> temp_c, double hold_fraction = 0);
+    // stirring：搅拌电机真的在转（全机一台电机，8 个釜一起转）。只有这时桨叶才动，不然会让人以为在搅拌
+    void set(model::VState st, int number, std::optional<double> temp_c, double hold_fraction = 0, bool stirring = false);
     lv_obj_t* obj() const { return root_; }
 
 private:
@@ -300,6 +301,13 @@ private:
     lv_obj_t* root_ = nullptr; lv_obj_t* dot_ = nullptr;
     bool on_ = false;
 };
+// 竖向滚动列表（报警、运行记录、程序库）：整块都能按住拖（没有可点行的空白处也行），右边有细滚动条，
+// 页面因为数据刷新重建时滚动位置不丢。key 区分是哪一张列表。建完内容后调 restore_scroll。
+void scroll_list(lv_obj_t* o, const char* key);
+void restore_scroll(lv_obj_t* o, const char* key);
+void forget_scroll(const char* key);  // 换了筛选 / 页签：下次从顶上开始
+// 手指正按在屏幕上（拖列表、按按钮中）：这时别重建页面，抬手后再刷新
+bool finger_down();
 // 简单的 toast（屏幕下方一条，3 s 后消失）：命令结果、导出完成
 void toast(const std::string& text, bool ok = true);
 

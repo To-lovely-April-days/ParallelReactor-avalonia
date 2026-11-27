@@ -317,13 +317,14 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        H_ = app.h() - 60;
+        H_ = app.h() - kTopH;
         tabs_.create(root, 8, 4, W_ - 16, {{&ic::doc18, "运行记录", "", TabDef::None}, {&ic::table18, "每日数据文件", "", TabDef::None}}, tab_);
         tabs_.on_select = [this](int i) { tab_ = i; sig_.clear(); if (app_) update(app_->m()); };
         usb_ = box(tabs_.obj(), 0, 0, 10, 44, 0, 0, true);
         body_ = box(root, 0, 56, W_, H_ - 56, 0, 0, true);
     }
     void update(const Model& m) override {
+        if (finger_down()) return;  // 拖列表时不重建
         char sig[200];
         std::snprintf(sig, sizeof sig, "%d/%d/%s/%s/%d/%zu/%d/%lld/%d", tab_, rs().filter, records_select().c_str(), rs().day.c_str(),
                       rs().month_ofs, m.x.runs.size(), (int)m.x.usb.present, (long long)(m.snap.ts / 10000), ver_);
@@ -367,11 +368,9 @@ private:
         lv_obj_add_event_cb(lc, [](lv_event_t* ev) { delete static_cast<LampGroup*>(lv_event_get_user_data(ev)); }, LV_EVENT_DELETE, lg);
         lg->create(lc, 14, 12, {trf("全部 %d", nall), trf("完成 %d", ndone), trf("有警告 %d", nwarn), trf("中止 %d", nab)}, {80, 80, 90, 70},
                    s.filter, 36, 14, 7);
-        lg->on_change = [this](int i) { rs().filter = i; refresh(); };
+        lg->on_change = [this](int i) { rs().filter = i; forget_scroll("records"); refresh(); };
         lv_obj_t* list = box(lc, 0, 58, lw, BH - 12 - 62, 0, 0, true);
-        lv_obj_add_flag(list, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_scroll_dir(list, LV_DIR_VER);
-        lv_obj_set_scrollbar_mode(list, LV_SCROLLBAR_MODE_OFF);
+        scroll_list(list, "records");
         int y = 0;
         std::string last_day;
         int64_t now = m.snap.ts;
@@ -407,6 +406,7 @@ private:
             on_tap(hit, [this, id] { records_select() = id; refresh(); });
             y += 61;
         }
+        restore_scroll(list, "records");
         // ---- 右：详情 ----
         const RunRecord* r = find_run(m, records_select());
         int rx = 12 + lw + 12, rw = W_ - rx - 12;

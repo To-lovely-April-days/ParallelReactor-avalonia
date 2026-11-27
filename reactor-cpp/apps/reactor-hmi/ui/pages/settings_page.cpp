@@ -161,7 +161,7 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        H_ = app.h() - 60;
+        H_ = app.h() - kTopH;
         menu_ = card(root, 12, 12, 220, H_ - 24);
         body_ = card(root, 244, 12, W_ - 244 - 12, H_ - 24);
         build_menu();

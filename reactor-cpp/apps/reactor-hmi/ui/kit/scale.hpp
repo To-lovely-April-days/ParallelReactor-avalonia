@@ -104,6 +104,8 @@ inline void text_get_size(lv_point_t* out, const char* t, const lv_font_t* f, in
         ::lv_obj_set_style_##name(o, S(v), s);                                         \
     }
 REACTOR_SC_STYLE(radius)
+REACTOR_SC_STYLE(width)
+REACTOR_SC_STYLE(height)
 REACTOR_SC_STYLE(border_width)
 REACTOR_SC_STYLE(outline_width)
 REACTOR_SC_STYLE(outline_pad)
@@ -189,6 +191,8 @@ inline void draw_label(lv_layer_t* l, const lv_draw_label_dsc_t* d, const lv_are
 #define lv_font_get_line_height ::reactor::hmi::scale::wrap::font_get_line_height
 #define lv_text_get_size ::reactor::hmi::scale::wrap::text_get_size
 #define lv_obj_set_style_radius ::reactor::hmi::scale::wrap::obj_set_style_radius
+#define lv_obj_set_style_width ::reactor::hmi::scale::wrap::obj_set_style_width
+#define lv_obj_set_style_height ::reactor::hmi::scale::wrap::obj_set_style_height
 #define lv_obj_set_style_border_width ::reactor::hmi::scale::wrap::obj_set_style_border_width
 #define lv_obj_set_style_outline_width ::reactor::hmi::scale::wrap::obj_set_style_outline_width
 #define lv_obj_set_style_outline_pad ::reactor::hmi::scale::wrap::obj_set_style_outline_pad

@@ -71,7 +71,7 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        H_ = app.h() - 60;
+        H_ = app.h() - kTopH;
         std::vector<TabDef> tabs = {{&ic::drop18, "气体消耗", "", TabDef::None}, {&ic::thermo18, "温度", "", TabDef::None}, {&ic::gauge18, "压力", "", TabDef::None}, {&ic::lines18, "三项对照", "", TabDef::None}};
         tabs_.create(root, 8, 4, W_ - 16, tabs, tab_);
         tabs_.on_select = [this](int i) { tab_ = i; sig_.clear(); if (app_) update(app_->m()); };

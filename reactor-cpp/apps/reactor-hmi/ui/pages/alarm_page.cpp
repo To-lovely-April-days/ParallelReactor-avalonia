@@ -45,10 +45,12 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        H_ = app.h() - 60;
+        H_ = app.h() - kTopH;
     }
 
     void update(const Model& m) override {
+        // 手指按着（拖列表 / 点按钮）时不重建：一重建正在拖的列表就没了，抬手后下一次再刷新
+        if (finger_down()) return;
         // 数据变了才重建（报警条数 / 状态）
         std::string sig;
         for (auto& a : m.alarms) sig += a.dto.id + a.dto.state;
@@ -86,7 +88,7 @@ public:
                                     {nullptr, "事件", std::to_string(n_ev), TabDef::Grey}};
         tabs_ = TabCard{};
         tabs_.create(root_, 8, 4, W_ - 16, tabs, filter_);
-        tabs_.on_select = [this](int i) { filter_ = i; refresh_later(); };
+        tabs_.on_select = [this](int i) { filter_ = i; forget_scroll("alarm"); refresh_later(); };
         std::string boot = trf("本次开机以来 · %s 开机", md_hms(m.bootAt).substr(0, 11).c_str());
         lv_obj_t* bl = label(tabs_.obj(), boot.c_str(), 13.5, 400, col::MUT);
         lv_obj_align(bl, LV_ALIGN_RIGHT_MID, -16, 0);
@@ -98,17 +100,15 @@ public:
                       (filter_ == 4 && r.event && r.level == "info");
             if (ok) shown.push_back(&r);
         }
-        // 默认选第一条未处理的报警
+        // 选中：点过的那一行（报警或事件都能选）；没点过默认第一条未处理的报警，再没有就第一行
         const Row* sel = nullptr;
         for (auto* r : shown)
-            if (r->alarm && r->alarm->dto.id == sel_id_) sel = r;
+            if (row_key(*r) == sel_id_) sel = r;
         if (!sel)
             for (auto* r : shown)
                 if (r->alarm && r->alarm->dto.state == "active") { sel = r; break; }
-        if (!sel)
-            for (auto* r : shown)
-                if (r->alarm) { sel = r; break; }
-        if (sel) sel_id_ = sel->alarm->dto.id;
+        if (!sel && !shown.empty()) sel = shown.front();
+        if (sel) sel_id_ = row_key(*sel);
 
         int lw = 800, top = 52, ch = H_ - top - 12;
         lv_obj_t* L = card(root_, 12, top, lw, ch);
@@ -145,18 +145,56 @@ public:
         label_at(hd, 242, 8, tr("内容"), 12.5, 400, col::MUT);
         label_at(hd, 660, 8, tr("状态"), 12.5, 400, col::MUT);
         lv_obj_t* list = box(T, 0, 34, tw, th - 34, 0, 0, true);
-        lv_obj_add_flag(list, LV_OBJ_FLAG_SCROLLABLE);
-        lv_obj_set_scroll_dir(list, LV_DIR_VER);
+        scroll_list(list, "alarm");
         lv_obj_set_style_pad_bottom(list, 0, 0);
         int y = 0;
         for (auto* r : shown) {
-            build_row(list, y, tw, *r, sel == r);
+            build_row(list, y, tw - 10, *r, sel == r);  // 右边留 10 给滚动条
             y += 58;
         }
-        build_detail(m, W_ - 12 - (W_ - 12 - 12 - lw - 12), top, W_ - 12 - 12 - lw - 12, ch, sel ? sel->alarm : nullptr);
+        if (shown.empty()) lv_obj_center(label(list, tr(filter_ == 1 ? "没有未处理的报警" : "没有记录"), 15, 400, col::MUT));
+        restore_scroll(list, "alarm");
+        int dx = W_ - 12 - (W_ - 12 - 12 - lw - 12), dw = W_ - 12 - 12 - lw - 12;
+        if (sel && !sel->alarm && sel->event) build_event_detail(dx, top, dw, ch, *sel->event, sel->level);
+        else build_detail(m, dx, top, dw, ch, sel ? sel->alarm : nullptr);
     }
 
 private:
+    static std::string row_key(const Row& r) {
+        return r.alarm ? "a:" + r.alarm->dto.id : r.event ? "e:" + std::to_string(r.event->seqEpoch) + "/" + std::to_string(r.event->seq) : std::string();
+    }
+    // 事件（不是报警）的详情：标题、时间、来源、内容
+    void build_event_detail(int x, int y, int w, int h, const model::EventRecord& ev, const std::string& level) {
+        lv_obj_t* D = card(root_, x, y, w, h);
+        const lv_image_dsc_t* im = level == "err" ? &ic::alarm_tri22 : level == "warn" ? &ic::warn_circle22 : &ic::info22;
+        icon(D, im, level == "info" ? 0x5b6672 : 0, 20, 21);
+        std::string title = kit::alarm_title(ev.channel, ev.title);
+        lv_obj_t* tl = label_at(D, 54, 17, title.c_str(), 20, 700, col::INK);
+        lv_obj_set_width(tl, w - 74);
+        lv_label_set_long_mode(tl, LV_LABEL_LONG_WRAP);
+        lv_obj_update_layout(tl);
+        int yy = 17 + lv_obj_get_height(tl) + 8;
+        std::string src = ev.origin.empty() ? ev.source : ev.origin;
+        if (ev.client && !ev.client->empty()) src += " · " + *ev.client;
+        std::string meta = md_hms(ev.ts) + (src.empty() ? std::string() : " · " + src);
+        lv_obj_t* ml = label_at(D, 20, yy, meta.c_str(), 13.5, 400, col::MUT);
+        lv_obj_set_width(ml, w - 40);
+        yy += 34;
+        box(D, 20, yy, w - 40, 1, col::DIV);
+        yy += 16;
+        lv_obj_t* msg = label_at(D, 20, yy, ev.message.empty() ? tr("（没有更多说明）") : ev.message.c_str(), 15, 400, col::INK);
+        lv_obj_set_width(msg, w - 40);
+        lv_label_set_long_mode(msg, LV_LABEL_LONG_WRAP);
+        lv_obj_set_style_text_line_space(msg, 4, 0);
+        lv_obj_update_layout(msg);
+        yy += lv_obj_get_height(msg) + 18;
+        const char* lv = level == "err" ? "错误" : level == "warn" ? "警告" : "记录";
+        std::string kind = std::string(tr("类型")) + "：" + tr(lv) + (ev.kind.empty() ? std::string() : " · " + ev.kind);
+        label_at(D, 20, yy, kind.c_str(), 12.5, 400, col::MUT2);
+        App* app = app_;
+        lv_obj_t* cv = round_btn_side(D, 20, h - 80, 60, RoundStyle::White, &ic::chart26, tr("看曲线"), tr("这一刻前后的读数"), col::INK);
+        on_tap(cv, [app] { app->go(PageId::Curve, 3); });
+    }
     // 在点击回调里不能删自己：推迟到下一轮
     void refresh_later() {
         sig_.clear();
@@ -171,9 +209,9 @@ private:
         lv_obj_t* row = box(list, 0, y, w, 58, bg);
         box(row, 0, 57, w, 1, 0xedf1f5);
         if (bar) box(row, 0, 0, 4, 58, bar);
-        if (r.alarm) {
-            std::string id = r.alarm->dto.id;
-            on_tap(row, [this, id] { sel_id_ = id; refresh_later(); });
+        {
+            std::string key = row_key(r);  // 报警、事件都能点开看详情
+            on_tap(row, [this, key] { sel_id_ = key; refresh_later(); });
         }
         label_at(row, 16, 20, model::fmt_clock(r.ts).c_str(), 14, active ? 600 : 400, active ? col::INK : col::SEC);
         if (r.level == "err") icon(row, &ic::alarm_tri22, 0, 110, 18);
@@ -342,7 +380,7 @@ class Placeholder : public Page {
 public:
     Placeholder(const char* t, const char* w) : t_(t), w_(w) {}
     void build(lv_obj_t* root, App& app) override {
-        lv_obj_t* c = card(root, 12, 12, app.w() - 24, app.h() - 60 - 24);
+        lv_obj_t* c = card(root, 12, 12, app.w() - 24, app.h() - kTopH - 24);
         lv_obj_t* l = label(c, tr(t_), 24, 700, col::INK);
         lv_obj_align(l, LV_ALIGN_CENTER, 0, -20);
         lv_obj_t* s = label(c, (std::string(tr(w_)) + " · " + tr("第二批")).c_str(), 15, 400, col::MUT);

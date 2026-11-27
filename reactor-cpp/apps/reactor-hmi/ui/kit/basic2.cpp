@@ -1,4 +1,5 @@
 // 第二批加的小控件：药丸、通道小块、进度条、步骤图标、关闭钮、工具按钮、小日历、选项方块、toast
+#include <map>
 #include "i18n.hpp"
 #include "widgets.hpp"
 
@@ -60,6 +61,53 @@ lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabl
     }
     if (disabled) lv_obj_set_style_opa(b, 150, 0);
     return b;
+}
+
+namespace {
+std::map<std::string, int32_t>& scroll_mem() {
+    static std::map<std::string, int32_t> m;
+    return m;
+}
+}  // namespace
+
+void scroll_list(lv_obj_t* o, const char* key) {
+    lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(o, LV_OBJ_FLAG_SCROLL_MOMENTUM);
+    lv_obj_set_scroll_dir(o, LV_DIR_VER);
+    lv_obj_set_scrollbar_mode(o, LV_SCROLLBAR_MODE_AUTO);
+    lv_obj_set_style_width(o, 6, LV_PART_SCROLLBAR);
+    lv_obj_set_style_radius(o, 3, LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_color(o, lv_color_hex(0x8a95a3), LV_PART_SCROLLBAR);
+    lv_obj_set_style_bg_opa(o, 150, LV_PART_SCROLLBAR);
+    lv_obj_set_style_pad_right(o, 3, LV_PART_SCROLLBAR);
+    lv_obj_set_style_pad_ver(o, 4, LV_PART_SCROLLBAR);
+    auto* k = new std::string(key);
+    lv_obj_add_event_cb(
+        o,
+        [](lv_event_t* e) {
+            auto* kk = static_cast<std::string*>(lv_event_get_user_data(e));
+            scroll_mem()[*kk] = lv_obj_get_scroll_y(lv_event_get_target_obj(e));
+        },
+        LV_EVENT_SCROLL, k);
+    lv_obj_add_event_cb(o, [](lv_event_t* e) { delete static_cast<std::string*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, k);
+}
+
+void restore_scroll(lv_obj_t* o, const char* key) {
+    auto it = scroll_mem().find(key);
+    if (it == scroll_mem().end() || it->second <= 0) return;
+    lv_obj_update_layout(o);
+    int32_t y = it->second;
+    lv_obj_scroll_to_y(o, y, LV_ANIM_OFF);
+    scroll_mem()[key] = y;  // 内容变短时 LVGL 会夹住，记下的值保持不变，内容变回来时还能回到原处
+}
+
+void forget_scroll(const char* key) { scroll_mem().erase(key); }
+
+bool finger_down() {
+    for (lv_indev_t* i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i))
+        if (lv_indev_get_type(i) == LV_INDEV_TYPE_POINTER && lv_indev_get_state(i) == LV_INDEV_STATE_PRESSED) return true;
+    return false;
 }
 
 lv_obj_t* bar(lv_obj_t* parent, int x, int y, int w, int h, double frac, uint32_t color, std::optional<double> marker, uint32_t track) {

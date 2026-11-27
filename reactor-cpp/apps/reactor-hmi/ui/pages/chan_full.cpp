@@ -131,7 +131,7 @@ public:
         run_ = c.programOwned && c.program && c.program->running;
         curve_ = !run_ && c.spMode == "curve";
         W_ = app.w();
-        int H = app.h() - 60;
+        int H = app.h() - kTopH;
         build_bar(root, m);
         int top = 72, bot = H - 12;
         build_left(root, 12, top, 372, bot - top);
@@ -155,11 +155,11 @@ public:
         for (int i = 0; i < 8; ++i) {
             const auto& ci = m.snap.channels[static_cast<size_t>(i)];
             lv_label_set_text(tab_t_[i], (model::fmt_temp(ci) + "°").c_str());
-            tab_v_[i].set(model::vstate(m, i + 1), i + 1, ci.tempC);
+            tab_v_[i].set(model::vstate(m, i + 1), i + 1, ci.tempC, 0, m.snap.stir.on);
         }
         VState st = model::vstate(m, ch_);
         const auto& p = m.progress[static_cast<size_t>(ch_ - 1)];
-        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? p.stepFraction : 0);
+        vessel_.set(st, ch_, c.tempC, st == VState::Holding ? p.stepFraction : 0, m.snap.stir.on);
         std::string chip;
         if (run) chip = p.programName + " · " + tr("运行中");
         else if (!c.installed) chip = tr("已停用");

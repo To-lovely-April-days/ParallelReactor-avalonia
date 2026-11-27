@@ -46,7 +46,7 @@ void App::build(lv_obj_t* screen) {
         };
         kit::Dialog::open(s);
     };
-    content_ = box(screen, 0, 60, w_, h_ - 60, 0, 0, true);
+    content_ = box(screen, 0, kTopH, w_, h_ - kTopH, 0, 0, true);
 }
 
 void App::update_topbar() {
@@ -264,7 +264,7 @@ void App::show_alarm(const model::AlarmItem& a) {
             break;
         }
         case 3:
-            kit::Bubble::show(a, w_ - 185, [this] { go(PageId::Alarm); });
+            kit::Bubble::show(a, w_ - kBellFromRight, [this] { go(PageId::Alarm); });
             break;
         default: break;
     }

@@ -212,7 +212,7 @@ public:
         app_ = &app;
         root_ = root;
         W_ = app.w();
-        H_ = app.h() - 60;
+        H_ = app.h() - kTopH;
         std::vector<TabDef> tabs = {{&ic::tab_flask18, "编辑程序", "", TabDef::None}, {&ic::tab_book18, "程序库", "", TabDef::None}, {&ic::tab_shield18, "泄漏测试", "", TabDef::None}};
         tabs_.create(root, 8, 4, W_ - 16, tabs, sub_);
         tabs_.on_select = [this](int i) {

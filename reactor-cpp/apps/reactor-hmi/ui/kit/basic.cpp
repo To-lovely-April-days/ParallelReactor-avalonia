@@ -32,7 +32,7 @@ lv_obj_t* popover(lv_obj_t* parent, int x, int y, int w, int h, int radius) {
 lv_obj_t* modal_dim(lv_opa_t opa) {
     lv_display_t* d = lv_display_get_default();
     int W = lv_display_get_horizontal_resolution(d), H = lv_display_get_vertical_resolution(d);
-    lv_obj_t* dim = box(lv_layer_top(), 0, 60, W, H - 60, 0x283241);
+    lv_obj_t* dim = box(lv_layer_top(), 0, kTopH, W, H - kTopH, 0x283241);
     lv_obj_set_style_bg_opa(dim, opa, 0);
     lv_obj_add_flag(dim, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_update_layout(dim);  // 调用方马上要用 lv_obj_get_width/height 居中

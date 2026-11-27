@@ -23,7 +23,7 @@ namespace {
 lv_area_t card_rect(const App& app, int ch) {
     int colw = 126, W = app.w();
     int gw = W - 12 - 12 - colw - 12;
-    int BH = app.h() - 60 - 56 - 12;
+    int BH = app.h() - kTopH - 56 - 12;
     int cw = (gw - 36) / 4, chh = (BH - 12) / 2;
     int i = ch - 1;
     lv_area_t a;
@@ -191,7 +191,7 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
         const auto& cc = mm.ch(ch);
         const auto& pp = mm.progress[static_cast<size_t>(ch - 1)];
         VState st = model::vstate(mm, ch);
-        v->set(st, ch, cc.tempC, st == VState::Holding ? pp.stepFraction : 0);
+        v->set(st, ch, cc.tempC, st == VState::Holding ? pp.stepFraction : 0, mm.snap.stir.on);
         lv_label_set_text(tv, model::fmt_temp(cc).c_str());
         char b[32];
         std::snprintf(b, sizeof b, "→ %.0f °C", cc.tempSpC);

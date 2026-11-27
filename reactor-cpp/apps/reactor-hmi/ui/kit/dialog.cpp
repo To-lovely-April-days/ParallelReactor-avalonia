@@ -172,7 +172,7 @@ void Bubble::show(const model::AlarmItem& a, int bell_cx, std::function<void()> 
     // 右边留在铃铛右侧（画布：气泡 881..1221，铃铛 1095）；外面留 40 px 给阴影（父对象会裁掉子对象的阴影）
     const int M = 40;
     int x = bell_cx + 66 - 340;
-    g_bubble = box(lv_layer_top(), x - M, 52, 340 + 2 * M, 140 + M, 0, 0, true);
+    g_bubble = box(lv_layer_top(), x - M, kTopH - 6, 340 + 2 * M, 140 + M, 0, 0, true);
     x -= M;
     lv_obj_t* arrow = box(g_bubble, bell_cx - x - 10, 2, 20, 20, 0xffffff);
     lv_obj_set_style_transform_rotation(arrow, 450, 0);
@@ -250,7 +250,7 @@ void AlarmFull::show(const model::AlarmItem& a, int more, std::function<void()> 
     hide();
     lv_display_t* disp = lv_display_get_default();
     int W = lv_display_get_horizontal_resolution(disp), H = lv_display_get_vertical_resolution(disp);
-    g_full = box(lv_layer_top(), 0, 60, W, H - 60, 0x9c1420);
+    g_full = box(lv_layer_top(), 0, kTopH, W, H - kTopH, 0x9c1420);
     lv_obj_add_flag(g_full, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_style_bg_grad_color(g_full, lv_color_hex(0x700a12), 0);
     lv_obj_set_style_bg_grad_dir(g_full, LV_GRAD_DIR_VER, 0);
@@ -259,7 +259,7 @@ void AlarmFull::show(const model::AlarmItem& a, int more, std::function<void()> 
     lv_obj_add_event_cb(st, stripes_draw, LV_EVENT_DRAW_MAIN, nullptr);
     // 画布内容区 660 高，这里多出的高度上下平分
     // 画布上这一块在 108..534（720 高的屏）；800 高时整块往下挪，让上下留白差不多
-    int oy = (H - 60 - 660) / 2 - 60 + 40;  // 下面的坐标照画布的绝对 y 写
+    int oy = (H - kTopH - 660) / 2 - 60 + 40;  // 下面的坐标照画布的绝对 y 写
     int L = 150, R = W - 150;
     icon(g_full, &ic::tri_white52, 0, L, 115 + oy);
     label_at(g_full, 218, 108 + oy, tr("一级报警 · 安全联锁已动作"), 13.5, 700, 0xffb4ae);
