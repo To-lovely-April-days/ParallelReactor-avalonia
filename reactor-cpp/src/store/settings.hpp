@@ -238,6 +238,7 @@ public:
         std::optional<SettingsState> state;    // 读成功；文件不存在 / 读不了为空（调用方用默认值冷启动）
         std::string backup_path;               // 这次写了的备份（.bak-pre-v0.6 / .bak-unreadable-时间），没有为空
         std::string error;                     // 读不了的原因
+        std::vector<std::string> fixes;        // 读进来时自动纠正的旧值（调用方记事件并写回存档）
     };
     // 读存档（C#: SettingsFileGuard.Read）：没有 "BandTune" 的旧存档先原样备份为 .bak-pre-v0.6（只一次）；
     // 读不了先另存为 .bak-unreadable-yyyyMMdd-HHmmss 再返回空。now_utc_ms 给备份名用（缺省取当前时间，按本机时区）。

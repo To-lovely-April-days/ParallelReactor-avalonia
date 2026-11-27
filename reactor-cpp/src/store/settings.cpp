@@ -527,6 +527,12 @@ SettingsStore::LoadResult SettingsStore::load(std::optional<int64_t> now_utc_ms)
         r.error = err;
         return r;
     }
+    // 旧 C# 程序的搅拌传动比按「电机 38 齿带釜 85 齿」存的 85/38 = 2.237；现场实际是电机带 85 齿大轮、釜上 38 齿小轮，
+    // 应为 38/85 = 0.447。迁移过来的旧存档里还是 2.237 时自动纠正（2026-11-27 用户确认）
+    if (std::fabs(st.settings.stir_gear_ratio - 85.0 / 38.0) < 0.005) {
+        st.settings.stir_gear_ratio = kStirGearDefaultRatio;
+        r.fixes.push_back("搅拌传动比 2.237 → 0.447（旧程序按电机 38 齿带釜 85 齿存的，现场是电机带 85 齿大轮、釜上 38 齿小轮）");
+    }
     r.state = std::move(st);
     return r;
 }

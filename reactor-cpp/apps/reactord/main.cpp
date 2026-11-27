@@ -121,6 +121,12 @@ int main(int argc, char** argv) {
     store::SettingsState settings = loaded.state ? *loaded.state : store::SettingsState{};
     if (!loaded.backup_path.empty())
         logger.event(now(), "warn", "系统", "设置文件已备份", loaded.backup_path, "system", std::nullopt, std::nullopt, "system.settingsBackup");
+    if (!loaded.fixes.empty()) {
+        for (const auto& f : loaded.fixes)
+            logger.event(now(), "warn", "系统", "设置已自动纠正", f, "system", std::nullopt, std::nullopt, "system.settingsFixed");
+        std::string serr;
+        if (!settings_store.save_now(settings, &serr)) LOGW("reactord", "纠正后的设置写不回去：%s", serr.c_str());
+    }
     if (loaded.found && !loaded.state)
         logger.event(now(), "err", "系统", "设置文件读不了 · 按默认值启动", loaded.error, "system", std::nullopt, std::nullopt,
                      "system.settingsUnreadable");

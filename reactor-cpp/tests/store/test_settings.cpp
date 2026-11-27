@@ -254,6 +254,22 @@ TEST(store_settings, new_file_with_band_tune_is_not_backed_up) {
     CHECK(r.state->has_band_pids);   // 有 BandPids（空数组）：不从仪表读种子，同 C#
 }
 
+TEST(store_settings, old_inverted_stir_gear_ratio_is_fixed_on_load) {
+    TempDir d;
+    SettingsStore store(d.path);
+    // 旧 C# 存档：85/38（电机 38 齿带釜 85 齿的旧理解）→ 读进来自动改成 38/85
+    spit(store.path(), R"({ "Settings": { "StirGearRatio": 2.236842105263158 }, "BandTune": [] })");
+    auto r = store.load();
+    CHECK(r.state.has_value());
+    CHECK_EQ(r.fixes.size(), 1u);
+    CHECK(std::fabs(r.state->settings.stir_gear_ratio - 38.0 / 85.0) < 1e-9);
+    // 用户自己填的别的值不动
+    spit(store.path(), R"({ "Settings": { "StirGearRatio": 0.5 }, "BandTune": [] })");
+    auto r2 = store.load();
+    CHECK(r2.fixes.empty());
+    CHECK(std::fabs(r2.state->settings.stir_gear_ratio - 0.5) < 1e-9);
+}
+
 TEST(store_settings, unreadable_file_is_saved_aside_before_returning_empty) {
     TempDir d;
     SettingsStore store(d.path);
