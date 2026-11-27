@@ -17,6 +17,8 @@ Group=teamhd
 Environment=DISPLAY=:0
 # 如果日志里出现「无法打开显示」，按《板子联调指南》§10 加 XAUTHORITY
 WorkingDirectory=/opt/reactor/bin
+# 屏幕物理是 1280×800，HDMI 默认却按 1920×1080 输出（圆变椭圆、发虚）：先把输出设成 1280×800。失败不影响启动（前面的 -）
+ExecStartPre=-/opt/reactor/deploy/set-display.sh
 ExecStart=/opt/reactor/bin/reactor-hmi --server unix:/run/reactord/hmi.sock
 Restart=always
 RestartSec=3

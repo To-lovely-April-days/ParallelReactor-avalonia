@@ -153,6 +153,18 @@ else
 fi
 
 # ---------- 5. systemd 服务文件（不启用、不启动）----------
+info "桌面登录时把屏幕设成 1280×800（/etc/xdg/autostart/reactor-display.desktop）"
+mkdir -p /etc/xdg/autostart
+cat > /etc/xdg/autostart/reactor-display.desktop <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Reactor display 1280x800
+Comment=触摸屏物理分辨率 1280×800：HDMI 默认的 1920×1080 会被屏幕压扁
+Exec=$PREFIX/deploy/set-display.sh
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+DESKTOP
+
 info "安装服务文件 reactord.service、reactord-hmi.service"
 reload=0
 for unit in reactord.service reactord-hmi.service; do
