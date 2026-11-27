@@ -83,6 +83,8 @@ if(REACTOR_BUILD_HMI)
 
   file(GLOB_RECURSE HMI_SRC CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/apps/reactor-hmi/*.cpp)
   add_executable(reactor-hmi ${HMI_SRC})
+  # 图标数组（1 倍 + 1.5 倍，十几 MB 的十六进制）：不优化，板子上编得快、不吃内存
+  set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/apps/reactor-hmi/ui/kit/icons_gen.cpp PROPERTIES COMPILE_OPTIONS "-O0")
   target_include_directories(reactor-hmi PRIVATE apps/reactor-hmi third_party)
   target_link_libraries(reactor-hmi PRIVATE lvgl)
   target_compile_options(reactor-hmi PRIVATE -Wall)

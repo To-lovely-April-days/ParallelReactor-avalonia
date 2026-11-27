@@ -3,5 +3,7 @@
 #include "lvgl.h"
 
 namespace reactor::hmi::icons {
-extern const lv_image_dsc_t txt_korean18;  // 한국어
+extern lv_image_dsc_t txt_korean18;  // 한국어
+// 换成这个界面缩放用的图（1 或 1.5）；建页面之前调用
+void use_text_scale(float s);
 }  // namespace reactor::hmi::icons

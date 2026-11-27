@@ -2,6 +2,7 @@
 // 颜色照画布定稿（gen/family.py、states.py、states3.py）。
 #pragma once
 #include "lvgl.h"
+#include "scale.hpp"  // 设计像素 → 屏幕像素（1920×1080 屏上 1.5 倍）
 
 #include <cstdint>
 #include <functional>

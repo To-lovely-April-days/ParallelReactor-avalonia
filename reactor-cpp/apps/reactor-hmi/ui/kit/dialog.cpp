@@ -1,6 +1,7 @@
 // L 型弹窗（abortask2.py：彩色标题条 + 内容 + 右下两个 150×52 按钮）、停止确认、
 // 报警三级：一级全屏（Alarm-L1）、二级弹窗（Alarm-L2）、三级铃铛气泡（Alarm-L3）
 #include "i18n.hpp"
+#include "draw.hpp"
 #include "widgets.hpp"
 
 #include <cmath>
@@ -229,7 +230,8 @@ void stripes_draw(lv_event_t* e) {
     int h = lv_area_get_height(&a);
     for (int x = a.x1 - 28; x < a.x2 + 28; x += 28) {
         // 135° 斜纹：平行四边形 = 两个三角形
-        lv_point_precise_t p0 = {(lv_value_precise_t)x, a.y1}, p1 = {(lv_value_precise_t)(x + 14), a.y1}, p2 = {(lv_value_precise_t)(x + 14 - h), a.y2 + 1}, p3 = {(lv_value_precise_t)(x - h), a.y2 + 1};
+        lv_point_precise_t p0 = pt((float)x, (float)a.y1), p1 = pt((float)(x + 14), (float)a.y1), p2 = pt((float)(x + 14 - h), (float)(a.y2 + 1)),
+                           p3 = pt((float)(x - h), (float)(a.y2 + 1));
         d.p[0] = p0; d.p[1] = p1; d.p[2] = p2;
         lv_draw_triangle(layer, &d);
         d.p[0] = p0; d.p[1] = p2; d.p[2] = p3;
@@ -279,8 +281,8 @@ void AlarmFull::show(const model::AlarmItem& a, int more, std::function<void()> 
         lv_obj_t* big = label_at(g_full, L, 212 + oy, v, 72, 400, 0xffffff);
         lv_obj_update_layout(big);
         lv_obj_t* u = label(g_full, unit, 20, 400, 0xffc9c6);
-        place_baseline(u, L + lv_obj_get_width(big) + 8, 212 + oy + (lv_obj_get_style_text_font(big, 0)->line_height -
-                                                                         lv_obj_get_style_text_font(big, 0)->base_line));
+        place_baseline(u, L + lv_obj_get_width(big) + 8, 212 + oy + scale::U(lv_obj_get_style_text_font(big, 0)->line_height -
+                                                                                   lv_obj_get_style_text_font(big, 0)->base_line));
         if (e.rangeLo && e.rangeHi && e.limit) {
             int bx = 399, bw = R - bx, by = 252 + oy;
             double lo = *e.rangeLo, hi = *e.rangeHi;
