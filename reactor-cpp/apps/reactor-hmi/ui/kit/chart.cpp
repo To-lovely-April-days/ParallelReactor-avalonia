@@ -185,6 +185,7 @@ void TimeChart::draw_cb(lv_obj_t*, lv_layer_t* L, const lv_area_t& o, void* user
         lv_area_t clip;
         clip.x1 = o.x1 + (int)X0; clip.x2 = o.x1 + (int)X1;
         clip.y1 = o.y1 + (int)Y0 - 2; clip.y2 = o.y1 + (int)Y1 + 2;
+        clip = scale::S_area(clip);  // layer 的裁剪区是屏幕像素
         lv_area_t inter;
         inter.x1 = std::max(clip_old.x1, clip.x1); inter.x2 = std::min(clip_old.x2, clip.x2);
         inter.y1 = std::max(clip_old.y1, clip.y1); inter.y2 = std::min(clip_old.y2, clip.y2);

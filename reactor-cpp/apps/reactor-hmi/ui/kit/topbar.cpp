@@ -172,7 +172,7 @@ lv_obj_t* TabCard::create(lv_obj_t* parent, int x, int y, int w, const std::vect
         const TabDef& d = tabs[i];
         const lv_font_t* f = font(17, 600);
         int tw = text_width(tr(d.text.c_str()), f);
-        int iw = d.icon ? (int)d.icon->header.w : 0;
+        int iw = d.icon ? scale::U((int)d.icon->header.w) : 0;
         int bw = 0;
         if (!d.badge.empty()) bw = text_width(d.badge.c_str(), font(12.5, 700)) + 14 + 8;
         int w_tab = 20 + (iw ? iw + 8 : 0) + tw + bw + 20;
@@ -183,7 +183,7 @@ lv_obj_t* TabCard::create(lv_obj_t* parent, int x, int y, int w, const std::vect
         int cx = 20;
         lv_obj_t* im = nullptr;
         if (d.icon) {
-            im = icon(t, d.icon, col::MUT2, cx, (44 - (int)d.icon->header.h) / 2);
+            im = icon(t, d.icon, col::MUT2, cx, (44 - scale::U((int)d.icon->header.h)) / 2);
             cx += iw + 8;
         }
         lv_obj_t* l = label_at(t, cx, 10, tr(d.text.c_str()), 17, 600, col::TABSEC);

@@ -115,12 +115,12 @@ void right_buttons(lv_obj_t* c, int cw, std::vector<lv_obj_t*> btns) {
 
 lv_obj_t* filled_btn(lv_obj_t* p, const char* text, const lv_image_dsc_t* im, uint32_t color = col::BLUE) {
     const lv_font_t* f = font(15.5, 700);
-    int w = text_width(text, f) + (im ? (int)im->header.w + 8 : 0) + 34;
+    int w = text_width(text, f) + (im ? scale::U((int)im->header.w) + 8 : 0) + 34;
     lv_obj_t* b = box(p, 0, 0, w, 42, color, 9);
     int x = 17;
     if (im) {
-        icon(b, im, 0xffffff, x, (42 - (int)im->header.h) / 2);
-        x += (int)im->header.w + 8;
+        icon(b, im, 0xffffff, x, (42 - scale::U((int)im->header.h)) / 2);
+        x += scale::U((int)im->header.w) + 8;
     }
     lv_obj_t* l = label(b, text, 15.5, 700, 0xffffff);
     lv_obj_align(l, LV_ALIGN_LEFT_MID, x, 0);

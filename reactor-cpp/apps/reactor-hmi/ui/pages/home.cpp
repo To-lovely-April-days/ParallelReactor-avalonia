@@ -254,8 +254,8 @@ public:
         lv_obj_t* hit = box(card, cx - 64, top, 128, vy_ + 134 - top, 0, 0, true);
         on_tap(hit, [&app, ch] { app.go(PageId::ChanFull, ch); });
         pipe_ = lv_line_create(card);
-        pts_[0] = {(lv_value_precise_t)cx, (lv_value_precise_t)(vy_ + 126)};
-        pts_[1] = {(lv_value_precise_t)cx, (lv_value_precise_t)my};
+        pts_[0] = pt((float)cx, (float)(vy_ + 126));  // lv_line 的点是屏幕像素
+        pts_[1] = pt((float)cx, (float)my);
         lv_line_set_points(pipe_, pts_, 2);
         chk_bg_ = icon(card, &ic::chk_valve_bg, 0xffffff, cx - 10, vy_ + 150 - 10);
         chk_ = icon(card, &ic::chk_valve, 0x4a505b, cx - 10, vy_ + 150 - 10);

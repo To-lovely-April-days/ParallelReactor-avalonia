@@ -1157,8 +1157,8 @@ class Renderer:
         dst[..., 3] = src_a + dst[..., 3] * inv
 
 
-def render_icon(icon):
-    W, H = int(icon['w']), int(icon['h'])
+def render_icon(icon, scale=1.0):
+    W, H = int(round(icon['w'] * scale)), int(round(icon['h'] * scale))
     r = Renderer(icon['svg'], W, H, icon.get('color', '#000000'), icon.get('mode', 'a8'))
     canvas = r.render()
     a = np.clip(canvas[..., 3], 0.0, 1.0)
@@ -1191,7 +1191,7 @@ def hex_lines(data, per_line=16):
     return '\n'.join(out)
 
 
-def write_outputs(icons, results, out_dir, manifest_path):
+def write_outputs(icons, results, results15, out_dir, manifest_path):
     os.makedirs(out_dir, exist_ok=True)
     src = os.path.basename(manifest_path)
     hdr = [
@@ -1206,9 +1206,12 @@ def write_outputs(icons, results, out_dir, manifest_path):
         '',
     ]
     for ic in icons:
-        hdr.append('extern const lv_image_dsc_t %s;  // %dx%d %s' % (
+        hdr.append('extern lv_image_dsc_t %s;  // %dx%d %s' % (
             ic['name'], ic['w'], ic['h'], 'A8' if ic.get('mode', 'a8') == 'a8' else 'ARGB8888'))
     hdr += [
+        '',
+        '// Switch every icon to the bitmaps rendered for this UI scale (1 or 1.5); call before building any page.',
+        'void use_scale(float s);',
         '',
         '// Look up an icon by name (debug helper); returns nullptr if unknown.',
         'const lv_image_dsc_t* find(const char* name);',
@@ -1246,21 +1249,40 @@ def write_outputs(icons, results, out_dir, manifest_path):
         '}  // namespace',
         '',
     ]
-    for ic, (a8, bgra) in zip(icons, results):
-        name, w, h = ic['name'], ic['w'], ic['h']
+    def emit(name, suffix, a8, bgra):
+        h, w = a8.shape
         if bgra is None:
             data = a8.tobytes()
             cf, stride = 'LV_COLOR_FORMAT_A8', w
         else:
             data = bgra.tobytes()
             cf, stride = 'LV_COLOR_FORMAT_ARGB8888', w * 4
-        cpp.append('// %s: %dx%d %s' % (name, w, h, cf))
-        cpp.append('static const uint8_t %s_data[%d] = {' % (name, len(data)))
+        cpp.append('// %s%s: %dx%d %s' % (name, suffix, w, h, cf))
+        cpp.append('static const uint8_t %s%s_data[%d] = {' % (name, suffix, len(data)))
         cpp.append(hex_lines(data))
         cpp.append('};')
-        cpp.append('const lv_image_dsc_t %s = make(%s, %d, %d, %d, %s_data, %d);' % (
-            name, cf, w, h, stride, name, len(data)))
+        return cf, w, h, stride, len(data)
+
+    for ic, (a8, bgra), (a8x, bgrax) in zip(icons, results, results15):
+        name = ic['name']
+        cf, w, h, stride, n = emit(name, '', a8, bgra)
+        cfx, wx, hx, stridex, nx = emit(name, '_x15', a8x, bgrax)
+        cpp.append('lv_image_dsc_t %s = make(%s, %d, %d, %d, %s_data, %d);' % (name, cf, w, h, stride, name, n))
+        cpp.append('static const lv_image_dsc_t %s_x15 = make(%s, %d, %d, %d, %s_x15_data, %d);' % (
+            name, cfx, wx, hx, stridex, name, nx))
         cpp.append('')
+    cpp += ['namespace {', 'struct Pair {', '    lv_image_dsc_t* dst;', '    lv_image_dsc_t one;', '    const lv_image_dsc_t* x15;', '};', 'Pair kPairs[] = {']
+    for ic in icons:
+        cpp.append('    {&%s, %s, &%s_x15},' % (ic['name'], ic['name'], ic['name']))
+    cpp += [
+        '};',
+        '}  // namespace',
+        '',
+        'void use_scale(float s) {',
+        '    for (Pair& p : kPairs) *p.dst = (s > 1.25f) ? *p.x15 : p.one;',
+        '}',
+        '',
+    ]
     cpp += [
         'namespace {',
         'struct Entry {',
@@ -1371,13 +1393,14 @@ def main(argv=None):
     out_dir = rel(args.out_dir)
     t0 = time.perf_counter()
     icons = load_manifest(manifest)
-    results = []
+    results, results15 = [], []
     for ic in icons:
         try:
             results.append(render_icon(ic))
+            results15.append(render_icon(ic, 1.5))
         except ET.ParseError as e:
             raise SystemExit('svg2lvgl: icon %r: SVG parse error: %s' % (ic['name'], e))
-    hp, cp = write_outputs(icons, results, out_dir, manifest)
+    hp, cp = write_outputs(icons, results, results15, out_dir, manifest)
     if args.preview:
         write_previews(icons, results, os.path.abspath(args.preview))
     dt = time.perf_counter() - t0

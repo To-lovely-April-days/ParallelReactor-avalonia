@@ -1,4 +1,5 @@
 #include "draw.hpp"
+#include "scale.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -57,9 +58,10 @@ struct DrawCtx { DrawFn fn; void* user; };
 }  // namespace
 
 lv_point_precise_t pt(float x, float y) {
+    // 输入是设计像素，输出直接是屏幕像素（先乘再取整：1.5 倍屏上曲线不会因为先取整而发抖）
     lv_point_precise_t p;
-    p.x = (lv_value_precise_t)std::lround(x);
-    p.y = (lv_value_precise_t)std::lround(y);
+    p.x = (lv_value_precise_t)std::lround(scale::Sf(x));
+    p.y = (lv_value_precise_t)std::lround(scale::Sf(y));
     return p;
 }
 
@@ -174,7 +176,7 @@ void draw_text(lv_layer_t* layer, const lv_area_t& o, int x, int y, const char* 
     lv_area_t a;
     int x0 = align == LV_TEXT_ALIGN_RIGHT ? x - w : align == LV_TEXT_ALIGN_CENTER ? x - w / 2 : x;
     a.x1 = o.x1 + x0; a.x2 = a.x1 + w - 1;
-    a.y1 = o.y1 + y; a.y2 = a.y1 + f->line_height;
+    a.y1 = o.y1 + y; a.y2 = a.y1 + lv_font_get_line_height(f);
     lv_draw_label(layer, &d, &a);
 }
 

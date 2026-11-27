@@ -6,7 +6,8 @@
 //   REACTOR_HEADLESS=1  不开窗口，渲染一帧写成 BMP（--shot 路径），用来在没有屏幕的机器上看效果
 //
 // 参数：
-//   --width 1280 --height 800
+//   --width W --height H 屏幕像素。全屏版不给就用桌面分辨率（板子 1920×1080）；无屏默认 1280×800
+//   --scale S            界面缩放（设计稿 1280×720 → 屏幕）；不给就按 min(宽/1280, 高/720) 算，最小 1。1920×1080 = 1.5
 //   --fonts DIR          字体目录（Inter-*.ttf、NotoSansSC-*.otf）；不给就按 程序目录/fonts → /opt/reactor/fonts → 工程 assets/fonts 找
 //   --lang zh|en         界面语言（默认中文）
 //   --page NAME          打开哪一页（见 page_names()）；无屏预览时就是截哪一页
@@ -36,6 +37,11 @@
 #include "ui/kit/i18n.hpp"
 #include "ui/kit/theme.hpp"
 
+#if !(defined(REACTOR_HEADLESS) && REACTOR_HEADLESS) && LV_USE_SDL
+#include LV_SDL_INCLUDE_PATH  // 取桌面分辨率
+#endif
+
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -117,8 +123,8 @@ struct Options {
 struct FakeTouch { int x = 0, y = 0; bool down = false; };
 FakeTouch g_touch;
 void fake_touch_read(lv_indev_t*, lv_indev_data_t* d) {
-    d->point.x = g_touch.x;
-    d->point.y = g_touch.y;
+    d->point.x = reactor::hmi::scale::S(g_touch.x);  // 脚本里写的是设计像素
+    d->point.y = reactor::hmi::scale::S(g_touch.y);
     d->state = g_touch.down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
 #endif
@@ -468,6 +474,8 @@ void teardown(std::unique_ptr<Session>& s) {
 
 int main(int argc, char** argv) {
     int W = 1280, H = 800;
+    bool size_given = false;
+    float scale_arg = 0;
     std::string fonts, shot = "reactor-hmi.bmp", page = "main-f1", shots_dir, lang_arg = "zh";
     Options opt;
     const char* env_srv = std::getenv("REACTOR_HMI_SERVER");
@@ -477,8 +485,9 @@ int main(int argc, char** argv) {
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
         auto next = [&]() -> std::string { return i + 1 < argc ? argv[++i] : std::string(); };
-        if (a == "--width") W = std::atoi(next().c_str());
-        else if (a == "--height") H = std::atoi(next().c_str());
+        if (a == "--width") { W = std::atoi(next().c_str()); size_given = true; }
+        else if (a == "--height") { H = std::atoi(next().c_str()); size_given = true; }
+        else if (a == "--scale") scale_arg = (float)std::atof(next().c_str());
         else if (a == "--fonts") fonts = next();
         else if (a == "--font") next();  // 旧参数，忽略
         else if (a == "--shot") shot = next();
@@ -500,6 +509,7 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
+    (void)size_given;  // 只有全屏 SDL 版用它
     if (lang_arg == "en") set_lang(Lang::En);
 
     lv_init();
@@ -517,6 +527,14 @@ int main(int argc, char** argv) {
     lv_indev_set_type(touch, LV_INDEV_TYPE_POINTER);
     lv_indev_set_read_cb(touch, fake_touch_read);
 #elif LV_USE_SDL
+    // 板子（RK 类 ARM + X11）上 SDL 的显卡加速画不出东西：默认用软件绘图（环境变量 SDL_RENDER_DRIVER 可以改回来）
+    ::setenv("SDL_RENDER_DRIVER", "software", 0);
+#if LV_SDL_FULLSCREEN
+    if (!size_given && SDL_Init(SDL_INIT_VIDEO) == 0) {
+        SDL_DisplayMode dm;
+        if (SDL_GetDesktopDisplayMode(0, &dm) == 0 && dm.w > 0 && dm.h > 0) { W = dm.w; H = dm.h; }
+    }
+#endif
     lv_display_t* disp = lv_sdl_window_create(W, H);
     lv_sdl_mouse_create();
 #elif LV_USE_X11
@@ -527,10 +545,15 @@ int main(int argc, char** argv) {
 #endif
     (void)disp;
 
-    FontSet fs = fonts_init(fonts, argv[0]);
-    std::printf("reactor-hmi %dx%d，字体：%s\n", W, H, fs.summary.c_str());
+    // 界面按设计像素（1280×720 为基准）写，这里定屏幕上放大几倍；字体、图标按这个倍数直接生成清楚的
+    float sc = scale_arg > 0 ? scale_arg : std::max(1.0f, std::min(W / 1280.0f, H / 720.0f));
+    scale::set(sc);
+    const int DW = (int)std::lround(W / sc), DH = (int)std::lround(H / sc);  // 设计像素下的屏幕大小
 
-    auto session = new_session(W, H, opt);
+    FontSet fs = fonts_init(fonts, argv[0]);
+    std::printf("reactor-hmi %dx%d（缩放 %.2f，排版 %dx%d），字体：%s\n", W, H, sc, DW, DH, fs.summary.c_str());
+
+    auto session = new_session(DW, DH, opt);
 
 #if defined(REACTOR_HEADLESS) && REACTOR_HEADLESS
     auto render = [&](const std::string& name, const std::string& path) {
@@ -600,7 +623,7 @@ int main(int argc, char** argv) {
         for (auto& n : page_names()) {
             if (!render(n, shots_dir + "/" + n + ".bmp")) return 1;
             teardown(session);
-            session = new_session(W, H, opt);
+            session = new_session(DW, DH, opt);
         }
         return 0;
     }

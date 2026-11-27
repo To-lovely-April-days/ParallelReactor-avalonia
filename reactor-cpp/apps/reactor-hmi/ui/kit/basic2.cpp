@@ -14,12 +14,12 @@ lv_obj_t* pill(lv_obj_t* parent, const char* text, uint32_t fg, uint32_t bg, dou
                int weight) {
     const lv_font_t* f = font(px, weight);
     int tw = text_width(text, f);
-    int lead = im ? (int)im->header.w + 5 : dot ? 13 : 0;
+    int lead = im ? scale::U((int)im->header.w) + 5 : dot ? 13 : 0;
     int h = (int)(px * 1.75 + 0.5);
     lv_obj_t* p = box(parent, 0, 0, tw + lead + 18, h, bg, h / 2);
     int x = 9;
     if (im) {
-        icon(p, im, fg, x, (h - (int)im->header.h) / 2);
+        icon(p, im, fg, x, (h - scale::U((int)im->header.h)) / 2);
         x += lead;
     } else if (dot) {
         lv_obj_t* d = box(p, x, (h - 8) / 2, 8, 8, fg, 4);
@@ -107,13 +107,13 @@ lv_obj_t* tool_btn(lv_obj_t* parent, int x, int y, const char* text, const lv_im
                    uint32_t ring_color) {
     const lv_font_t* f = font(px, 500);
     int tw = text_width(text, f);
-    int iw = im ? (int)im->header.w + 8 : 0;
+    int iw = im ? scale::U((int)im->header.w) + 8 : 0;
     int w = tw + iw + 32;
     lv_obj_t* b = box(parent, x, y, w, h, 0xffffff, 9);
     ring(b, ring_color, 2);
     int cx = 16;
     if (im) {
-        icon(b, im, color, cx, (h - (int)im->header.h) / 2);
+        icon(b, im, color, cx, (h - scale::U((int)im->header.h)) / 2);
         cx += iw;
     }
     lv_obj_t* l = label(b, text, px, 500, color);

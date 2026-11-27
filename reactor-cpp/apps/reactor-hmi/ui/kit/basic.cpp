@@ -167,9 +167,9 @@ lv_obj_t* rect_btn(lv_obj_t* parent, int x, int y, int w, int h, const char* tex
     if (im) {
         lv_obj_t* i = icon(b, im, filled ? 0xffffff : color);
         lv_obj_update_layout(b);
-        int tw = lv_obj_get_width(l), iw = (int)im->header.w;
+        int tw = lv_obj_get_width(l), iw = scale::U((int)im->header.w);
         int x0 = (w - tw - iw - 8) / 2;
-        lv_obj_set_pos(i, x0, (h - (int)im->header.h) / 2);
+        lv_obj_set_pos(i, x0, (h - scale::U((int)im->header.h)) / 2);
         lv_obj_align(l, LV_ALIGN_LEFT_MID, x0 + iw + 8, 0);
     } else {
         lv_obj_center(l);
@@ -304,7 +304,7 @@ lv_obj_t* mini_vessel(lv_obj_t* parent, int x, int y, int h, uint32_t liquid, bo
         case 24: b = &ic::mv_body24; l = &ic::mv_liq24; f = &ic::mv_frame24; break;
         default: b = &ic::mv_body34; l = &ic::mv_liq34; f = &ic::mv_frame34; break;
     }
-    lv_obj_t* root = box(parent, x, y, (int)b->header.w, (int)b->header.h, 0, 0, true);
+    lv_obj_t* root = box(parent, x, y, scale::U((int)b->header.w), scale::U((int)b->header.h), 0, 0, true);
     icon(root, b, 0xffffff);
     icon(root, l, disabled ? 0xe3e8ee : liquid);
     icon(root, f, disabled ? 0xb3bcc7 : 0x5b6672);

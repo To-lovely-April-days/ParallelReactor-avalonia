@@ -37,16 +37,27 @@ def main():
     out = os.path.join(here, '..', 'ui', 'kit')
     hpp = ['// 生成文件（assets/text2a8.py），不要手改。随包字体里没有字形的几段文字，预渲染成 A8 图。',
            '#pragma once', '#include "lvgl.h"', '', 'namespace reactor::hmi::icons {']
-    cpp = ['// 生成文件（assets/text2a8.py），不要手改。', '#include "text_gen.hpp"', '', 'namespace reactor::hmi::icons {', '']
+    cpp = ['// 生成文件（assets/text2a8.py），不要手改。', '#include "text_gen.hpp"', '#include <cstdint>', '', 'namespace reactor::hmi::icons {', '']
+    pairs = []
     for name, text, px, idx in TEXTS:
-        w, h, data = render(text, px, a.font, idx)
-        hpp.append(f'extern const lv_image_dsc_t {name};  // {text}')
-        rows = [', '.join(f'0x{x:02x}' for x in data[i:i + 16]) for i in range(0, len(data), 16)]
-        cpp.append(f'static const uint8_t {name}_data[{len(data)}] = {{\n    ' + ',\n    '.join(rows) + '\n};')
-        cpp.append(f'const lv_image_dsc_t {name} = [] {{\n    lv_image_dsc_t d{{}};\n'
-                   f'    d.header.magic = LV_IMAGE_HEADER_MAGIC;\n    d.header.cf = LV_COLOR_FORMAT_A8;\n'
-                   f'    d.header.w = {w};\n    d.header.h = {h};\n    d.header.stride = {w};\n'
-                   f'    d.data_size = {len(data)};\n    d.data = {name}_data;\n    return d;\n}}();\n')
+        hpp.append(f'extern lv_image_dsc_t {name};  // {text}')
+        for suffix, size in (('', px), ('_x15', round(px * 1.5))):
+            w, h, data = render(text, size, a.font, idx)
+            rows = [', '.join(f'0x{x:02x}' for x in data[i:i + 16]) for i in range(0, len(data), 16)]
+            cpp.append(f'static const uint8_t {name}{suffix}_data[{len(data)}] = {{\n    ' + ',\n    '.join(rows) + '\n};')
+            qual = 'static const ' if suffix else ''
+            cpp.append(f'{qual}lv_image_dsc_t {name}{suffix} = [] {{\n    lv_image_dsc_t d{{}};\n'
+                       f'    d.header.magic = LV_IMAGE_HEADER_MAGIC;\n    d.header.cf = LV_COLOR_FORMAT_A8;\n'
+                       f'    d.header.w = {w};\n    d.header.h = {h};\n    d.header.stride = {w};\n'
+                       f'    d.data_size = {len(data)};\n    d.data = {name}{suffix}_data;\n    return d;\n}}();\n')
+        pairs.append(name)
+    hpp.append('// 换成这个界面缩放用的图（1 或 1.5）；建页面之前调用')
+    hpp.append('void use_text_scale(float s);')
+    cpp.append('void use_text_scale(float s) {')
+    for name in pairs:
+        cpp.append(f'    static const lv_image_dsc_t {name}_one = {name};')
+        cpp.append(f'    {name} = s > 1.25f ? {name}_x15 : {name}_one;')
+    cpp.append('}\n')
     hpp.append('}  // namespace reactor::hmi::icons\n')
     cpp.append('}  // namespace reactor::hmi::icons\n')
     open(os.path.join(out, 'text_gen.hpp'), 'w', encoding='utf-8').write('\n'.join(hpp))

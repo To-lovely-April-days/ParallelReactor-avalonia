@@ -121,7 +121,7 @@ FontSet fonts_init(const std::string& explicit_dir, const std::string& exe_path)
 }
 
 const lv_font_t* font(double pxf, int weight) {
-    int px = (int)std::lround(pxf);
+    int px = (int)std::lround(pxf * scale::g);  // 字号按屏幕像素生成：1.5 倍屏上直接用大一号的字形，不是放大
     if (px < 6) px = 6;
     int w = weight >= 700 ? 700 : weight >= 600 ? 600 : weight >= 500 ? 500 : 400;
     int key = px * 1000 + w;
@@ -201,7 +201,7 @@ lv_obj_t* rich(lv_obj_t* parent, int x, int y, int w, const std::vector<SpanDef>
 
 void place_baseline(lv_obj_t* lbl, int x, int baseline_y) {
     const lv_font_t* f = lv_obj_get_style_text_font(lbl, 0);
-    int asc = f->line_height - f->base_line;
+    int asc = scale::U(f->line_height - f->base_line);  // 字体量度是屏幕像素
     lv_obj_set_pos(lbl, x, baseline_y - asc);
 }
 

@@ -79,10 +79,10 @@ uint32_t result_color(const RunRecord& r) {
 
 lv_obj_t* blue_btn(lv_obj_t* p, int x, int y, const char* text, const lv_image_dsc_t* im, int h = 48) {
     const lv_font_t* f = font(16, 700);
-    int w = text_width(text, f) + (im ? (int)im->header.w + 10 : 0) + 40;
+    int w = text_width(text, f) + (im ? scale::U((int)im->header.w) + 10 : 0) + 40;
     lv_obj_t* b = box(p, x, y, w, h, col::BLUE, 9);
     int cx = 20;
-    if (im) { icon(b, im, 0xffffff, cx, (h - (int)im->header.h) / 2); cx += (int)im->header.w + 10; }
+    if (im) { icon(b, im, 0xffffff, cx, (h - scale::U((int)im->header.h)) / 2); cx += scale::U((int)im->header.w) + 10; }
     lv_obj_align(label(b, text, 16, 700, 0xffffff), LV_ALIGN_LEFT_MID, cx, 0);
     lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
     return b;
