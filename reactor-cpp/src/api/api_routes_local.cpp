@@ -5,6 +5,7 @@
 
 #include "api/api_routes.hpp"
 #include "api/api_system.hpp"
+#include "core/volume_calib.hpp"
 #include "store/store_util.hpp"
 #include <array>
 #include <chrono>
@@ -463,28 +464,37 @@ void Routes::local(ApiService& s, net::Router& r) {
         Params p(body);
         auto chv = p.opt_int("channel");
         auto water = p.num("waterMl");
+        auto redo = p.boolean("redoManifold");
         if (!p.bad() && !chv) p.fail("缺少 channel");
         if (p.bad()) return Bound::bad(p.error);
         int ch = *chv;
+        bool redo_m = redo.value_or(false);
         Bound b;
-        b.exec = [self, ch, water](Commands& c, const Source& src, Done d) {
+        b.exec = [self, ch, water, redo_m](Commands& c, const Source& src, Done d) {
             auto& vc = self->d_.automation->volume_calib();
             if (vc.running()) return d(OpResult::fail("CALIB_RUNNING", "已经在做容积标定 · 请等它做完或先中止"));
-            if (water) vc.set_water_ml(*water);
-            auto r = c.start_calib(src, ch, false, water.value_or(0), water.has_value());
+            double w = water.value_or(5.0);
+            vc.set_water_ml(w);
+            auto r = c.start_calib(src, ch, false, w, redo_m);
             if (r.ok) r.data = ojson{{"channel", ch}};
             d(r);
         };
         return b;
     }), local);
-    r.post(P + "/calib/continue", W({"calib.continue", ActionClass::Control}, [self](const nlohmann::json*, const Request&, const Source&) {
+    r.post(P + "/calib/continue", W({"calib.continue", ActionClass::Control}, [self](const nlohmann::json* body, const Request&, const Source&) {
+        Params p(body);
+        auto water_in = p.num("waterMl");
+        if (p.bad()) return Bound::bad(p.error);
         Bound b;
-        b.exec = [self](Commands& c, const Source& src, Done d) {
+        b.exec = [self, water_in](Commands& c, const Source& src, Done d) {
             auto& vc = self->d_.automation->volume_calib();
             if (!vc.awaiting_water() || !vc.first_pass_channel())
                 return d(OpResult::fail("CALIB_NOT_WAITING", "现在没有在等加水 · 不需要继续"));
             auto snapc = vc.snapshot();
-            double water = snapc.is_object() && snapc.contains("waterMl") && snapc["waterMl"].is_number() ? snapc["waterMl"].get<double>() : 5;
+            double water = water_in && *water_in > 0
+                               ? *water_in
+                               : (snapc.is_object() && snapc.contains("waterMl") && snapc["waterMl"].is_number() ? snapc["waterMl"].get<double>() : 5.0);
+            vc.set_water_ml(water);
             auto r = c.start_calib(src, *vc.first_pass_channel(), true, water, false);
             if (r.ok) r.data = ojson::object();
             d(r);
@@ -507,23 +517,35 @@ void Routes::local(ApiService& s, net::Router& r) {
         if (!c.is_object()) return ok_json(ojson{{"running", false}, {"channel", nullptr}, {"readings", ojson::array()}, {"pass", 0}, {"passes", 0},
                                                  {"cycle", 0}, {"cycles", 0}, {"stepMinutes", ojson::array({0, 0, 0, 0})},
                                                  {"vesselTempC", nullptr}, {"gas", "惰性气体"}});
+        bool running = c.value("running", false);
         ojson readings = ojson::array();
+        ojson last_after = nullptr;
         if (c.contains("points") && c["points"].is_array()) {
             int n = 0;
             for (const auto& pt : c["points"]) {
                 ++n;
                 ojson a = pt.is_array() && pt.size() > 0 ? pt[0] : ojson(nullptr), z = pt.is_array() && pt.size() > 1 ? pt[1] : ojson(nullptr);
-                readings.push_back(ojson{{"n", n}, {"manifoldFromPsi", a}, {"manifoldToPsi", z}, {"vesselFromPsi", nullptr}, {"vesselToPsi", nullptr}});
+                last_after = z;
+                readings.push_back(ojson{{"n", n}, {"manifoldFromPsi", a}, {"manifoldToPsi", z}, {"vesselFromPsi", a}, {"vesselToPsi", z}});
             }
+        }
+        int completed = static_cast<int>(readings.size());
+        constexpr int kMaxSteps = core::volume_calib::kSteps;
+        if (running && completed < kMaxSteps) {
+            ojson cur_from = !last_after.is_null() ? last_after : ojson(0);
+            readings.push_back(ojson{{"n", completed + 1}, {"manifoldFromPsi", cur_from}, {"manifoldToPsi", cur_from},
+                                     {"vesselFromPsi", cur_from}, {"vesselToPsi", nullptr}});
         }
         std::string stage = c.value("stage", ojson("")).is_string() ? c.value("stage", std::string()) : std::string();
         bool two = c.value("twoRuns", false);
         int pass = stage == "second" || stage == "done" ? (two ? 2 : 1) : 1;
+        int cycle = running ? std::min(kMaxSteps, completed + 1) : completed;
+        int cycles = running ? kMaxSteps : (completed > 0 ? completed : kMaxSteps);
         ojson ch = c.contains("channel") ? c["channel"] : ojson(nullptr);
         ojson temp = nullptr;
         if (ch.is_number_integer() && ch.get<int>() >= 1 && ch.get<int>() <= 8) temp = opt_num(b->channels[static_cast<size_t>(ch.get<int>() - 1)].temp_c);
-        return ok_json(ojson{{"running", c.value("running", false)}, {"channel", ch}, {"readings", readings}, {"pass", pass},
-                             {"passes", two ? 2 : 1}, {"cycle", readings.size()}, {"cycles", readings.size()},
+        return ok_json(ojson{{"running", running}, {"channel", ch}, {"readings", readings}, {"pass", pass},
+                             {"passes", two ? 2 : 1}, {"cycle", cycle}, {"cycles", cycles},
                              {"stepMinutes", ojson::array({0, 0, 0, 0})}, {"vesselTempC", temp}, {"gas", "惰性气体"},
                              {"stage", stage}, {"waitingOperator", c.value("waitingOperator", false)}});
     }, local);

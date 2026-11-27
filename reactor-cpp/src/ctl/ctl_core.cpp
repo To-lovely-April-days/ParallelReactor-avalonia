@@ -589,8 +589,11 @@ double ControlCore::gas_volume_ml(int id) const {
 
 void ControlCore::update_uptake(Channel& c, bool real_t, bool real_p) {
     if (!c.uptake.counting()) return;
-    c.uptake.sample(clock_->mono_ms(), real_t && real_p, c.p, c.t, gas_volume_ml(c.id), valves_.sv_open(c.id),
-                    valves_.sv_open_gen(c.id));
+    const auto& s = settings_.settings;
+    auto z = core::gas_uptake::split_channel_gas_volume_ml(s.effective_volume[idx(c.id)], c.vol, s.vessel_volume,
+                                                           s.gas_line_volume);
+    c.uptake.sample(clock_->mono_ms(), real_t && real_p, c.p, c.t, z.total_ml, valves_.sv_open(c.id),
+                    valves_.sv_open_gen(c.id), z.cold_ml, core::gas_uptake::kAmbientTempC, c.press_watch.active);
 }
 
 bool ControlCore::start_uptake(int id, const std::string& why) {

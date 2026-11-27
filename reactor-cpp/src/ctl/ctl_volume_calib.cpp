@@ -60,9 +60,15 @@ OpResult VolumeCalib::start(int ch, bool with_water, double water_ml, bool redo_
 }
 
 OpResult VolumeCalib::abort() {
-    if (core_.gas_lease().owner() != core::GasOwner::Calib || !running_) return OpResult::none();
-    cancelled();
-    return OpResult::done("容积标定已中止 · 正在全关阀", "warn").set_quiet();
+    if (core_.gas_lease().owner() == core::GasOwner::Calib && running_) {
+        cancelled();
+        return OpResult::done("容积标定已中止 · 正在全关阀", "warn").set_quiet();
+    }
+    if (await_water_) {
+        discard_first();
+        return OpResult::done("已取消容积标定（已放弃第一遍结果）", "warn").set_quiet();
+    }
+    return OpResult::none();
 }
 
 OpResult VolumeCalib::discard_first() {

@@ -685,7 +685,7 @@ std::string ApiService::schema_json() {
     int64_t rev = cur ? cur->settings.revision : 0;
     std::lock_guard<std::mutex> lk(schema_mu_);
     if (cur && rev == schema_rev_ && !schema_cache_.empty()) return schema_cache_;
-    core::program::ProgramLimitSettings lim{200, 250, 450, 500, 510};
+    core::program::ProgramLimitSettings lim{200, 250, 1000, 500, 510};
     double leak_rate = core::program::step_specs::kLeakRateDefault;
     if (cur) {
         const auto& s = cur->settings.settings;

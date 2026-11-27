@@ -160,7 +160,7 @@ TEST(ctl_snapshot, telemetry_row_column_count) {
     CHECK(row.ch[0].press_psi.has_value());
     CHECK(row.temp.configured && row.temp.online);
     CHECK(!row.estopped);
-    CHECK_EQ(row.stir_motor_rpm.value_or(0), reactor::hw::stir_gear::to_motor(200, 85.0 / 38.0));
+    CHECK_EQ(row.stir_motor_rpm.value_or(0), reactor::hw::stir_gear::to_motor(200, reactor::hw::stir_gear::kDefaultRatio));
 }
 
 // 改设置后快照里的设置立即更新（GET /settings 读它），不等下一个周期，也不多推一帧

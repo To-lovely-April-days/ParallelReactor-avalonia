@@ -350,18 +350,18 @@ TEST(hw_stepper, status_bits) {
     CHECK(s && !s->fault() && s->command_done() && s->path_done() && s->home_done());
 }
 
-// C#: StirGearTests
+// 齿轮传动换算（电机 85 齿大轮带釜 38 齿小轮 → 传动比 38/85，电机上限 1000 rpm）
 TEST(hw_stepper, stir_gear) {
-    CHECK_NEAR(stir_gear::kDefaultRatio, 2.236842, 5e-7);
-    CHECK_EQ(stir_gear::to_motor(447, stir_gear::kDefaultRatio, 3000), 1000);  // 釜 447 rpm → 电机约 1000 rpm
-    CHECK_EQ(stir_gear::to_motor(400, stir_gear::kDefaultRatio, 3000), 895);
-    CHECK_EQ(stir_gear::to_motor(0, stir_gear::kDefaultRatio, 3000), 0);
-    CHECK_EQ(stir_gear::to_motor(2000, stir_gear::kDefaultRatio, 3000), 3000);  // 超过电机上限：限幅
-    CHECK_NEAR(stir_gear::to_vessel(1000, stir_gear::kDefaultRatio), 447.06, 5e-3);
+    CHECK_NEAR(stir_gear::kDefaultRatio, 38.0 / 85.0, 5e-7);
+    CHECK_EQ(stir_gear::to_motor(1000, stir_gear::kDefaultRatio), 447);  // 釜 1000 rpm → 电机约 447 rpm
+    CHECK_EQ(stir_gear::to_motor(400, stir_gear::kDefaultRatio), 179);
+    CHECK_EQ(stir_gear::to_motor(0, stir_gear::kDefaultRatio), 0);
+    CHECK_EQ(stir_gear::to_motor(2500, stir_gear::kDefaultRatio), 1000);  // 超过电机上限 1000：限幅
+    CHECK_NEAR(stir_gear::to_vessel(447, stir_gear::kDefaultRatio), 999.87, 1e-2);
     CHECK_NEAR(stir_gear::to_vessel(300, 0), 300.0, 1e-6);  // 传动比无效按 1
-    CHECK_EQ(stir_gear::to_motor(100, 0, 3000), 100);
-    CHECK_EQ(stir_gear::to_motor(-5, 1, 3000), 0);
-    CHECK_EQ(stir_gear::kMaxMotorRpm, 3000);
+    CHECK_EQ(stir_gear::to_motor(100, 0, 1000), 100);
+    CHECK_EQ(stir_gear::to_motor(-5, 1, 1000), 0);
+    CHECK_EQ(stir_gear::kMaxMotorRpm, 1000);
 }
 
 // 气路模型（reactord --sim）：常压读 0 psi（原码 ≈ 3200），开气源 + SV 才升压，开排空 + SV 泄到 0

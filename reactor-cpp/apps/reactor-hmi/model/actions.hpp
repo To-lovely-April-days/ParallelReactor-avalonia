@@ -74,8 +74,8 @@ public:
     virtual void set_pid_bands(double lo, double hi) = 0;         // PUT /pid/bands
     virtual void autotune(int ch, int band, double sp_c) = 0;     // POST /channels/{id}/autotune {tempC, band}
     virtual void autotune_cancel(int ch) = 0;                     // DELETE /channels/{id}/autotune
-    virtual void calib_start(int ch, double water_ml) = 0;        // POST /calib {channel, waterMl}
-    virtual void calib_continue() = 0;                            // POST /calib/continue（操作员加完水）
+    virtual void calib_start(int ch, double water_ml, bool redo_manifold = false) = 0;  // POST /calib {channel, waterMl, redoManifold}
+    virtual void calib_continue(double water_ml = 0) = 0;         // POST /calib/continue（操作员加完水）
     virtual void calib_abort() = 0;                               // DELETE /calib/current
     virtual void wifi_enable(bool on) = 0;                        // PUT /network/wifi {enabled}
     virtual void wifi_scan() = 0;                                 // POST /network/wifi/scan
@@ -135,8 +135,8 @@ public:
     void set_pid_bands(double lo, double hi) override;
     void autotune(int ch, int band, double sp_c) override;
     void autotune_cancel(int ch) override;
-    void calib_start(int ch, double water_ml) override;
-    void calib_continue() override;
+    void calib_start(int ch, double water_ml, bool redo_manifold = false) override;
+    void calib_continue(double water_ml = 0) override;
     void calib_abort() override;
     void wifi_enable(bool on) override;
     void wifi_scan() override;

@@ -6,20 +6,20 @@
 
 using namespace reactor::core;
 
-TEST(core_stir_gear, default_ratio_is_85_over_38) {
-    CHECK_NEAR(stir_gear::kDefaultRatio, 2.236842, 5e-7);
+TEST(core_stir_gear, default_ratio_is_38_over_85) {
+    CHECK_NEAR(stir_gear::kDefaultRatio, 38.0 / 85.0, 5e-7);
     // C# 另查了 AppSettings.StirGearRatio 的默认值：设置归设置模块，这里不重复
 }
 
 TEST(core_stir_gear, to_motor_multiplies_by_ratio_and_clamps) {
-    CHECK_EQ(stir_gear::to_motor(447, stir_gear::kDefaultRatio, 3000), 1000);  // 釜 447 → 电机约 1000
-    CHECK_EQ(stir_gear::to_motor(400, stir_gear::kDefaultRatio, 3000), 895);
-    CHECK_EQ(stir_gear::to_motor(0, stir_gear::kDefaultRatio, 3000), 0);
-    CHECK_EQ(stir_gear::to_motor(2000, stir_gear::kDefaultRatio, 3000), 3000);  // 超过电机上限：限幅
+    CHECK_EQ(stir_gear::to_motor(1000, stir_gear::kDefaultRatio, 1000), 447);  // 釜 1000 → 电机约 447
+    CHECK_EQ(stir_gear::to_motor(400, stir_gear::kDefaultRatio, 1000), 179);
+    CHECK_EQ(stir_gear::to_motor(0, stir_gear::kDefaultRatio, 1000), 0);
+    CHECK_EQ(stir_gear::to_motor(2500, stir_gear::kDefaultRatio, 1000), 1000);  // 超过电机上限 1000：限幅
 }
 
 TEST(core_stir_gear, to_vessel_divides_by_ratio) {
-    CHECK_NEAR(stir_gear::to_vessel(1000, stir_gear::kDefaultRatio), 447.06, 0.005);
+    CHECK_NEAR(stir_gear::to_vessel(447, stir_gear::kDefaultRatio), 999.87, 0.01);
     CHECK_NEAR(stir_gear::to_vessel(300, 0), 300, 1e-6);  // 传动比无效按 1
 }
 

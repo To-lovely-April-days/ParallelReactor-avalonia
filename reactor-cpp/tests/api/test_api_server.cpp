@@ -169,6 +169,8 @@ TEST(api_server, program_put_run_with_ws_progress_and_runs) {
     ApiRig t;
     nettest::WsClient ws;
     CHECK(ws.open_fd(nettest::connect_unix(t.sock), "/api/v1/ws", ""));
+    std::string m;
+    CHECK(ws.next_text(m));
     ws.send_text("{\"type\":\"subscribe\",\"topics\":[\"telemetry\",\"events\",\"alarms\",\"progress\"]}");
     std::string steps = "[{\"type\":\"stir\",\"params\":{\"rpm\":100}},{\"type\":\"hold\",\"params\":{\"until\":\"time\",\"time\":0.02}}]";
     auto put = t.local("PUT", "/api/v1/channels/1/program", "{\"steps\":" + steps + ",\"name\":\"短程序\",\"sourceId\":\"P1\"}");
@@ -183,7 +185,6 @@ TEST(api_server, program_put_run_with_ws_progress_and_runs) {
     CHECK_EQ(run.status, 202);
     if (run.status != 202) std::printf("    下发：%s\n", run.raw.c_str());
     bool tele = false, prog = false, op = false;
-    std::string m;
     for (int i = 0; i < 400 && !(tele && prog && op) && ws.next_text(m, 5000); ++i) {
         auto j = json::parse(m, nullptr, false);
         if (j["type"] == "telemetry") tele = tele || (j.contains("revs") && j.contains("system") && j["channels"][0].contains("heatOn"));
@@ -469,6 +470,33 @@ TEST(api_server, contract_settings_library_and_misc) {
     CHECK(t.local("GET", "/api/v1/storage").body.contains("diskFree"));
     CHECK_EQ(t.local("GET", "/api/v1/leak-tests/current/samples").status, 404);
     CHECK_EQ(t.local("POST", "/api/v1/calib/continue", "{}").body["error"]["code"].get<std::string>(), std::string("CALIB_NOT_WAITING"));
+    // PATCH 搅拌齿轮比与未标定容积；总管已标定时 POST /calib 带 waterMl 默认走单遍（不误触发重标总管）
+    CHECK_EQ(t.local("PUT", "/api/v1/gas/manual", "{\"on\":false}").status, 200);
+    int64_t rev_now = t.local("GET", "/api/v1/settings").body["revision"];
+    auto pv = t.local("PATCH", "/api/v1/settings",
+                      "{\"revision\":" + std::to_string(rev_now) +
+                          ",\"values\":{\"stir.stirGearRatio\":0.447,\"volume.vesselVolume\":12,\"volume.gasLineVolume\":1.5}}");
+    CHECK_EQ(pv.status, 200);
+    t.core->post([&] {
+        t.core->update_settings([](reactor::store::SettingsState& s) { s.settings.manifold_volume = 2.0; });
+        t.core->channel_mut(2).set_state(reactor::core::ReactorState::Done);
+    });
+    t.core->settle();
+    auto cs1 = t.local("POST", "/api/v1/calib", "{\"channel\":2,\"waterMl\":5.0}", ApiRig::idem("cal1"));
+    CHECK_EQ(cs1.status, 202);
+    CHECK(wait_until([&] { return t.local("GET", "/api/v1/calib").body["running"] == true; }));
+    auto cg1 = t.local("GET", "/api/v1/calib");
+    CHECK_EQ(cg1.status, 200);
+    CHECK_EQ(cg1.body["passes"].get<int>(), 1);
+    CHECK_EQ(cg1.body["cycles"].get<int>(), 6);
+    CHECK_EQ(t.local("DELETE", "/api/v1/calib/current").status, 200);
+    CHECK(wait_until([&] { return t.local("GET", "/api/v1/calib").body["running"] == false; }));
+    auto cs2 = t.local("POST", "/api/v1/calib", "{\"channel\":2,\"waterMl\":5.0,\"redoManifold\":true}", ApiRig::idem("cal2"));
+    CHECK_EQ(cs2.status, 202);
+    CHECK(wait_until([&] { return t.local("GET", "/api/v1/calib").body["running"] == true; }));
+    CHECK_EQ(t.local("GET", "/api/v1/calib").body["passes"].get<int>(), 2);
+    CHECK_EQ(t.local("DELETE", "/api/v1/calib/current").status, 200);
+    CHECK(wait_until([&] { return t.local("GET", "/api/v1/calib").body["running"] == false; }));
     auto ct = t.local("POST", "/api/v1/device/comm/temp/test", "{}");
     CHECK_EQ(ct.status, 200);
     CHECK(ct.body["result"]["ok"].get<bool>());

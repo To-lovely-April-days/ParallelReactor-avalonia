@@ -7,9 +7,9 @@
 
 namespace reactor::core {
 
-// 一台电机经齿轮带 8 个釜：电机 38 齿带釜上 85 齿，传动比 = 电机转速 ÷ 釜转速 = 85/38。
+// 一台电机接 85 齿大齿轮带 8 个釜上 38 齿小齿轮，传动比 = 电机转速 ÷ 釜转速 = 38/85。
 namespace stir_gear {
-constexpr double kDefaultRatio = 85.0 / 38.0;  // C#: StirGear.DefaultRatio
+constexpr double kDefaultRatio = 38.0 / 85.0;  // 电机 ÷ 釜（85 齿大轮带 38 齿小轮）
 // 釜转速 → 电机转速（舍入到整数，.5 取偶同 C# Math.Round；限幅 0..max_motor；传动比非正按 1）
 int to_motor(int vessel_rpm, double ratio, int max_motor);
 // 电机转速 → 釜转速（传动比非正按 1）

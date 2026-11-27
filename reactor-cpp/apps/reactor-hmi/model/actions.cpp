@@ -80,8 +80,11 @@ void LoggingActions::set_pid(int ch, int band, double p, double i, double d) {
 void LoggingActions::set_pid_bands(double lo, double hi) { LOGA("set_pid_bands %g %g", lo, hi); FWD(set_pid_bands(lo, hi)); }
 void LoggingActions::autotune(int ch, int band, double sp) { LOGA("autotune ch%d band%d sp=%g", ch, band, sp); FWD(autotune(ch, band, sp)); }
 void LoggingActions::autotune_cancel(int ch) { LOGA("autotune_cancel ch%d", ch); FWD(autotune_cancel(ch)); }
-void LoggingActions::calib_start(int ch, double w) { LOGA("calib_start ch%d water=%g", ch, w); FWD(calib_start(ch, w)); }
-void LoggingActions::calib_continue() { LOGA("calib_continue"); FWD(calib_continue()); }
+void LoggingActions::calib_start(int ch, double w, bool redo) {
+    LOGA("calib_start ch%d water=%g redo=%d", ch, w, redo);
+    FWD(calib_start(ch, w, redo));
+}
+void LoggingActions::calib_continue(double w) { LOGA("calib_continue water=%g", w); FWD(calib_continue(w)); }
 void LoggingActions::calib_abort() { LOGA("calib_abort"); FWD(calib_abort()); }
 void LoggingActions::wifi_enable(bool on) { LOGA("wifi_enable %d", on); FWD(wifi_enable(on)); }
 void LoggingActions::wifi_scan() { LOGA("wifi_scan"); FWD(wifi_scan()); }

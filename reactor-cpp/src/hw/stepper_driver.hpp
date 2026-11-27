@@ -6,7 +6,7 @@
 // 状态 0x1003、报警 0x2203、峰值电流 0x0191（0.1 A，硬夹 0.3–3.2 A）、待机电流 % 0x01D3（0–100）、
 // 细分 0x0001（200–51200）、母线电压 0x0177（0.1 V）、JOG 速度 0x01E1。参数 32 位，只用低 16 位。
 //
-// 传动：界面 / 程序 / 接口的转速都是**釜里**的转速；电机 = 釜 × 85/38 ≈ 2.237，限幅 3000。
+// 传动：界面 / 程序 / 接口的转速都是**釜里**的转速；电机接 85 齿大轮带 38 齿小轮 → 电机 = 釜 × 38/85 ≈ 0.447，电机上限 1000。
 // 不做的事（留给 ctl）：开/关状态、当前转速、RampMs（C# StirController 默认 1000）、急停锁、在线统计、通讯错误节流。
 // 对象不可变，任何线程可用。
 #pragma once
@@ -19,8 +19,8 @@
 namespace reactor::hw {
 
 namespace stir_gear {
-constexpr double kDefaultRatio = 85.0 / 38.0;  // C#: StirGear.DefaultRatio
-constexpr int kMaxMotorRpm = 3000;             // C#: StirController.MaxMotorRpm
+constexpr double kDefaultRatio = 38.0 / 85.0;  // 电机 ÷ 釜（85 齿大轮带 38 齿小轮）
+constexpr int kMaxMotorRpm = 1000;             // 步进电机转速硬上限 rpm
 // 釜转速 → 电机转速（五成双舍入，限幅 0..max_motor；传动比非正按 1）
 int to_motor(int vessel_rpm, double ratio, int max_motor = kMaxMotorRpm);
 // 电机转速 → 釜转速

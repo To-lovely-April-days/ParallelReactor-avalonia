@@ -230,7 +230,7 @@ TEST(store_settings, old_file_keeps_every_tuned_pid_and_is_backed_up_once) {
     // 没有整定来历：为空
     for (auto& row : st.band_tune)
         for (auto& m : row) CHECK(!m);
-    // 用户原来的设置照旧（转速上限仍是存档里的 1000，不被新默认值 450 覆盖）；新增项取默认
+    // 用户原来的设置照旧（转速上限仍是存档里的 1000）；新增项取默认
     CHECK_EQ(st.settings.rpm_max, 1000.0);
     CHECK_EQ(st.settings.vol_max, 50.0);
     CHECK_EQ(st.settings.vessel_volume, 10.0);

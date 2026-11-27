@@ -319,7 +319,7 @@ const char* const kSampleProgramSchema = R"SCHEMA({
      "unit": "rpm",
      "default": 400,
      "min": 0,
-     "max": 450,
+     "max": 1000,
      "declaredMin": 0,
      "declaredMax": 3000,
      "options": null,

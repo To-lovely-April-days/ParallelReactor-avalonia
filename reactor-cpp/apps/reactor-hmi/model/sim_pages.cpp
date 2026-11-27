@@ -235,7 +235,7 @@ void SimSource::build_pages() {
         x.volume.effectiveVolume[(size_t)i] = V[i];
         x.volume.volumeCalibratedAt[(size_t)i] = day_at(i == 3 ? 7 : 8, 15, 10 + i * 20);
     }
-    m_.settings.limits = LimitsDto{200, 3.447 / kPsi, 450, 8};
+    m_.settings.limits = LimitsDto{200, 3.447 / kPsi, 1000, 8};
     m_.settings.pressFullScaleMPa = 4.137;
     // 第一批的场景里 2、4 号吸气量是示意值；这里按趋势重算
     c(1).gasConsumed.reset();
@@ -382,13 +382,13 @@ void SimSource::build_pages() {
 
     // ---- 容积标定：5 号第一次标定，第 3 / 6 次总管充气 ----
     CalibSnap cs;
-    cs.running = true; cs.channel = 5; cs.stage = "second"; cs.waterMl = 2.0; cs.progress = 0.62;
+    cs.running = true; cs.channel = 5; cs.stage = "second"; cs.waterMl = 5.0; cs.progress = 0.62;
     cs.phaseText = "加水后再做一遍 · 第 3 / 6 次 · 总管充气"; cs.startedAt = now_ - 31 * 60000; cs.startedBy = "触屏";
     cs.firstPassMl = 12.9;
     m_.snap.calib = cs;
     x.calib.pass = 2; x.calib.passes = 2; x.calib.cycle = 3; x.calib.cycles = 6;
     x.calib.stepMinutes = {12, 0, 0, 0};
-    x.calib.readings = {{1, 0.000, 0.412, 0.412, 0.188}, {2, 0.188, 0.415, 0.415, 0.291}, {3, 0.291, 0.414, std::nullopt, std::nullopt}};
+    x.calib.readings = {{1, 0.000, 0.188, 0.000, 0.188}, {2, 0.188, 0.291, 0.188, 0.291}, {3, 0.291, 0.291, 0.291, std::nullopt}};
 
     // ---- 通讯与模块 ----
     auto mod = [&](const char* id, const char* name, const char* model, const char* detail, const char* port, int64_t polls, int64_t fails) {
@@ -703,6 +703,9 @@ void SimSource::patch_setting(const std::string& k, double v) {
     else if (k == "approach.settleSec") x.approach.settleSec = v;
     else if (k == "stir.peakCurrentA") x.stir.peakCurrentA = v;
     else if (k == "stir.standbyPct") x.stir.standbyPct = v;
+    else if (k == "stir.stirGearRatio") { x.stir.stirGearRatio = v; s.stirGearRatio = v; }
+    else if (k == "volume.vesselVolume") x.volume.vesselVolume = v;
+    else if (k == "volume.gasLineVolume") x.volume.gasLineVolume = v;
     else if (k == "ui.gasWaitMaxMin") x.prefs.gasWaitMaxMin = v;
     else if (k == "ui.retentionDays") x.prefs.retentionDays = v;
     else if (k == "ui.preflightChecklist") x.prefs.preflightChecklist = v != 0;
@@ -734,16 +737,22 @@ void SimSource::autotune_cancel(int ch) {
     p.autotuning = false; p.tuneBand.reset(); p.tuneSpC.reset();
     c(ch).autotuning = false;
 }
-void SimSource::calib_start(int ch, double w) {
+void SimSource::calib_start(int ch, double w, bool redo_manifold) {
     CalibSnap cs;
+    bool two = !m_.x.volume.manifoldVolume || redo_manifold;
     cs.running = true; cs.channel = ch; cs.stage = "first"; cs.waterMl = w; cs.startedAt = now_; cs.startedBy = "触屏";
     cs.phaseText = "空釜做一遍";
     m_.snap.calib = cs;
     m_.x.calib = CalibExt{};
-    m_.x.calib.passes = m_.x.volume.manifoldVolume ? 1 : 2;
+    m_.x.calib.passes = two ? 2 : 1;
 }
-void SimSource::calib_continue() {
-    if (m_.snap.calib && m_.snap.calib->stage == "waitWater") { m_.snap.calib->stage = "second"; m_.snap.calib->waitingOperator = false; }
+void SimSource::calib_continue(double w) {
+    if (m_.snap.calib && m_.snap.calib->stage == "waitWater") {
+        if (w > 0) m_.snap.calib->waterMl = w;
+        m_.snap.calib->running = true;
+        m_.snap.calib->stage = "second";
+        m_.snap.calib->waitingOperator = false;
+    }
 }
 void SimSource::calib_abort() {
     if (m_.snap.calib) { m_.snap.calib->running = false; m_.snap.calib->failed = true; m_.snap.calib->resultText = "操作员中止"; }

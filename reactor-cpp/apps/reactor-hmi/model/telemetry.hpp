@@ -106,9 +106,9 @@ struct TelemetrySnapshot {
 
 // GET /settings 里界面要用的部分（SettingsSnap 的子集，名字照 SettingsDto）
 struct TempBandSnap { int index = 0; double loC = 0, hiC = 0; };
-struct LimitsDto { double tempSpMaxC = 200, pressureSpMaxPsi = 507.6, rpmMax = 450, volumeMaxMl = 8; };
+struct LimitsDto { double tempSpMaxC = 200, pressureSpMaxPsi = 507.6, rpmMax = 1000, volumeMaxMl = 8; };
 struct AlarmSettingsDto { double overPressurePsi = 377.1, overTempC = 200; bool stopHeatOnOverPressure = true; double heatTimeoutMin = 20, pressDeviationPsi = 8; };
-struct SettingsDto { LimitsDto limits; AlarmSettingsDto alarms; double pressFullScaleMPa = 4.0; double stirGearRatio = 85.0 / 38.0; int64_t revision = 0; };
+struct SettingsDto { LimitsDto limits; AlarmSettingsDto alarms; double pressFullScaleMPa = 4.0; double stirGearRatio = 38.0 / 85.0; int64_t revision = 0; };
 
 // GET /alarms、WS alarm：level = err / warn / info；state = active / acked / cleared
 struct AlarmDto {

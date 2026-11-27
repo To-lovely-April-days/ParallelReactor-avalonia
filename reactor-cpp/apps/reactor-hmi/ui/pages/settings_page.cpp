@@ -22,7 +22,7 @@ namespace {
 
 constexpr double kPsi = 0.00689475729;
 
-struct SetState { int calib_ch = 0; int pid_band = 1; };
+struct SetState { int calib_ch = 0; int pid_band = 1; double calib_water = 5.0; bool calib_redo = false; };
 SetState& ss() {
     static SetState s;
     return s;
@@ -175,6 +175,11 @@ public:
                       m.x.net.connectedSsid.empty() ? 0 : (int)m.x.net.connectedSsid.size());
         std::string s = sig;
         for (int i = 1; i <= 8; ++i) s += m.ch(i).installed ? '1' : '0';
+        if (sec_ == 3) {
+            s += "/" + std::to_string((int)std::lround(ss().calib_water * 100)) + "/" + std::to_string((int)ss().calib_redo) + "/" +
+                 (L.calib ? L.calib->stage + std::to_string((int)L.calib->running) + std::to_string((int)L.calib->waitingOperator) : "none") +
+                 "/" + std::to_string(m.x.calib.readings.size());
+        }
         if (s == sig_) return;
         sig_ = s;
         lv_obj_clean(body_);
@@ -283,7 +288,7 @@ private:
         lv_obj_t* g2 = group(body_, x1, 356, cw, bh_ - 356 - 18, "可设置的范围");
         num_row(g2, 14, 40, w, "温度设定上限", "", S.limits.tempSpMaxC, 0, "°C", 50, 300, P("limits.tempSpMaxC", false));
         num_row(g2, 14, 88, w, "压力设定上限", "", S.limits.pressureSpMaxPsi * kPsi, 3, "MPa", 0.1, 5, P("limits.pressureSpMaxPsi", true));
-        num_row(g2, 14, 136, w, "搅拌转速上限", "釜里的转速", S.limits.rpmMax, 0, "rpm", 0, 1500, P("limits.rpmMax", false));
+        num_row(g2, 14, 136, w, "搅拌转速上限", "釜里的转速", S.limits.rpmMax, 0, "rpm", 50, 2237, P("limits.rpmMax", false));
         num_row(g2, 14, 184, w, "溶液体积上限", "10 mL 釜，要给气相留空间", S.limits.volumeMaxMl, 1, "mL", 1, 10, P("limits.volumeMaxMl", false), false);
         // 泄漏测试
         lv_obj_t* g3 = group(body_, x2, 56, cw, 288, "泄漏测试");
@@ -293,19 +298,10 @@ private:
         num_row(g3, 14, 184, w, "压降上限", "", X.leakSettings.rateLimitPsiPerHr * kPsi, 3, "MPa/h", 0.001, 1, P("leakTest.rateLimitPsiPerHr", true));
         num_row(g3, 14, 232, w, "提醒周期", "", X.leakSettings.reminderDays, 0, tr("天"), 1, 90, P("leakTest.reminderDays", false), false);
         lv_obj_t* g4 = group(body_, x2, 356, cw, 190, "搅拌传动");
-        row_text(g4, 14, 40, w, "齿轮传动比", "一台电机经齿轮带 8 个釜");
-        {
-            NumSpec sp;
-            sp.title = tr("齿轮传动比");
-            NumField* nf = new NumField;
-            nf->create(g4, 14 + w - 54 - 104, 44, 104, 40, sp, true);
-            nf->set_align_right(true);
-            nf->set_text("85 / 38");
-            lv_obj_add_event_cb(nf->obj(), [](lv_event_t* e) { delete static_cast<NumField*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, nf);
-            label_at(g4, 14 + w - 46, 55, ("= " + model::fmt_num(X.stir.stirGearRatio, 3)).c_str(), 13, 400, col::MUT);
-        }
-        num_row(g4, 14, 88, w, "电机电流", "写入驱动器", X.stir.peakCurrentA, 1, "A", 0.1, 3, P("stir.peakCurrentA", false));
-        num_row(g4, 14, 136, w, "待机电流", "", X.stir.standbyPct, 0, "%", 10, 100, P("stir.standbyPct", false), false);
+        num_row(g4, 14, 40, w, "齿轮传动比", "85 齿大轮带 38 齿小轮（38÷85）", X.stir.stirGearRatio, 3, "电机÷釜", 0.1, 20,
+                P("stir.stirGearRatio", false));
+        num_row(g4, 14, 88, w, "电机电流", "写入驱动器", X.stir.peakCurrentA, 1, "A", 0.3, 3.2, P("stir.peakCurrentA", false));
+        num_row(g4, 14, 136, w, "待机电流", "", X.stir.standbyPct, 0, "%", 0, 100, P("stir.standbyPct", false), false);
         // 防超调
         lv_obj_t* g5 = group(body_, x3, 56, cw, 238, "定值加热防超调");
         num_row(g5, 14, 40, w, "预留温差 Δ", "先升到 目标 − Δ 判稳", X.approach.deltaC, 0, "°C", 0, 30, P("approach.deltaC", false));
@@ -334,6 +330,9 @@ private:
         }
         lv_obj_t* g6 = group(body_, x3, 306, cw, 94, "运行");
         num_row(g6, 14, 40, w, "等待气路上限", "几路程序抢气路时最多等多久", X.prefs.gasWaitMaxMin, 0, "min", 5, 600, P("ui.gasWaitMaxMin", false), false);
+        lv_obj_t* g7 = group(body_, x3, 412, cw, 142, "吸气量容积（未标定时使用）");
+        num_row(g7, 14, 40, w, "釜容积", "空釜内腔容积", X.volume.vesselVolume, 1, "mL", 5, 500, P("volume.vesselVolume", false));
+        num_row(g7, 14, 88, w, "管路死体积", "SV 到釜之间管路与接头", X.volume.gasLineVolume, 2, "mL", 0, 50, P("volume.gasLineVolume", false), false);
     }
 
     // ---------------------------------------------------------------- 2 温控 PID
@@ -471,22 +470,27 @@ private:
         const auto& C = m.x.calib;
         const auto& cs = m.snap.calib;
         bool running = cs && cs->running;
-        std::string right = V.manifoldVolume ? trf("总管体积 %s mL", model::fmt_num(*V.manifoldVolume, 2).c_str())
-                                             : std::string(tr("总管体积 未标定 · 第一次要加水做两遍"));
+        bool waiting = cs && !cs->running && (cs->waitingOperator || cs->stage == "waitWater");
+        bool active = running || waiting;
+        double max_w = std::max(1.0, m.settings.limits.volumeMaxMl);
+        ss().calib_water = std::clamp(ss().calib_water, 0.5, max_w);
+        bool has_manifold = V.manifoldVolume.has_value() && *V.manifoldVolume > 0;
+        std::string right = has_manifold ? trf("总管体积 %s mL", model::fmt_num(*V.manifoldVolume, 2).c_str())
+                                         : std::string(tr("总管体积 未标定 · 第一次要加水做两遍"));
         header("容积标定", "用已知体积的气体膨胀算出每一路的气相体积，吸气量更准", right);
         int& sel = ss().calib_ch;
-        if (sel == 0) sel = running && cs->channel ? *cs->channel : 1;
+        if (sel == 0) sel = active && cs->channel ? *cs->channel : 1;
         int tw = (bw_ - 36 - 7 * 9) / 8;
         for (int ch = 1; ch <= 8; ++ch) {
-            bool on = ch == sel, now = running && cs->channel && *cs->channel == ch;
+            bool on = ch == sel, now = active && cs->channel && *cs->channel == ch;
             lv_obj_t* t = box(body_, 18 + (ch - 1) * (tw + 9), 56, tw, 92, on ? 0xffffff : 0xf6f8fa, 10);
             ring(t, on ? col::BLUE : 0xe1e7ee, on ? 2 : 1);
             mini_vessel(t, 12, 10, 18, chan_color(ch), !m.ch(ch).installed);
             label_at(t, 34, 10, trf("%d 号", ch).c_str(), 15, 400, col::INK);
             const auto& ev = V.effectiveVolume[(size_t)ch - 1];
             if (now) {
-                label_at(t, 12, 34, tr("标定中…"), 16, 700, col::AMBER);
-                label_at(t, 12, 62, trf("第 %d / %d 次", C.cycle, C.cycles).c_str(), 13, 400, col::SEC);
+                label_at(t, 12, 34, tr(waiting ? "等加水…" : "标定中…"), 16, 700, col::AMBER);
+                label_at(t, 12, 62, waiting ? tr("空釜已完成") : trf("第 %d / %d 次", C.cycle, C.cycles).c_str(), 13, 400, col::SEC);
             } else if (ev) {
                 lv_obj_t* v = label_at(t, 12, 32, model::fmt_num(*ev, 2).c_str(), 21, 700, col::DEEP);
                 lv_obj_update_layout(v);
@@ -501,31 +505,69 @@ private:
         }
         box(body_, 18, 164, bw_ - 36, 1, col::DIV);
         int lw = (bw_ - 36) * 54 / 100;
-        bool this_running = running && cs->channel && *cs->channel == sel;
-        if (!this_running) {
-            bool first = !V.manifoldVolume;
-            label_at(body_, 18, 182, trf("%d 号 · %s", sel, tr(first ? "第一次标定（同时得出总管体积）" : "标定")).c_str(), 16, 700, col::INK);
-            const char* st[4] = {"空釜做一遍", "泄压、加 2.00 mL 水、重新密封", "加水后再做一遍", "算出总管体积和有效容积"};
-            int n = first ? 4 : 1;
+        bool this_active = active && cs->channel && *cs->channel == sel;
+        if (!this_active) {
+            bool two = !has_manifold || ss().calib_redo;
+            label_at(body_, 18, 182,
+                     trf("%d 号 · %s", sel, tr(!has_manifold ? "第一次标定（同时得出总管体积）" : two ? "重新标定总管与有效容积" : "标定")).c_str(),
+                     16, 700, col::INK);
+            const char* st[4] = {"空釜做一遍", "泄压、加 %s mL 水、重新密封", "加水后再做一遍", "算出总管体积和有效容积"};
+            int n = two ? 4 : 1;
             for (int i = 0; i < n; ++i) {
                 lv_obj_t* c = box(body_, 18, 218 + i * 44, 28, 28, 0xffffff, 14);
                 ring(c, 0xc9d3de, 2);
                 lv_obj_center(label(c, std::to_string(i + 1).c_str(), 13, 700, col::SEC));
-                label_at(body_, 58, 221 + i * 44, tr(st[i]), 16, 400, col::SEC);
+                std::string tx = i == 1 ? trf(st[1], model::fmt_num(ss().calib_water, 2).c_str()) : std::string(tr(st[i]));
+                label_at(body_, 58, 221 + i * 44, tx.c_str(), 16, 400, col::SEC);
             }
             info_box(body_, 18, 218 + n * 44 + 10, lw, tr("请在常温、不加热时标定；一遍里釜温变化超过 1.5 °C 会判失败。之后其他通道只要空釜做一遍。"));
-            bool can = m.ch(sel).installed && !m.ch(sel).programOwned && !running;
-            lv_obj_t* go = box(body_, 18 + lw + 26, 218, bw_ - 36 - lw - 26, 52, can ? col::BLUE : 0xb3c2d4, 10);
+            int rx = 18 + lw + 26, rw = bw_ - 18 - rx;
+            int ry = 218;
+            if (has_manifold || two) {
+                int gh = (has_manifold ? 48 : 0) + (two ? 48 : 0) + 12;
+                lv_obj_t* gc = group(body_, rx, ry, rw, gh, "");
+                int gy = 6;
+                if (has_manifold) {
+                    row_text(gc, 14, gy, rw - 28, "重标总管体积", "加水做两遍，更新总管与本路容积", two);
+                    make_switch(gc, 14 + rw - 28 - 52, gy + 9, ss().calib_redo, [this](bool on) {
+                        ss().calib_redo = on;
+                        refresh();
+                    });
+                    gy += 48;
+                }
+                if (two) {
+                    num_row(gc, 14, gy, rw - 28, "加水体积", "建议加满约一半容积", ss().calib_water, 2, "mL", 0.5, max_w,
+                            [this](double v) {
+                                ss().calib_water = v;
+                                refresh();
+                            },
+                            false);
+                }
+                ry += gh + 14;
+            }
+            bool can = m.ch(sel).installed && !m.ch(sel).programOwned && !active;
+            lv_obj_t* go = box(body_, rx, ry, rw, 52, can ? col::BLUE : 0xb3c2d4, 10);
             lv_obj_center(label(go, trf("开始标定 %d 号", sel).c_str(), 16, 700, 0xffffff));
-            if (can) on_tap(go, [this, sel] { act().calib_start(sel, 2.0); });
-            if (!can)
-                label_at(body_, 18 + lw + 26, 282, tr(running ? "另一路正在标定，一次只能标一路" : "这一路正在跑程序或已停用"), 13, 400, col::SEC);
+            if (can) {
+                bool redo_m = has_manifold && ss().calib_redo;
+                on_tap(go, [this, sel, redo_m] { act().calib_start(sel, ss().calib_water, redo_m); });
+            }
+            if (!can) {
+                label_at(body_, rx, ry + 62, tr(active ? "另一路正在标定，一次只能标一路" : "这一路正在跑程序或已停用"), 13, 400, col::SEC);
+                ry += 28;
+            }
+            if (cs && !active && cs->channel && *cs->channel == sel && cs->resultText && !cs->resultText->empty()) {
+                info_box(body_, rx, ry + 66, rw, cs->resultText->c_str());
+            }
             return;
         }
-        label_at(body_, 18, 182, trf("%d 号 · %s", sel, tr(C.passes > 1 ? "第一次标定（同时得出总管体积）" : "标定")).c_str(), 16, 700, col::INK);
-        int stage = cs->stage == "first" ? 0 : cs->stage == "waitWater" ? 1 : cs->stage == "second" ? 2 : 3;
+        bool two_pass = C.passes > 1 || waiting || cs->stage == "second";
+        label_at(body_, 18, 182, trf("%d 号 · %s", sel, tr(two_pass ? "第一次标定（同时得出总管体积）" : "标定")).c_str(), 16, 700, col::INK);
+        int stage = cs->stage == "first" ? 0 : (waiting || cs->stage == "waitWater") ? 1 : cs->stage == "second" ? 2 : 3;
         const char* st[4] = {"空釜做一遍", "泄压、加 %s mL 水、重新密封", "加水后再做一遍", "算出总管体积和 %d 号有效容积"};
-        for (int i = 0; i < 4; ++i) {
+        int step_n = two_pass ? 4 : 1;
+        double water_show = cs->waterMl.value_or(ss().calib_water);
+        for (int i = 0; i < step_n; ++i) {
             int y = 218 + i * 44;
             bool done = i < stage, cur = i == stage;
             lv_obj_t* c = box(body_, 18, y, 28, 28, done ? 0x16a05a : cur ? col::BLUE : 0xffffff, 14);
@@ -539,25 +581,48 @@ private:
                 }
                 lv_obj_center(label(c, std::to_string(i + 1).c_str(), 13, 700, cur ? 0xffffff : col::SEC));
             }
-            std::string t = i == 1 ? trf(st[1], model::fmt_num(cs->waterMl.value_or(2.0), 2).c_str()) : i == 3 ? trf(st[3], sel) : std::string(tr(st[i]));
+            std::string t = i == 1 ? trf(st[1], model::fmt_num(water_show, 2).c_str()) : i == 3 ? trf(st[3], sel) : std::string(tr(st[i]));
             label_at(body_, 58, y + 3, t.c_str(), 16, cur ? 700 : 400, cur ? col::INK : done ? col::INK : col::SEC);
             std::string r;
             uint32_t rc = col::SEC;
-            if (i == 0 && done) r = trf("%d min", C.stepMinutes[0]);
+            if (i == 0 && done && C.stepMinutes[0] > 0) r = trf("%d min", C.stepMinutes[0]);
             if (i == 1 && done) r = tr("操作员");
-            if (cur) { r = trf("第 %d / %d 次 · 总管充气", C.cycle, C.cycles); rc = col::BLUE; }
+            if (cur) {
+                r = waiting ? std::string(tr("等操作员加水")) : trf("第 %d / %d 次 · 充放平衡", C.cycle, C.cycles);
+                rc = waiting ? col::AMBER : col::BLUE;
+            }
             if (!r.empty()) {
                 lv_obj_t* l = label(body_, r.c_str(), 13.5, cur ? 600 : 400, rc);
                 lv_obj_update_layout(l);
                 lv_obj_set_pos(l, 18 + lw - lv_obj_get_width(l), y + 5);
             }
         }
-        if (cs->stage == "waitWater") {
-            lv_obj_t* cb = box(body_, 18, 400, 220, 48, col::BLUE, 9);
+        int iy = 218 + step_n * 44 + 12;
+        if (waiting) {
+            NumSpec sp;
+            sp.title = tr("实际加水体积");
+            sp.unit = "mL";
+            sp.value = water_show;
+            sp.min = 0.5;
+            sp.max = max_w;
+            sp.decimals = 2;
+            sp.last = water_show;
+            NumField* nf = new NumField;
+            nf->create(body_, 18, 400, 110, 48, sp);
+            nf->set_align_right(true);
+            nf->set(water_show);
+            nf->on_apply = [this](double v) {
+                ss().calib_water = v;
+                refresh();
+            };
+            lv_obj_add_event_cb(nf->obj(), [](lv_event_t* e) { delete static_cast<NumField*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, nf);
+            label_at(body_, 134, 415, "mL", 14, 400, col::MUT);
+            lv_obj_t* cb = box(body_, 174, 400, 220, 48, col::BLUE, 9);
             lv_obj_center(label(cb, tr("水加好了，继续"), 16, 700, 0xffffff));
-            on_tap(cb, [this] { act().calib_continue(); });
+            on_tap(cb, [this, water_show] { act().calib_continue(ss().calib_water > 0 ? ss().calib_water : water_show); });
+            iy = 464;
         }
-        info_box(body_, 18, 408 + (cs->stage == "waitWater" ? 56 : 0), lw,
+        info_box(body_, 18, iy, lw,
                  tr("请在常温、不加热时标定；一遍里釜温变化超过 1.5 °C 会判失败。之后其他通道只要空釜做一遍。"));
         // 右：每次读数
         int rx = 18 + lw + 26, rw = bw_ - 18 - rx;
@@ -567,16 +632,21 @@ private:
         lv_obj_set_style_clip_corner(tb, true, 0);
         box(tb, 0, 0, rw, 34, 0xf3f6f9);
         label_at(tb, 16, 9, tr("次"), 13, 400, col::SEC);
-        label_at(tb, 60, 9, tr("总管充气 MPa"), 13, 400, col::SEC);
-        label_at(tb, rw / 2 + 20, 9, tr("放进釜后 MPa"), 13, 400, col::SEC);
+        label_at(tb, 60, 9, tr("充放前釜压 MPa"), 13, 400, col::SEC);
+        label_at(tb, rw / 2 + 12, 9, tr("平衡后釜压 MPa"), 13, 400, col::SEC);
         for (size_t i = 0; i < C.readings.size(); ++i) {
             const auto& r = C.readings[i];
             int y = 34 + (int)i * 36;
             if (i) box(tb, 0, y, rw, 1, col::DIV);
+            double vf = r.vesselFrom.value_or(r.manifoldFrom);
             label_at(tb, 16, y + 9, std::to_string(r.n).c_str(), 15, 400, col::INK);
-            label_at(tb, 60, y + 9, (model::fmt_num(r.manifoldFrom, 3) + " → " + model::fmt_num(r.manifoldTo, 3)).c_str(), 15, 400, col::INK);
-            if (r.vesselFrom) label_at(tb, rw / 2 + 20, y + 9, (model::fmt_num(*r.vesselFrom, 3) + " → " + model::fmt_num(*r.vesselTo, 3)).c_str(), 15, 400, col::INK);
-            else label_at(tb, rw / 2 + 20, y + 9, tr("进行中"), 15, 700, col::BLUE);
+            label_at(tb, 60, y + 9, model::fmt_num(vf, 3).c_str(), 15, 400, col::INK);
+            if (r.vesselTo) {
+                std::string after = model::fmt_num(*r.vesselTo, 3) + " (+" + model::fmt_num(std::max(0.0, *r.vesselTo - vf), 3) + ")";
+                label_at(tb, rw / 2 + 12, y + 9, after.c_str(), 15, 400, col::INK);
+            } else {
+                label_at(tb, rw / 2 + 12, y + 9, tr("进行中"), 15, 700, col::BLUE);
+            }
         }
         int by = 218 + 34 + (int)C.readings.size() * 36 + 14;
         int bwid = (rw - 10) / 2;
@@ -585,7 +655,7 @@ private:
         icon(ab, &ic::stop_sq14, col::RED, bwid / 2 - 48, 16);
         label_at(ab, bwid / 2 - 26, 12, tr("中止标定"), 15.5, 600, col::RED);
         on_tap(ab, [this] {
-            confirm_stop(tr("中止容积标定？"), "", "", tr("中止后排空泄压，这一路的有效容积保持原来的值。"), tr("继续标定"), tr("中止"),
+            confirm_stop(tr("中止容积标定？"), "", "", tr("中止后阀门全关，这一路的有效容积保持原来的值。"), tr("继续标定"), tr("中止"),
                          [this] { act().calib_abort(); });
         });
         lv_obj_t* cl = box(body_, rx + bwid + 10, by, bwid, 46, 0xffffff, 10);

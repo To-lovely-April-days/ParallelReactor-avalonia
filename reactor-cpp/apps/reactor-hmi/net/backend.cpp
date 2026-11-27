@@ -987,8 +987,12 @@ void NetActions::autotune(int ch, int band, double sp) {
     cmd("POST", chp(ch, "/autotune"), {{"tempC", sp}, {"band", band}}, {NetBackend::Pid});
 }
 void NetActions::autotune_cancel(int ch) { cmd("DELETE", chp(ch, "/autotune"), nullptr, {NetBackend::Pid}, "", true); }
-void NetActions::calib_start(int ch, double ml) { cmd("POST", "/calib", {{"channel", ch}, {"waterMl", ml}}, {NetBackend::Calib}); }
-void NetActions::calib_continue() { cmd("POST", "/calib/continue", json::object(), {NetBackend::Calib}); }
+void NetActions::calib_start(int ch, double ml, bool redo_manifold) {
+    cmd("POST", "/calib", {{"channel", ch}, {"waterMl", ml}, {"redoManifold", redo_manifold}}, {NetBackend::Calib});
+}
+void NetActions::calib_continue(double ml) {
+    cmd("POST", "/calib/continue", ml > 0 ? json{{"waterMl", ml}} : json::object(), {NetBackend::Calib});
+}
 void NetActions::calib_abort() { cmd("DELETE", "/calib/current", nullptr, {NetBackend::Calib}, "", true); }
 void NetActions::wifi_enable(bool on) { cmd("PUT", "/network/wifi", {{"enabled", on}}, {NetBackend::Network}); }
 void NetActions::wifi_scan() { cmd("POST", "/network/wifi/scan", json::object(), {NetBackend::Network}); }

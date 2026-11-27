@@ -23,15 +23,15 @@ namespace reactor::store {
 constexpr int kChannelCount = 8;
 constexpr int kBandCount = 3;
 
-// 搅拌传动比默认值：电机 38 齿带釜上 85 齿（C#: Models/StirGear.cs DefaultRatio）
-constexpr double kStirGearDefaultRatio = 85.0 / 38.0;
+// 搅拌传动比默认值：电机接 85 齿大齿轮带釜上 38 齿小齿轮（电机 ÷ 釜 = 38/85）
+constexpr double kStirGearDefaultRatio = 38.0 / 85.0;
 
 // C#: Models/AppSettings.cs（默认值逐个照抄）。时间一律 UTC 毫秒。
 struct AppSettings {
     // 可设置参数范围（上限）
     double t_max_sp = 200;        // 温度 SP 上限 °C
     double p_max_sp = 500;        // 压力 SP 上限 psi
-    double rpm_max = 450;         // 搅拌转速上限 rpm（釜里的转速）
+    double rpm_max = 1000;        // 搅拌转速上限 rpm（釜里的转速）
     double vol_max = 8;           // 溶液体积上限 mL
     // 搅拌电机（DM2C）
     double stir_current = 1.0;        // 峰值电流 A

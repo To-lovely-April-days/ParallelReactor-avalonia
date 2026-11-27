@@ -55,7 +55,7 @@ public:
             s.title = tr("搅拌转速 · 全部釜");
             s.unit = "rpm";
             s.value = app_->m().snap.stir.rpmSp;
-            s.min = 0; s.max = 450;
+            s.min = 0; s.max = std::max(50.0, app_->m().settings.limits.rpmMax);
             s.last = s.value;
             NumPad::open(s, [this](double v) { app_->act().stir_set_rpm((int)std::lround(v)); });
         });
@@ -89,7 +89,8 @@ public:
         const auto& s = m.snap.stir;
         char b[32];
         std::snprintf(b, sizeof b, "%d rpm", s.rpmSp);
-        stir_.set(s.on, s.on ? b : tr("停"), s.on ? col::BLUE : col::SEC, s.on ? (int)(360.0 * s.rpmSp / 450 * 0.28) + 0 : 0);
+        double rmax = std::max(50.0, m.settings.limits.rpmMax);
+        stir_.set(s.on, s.on ? b : tr("停"), s.on ? col::BLUE : col::SEC, s.on ? (int)(360.0 * s.rpmSp / rmax * 0.28) + 0 : 0);
         if (s.on) lv_arc_set_angles(stir_.arc, 0, 100);
         lv_label_set_text_fmt(rpm_v_, "%d", s.rpmSp);
         lv_obj_update_layout(rpm_);

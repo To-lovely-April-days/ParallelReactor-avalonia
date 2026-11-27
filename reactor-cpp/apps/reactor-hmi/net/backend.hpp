@@ -151,8 +151,8 @@ public:
     void set_pid_bands(double lo, double hi) override;
     void autotune(int ch, int band, double sp_c) override;
     void autotune_cancel(int ch) override;
-    void calib_start(int ch, double water_ml) override;
-    void calib_continue() override;
+    void calib_start(int ch, double water_ml, bool redo_manifold = false) override;
+    void calib_continue(double water_ml = 0) override;
     void calib_abort() override;
     void wifi_enable(bool on) override;
     void wifi_scan() override;

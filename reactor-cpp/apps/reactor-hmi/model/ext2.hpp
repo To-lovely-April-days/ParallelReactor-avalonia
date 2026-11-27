@@ -16,9 +16,9 @@ namespace reactor::hmi::model {
 // ============================================================ 设置（GET /settings 的其余部分，照 C# SettingsDto）
 struct LeakTestSettingsDto { double testPsi = 50, settleMin = 10, measureMin = 30, rateLimitPsiPerHr = 2, reminderDays = 7; OptT lastTestUtc; };
 struct ApproachSettingsDto { double deltaC = 5, rateCPerMin = 1, fastRateCPerMin = 1, finalZoneC = 1, settleBandC = 0.2, settleSec = 90; };
-struct StirSettingsDto { double peakCurrentA = 1.0, standbyPct = 50, rampMsPer1000Rpm = 1000, microstep = 16, stirGearRatio = 85.0 / 38.0; };
+struct StirSettingsDto { double peakCurrentA = 1.0, standbyPct = 50, rampMsPer1000Rpm = 1000, microstep = 16, stirGearRatio = 38.0 / 85.0; };
 struct VolumeSettingsDto {
-    double vesselVolume = 10, gasLineVolume = 1.2;
+    double vesselVolume = 10, gasLineVolume = 0;
     OptD manifoldVolume;
     std::array<OptD, 8> effectiveVolume{};
     std::array<OptT, 8> volumeCalibratedAt{};
