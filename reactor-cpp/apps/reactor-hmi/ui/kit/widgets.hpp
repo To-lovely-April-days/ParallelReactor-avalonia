@@ -274,7 +274,8 @@ const lv_image_dsc_t* state_icon(const char* name, int px);
 lv_obj_t* pill(lv_obj_t* parent, const char* text, uint32_t fg, uint32_t bg, double px = 13, const lv_image_dsc_t* icon = nullptr,
                bool dot = false, int weight = 600);
 // 通道小块（小釜 + 号码）：选中 = 白底蓝描边，没选 = 浅底，停用 = 半透明不能点
-lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabled, int w = 46, int h = 34);
+// lamp：右上角带一盏灯（选中 = 绿灯带光晕，没选 = 灰灯），曲线页的通道开关用，一眼看出哪几路在显示
+lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabled, int w = 46, int h = 34, bool lamp = false);
 // 进度条：底色 + 已完成段，可选一条阈值红竖线（marker 0..1）
 lv_obj_t* bar(lv_obj_t* parent, int x, int y, int w, int h, double frac, uint32_t color, std::optional<double> marker = std::nullopt,
               uint32_t track = 0xe6ebf1);

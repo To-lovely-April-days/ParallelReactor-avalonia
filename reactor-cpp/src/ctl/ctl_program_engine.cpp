@@ -77,33 +77,14 @@ ProgramEngine::Steps renumber(const ProgramEngine::Steps& in, core::PressureUnit
     return out;
 }
 
-// 开机预置的「加氢筛选」（C# ProgramViewModel.TemplateSteps：按全局限值裁剪默认值）
-ProgramEngine::Steps default_draft(double leak_rate, const ProgramLimitSettings& lim, core::PressureUnit unit) {
-    ProgramEngine::Steps out;
-    int ord = 1;
-    for (const auto& t : step_templates::hydrogenation(leak_rate)) {
-        auto st = ProgramStep::create(t.type);
-        if (const auto* spec = step_specs::find(t.type))
-            for (const auto& f : spec->fields)
-                if (!f.is_sel()) st.set_num(f.key, program_limits::clamp_field(t.type, f.key, st.num(f.key, f.min), f.min, f.max, lim));
-        for (const auto& kv : t.params) st.with(kv.first, kv.second);
-        st.set_ordinal(ord++);
-        out.push_back(st.to_snapshot(unit));
-    }
-    return out;
-}
-
 }  // namespace
 
 // ============================ 构造 ============================
 
 ProgramEngine::ProgramEngine(ControlCore& core, store::SessionBook* sessions, core::PressureUnit unit)
     : core_(core), sessions_(sessions), unit_(unit) {
-    auto lim = limits();
-    for (auto& d : drafts_) {
-        d.steps = default_draft(core_.settings().settings.leak_rate, lim, unit_);
-        d.name = "加氢筛选";
-    }
+    // 开机每一路都是空的（没有程序）：用户自己编辑 / 从程序库选了才有。旧版本会预置「加氢筛选」，
+    // 现场看到 8 路都「有程序」容易误会（2026-11-27 用户）。模板仍在程序库里（内置模板）。
     gas_listener_ = core_.add_gas_abort_listener(
         [this](core::GasAbortCause cause, std::optional<int> channel) { on_gas_abort(cause, channel); });
 }

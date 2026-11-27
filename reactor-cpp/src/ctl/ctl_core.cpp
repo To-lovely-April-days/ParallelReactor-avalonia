@@ -195,6 +195,7 @@ void ControlCore::shutdown(bool stop_outputs) {
         if (lease_.busy()) abort_all_gas(core::GasAbortCause::Shutdown);
         if (tick_timer_) loop_.cancel(tick_timer_);
         if (settings_timer_) loop_.cancel(settings_timer_);
+        if (nudge_timer_) { loop_.cancel(nudge_timer_); nudge_timer_ = 0; }
         if (stop_outputs) {
             // C# ExitAppTailAsync：停搅拌、停全部温控输出、全关阀门（三条总线并行）
             if (stir_.configured()) stir_.stop(nullptr);

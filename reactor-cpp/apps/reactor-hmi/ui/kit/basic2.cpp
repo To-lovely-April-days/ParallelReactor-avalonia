@@ -33,7 +33,7 @@ lv_obj_t* pill(lv_obj_t* parent, const char* text, uint32_t fg, uint32_t bg, dou
     return p;
 }
 
-lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabled, int w, int h) {
+lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabled, int w, int h, bool lamp) {
     lv_obj_t* b = box(parent, x, y, w, h, on && !disabled ? 0xffffff : col::TILE, 8);
     ring(b, on && !disabled ? 0x8fa6bf : col::RING, 2);
     if (on && !disabled) {
@@ -46,6 +46,18 @@ lv_obj_t* chan_chip(lv_obj_t* parent, int x, int y, int ch, bool on, bool disabl
     std::snprintf(n, sizeof n, "%d", ch);
     lv_obj_t* l = label(b, n, 15.5, 700, disabled ? col::DIS : col::INK);
     lv_obj_align(l, LV_ALIGN_LEFT_MID, 27, 0);
+    if (lamp && !disabled) {
+        // 和 LampGroup 的灯一样：选中 = 绿灯 + 3 px 淡绿光晕；没选 = 灰灯
+        // 挂在右上角、一半在块外面（不占位，块宽不变）：白边隔开描边
+        lv_obj_add_flag(b, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
+        lv_obj_t* d = box(b, w - 8, -4, 10, 10, on ? col::GREEN : 0xc3ccd6, 5);
+        ring(d, 0xffffff, 2);
+        if (on) {
+            lv_obj_set_style_outline_width(d, 3, 0);
+            lv_obj_set_style_outline_color(d, lv_color_hex(col::GREEN), 0);
+            lv_obj_set_style_outline_opa(d, 46, 0);
+        }
+    }
     if (disabled) lv_obj_set_style_opa(b, 150, 0);
     return b;
 }

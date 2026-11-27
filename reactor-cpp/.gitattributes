@@ -1,0 +1,5 @@
+# 板子（Linux）上直接运行的文件：Windows 上检出也保持 LF，否则 bash 报 $'\r': command not found
+*.sh text eol=lf
+*.service text eol=lf
+*.py text eol=lf
+*.desktop text eol=lf

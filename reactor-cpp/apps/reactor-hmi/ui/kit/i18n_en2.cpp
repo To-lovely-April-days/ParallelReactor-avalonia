@@ -46,7 +46,7 @@ const std::unordered_map<std::string, const char*>& en_table2() {
         {"升温速率", "Rate"}, {"到了保温", "Hold"}, {"%d 号 · 曲线第 %d 段 · %s", "Ch %d · ramp seg %d · %s"}, {"加\n一\n段", "Add\nseg"},
         {"%d 号已停用：在「设置 · 通道与气路」里启用后才能编辑、运行程序。",
          "Ch %d is disabled: enable it in Settings · Channels & gas to edit or run programs."},
-        {"新程序", "New program"}, {"%d 步 · 预计 %s", "%d steps · est. %s"}, {"已改动未保存", "unsaved"},
+        {"新程序", "New program"}, {"%d 号还没有程序", "No program on channel %d yet"}, {"从程序库选一个，或者自己一步一步加。没有程序也可以在主页手动加热、进气、搅拌。", "Pick one from the library or add steps yourself. Without a program you can still heat, feed gas and stir by hand from the home page."}, {"添加第一步", "Add first step"}, {"%d 步 · 预计 %s", "%d steps · est. %s"}, {"已改动未保存", "unsaved"},
         {"用到其他通道…", "Use on other ch…"}, {"存到程序库", "Save to library"}, {"从程序库选…", "From library…"},
         {"存到程序库 · 名字", "Save to library · name"}, {"「%s」已存到程序库", "\"%s\" saved to library"},
         {"用到其他通道", "Use on other channels"}, {"用到这几路", "Apply"},

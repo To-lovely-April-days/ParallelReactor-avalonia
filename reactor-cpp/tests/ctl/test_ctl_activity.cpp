@@ -313,6 +313,12 @@ TEST(ctl_automation, threaded_async_wrappers) {
     auto s = core.snapshot();
     CHECK(s && s->program_runs[0].is_object() && s->program_runs[0]["startedBy"] == "PC-2");
     CHECK(au->abort_program_async(1).get().silent);
+    // 命令后会立刻补发快照，程序可能在第一次读到压力之前就显示完成：泄漏测试要压力在线，先等一下
+    for (int i = 0; i < 40; ++i) {
+        auto cs = core.snapshot();
+        if (cs && cs->comm.pressure) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
     auto lt = au->start_leak_test_async({1}, std::nullopt, "PC-2").get();
     CHECK(lt.accepted);  // 程序跑完 RV1 已结束，可以测
     auto ab = au->abort_leak_test_async(false).get();

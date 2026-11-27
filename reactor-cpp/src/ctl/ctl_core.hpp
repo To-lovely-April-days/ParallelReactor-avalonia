@@ -99,9 +99,23 @@ public:
     void shutdown(bool stop_outputs = true);
 
     // ================= 任何线程 =================
-    bool post(std::function<void()> fn) { return loop_.post(std::move(fn)); }
+    // 接口 / 命令层投进来的任务：执行完后马上补发几帧快照（见 nudge_publish），界面不用等下一个 1.2 s 节拍才变
+    bool post(std::function<void()> fn) {
+        return loop_.post([this, fn = std::move(fn)] {
+            fn();
+            nudge_publish();
+        });
+    }
     template <class F>
-    auto call(F f) -> std::future<decltype(f())> { return loop_.call(std::move(f)); }
+    auto call(F f) -> std::future<decltype(f())> {
+        return loop_.call([this, f]() mutable {
+            struct After {
+                ControlCore* c;
+                ~After() { c->nudge_publish(); }
+            } after{this};
+            return f();
+        });
+    }
     SnapshotStore& snapshots() { return snaps_; }
     std::shared_ptr<const Snapshot> snapshot() const { return snaps_.latest(); }
     // 全部停止（设计文档 §4）。done 在控制线程上、普通补发那一遍全部回来之后调用
@@ -264,6 +278,10 @@ private:
 
     // publish（ctl_core_publish.cpp）
     void publish_snapshot();
+    // 命令之后的快照补发：+30 ms、+250 ms、+700 ms 各发一帧（命令本身改的状态 + 总线写完读回的状态都能很快到界面）。
+    // 只在控制线程上调；连续命令合并成一串。
+    void nudge_publish();
+    void nudge_fire();
 
     CoreOptions opt_;
     hw::Hardware* hw_;
@@ -312,6 +330,8 @@ private:
     int64_t snap_seq_ = 0;
     bool started_ = false, shut_ = false;
     EventLoop::TimerId tick_timer_ = 0, settings_timer_ = 0;
+    EventLoop::TimerId nudge_timer_ = 0;
+    int nudge_left_ = 0;
 };
 
 }  // namespace reactor::ctl

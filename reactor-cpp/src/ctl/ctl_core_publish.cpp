@@ -55,6 +55,20 @@ store::TelemetryModule tmodule(bool configured, bool online, const hw::CommStats
 
 }  // namespace
 
+void ControlCore::nudge_publish() {
+    if (!started_ || shut_) return;
+    nudge_left_ = 3;  // 重新开始一串
+    if (nudge_timer_) return;
+    nudge_timer_ = loop_.after(30, [this] { nudge_fire(); });
+}
+
+void ControlCore::nudge_fire() {
+    nudge_timer_ = 0;
+    if (shut_) return;
+    publish_snapshot();
+    if (--nudge_left_ > 0) nudge_timer_ = loop_.after(nudge_left_ == 2 ? 220 : 450, [this] { nudge_fire(); });
+}
+
 void ControlCore::publish_snapshot() {
     auto s = std::make_shared<Snapshot>();
     s->seq = ++snap_seq_;

@@ -25,7 +25,7 @@ namespace {
 struct CurveState {
     std::array<bool, 8> hidden{};
     bool runtime_axis = false;
-    std::array<int, 4> near{0, 1, 1, 0};   // 纵轴：0 全部 / 1 设定值附近（每个页签各记一份）
+    std::array<int, 4> near{0, 0, 0, 0};   // 纵轴：0 全部 / 1 设定值附近（每个页签各记一份；默认都是「全部」）
     std::optional<double> cursor;          // 读数时刻（UTC 毫秒）：最近一次按在图上的位置
     int window_min = 60;                   // 「现在」往前看多久；往后留 30 min 空白
     bool debug_cursor = false;             // 截图用（--page curve-*-cursor）：一进页面就显示读数，不自动收起
@@ -62,7 +62,11 @@ bool has_data(const model::Trend& t, int q, int ch, double from) {
 class CurvePage : public Page {
 public:
     explicit CurvePage(int tab) : tab_(std::max(0, std::min(3, tab))) {}
-    ~CurvePage() override { stop_hide_timer(); }
+    ~CurvePage() override {
+        stop_hide_timer();
+        for (lv_indev_t* i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i))
+            lv_indev_remove_event_cb_with_user_data(i, on_any_press, this);
+    }
     void build(lv_obj_t* root, App& app) override {
         app_ = &app;
         root_ = root;
@@ -74,6 +78,9 @@ public:
         body_ = box(root, 0, 0, W_, H_, 0, 0, true);
         // 读数默认不显示：按住 / 拖图时才出来（截图调试除外）
         cur_on_ = cs().debug_cursor && cs().cursor.has_value();
+        // 读数卡片出来以后，手指按在屏幕上任何别的地方（工具条、页签、顶栏、图外面……）都立即收起
+        for (lv_indev_t* i = lv_indev_get_next(nullptr); i; i = lv_indev_get_next(i))
+            if (lv_indev_get_type(i) == LV_INDEV_TYPE_POINTER) lv_indev_add_event_cb(i, on_any_press, LV_EVENT_PRESSED, this);
     }
 
     void update(const Model& m) override {
@@ -128,6 +135,14 @@ private:
         lv_timer_set_repeat_count(hide_t_, 1);
     }
     static constexpr uint32_t kHoldMs = 3000;
+    // 输入设备层的「按下」：按的不是图本身就收起读数
+    static void on_any_press(lv_event_t* e) {
+        auto* self = static_cast<CurvePage*>(lv_event_get_user_data(e));
+        if (!self->cur_on_ || cs().debug_cursor) return;
+        auto* target = static_cast<lv_obj_t*>(lv_event_get_param(e));
+        if (self->tc_ && target == self->tc_->obj()) return;  // 按在图上：读数跟着手指走
+        self->hide_cursor();
+    }
 
     void build_reading(double cur) {
         if (pop_) { lv_obj_delete(pop_); pop_ = nullptr; }
@@ -197,7 +212,7 @@ private:
         x += 38;
         for (int ch = 1; ch <= 8; ++ch) {
             bool inst = m.ch(ch).installed;
-            lv_obj_t* chip = chan_chip(c, x, 13, ch, inst && !s.hidden[(size_t)ch - 1], !inst, 46, 34);
+            lv_obj_t* chip = chan_chip(c, x, 13, ch, inst && !s.hidden[(size_t)ch - 1], !inst, 46, 34, true);
             if (inst) on_tap(chip, [this, ch] { cs().hidden[(size_t)ch - 1] = !cs().hidden[(size_t)ch - 1]; refresh(); });
             x += 52;
         }

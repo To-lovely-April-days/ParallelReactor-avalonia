@@ -362,6 +362,7 @@ void open_add_step(App& app, int ch, std::function<void()> refresh) {
                 on_tap(it, [&app, ch, ins, type, refresh] {
                     ProgEdit& e2 = prog_edit();
                     ProgramDoc& doc = e2.doc[(size_t)ch - 1];
+                    if (doc.steps.empty() && doc.name.empty()) doc.name = tr("新程序");
                     doc.steps.insert(doc.steps.begin() + ins, model::new_step(app.m().x.schema, type));
                     e2.sel[(size_t)ch - 1] = ins;
                     e2.dirty[(size_t)ch - 1] = true;
@@ -613,7 +614,17 @@ void build_prog_editor(lv_obj_t* body, App& app, const Model& m, int ch, std::fu
         lv_obj_center(l);
         return;
     }
-    if (d.steps.empty()) d = model::hydrogenation_template(m.x.schema), d.name = tr("新程序"), e.dirty[(size_t)ch - 1] = true;
+    if (d.steps.empty()) {
+        // 这一路还没有程序（没保存过就是没有，不再自动塞模板）：给两条路——从程序库选，或者自己从第一步加
+        label_at(pc, 24, 34, trf("%d 号还没有程序", ch).c_str(), 22, 700, col::INK);
+        label_at(pc, 24, 72, tr("从程序库选一个，或者自己一步一步加。没有程序也可以在主页手动加热、进气、搅拌。"), 14.5, 400, col::MUT);
+        lv_obj_t* lib = tool_btn(pc, 24, 128, tr("从程序库选…"), &ic::tab_book18, col::INK, 52, 16);
+        on_tap(lib, [&app, ch] { app.go(PageId::Program, 100 + ch); });
+        lv_obj_update_layout(lib);
+        lv_obj_t* add = rect_btn(pc, 24 + lv_obj_get_width(lib) + 12, 128, 170, 52, tr("添加第一步"), true, col::BLUE, 16, 10, &ic::plus18);
+        on_tap(add, [&app, ch, refresh] { open_add_step(app, ch, refresh); });
+        return;
+    }
     model::DurEst est = model::program_minutes(d);
     lv_obj_t* nm = label_at(pc, 16, 16, d.name.c_str(), 22, 700, col::BLUE);
     lv_obj_update_layout(nm);
