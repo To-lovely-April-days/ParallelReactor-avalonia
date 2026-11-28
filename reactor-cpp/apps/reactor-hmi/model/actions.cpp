@@ -34,6 +34,8 @@ void LoggingActions::set_solution_volume(int ch, double ml) { LOGA("set_solution
 void LoggingActions::channel_enable(int ch, bool on) { LOGA("channel_enable ch%d %d", ch, on); FWD(channel_enable(ch, on)); }
 void LoggingActions::copy_to_all(int ch) { LOGA("copy_to_all ch%d", ch); FWD(copy_to_all(ch)); }
 void LoggingActions::abort_program(int ch) { LOGA("abort_program ch%d", ch); FWD(abort_program(ch)); }
+void LoggingActions::pause_program(int ch) { LOGA("pause_program ch%d", ch); FWD(pause_program(ch)); }
+void LoggingActions::resume_program(int ch) { LOGA("resume_program ch%d", ch); FWD(resume_program(ch)); }
 void LoggingActions::ack_alarm(const std::string& id) { LOGA("ack_alarm %s", id.c_str()); FWD(ack_alarm(id)); }
 void LoggingActions::ack_all() { LOGA("ack_all"); FWD(ack_all()); }
 void LoggingActions::set_language(const std::string& c) { LOGA("set_language %s", c.c_str()); FWD(set_language(c)); }
@@ -95,6 +97,7 @@ void LoggingActions::wifi_connect(const std::string& ssid, const std::string& pw
 void LoggingActions::wifi_forget(const std::string& ssid) { LOGA("wifi_forget %s", ssid.c_str()); FWD(wifi_forget(ssid)); }
 void LoggingActions::wifi_disconnect() { LOGA("wifi_disconnect"); FWD(wifi_disconnect()); }
 void LoggingActions::set_ip_mode(bool dhcp) { LOGA("set_ip_mode %s", dhcp ? "dhcp" : "manual"); FWD(set_ip_mode(dhcp)); }
+void LoggingActions::regenerate_tls() { LOGA("regenerate_tls"); FWD(regenerate_tls()); }
 void LoggingActions::comm_test(const std::string& m) { LOGA("comm_test %s", m.c_str()); FWD(comm_test(m)); }
 void LoggingActions::comm_reconnect(const std::string& m) { LOGA("comm_reconnect %s", m.c_str()); FWD(comm_reconnect(m)); }
 void LoggingActions::quit_app() { LOGA("quit_app"); FWD(quit_app()); }

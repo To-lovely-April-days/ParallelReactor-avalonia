@@ -24,12 +24,23 @@ option(REACTOR_BUILD_TESTS "编译单测" ON)
 
 find_package(Threads REQUIRED)
 
+# ---------- mbedTLS 3.6（第三方原样源码 + 项目自己的裁剪配置 config/reactor_mbedtls_config.h）----------
+# PC 端 TCP 入口跑 HTTPS / WSS（自签证书 + 指纹固定）。第三方源码不开警告。
+file(GLOB REACTOR_MBEDTLS_SRC CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/library/*.c)
+add_library(reactor_mbedtls STATIC ${REACTOR_MBEDTLS_SRC})
+target_include_directories(reactor_mbedtls SYSTEM PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/third_party/mbedtls/include ${CMAKE_CURRENT_SOURCE_DIR}/config)
+target_compile_definitions(reactor_mbedtls PUBLIC "MBEDTLS_CONFIG_FILE=\"reactor_mbedtls_config.h\"")
+target_compile_options(reactor_mbedtls PRIVATE -w)
+set_target_properties(reactor_mbedtls PROPERTIES C_STANDARD 99 POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(reactor_mbedtls PUBLIC Threads::Threads)
+
 # ---------- 后台公共库：src/ 下全部（common / core / hw / store / net / ctl / cmd / api）----------
 file(GLOB_RECURSE REACTOR_SRC CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp)
 add_library(reactor_core STATIC ${REACTOR_SRC})
 target_include_directories(reactor_core PUBLIC src third_party)
 target_compile_options(reactor_core PRIVATE -Wall -Wextra -Wno-unused-parameter)
-target_link_libraries(reactor_core PUBLIC Threads::Threads)
+target_link_libraries(reactor_core PUBLIC reactor_mbedtls Threads::Threads)
 
 add_executable(reactord apps/reactord/main.cpp)
 target_link_libraries(reactord PRIVATE reactor_core)

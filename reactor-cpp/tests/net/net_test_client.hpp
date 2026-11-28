@@ -15,6 +15,7 @@
 #include "net/http.hpp"
 #include "net/websocket.hpp"
 #include <cctype>
+#include <functional>
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
@@ -106,13 +107,23 @@ inline std::string lower(std::string s) {
     return s;
 }
 
+// 读取钩子：往 buf 追加新数据，超时 / EOF 返回 false（明文 = read_more(fd)；TLS 见 tls_test_client.hpp）
+using ReadFn = std::function<bool(std::string& buf, int timeout_ms, bool* eof)>;
+using SendFn = std::function<bool(const std::string&)>;
+
+inline HttpResp read_response_io(const ReadFn& rd, std::string& buf, int timeout_ms = 3000, bool head_only = false);
+
 // 从 buf（可能已含部分数据）读一个完整响应；head_only = HEAD 请求（无正文）
 inline HttpResp read_response(int fd, std::string& buf, int timeout_ms = 3000, bool head_only = false) {
+    return read_response_io([fd](std::string& b, int t, bool* eof) { return read_more(fd, b, t, eof); }, buf, timeout_ms, head_only);
+}
+
+inline HttpResp read_response_io(const ReadFn& rd, std::string& buf, int timeout_ms, bool head_only) {
     HttpResp r;
     size_t hend;
     while ((hend = buf.find("\r\n\r\n")) == std::string::npos) {
         bool eof = false;
-        if (!read_more(fd, buf, timeout_ms, &eof)) { r.closed = eof; return r; }
+        if (!rd(buf, timeout_ms, &eof)) { r.closed = eof; return r; }
     }
     std::string head = buf.substr(0, hend);
     buf.erase(0, hend + 4);
@@ -135,10 +146,10 @@ inline HttpResp read_response(int fd, std::string& buf, int timeout_ms = 3000, b
         while (true) {
             size_t nl;
             while ((nl = buf.find("\r\n")) == std::string::npos)
-                if (!read_more(fd, buf, timeout_ms)) return r;
+                if (!rd(buf, timeout_ms, nullptr)) return r;
             size_t sz = std::stoul(buf.substr(0, nl), nullptr, 16);
             while (buf.size() < nl + 2 + sz + 2)
-                if (!read_more(fd, buf, timeout_ms)) return r;
+                if (!rd(buf, timeout_ms, nullptr)) return r;
             r.body.append(buf, nl + 2, sz);
             buf.erase(0, nl + 2 + sz + 2);
             if (sz == 0) break;
@@ -146,12 +157,12 @@ inline HttpResp read_response(int fd, std::string& buf, int timeout_ms = 3000, b
     } else if (!r.h("content-length").empty()) {
         size_t len = std::stoul(r.h("content-length"));
         while (buf.size() < len)
-            if (!read_more(fd, buf, timeout_ms)) return r;
+            if (!rd(buf, timeout_ms, nullptr)) return r;
         r.body = buf.substr(0, len);
         buf.erase(0, len);
     } else {
         bool eof = false;
-        while (read_more(fd, buf, timeout_ms, &eof)) {}
+        while (rd(buf, timeout_ms, &eof)) {}
         r.body = buf;
         buf.clear();
         r.closed = eof;
@@ -160,7 +171,7 @@ inline HttpResp read_response(int fd, std::string& buf, int timeout_ms = 3000, b
     if (lower(r.h("connection")) == "close") {
         bool eof = false;
         std::string extra;
-        read_more(fd, extra, 500, &eof);
+        rd(extra, 500, &eof);
         r.closed = eof;
     }
     return r;
@@ -195,6 +206,11 @@ struct WsClient {
     reactor::net::ws::MessageAssembler asmb{1 << 24, false};
     int status = 0;
     HttpResp handshake;
+    // 传输钩子：空 = 直接读写 fd；TLS 时由 tls_test_client.hpp 填上（fd 仍然是底层 socket）
+    SendFn sender;
+    ReadFn reader;
+    bool io_send(const std::string& s) { return sender ? sender(s) : send_all(fd, s); }
+    bool io_read(std::string& b, int t, bool* eof) { return reader ? reader(b, t, eof) : read_more(fd, b, t, eof); }
 
     bool open_fd(int f, const std::string& path, const std::string& token, const std::string& key = "dGhlIHNhbXBsZSBub25jZQ==") {
         fd = f;
@@ -203,8 +219,8 @@ struct WsClient {
                           "Sec-WebSocket-Key: " + key + "\r\nSec-WebSocket-Version: 13\r\n";
         if (!token.empty()) req += "Authorization: Bearer " + token + "\r\n";
         req += "\r\n";
-        send_all(fd, req);
-        handshake = read_response(fd, buf, 3000);
+        io_send(req);
+        handshake = read_response_io([this](std::string& b, int t, bool* eof) { return io_read(b, t, eof); }, buf, 3000);
         status = handshake.status;
         return status == 101;
     }
@@ -212,7 +228,7 @@ struct WsClient {
 
     bool send_frame(uint8_t op, const std::string& data, bool fin = true, bool masked = true) {
         static const uint8_t mask[4] = {0x12, 0x34, 0x56, 0x78};
-        return send_all(fd, reactor::net::ws::encode_frame(op, data, fin, masked ? mask : nullptr));
+        return io_send(reactor::net::ws::encode_frame(op, data, fin, masked ? mask : nullptr));
     }
     bool send_text(const std::string& s) { return send_frame(reactor::net::ws::kText, s); }
 
@@ -230,7 +246,7 @@ struct WsClient {
             asmb.feed(buf, evs);
             for (auto& e : evs) pending.push_back(std::move(e));
             if (!pending.empty()) continue;
-            if (!read_more(fd, buf, timeout_ms)) return false;
+            if (!io_read(buf, timeout_ms, nullptr)) return false;
         }
     }
     // 读到下一条文本消息
@@ -249,7 +265,7 @@ struct WsClient {
             if (e.kind == reactor::net::ws::MessageAssembler::Event::Close) return e.code;
         return 0;
     }
-    void close_fd() { if (fd >= 0) ::close(fd); fd = -1; }
+    void close_fd() { if (fd >= 0 && !sender) ::close(fd); fd = -1; }   // 走 TLS 时 fd 归 TlsClient 管
     ~WsClient() { close_fd(); }
     std::vector<reactor::net::ws::MessageAssembler::Event> pending;
     int closed_code = 0;

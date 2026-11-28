@@ -90,15 +90,34 @@ ojson strings(const std::vector<std::string>& v) {
 
 }  // namespace
 
+ojson ApiService::tls_json() const {
+    net::TlsCertInfo i;
+    if (d_.tls) i = d_.tls->info();
+    bool on = d_.tls && i.valid;
+    auto t = [&](int64_t ms) { return on && ms > 0 ? ojson(utc_iso(ms)) : ojson(nullptr); };
+    return ojson{{"tls", on},
+                 {"fingerprintSha256", on ? ojson(i.fingerprint_sha256) : ojson(nullptr)},
+                 {"subject", on ? ojson(i.subject) : ojson(nullptr)},
+                 {"notBefore", t(i.not_before_ms)},
+                 {"notAfter", t(i.not_after_ms)},
+                 {"createdAt", t(i.created_ms)}};
+}
+
 void Routes::read(ApiService& s, net::Router& r) {
     ApiService* self = &s;
     const std::string P = "/api/v1";
 
     // —— 系统 ——
+    // /health 免鉴权：PC 第一次连接还没令牌时就能拿到指纹显示给用户核对（指纹本来就在 TLS 握手的证书里，不是秘密）
     r.get(P + "/health", [self](const Request&) {
+        ojson tj = self->tls_json();
         return ok_json(ojson{{"ok", true}, {"apiVersion", kApiVersion}, {"simulated", self->d_.hw && self->d_.hw->simulated},
-                             {"bootId", self->boot_id_}, {"serverTime", utc_iso(self->now_wall())}});
+                             {"bootId", self->boot_id_}, {"serverTime", utc_iso(self->now_wall())}, {"tls", tj["tls"]},
+                             {"fingerprintSha256", tj["fingerprintSha256"]}});
     }, RouteOptions{RateClass::None, true, false});
+
+    // 证书信息（本机 + 任何角色的令牌）
+    r.get(P + "/system/tls", [self](const Request&) { return ok_json(self->tls_json()); });
 
     r.get(P + "/device", [self](const Request&) { return ok_json(self->device_json()); });
 

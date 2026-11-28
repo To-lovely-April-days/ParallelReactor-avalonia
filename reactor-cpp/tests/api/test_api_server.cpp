@@ -60,7 +60,8 @@ TEST(api_server, lease_flow_and_categories) {
     std::string m;
     CHECK(ws.next_text(m));
     CHECK(json::parse(m)["type"] == "hello");
-    auto r = t.tcp("POST", "/api/v1/control/request", "optoken", "{\"clientName\":\"PC-1\"}", ApiRig::idem("r1"));
+    // app + host（PC 平台）：名字记成「app · host」，触屏顶栏据此显示「Coalesce 控制中 · 实验室电脑」
+    auto r = t.tcp("POST", "/api/v1/control/request", "optoken", "{\"app\":\"Coalesce\",\"host\":\"实验室电脑\"}", ApiRig::idem("r1"));
     CHECK_EQ(r.status, 202);
     CHECK_EQ(r.body["status"].get<std::string>(), std::string("accepted"));
     CHECK_EQ(r.body["result"]["result"].get<std::string>(), std::string("pending"));
@@ -76,7 +77,7 @@ TEST(api_server, lease_flow_and_categories) {
     CHECK(saw);
     auto st = t.tcp("GET", "/api/v1/control", "viewtoken");
     CHECK_EQ(st.body["state"].get<std::string>(), std::string("requested"));
-    CHECK_EQ(st.body["pending"]["clientName"].get<std::string>(), std::string("PC-1"));
+    CHECK_EQ(st.body["pending"]["clientName"].get<std::string>(), std::string("Coalesce · 实验室电脑"));
     // 触屏允许
     auto g = t.local("POST", "/api/v1/control/requests/" + rid + "/grant", "{}");
     CHECK_EQ(g.status, 200);
@@ -228,8 +229,12 @@ TEST(api_server, ws_events_resync_and_gap) {
     for (int i = 0; i < 5100; ++i)
         t.logger->event(reactor::store::WallTime::local(reactor::wall_ms()), "info", "测试", "批量事件", std::to_string(i));
     int64_t head = t.events->head();
+    nettest::TlsClient tc;   // PC 入口缺省加密：WSS
+    CHECK(tc.connect(t.port));
     nettest::WsClient ws;
-    CHECK(ws.open(t.port, "/api/v1/ws", "viewtoken"));
+    ws.sender = tc.sender();
+    ws.reader = tc.reader();
+    CHECK(ws.open_fd(tc.fd, "/api/v1/ws", "viewtoken"));
     std::string m;
     CHECK(ws.next_text(m));
     auto hello = json::parse(m);
@@ -546,4 +551,116 @@ TEST(api_server, stop_all_marks_only_active_channels_stopped) {
     CHECK(wait_until([&] { return ch(1)["state"] == "stopped"; }));
     CHECK_EQ(t.local("POST", "/api/v1/channels/2/stop", "{}", ApiRig::idem("st2")).status, 200);
     CHECK_EQ(ch(2)["state"].get<std::string>(), std::string("ready"));
+}
+
+// 程序暂停 / 继续（2026-11-29）：POST …/program/pause（停止类）、POST …/program/resume（控制类）
+TEST(api_server, program_pause_resume_endpoints) {
+    ApiRig t;
+    std::string steps = "[{\"type\":\"hold\",\"params\":{\"until\":\"time\",\"time\":10}}]";
+    CHECK_EQ(t.local("PUT", "/api/v1/channels/1/program", "{\"steps\":" + steps + ",\"name\":\"长保持\"}").status, 200);
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/enable", "{}").status, 200);
+    // 没有程序在跑：409 CHANNEL_STATE_INVALID；通道不存在：404
+    auto np = t.local("POST", "/api/v1/channels/1/program/pause", "{}");
+    CHECK_EQ(np.status, 409);
+    CHECK_EQ(np.body["error"]["code"].get<std::string>(), std::string("CHANNEL_STATE_INVALID"));
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/program/resume", "{}").status, 409);
+    CHECK_EQ(t.local("POST", "/api/v1/channels/9/program/pause", "{}").status, 404);
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/program/run", "{}", ApiRig::idem("run-p")).status, 202);
+    auto run_state = [&] {
+        auto r = t.local("GET", "/api/v1/channels/1/program/run");
+        return r.body["run"].is_object() ? r.body["run"].value("state", std::string()) : std::string();
+    };
+    CHECK(wait_until([&] { return run_state() == "running"; }));
+    // 暂停（触屏）→ 200；快照 state = paused
+    auto p = t.local("POST", "/api/v1/channels/1/program/pause", "{}", ApiRig::idem("pause-1"));
+    CHECK_EQ(p.status, 200);
+    if (p.status != 200) std::printf("    暂停：%s\n", p.raw.c_str());
+    CHECK(wait_until([&] { return run_state() == "paused"; }));
+    CHECK(wait_until([&] { return t.local("GET", "/api/v1/snapshot").body["channels"][0]["program"]["state"] == "paused"; }));
+    auto snap = t.local("GET", "/api/v1/snapshot");
+    CHECK(snap.body["channels"][0]["program"]["pausedAt"].is_string());
+    CHECK(snap.body["channels"][0]["hasActivity"].get<bool>());
+    // 远程：暂停是停止类，没有控制权也放行（已暂停 → 幂等 200）；继续是控制类 → 409 MODE_LOCAL
+    CHECK_EQ(t.tcp("POST", "/api/v1/channels/1/program/pause", "optoken", "{}").status, 200);
+    auto rr = t.tcp("POST", "/api/v1/channels/1/program/resume", "optoken", "{}");
+    CHECK_EQ(rr.status, 409);
+    CHECK_EQ(rr.body["error"]["code"].get<std::string>(), std::string("MODE_LOCAL"));
+    // 触屏继续 → 200，回到 running
+    CHECK_EQ(t.local("POST", "/api/v1/channels/1/program/resume", "{}", ApiRig::idem("resume-1")).status, 200);
+    CHECK(wait_until([&] { return run_state() == "running"; }));
+    CHECK_EQ(t.local("DELETE", "/api/v1/channels/1/program/run").status, 200);
+}
+
+// —— PC 入口加密：/system/tls、/health 指纹、只在触屏上能重新生成证书、tls:false 退回明文 ——
+TEST(api_server, tls_info_health_and_regenerate) {
+    ApiRig t;
+    std::string fp = t.tls_store->info().fingerprint_sha256;
+    // PC 第一次连接：握手看到的指纹 = /health 回显的指纹（还没令牌也能拿到）= 触屏 /system/tls 的指纹
+    std::string seen;
+    auto h = nettest::tls_request(t.port, "GET", "/api/v1/health", "", "", "", &seen);
+    CHECK_EQ(h.status, 200);
+    CHECK_EQ(seen, fp);
+    auto hj = json::parse(h.body);
+    CHECK(hj["tls"].get<bool>());
+    CHECK_EQ(hj["fingerprintSha256"].get<std::string>(), fp);
+    auto loc = t.local("GET", "/api/v1/system/tls");
+    CHECK_EQ(loc.status, 200);
+    CHECK(loc.body["tls"].get<bool>());
+    CHECK_EQ(loc.body["fingerprintSha256"].get<std::string>(), fp);
+    CHECK(loc.body["subject"].get<std::string>().find("HT-PR8") != std::string::npos);
+    CHECK(loc.body["notBefore"].is_string());
+    CHECK(loc.body["notAfter"].is_string());
+    CHECK(loc.body["createdAt"].is_string());
+    // 远程任何角色都能读；没令牌不行
+    CHECK_EQ(t.tcp("GET", "/api/v1/system/tls", "viewtoken").status, 200);
+    CHECK_EQ(t.tcp("GET", "/api/v1/system/tls", "").status, 401);
+    // 重新生成只在本机触屏上有：PC（连 admin）都是 404
+    CHECK_EQ(t.tcp("POST", "/api/v1/system/tls/regenerate", "admtoken", "{}").status, 404);
+    CHECK_EQ(t.tls_store->info().fingerprint_sha256, fp);
+    // 已连着的 PC 连接
+    nettest::TlsClient old_conn;
+    CHECK(old_conn.connect(t.port));
+    auto rg = t.local("POST", "/api/v1/system/tls/regenerate", "{}");
+    CHECK_EQ(rg.status, 200);
+    std::string fp2 = t.tls_store->info().fingerprint_sha256;
+    CHECK(fp2 != fp);
+    CHECK_EQ(rg.body["result"]["fingerprintSha256"].get<std::string>(), fp2);
+    // 新连接立刻是新证书；旧连接不断
+    auto h2 = nettest::tls_request(t.port, "GET", "/api/v1/health", "", "", "", &seen);
+    CHECK_EQ(seen, fp2);
+    CHECK_EQ(json::parse(h2.body)["fingerprintSha256"].get<std::string>(), fp2);
+    CHECK_EQ(old_conn.request("GET", "/api/v1/health").status, 200);
+    // 事件：warn「证书已重新生成」带新旧指纹前缀
+    CHECK(wait_until([&] {
+        for (const auto& e : t.events->read_after(0, 5000))
+            if (e.title == "证书已重新生成" && e.level == "warn" && e.message.find(fp.substr(0, 11)) != std::string::npos &&
+                e.message.find(fp2.substr(0, 11)) != std::string::npos)
+                return true;
+        return false;
+    }));
+    // 证书落盘：重启后同一指纹
+    reactor::net::TlsCertStore again(t.dir + "/tls");
+    bool created = true;
+    CHECK(again.load_or_create(nullptr, &created));
+    CHECK(!created);
+    CHECK_EQ(again.info().fingerprint_sha256, fp2);
+}
+
+TEST(api_server, tls_off_plaintext_escape_hatch) {
+    ApiRig t([](reactor::net::ApiConfig& c) { c.tls = false; });
+    auto h = t.tcp("GET", "/api/v1/health", "");   // 明文 HTTP
+    CHECK_EQ(h.status, 200);
+    CHECK(!h.body["tls"].get<bool>());
+    CHECK(h.body["fingerprintSha256"].is_null());
+    auto loc = t.local("GET", "/api/v1/system/tls");
+    CHECK(!loc.body["tls"].get<bool>());
+    auto rg = t.local("POST", "/api/v1/system/tls/regenerate", "{}");
+    CHECK_EQ(rg.status, 409);
+    CHECK_EQ(rg.body["error"]["code"].get<std::string>(), std::string("TLS_DISABLED"));
+    // 启动时记了「未加密」的 warn
+    CHECK(wait_until([&] {
+        for (const auto& e : t.events->read_after(0, 5000))
+            if (e.level == "warn" && e.title.find("PC 连接未加密") != std::string::npos) return true;
+        return false;
+    }));
 }

@@ -326,6 +326,7 @@ const lv_image_dsc_t* state_icon(const char* n, int px) {
     if (s == "check") return &ic::st_check13;
     if (s == "alert") return &ic::st_alert13;
     if (s == "stop") return &ic::stop_sq14;   // 手动停止（方块）
+    if (s == "pause") return &ic::pause14;    // 程序暂停（两竖）
     if (s == "off") return &ic::st_off13;
     if (s == "drop") return &ic::st_drop13;
     return &ic::st_up13;

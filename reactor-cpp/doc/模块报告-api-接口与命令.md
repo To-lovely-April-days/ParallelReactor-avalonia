@@ -89,7 +89,7 @@
 | POST `/channels/{id}/program/copy` `{to}` | C | 必 | | `copy_program(strict)` |
 | POST `/alarms/{id}/ack` | R | | | `ack_alarm` |
 | POST `/sessions` / DELETE `/sessions/current` / POST `…/markers` | R | 必 / / 必 | | `begin_session / end_session / add_marker` |
-| POST `/control/request` `{clientName}` | R | 必 | | 接口线程：`ControlLease::request` |
+| POST `/control/request` `{clientName}` 或 `{app, host}` | R | 必 | | 接口线程：`ControlLease::request`。给了 app + host 时名字记成「app · host」，触屏顶栏显示「app 控制中 · host」 |
 | POST `/control/heartbeat` | — | | operator | 接口线程（10/s，不审计，同 C#） |
 | POST `/control/release` | R | | | 接口线程：`ControlLease::release` |
 

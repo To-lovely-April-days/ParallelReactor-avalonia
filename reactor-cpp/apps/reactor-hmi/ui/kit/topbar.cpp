@@ -126,7 +126,12 @@ void TopBar::set_status(bool connected, bool simulated) {
 
 void TopBar::set_remote(bool remote, const std::string& holder) {
     bool was = !lv_obj_has_flag(remote_, LV_OBJ_FLAG_HIDDEN);
-    std::string t = holder.empty() ? std::string(tr("PC 控制中")) : trf("PC 控制中 · %s", holder.c_str());
+    // 「Coalesce · 实验室电脑」→「Coalesce 控制中 · 实验室电脑」；只有一个名字时「PC 控制中 · 名字」
+    std::string t;
+    size_t dot = holder.find(" · ");
+    if (holder.empty()) t = tr("PC 控制中");
+    else if (dot != std::string::npos) t = trf("%s 控制中 · %s", holder.substr(0, dot).c_str(), holder.substr(dot + std::string(" · ").size()).c_str());
+    else t = trf("PC 控制中 · %s", holder.c_str());
     if (remote == was && (!remote || t == lv_label_get_text(remote_))) return;
     if (remote) {
         lv_label_set_text(remote_, t.c_str());

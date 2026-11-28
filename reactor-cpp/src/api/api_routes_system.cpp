@@ -477,6 +477,27 @@ void Routes::system(ApiService& s, net::Router& r) {
         };
         return b;
     }), local);
+
+    // —— POST /system/tls/regenerate（只在本机触屏上有）：换一张新的自签证书 ——
+    // 新建的 TCP 连接立刻用新证书；已连着的 PC 不断（它们握手时用的是旧证书）。PC 端下次连接会发现指纹变了，要重新核对。
+    r.post(P + "/system/tls/regenerate", W(net_spec("system.tlsRegenerate"), [self, event](const nlohmann::json*, const Request&, const Source&) {
+        Bound b;
+        b.exec = [self, event](Commands&, const Source&, Done d) {
+            if (!self->d_.tls) return d(OpResult::fail("TLS_DISABLED", "PC 连接没有开加密（api.json \"tls\": false）· 不需要证书"));
+            std::string old_fp = self->d_.tls->info().fingerprint_sha256, err;
+            if (!self->d_.tls->regenerate(&err)) {
+                event("err", "重新生成证书失败", err + " · 旧证书照常使用", "system.tlsRegenerateFailed");
+                return d(OpResult::fail("HARDWARE_WRITE_FAILED", "重新生成证书失败：" + err));
+            }
+            std::string new_fp = self->d_.tls->info().fingerprint_sha256;
+            auto prefix = [](const std::string& fp) { return fp.empty() ? std::string("（无）") : fp.substr(0, 11) + "…"; };
+            event("warn", "证书已重新生成",
+                  "指纹 " + prefix(old_fp) + " → " + prefix(new_fp) + " · 所有 PC 端下次连接都要重新核对指纹（已连着的不受影响）",
+                  "system.tlsRegenerated");
+            d(OpResult::done("证书已重新生成", "ok", self->tls_json()));
+        };
+        return b;
+    }), local);
 }
 
 }  // namespace reactor::api

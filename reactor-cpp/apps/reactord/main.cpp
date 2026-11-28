@@ -169,6 +169,29 @@ int main(int argc, char** argv) {
     if (!api_err.empty())
         logger.event(now(), "err", "接口", "接口配置读取失败 · 按默认（未启用）", api_err, "system", std::nullopt, std::nullopt, "system.api");
 
+    // ---- PC 连接加密（自签证书，<配置目录>/tls/）----
+    std::shared_ptr<net::TlsCertStore> tls;
+    if (api_cfg.enabled && api_cfg.tls) {
+        tls = std::make_shared<net::TlsCertStore>(args.config + "/tls");
+        std::string terr, why;
+        bool created = false;
+        if (!tls->load_or_create(&terr, &created, &why)) {
+            // 证书生成都失败（目录不可写等）：TCP 入口不开（宁可连不上也不退回明文），触屏照常
+            LOGE("reactord", "证书不能用（%s）：PC 入口不开", terr.c_str());
+            logger.event(now(), "err", "接口", "证书不能用 · PC 入口未开启", terr, "system", std::nullopt, std::nullopt, "system.tls");
+            api_cfg.enabled = false;
+            tls.reset();
+        } else {
+            auto inf = tls->info();
+            LOGI("reactord", "PC 连接已加密 · 证书指纹 SHA-256 %s", inf.fingerprint_sha256.c_str());
+            if (created)
+                logger.event(now(), "info", "接口", "已生成新的连接证书", why + " · 指纹 " + inf.fingerprint_sha256.substr(0, 11) + "…", "system",
+                             std::nullopt, std::nullopt, "system.tlsCreated");
+        }
+    } else if (api_cfg.enabled) {
+        LOGW("reactord", "PC 连接未加密（api.json \"tls\": false）");
+    }
+
     // ---- 控制核心 + 自动化 ----
     ctl::SystemClock clock;
     ctl::CoreDeps deps;
@@ -201,6 +224,7 @@ int main(int argc, char** argv) {
     apid.config_dir = args.config;
     if (!args.usb_root.empty()) apid.usb_root = args.usb_root;
     apid.request_exit = [] { g_quit = true; };
+    apid.tls = tls;
     auto api = std::make_unique<api::ApiService>(apid);
 
     core.snapshots().subscribe([](const ctl::SnapshotStore::Ptr& s) {
@@ -212,6 +236,7 @@ int main(int argc, char** argv) {
 
     net::ServerOptions sopt = net::server_options_from_config(api_cfg);
     sopt.tcp_enabled = api_cfg.enabled;
+    sopt.tls = tls;
     sopt.unix_path = args.socket;
     sopt.worker_threads = 8;
     sopt.method_mismatch_as_404 = true;   // 决定记录：方法不对 → 404「没有这个端点」，同 C#

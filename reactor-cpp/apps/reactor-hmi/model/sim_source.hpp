@@ -54,6 +54,8 @@ public:
     void channel_enable(int ch, bool on) override;
     void copy_to_all(int ch) override;
     void abort_program(int ch) override;
+    void pause_program(int ch) override;
+    void resume_program(int ch) override;
     void ack_alarm(const std::string& id) override;
     void ack_all() override;
     void set_language(const std::string& code) override;
@@ -81,6 +83,7 @@ public:
     void wifi_forget(const std::string& ssid) override;
     void wifi_disconnect() override;
     void set_ip_mode(bool dhcp) override;
+    void regenerate_tls() override;
     void comm_test(const std::string& module) override;
     void comm_reconnect(const std::string& module) override;
     void quit_app() override;
@@ -99,7 +102,13 @@ private:
     void make_trend();
     Model m_;
     std::vector<ProgramDoc> progs_;  // 0 加氢筛选-A / 1 加氢筛选-B / 2 加氢筛选-C
-    struct PlanRow { int prog = -1, step = 0; int64_t progElapsed = 0, stepElapsed = 0; };
+    // pausedMs / pausedAt：暂停累计 / 这次暂停的开始（0 = 没在暂停）；步骤计时扣掉暂停的时间
+    struct PlanRow {
+        int prog = -1, step = 0; int64_t progElapsed = 0, stepElapsed = 0;
+        int64_t pausedMs = 0, pausedAt = 0;
+        bool heatBefore = false; std::string stateBefore;
+    };
+    int64_t step_run_ms(int i) const;   // 0 起的通道下标：开机以来这一路步骤计时走过的毫秒（不含暂停）
     std::array<PlanRow, 8> plan_{};
     int calibTick_ = 0;
     double leakClock_ = 0;

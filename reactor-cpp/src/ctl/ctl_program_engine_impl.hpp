@@ -44,6 +44,7 @@ struct RegState {
     bool active = false;
     int gas = 0;
     double target = 0, band = 1;
+    double refill = 3;            // 补气阈值 %（暂停后继续时重开稳压用）
     std::optional<double> gain;
     std::optional<int64_t> blocked_since;
     std::optional<std::string> blocked_why;
@@ -96,6 +97,21 @@ struct ProgramEngine::Run {
     bool abort_stop_sent = false, abort_stop_done = false;
     std::vector<std::function<void()>> abort_stop_waiters;
     bool heat_touched_after_abort = false;
+
+    // 加热（暂停 / 继续用）：程序最近一次开的加热。StartFixedHeat / 曲线 → on；StopHeat → off
+    bool heat_on = false;
+    double heat_target = 0;       // 定值目标；曲线 = 终温
+    double heat_band = 2;
+
+    // 暂停（决定记录 2026-11-29：暂停时全部停下——停本路加热、关本路进气、释放搅拌；步骤计时冻结）
+    bool paused = false;
+    int64_t paused_at_mono = 0;
+    int64_t paused_total_ms = 0;  // 已结束的暂停累计（步骤计时用的「虚拟时钟」= 单调时钟 − 暂停累计）
+    bool restart_on_resume = false;          // 暂停时本步正在用气路 / 吹总管 / 跑曲线：继续时从头重做本步
+    std::optional<int> resume_stir_rpm;      // 暂停前程序持有搅拌的转速
+    core::ReactorState state_before_pause = core::ReactorState::Wait;
+    struct RegResume { int gas = 0; double target = 0, refill = 3; };
+    std::optional<RegResume> resume_reg;     // 暂停前在稳压：继续时按原参数重开
 };
 
 }  // namespace reactor::ctl

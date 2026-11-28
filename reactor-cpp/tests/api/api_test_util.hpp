@@ -1,4 +1,5 @@
 // tests/api 公用：在进程里起完整的后台（模拟硬件 + 控制线程 + 自动化 + 接口层 + 真 socket：127.0.0.1:随机端口 + 临时 Unix socket）。
+// TCP 入口和生产一样缺省加密（证书在 <临时目录>/tls/）；tweak 里设 cfg.tls = false 测明文。
 #pragma once
 #include <unistd.h>
 
@@ -15,6 +16,7 @@
 #include "hw/hardware.hpp"
 #include "net/crypto.hpp"
 #include "net/net_test_client.hpp"
+#include "net/tls_test_client.hpp"
 #include "net/server.hpp"
 #include "store/data_logger.hpp"
 #include "store/event_store.hpp"
@@ -54,6 +56,8 @@ struct ApiRig {
     std::unique_ptr<net::Server> srv;
     std::string sock;
     int port = 0;
+    bool tls = true;
+    std::shared_ptr<net::TlsCertStore> tls_store;
 
     explicit ApiRig(std::function<void(net::ApiConfig&)> tweak = {}) {
         char tmpl[] = "/tmp/rapi-XXXXXX";
@@ -97,6 +101,11 @@ struct ApiRig {
         cfg.tokens = {tok("pc1", "optoken", "operator"), tok("pc2", "optoken2", "operator"), tok("adm", "admtoken", "admin"),
                       tok("view", "viewtoken", "viewer"), tok("stopper", "esttoken", "viewer", true)};
         if (tweak) tweak(cfg);
+        tls = cfg.tls;
+        if (tls) {
+            tls_store = std::make_shared<net::TlsCertStore>(dir + "/tls", "test");
+            tls_store->load_or_create();
+        }
 
         api::ApiDeps apid;
         apid.cfg = cfg;
@@ -111,6 +120,7 @@ struct ApiRig {
         apid.usb_root = dir + "/media";
         apid.config_dir = dir;
         apid.nmcli = {"/nonexistent-nmcli"};
+        apid.tls = tls_store;
         api = std::make_unique<api::ApiService>(apid);
         core->start();
 
@@ -120,6 +130,7 @@ struct ApiRig {
         so.tcp_bind_retry_ms = 0;
         so.worker_threads = 8;
         so.method_mismatch_as_404 = true;
+        so.tls = tls_store;
         sock = dir + "/hmi.sock";
         so.unix_path = sock;
         srv = std::make_unique<net::Server>(so, cfg);
@@ -147,15 +158,24 @@ struct ApiRig {
     // TCP（token 为空 = 不带令牌）或 Unix（unix = true）
     Resp call(bool unix, const std::string& method, const std::string& path, const std::string& token = "", const std::string& body = "",
               const std::string& extra = "") {
-        int fd = unix ? nettest::connect_unix(sock) : nettest::connect_tcp(port);
         Resp r;
-        if (fd < 0) return r;
         std::string hdr = extra;
         if (!body.empty()) hdr += "Content-Type: application/json\r\n";
-        nettest::send_all(fd, nettest::build(method, path, token, body, hdr));
-        std::string buf;
-        auto h = nettest::read_response(fd, buf, 15000, method == "HEAD");
-        ::close(fd);
+        nettest::HttpResp h;
+        if (!unix && tls) {   // PC 入口：HTTPS
+            nettest::TlsClient c;
+            if (!c.connect(port)) return r;
+            c.send_all(nettest::build(method, path, token, body, hdr));
+            std::string buf;
+            h = nettest::read_response_io(c.reader(), buf, 15000, method == "HEAD");
+        } else {
+            int fd = unix ? nettest::connect_unix(sock) : nettest::connect_tcp(port);
+            if (fd < 0) return r;
+            nettest::send_all(fd, nettest::build(method, path, token, body, hdr));
+            std::string buf;
+            h = nettest::read_response(fd, buf, 15000, method == "HEAD");
+            ::close(fd);
+        }
         r.status = h.status;
         r.raw = h.body;
         r.headers = h.headers;

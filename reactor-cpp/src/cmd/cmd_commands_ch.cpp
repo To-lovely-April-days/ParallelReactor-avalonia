@@ -605,6 +605,19 @@ OpResult Commands::abort_program(const Source& src, int id) {
     return programs().abort(id);
 }
 
+// 暂停是「停下来」：同中止按停止类放行（远程没有控制权也能暂停，同中止 / 全部停止）；继续会重新加热、进气，按控制类
+OpResult Commands::pause_program(const Source& src, int id) {
+    if (auto d = admit(src, ActionClass::Stop)) return *d;
+    if (auto nf = channel_or(id)) return *nf;
+    return programs().pause(id, src.label());
+}
+
+OpResult Commands::resume_program(const Source& src, int id) {
+    if (auto d = admit(src, ActionClass::Control)) return *d;
+    if (auto nf = channel_or(id)) return *nf;
+    return programs().resume(id, src.label());
+}
+
 OpResult Commands::copy_program(const Source& src, int from, const std::vector<int>& to) {
     if (auto d = admit(src, ActionClass::Control)) return *d;
     if (auto nf = channel_or(from)) return *nf;

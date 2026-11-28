@@ -394,6 +394,8 @@ void integ_backend(const std::string& path) {
     A.lib_delete(true, "U1", 3);
     A.wifi_forget("Lab 2.4G");
     A.abort_program(4);
+    A.pause_program(4);
+    A.resume_program(4);
     A.copy_to_all(1);
     model::ExportReq ex;
     ex.day = "20261125";
@@ -433,6 +435,9 @@ void integ_backend(const std::string& path) {
     check(find_req(lg, "DELETE", "/api/v1/library/templates/U1?revision=3") != nullptr, "删模板 → DELETE …?revision=3");
     check(find_req(lg, "DELETE", "/api/v1/network/wifi/saved/Lab%202.4G") != nullptr, "忘记 WiFi → SSID 做了 URL 编码");
     check(find_req(lg, "DELETE", "/api/v1/channels/4/program/run") != nullptr, "中止程序 → DELETE …/program/run");
+    auto* rp = find_req(lg, "POST", "/api/v1/channels/4/program/pause");
+    check(rp && rp->header("Idempotency-Key"), "暂停程序 → POST …/program/pause + Idempotency-Key");
+    check(find_req(lg, "POST", "/api/v1/channels/4/program/resume") != nullptr, "继续程序 → POST …/program/resume");
     auto* r4 = find_req(lg, "POST", "/api/v1/channels/copy-config");
     check(r4 && json::parse(r4->body)["from"] == 1 && json::parse(r4->body)["to"].size() == 5, "复制到其余启用的路（跳过停用 / 程序占用）");
     auto* r5 = find_req(lg, "POST", "/api/v1/export");

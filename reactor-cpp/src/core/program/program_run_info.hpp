@@ -28,6 +28,10 @@ struct ProgramRunInfo {
     int64_t started_at_wall_ms;
     std::optional<int> waiting_on;                   // 等待气路时当前占用者的通道（泄漏测试占用时 nullopt）
     std::optional<std::string> end_reason;           // 反应步骤写入的结束原因；没有反应步骤为 nullopt
+    // 暂停（2026-11-29 新增）：暂停期间阶段仍是 running（is_active 不变，算「有动作」），快照 state 报 "paused"
+    bool paused = false;
+    std::optional<int64_t> paused_at_wall_ms;        // 最近一次暂停的时刻（继续后清空）
+    std::string paused_by;                           // 暂停来源（触屏 / 远程（…））
 
     bool waiting_gas() const { return phase == ProgramRunPhase::WaitingGas; }
     bool is_active() const;

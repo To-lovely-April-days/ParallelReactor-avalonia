@@ -187,7 +187,17 @@ struct Conn {
     bool ws_close_sent = false, ws_close_received = false, ws_finish_after_flush = false;
     int64_t ws_close_deadline = 0, ws_frame_start = 0, ws_last_keepalive = 0;
     uint16_t ws_close_code = ws::kCloseAbnormal;
+    // TLS（只有 TCP 且开了加密才有）：密文进出走 tls，rbuf / wbuf 里永远是明文
+    std::unique_ptr<TlsStream> tls;
+    int64_t accepted_at = 0;
+    bool tls_reject = false;   // 对加密端口说明文 HTTP：回一段明文提示后断开
+    bool tls_bye = false;      // 已做过最后一次发送（close_notify），不再重复
 };
+
+// 还有没发出去的数据（明文 wbuf，或 TLS 已加密未发出的密文）
+inline bool out_pending(const Conn& c) {
+    return c.wpos < c.wbuf.size() || (c.tls && c.tls->out_pending());
+}
 
 struct ConnAccess {
     static void set_reason(WsSession& s, const std::string& r) {
@@ -230,6 +240,7 @@ struct Core : std::enable_shared_from_this<Core> {
     mutable std::mutex sess_mu;
     std::unordered_map<uint64_t, WsSessionPtr> sessions;
     KeyedThrottle ws_audit_throttle{10 * 1000};
+    KeyedThrottle tls_audit_throttle{10 * 60 * 1000};
     std::atomic<int64_t> ws_audit_suppressed{0};
 
     Core(ServerOptions o, const ApiConfig& cfg)
@@ -305,6 +316,12 @@ struct Core : std::enable_shared_from_this<Core> {
     void install_response(uint64_t id, uint64_t gen, bool head, Response r);
     void install_stream(uint64_t id, uint64_t gen, bool head, Response r, const std::shared_ptr<StreamState>& st);
     void pump_output(Conn& c, int64_t now);
+    void pump_output_tls(Conn& c, int64_t now);
+    bool tls_pump_in(Conn& c, int64_t now);
+    void tls_drain(Conn& c, int64_t now);
+    bool tls_wants_read(const Conn& c) const;
+    void tls_reject_plain(Conn& c, int64_t now);
+    void final_send(Conn& c, const std::string& plain);
     bool refill(Conn& c, int64_t now);
     bool ws_refill(Conn& c, int64_t now);
     void after_flush(Conn& c, int64_t now);
@@ -494,6 +511,16 @@ void Core::accept_on(int lfd, bool unix_sock, int64_t now) {
         c->fd = fd;
         c->id = next_id++;
         c->last_activity = now;
+        c->accepted_at = now;
+        if (!unix_sock && opt.tls) {
+            std::string terr;
+            c->tls = TlsStream::create(opt.tls->server_config(), &terr);
+            if (!c->tls) {   // 证书没装上：宁可拒绝也不退回明文
+                ::close(fd);
+                if (tls_audit_throttle.allow("init", now)) audit("err", "加密连接建立失败 · 已断开", terr);
+                continue;
+            }
+        }
         if (unix_sock) {
             c->peer.transport = Transport::Unix;
             c->peer.ip_text = "local";
@@ -531,10 +558,11 @@ void Core::on_readable(Conn& c, int64_t now) {
     char buf[16384];
     size_t cap = opt.limits.max_header_bytes + opt.limits.max_body_bytes + 65536;
     for (int i = 0; i < 32; ++i) {
-        if (c.st != CState::WebSocket && c.rbuf.size() >= cap) break;
+        if (c.tls ? c.tls->buffered() >= cap : (c.st != CState::WebSocket && c.rbuf.size() >= cap)) break;
         ssize_t n = ::recv(c.fd, buf, sizeof buf, 0);
         if (n > 0) {
-            c.rbuf.append(buf, static_cast<size_t>(n));
+            if (c.tls) c.tls->feed(buf, static_cast<size_t>(n));
+            else c.rbuf.append(buf, static_cast<size_t>(n));
             c.last_activity = now;
             continue;
         }
@@ -549,8 +577,73 @@ void Core::on_readable(Conn& c, int64_t now) {
         c.dead = true;
         return;
     }
+    if (c.tls && !tls_pump_in(c, now)) return;
     if (c.st == CState::Reading) try_parse(c, now);
     else if (c.st == CState::WebSocket) ws_process_input(c);
+}
+
+// —— TLS：握手 + 把能解密的都解密进 rbuf。返回 false = 还不能处理明文（握手中 / 已断开）——
+bool Core::tls_pump_in(Conn& c, int64_t now) {
+    TlsStream& t = *c.tls;
+    if (c.tls_reject) return false;
+    if (!t.handshake_done()) {
+        // 第一个字节是大写字母 = 明文 HTTP（老 PC 端 / 浏览器写了 http://）：回一句明文提示再断开，别让对方干等
+        const std::string& in = t.peek_input();
+        if (!in.empty() && in[0] >= 'A' && in[0] <= 'Z') {
+            tls_reject_plain(c, now);
+            return false;
+        }
+        TlsStream::Status st = t.handshake();
+        if (st == TlsStream::Status::WantMore) return false;
+        if (st != TlsStream::Status::Ok) {
+            c.dead = true;   // 握手失败：PC 端拒绝了证书（指纹对不上）也是这里，不逐条记
+            return false;
+        }
+    }
+    size_t cap = opt.limits.max_header_bytes + opt.limits.max_body_bytes + 65536;
+    while (c.st == CState::WebSocket || c.rbuf.size() < cap) {
+        TlsStream::Status st = t.read(c.rbuf, 16384);
+        if (st == TlsStream::Status::Ok) {
+            c.last_activity = now;
+            continue;
+        }
+        if (st == TlsStream::Status::WantMore) break;
+        if (c.ws)
+            ConnAccess::set_reason(*c.ws, st == TlsStream::Status::Closed ? (c.ws_close_received ? "客户端关闭" : "连接中断")
+                                                                          : "连接中断（加密数据出错）");
+        c.dead = true;
+        return false;
+    }
+    return true;
+}
+
+bool Core::tls_wants_read(const Conn& c) const {
+    size_t rcap = opt.limits.max_header_bytes + opt.limits.max_body_bytes + 65536;
+    return c.st == CState::WebSocket ? !c.ws_close_received : c.rbuf.size() < rcap;
+}
+
+// poll 没报可读，但 mbedTLS / 密文缓冲里还有数据（上次因为 rbuf 满了没解完）：接着解
+void Core::tls_drain(Conn& c, int64_t now) {
+    if (c.dead || !c.tls || !c.tls->pending() || !tls_wants_read(c)) return;
+    if (!tls_pump_in(c, now)) return;
+    if (c.st == CState::Reading) try_parse(c, now);
+    else if (c.st == CState::WebSocket) ws_process_input(c);
+}
+
+void Core::tls_reject_plain(Conn& c, int64_t now) {
+    static const std::string body =
+        "{\"ok\":false,\"error\":{\"code\":\"TLS_REQUIRED\",\"message\":\"此端口已加密，请用 https:// 或 wss:// 连接"
+        "（老版本 PC 端请在设备 api.json 里设 \\\"tls\\\": false）\"}}";
+    std::string resp = "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json; charset=utf-8\r\nConnection: close\r\n"
+                       "Content-Length: " + std::to_string(body.size()) + "\r\n\r\n" + body;
+    c.tls->out().assign(resp);   // 绕过 TLS 直接发明文
+    c.tls->out_pos = 0;
+    c.tls_reject = true;
+    c.last_write_progress = now;
+    if (tls_audit_throttle.allow("plain:" + c.peer.ip_text, now))
+        audit("warn", "有客户端用明文 HTTP 连加密端口 · 已拒绝",
+              c.peer.ip_text + " · 新版 PC 端请用 https:// / wss://；老版本 PC 端要在 api.json 里设 \"tls\": false"
+                               "（同一地址每 10 分钟最多记一条）");
 }
 
 void Core::try_parse(Conn& c, int64_t now) {
@@ -777,6 +870,10 @@ void Core::install_stream(uint64_t id, uint64_t gen, bool head, Response r, cons
 
 void Core::pump_output(Conn& c, int64_t now) {
     if (c.dead || c.fd < 0) return;
+    if (c.tls) {
+        pump_output_tls(c, now);
+        return;
+    }
     while (true) {
         if (c.wpos < c.wbuf.size()) {
             ssize_t n = ::send(c.fd, c.wbuf.data() + c.wpos, c.wbuf.size() - c.wpos, kSendFlags);
@@ -790,6 +887,50 @@ void Core::pump_output(Conn& c, int64_t now) {
             if (c.ws) ConnAccess::set_reason(*c.ws, "发送失败（连接中断）");
             c.dead = true;
             return;
+        }
+        c.wbuf.clear();
+        c.wpos = 0;
+        c.ws_frame_start = 0;
+        if (c.dead || !refill(c, now)) break;
+    }
+    if (!c.dead) after_flush(c, now);
+}
+
+// TLS 版：先把密文发干净，再加密下一条记录（每次最多 16 KB 明文），明文也发完了才 refill
+void Core::pump_output_tls(Conn& c, int64_t now) {
+    TlsStream& t = *c.tls;
+    while (true) {
+        std::string& o = t.out();
+        while (t.out_pos < o.size()) {
+            ssize_t n = ::send(c.fd, o.data() + t.out_pos, o.size() - t.out_pos, kSendFlags);
+            if (n > 0) {
+                t.out_pos += static_cast<size_t>(n);
+                c.last_write_progress = now;
+                continue;
+            }
+            if (n < 0 && errno == EINTR) continue;
+            if (n < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) return;
+            if (c.ws) ConnAccess::set_reason(*c.ws, "发送失败（连接中断）");
+            c.dead = true;
+            return;
+        }
+        o.clear();
+        t.out_pos = 0;
+        if (c.tls_reject) {
+            c.dead = true;
+            return;
+        }
+        if (!t.handshake_done()) return;
+        if (c.wpos < c.wbuf.size()) {
+            long k = t.write(c.wbuf.data() + c.wpos, c.wbuf.size() - c.wpos);
+            if (k < 0) {
+                if (c.ws) ConnAccess::set_reason(*c.ws, "加密失败");
+                c.dead = true;
+                return;
+            }
+            if (k == 0) return;
+            c.wpos += static_cast<size_t>(k);
+            continue;
         }
         c.wbuf.clear();
         c.wpos = 0;
@@ -971,16 +1112,17 @@ void Core::timers(Conn& c, int64_t now) {
     if (c.dead) return;
     switch (c.st) {
         case CState::Reading:
-            if (c.req_start && now - c.req_start > opt.header_timeout_ms) c.dead = true;
-            else if (!c.req_start && c.wbuf.empty() && now - c.last_activity > opt.idle_timeout_ms) c.dead = true;
+            if (c.tls && !c.tls->handshake_done() && now - c.accepted_at > opt.tls_handshake_timeout_ms) c.dead = true;
+            else if (c.req_start && now - c.req_start > opt.header_timeout_ms) c.dead = true;
+            else if (!c.req_start && !out_pending(c) && now - c.last_activity > opt.idle_timeout_ms) c.dead = true;
             break;
         case CState::Writing:
-            if (c.wpos < c.wbuf.size() && now - c.last_write_progress > opt.stream_stall_timeout_ms) c.dead = true;
+            if (out_pending(c) && now - c.last_write_progress > opt.stream_stall_timeout_ms) c.dead = true;
             break;
         case CState::Handling:
             break;
         case CState::WebSocket:
-            if (c.ws_frame_start && c.wpos < c.wbuf.size() && now - c.ws_frame_start > opt.ws_send_timeout_ms) {
+            if (c.ws_frame_start && out_pending(c) && now - c.ws_frame_start > opt.ws_send_timeout_ms) {
                 // 单条消息 10 s 没发完：慢客户端（C#: WsHub.Conn.SendAsync 超时 → 1008）
                 ConnAccess::set_reason(*c.ws, "发送超时 " + std::to_string(opt.ws_send_timeout_ms / 1000) + " s（慢客户端）");
                 c.ws_close_code = ws::kClosePolicyViolation;
@@ -991,7 +1133,7 @@ void Core::timers(Conn& c, int64_t now) {
                 c.dead = true;
                 break;
             }
-            if (opt.ws_keepalive_ms > 0 && !c.ws_close_sent && c.wbuf.empty() && c.ctrl_out.empty() &&
+            if (opt.ws_keepalive_ms > 0 && !c.ws_close_sent && !out_pending(c) && c.wbuf.empty() && c.ctrl_out.empty() &&
                 now - c.ws_last_keepalive >= opt.ws_keepalive_ms) {
                 c.ctrl_out.push_back(ws::encode_frame(ws::kPong, std::string()));   // 单向保活（同 Kestrel KeepAliveInterval）
                 c.ws_last_keepalive = now;
@@ -1011,7 +1153,34 @@ void Core::ws_audit(const std::string& title, const std::string& key, std::strin
     audit("info", title, detail);
 }
 
+// 关之前最后发一次（不等、不重试）：明文直接 send；TLS 先加密再发，末尾带 close_notify
+void Core::final_send(Conn& c, const std::string& plain) {
+    if (c.fd < 0) return;
+    if (!c.tls) {
+        if (!plain.empty()) {
+            ssize_t n = ::send(c.fd, plain.data(), plain.size(), kSendFlags);
+            (void)n;
+        }
+        return;
+    }
+    if (c.tls_bye) return;
+    c.tls_bye = true;
+    std::string& o = c.tls->out();
+    // 握手没完成 / 明文拒绝：只把已有的（警报 / 明文提示）发出去；上一条记录发一半时也不能插新记录
+    if (c.tls->handshake_done() && !c.tls_reject && c.tls->out_pos >= o.size()) {
+        o.clear();
+        c.tls->out_pos = 0;
+        if (!plain.empty()) c.tls->write(plain.data(), plain.size());
+        c.tls->close_notify();
+    }
+    if (c.tls->out_pos < o.size()) {
+        ssize_t n = ::send(c.fd, o.data() + c.tls->out_pos, o.size() - c.tls->out_pos, kSendFlags);
+        (void)n;
+    }
+}
+
 void Core::close_conn(Conn& c) {
+    if (c.tls && c.fd >= 0) final_send(c, std::string());   // 干净收尾：close_notify
     if (c.fd >= 0) {
         ::close(c.fd);
         c.fd = -1;
@@ -1070,7 +1239,7 @@ void Core::io_loop() {
             std::string err;
             if (open_tcp(&err)) {
                 next_bind_retry = 0;
-                audit("info", "接口已启动", "http://" + opt.tcp_bind + ":" + std::to_string(tcp_port.load()) + opt.gate.api_prefix +
+                audit("info", "接口已启动", std::string(opt.tls ? "https://" : "http://") + opt.tcp_bind + ":" + std::to_string(tcp_port.load()) + opt.gate.api_prefix +
                                                 " · 此前绑定失败 " + std::to_string(bind_failures) + " 次");
             } else {
                 ++bind_failures;
@@ -1089,16 +1258,21 @@ void Core::io_loop() {
         if (unix_fd >= 0 && accept_ok) { unix_idx = static_cast<int>(pfds.size()); pfds.push_back({unix_fd, POLLIN, 0}); }
         size_t conn_base = pfds.size();
         size_t rcap = opt.limits.max_header_bytes + opt.limits.max_body_bytes + 65536;
+        bool tls_ready = false;
         for (auto& kv : conns) {
             Conn& c = *kv.second;
             short ev = 0;
             bool want_read = c.st == CState::WebSocket ? !c.ws_close_received : c.rbuf.size() < rcap;
+            if (c.tls) {
+                if (want_read && c.tls->pending()) tls_ready = true;   // 不用等 poll：缓冲里就有能解密的数据
+                want_read = !c.tls_reject && (c.st == CState::WebSocket ? !c.ws_close_received : c.tls->buffered() < rcap);
+            }
             if (want_read) ev |= POLLIN;
-            if (c.wpos < c.wbuf.size()) ev |= POLLOUT;
+            if (out_pending(c)) ev |= POLLOUT;
             pfds.push_back({c.fd, ev, 0});
             ids.push_back(kv.first);
         }
-        int rc = ::poll(pfds.data(), static_cast<nfds_t>(pfds.size()), 100);
+        int rc = ::poll(pfds.data(), static_cast<nfds_t>(pfds.size()), tls_ready ? 0 : 100);
         if (rc < 0 && errno != EINTR) break;
         now = mono_ms();
         if (pfds[0].revents & POLLIN) {
@@ -1129,6 +1303,8 @@ void Core::io_loop() {
                 else if (re & (POLLHUP | POLLERR)) c.dead = true;
             }
         }
+        if (opt.tls)
+            for (auto& kv : conns) tls_drain(*kv.second, now);
         dead.clear();
         for (auto& kv : conns) {
             Conn& c = *kv.second;
@@ -1147,9 +1323,7 @@ void Core::io_loop() {
     for (auto& kv : conns) {
         Conn& c = *kv.second;
         if (c.ws && !c.ws_close_sent && c.fd >= 0) {
-            std::string f = ws::encode_close(ws::kCloseGoingAway, "server stopping");
-            ssize_t n = ::send(c.fd, f.data(), f.size(), kSendFlags);
-            (void)n;
+            final_send(c, ws::encode_close(ws::kCloseGoingAway, "server stopping"));
             ConnAccess::set_reason(*c.ws, "服务端停止");
             c.ws_close_code = ws::kCloseGoingAway;
         }
@@ -1413,7 +1587,7 @@ bool Server::start(std::string* error) {
     k.io = std::thread([&k] { k.io_loop(); });
     if (k.tcp_fd >= 0 || k.unix_fd >= 0) {
         std::string where;
-        if (k.tcp_fd >= 0) where += "http://" + k.opt.tcp_bind + ":" + std::to_string(k.tcp_port.load()) + k.opt.gate.api_prefix;
+        if (k.tcp_fd >= 0) where += std::string(k.opt.tls ? "https://" : "http://") + k.opt.tcp_bind + ":" + std::to_string(k.tcp_port.load()) + k.opt.gate.api_prefix;
         if (k.unix_fd >= 0) where += (where.empty() ? "" : " · ") + std::string("unix:") + k.opt.unix_path;
         k.audit("info", "接口已启动",
                 where + " · 白名单 " + (k.gate.cidr_count() == 0 ? std::string("仅本机") : std::to_string(k.gate.cidr_count()) + " 段") +

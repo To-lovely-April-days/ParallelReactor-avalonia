@@ -165,6 +165,16 @@ struct NetworkExt {
     bool scanning = false;
 };
 
+// ============================================================ PC 连接加密（GET /system/tls）
+// PC 第一次连接时会显示同一串指纹，操作员对着设置页核对；重新生成证书后所有 PC 都要重新核对
+struct TlsExt {
+    bool known = false;          // 取到过（老后端没有这个端点 → 不显示这一块）
+    bool tls = false;            // PC 入口是否加密
+    std::string fingerprint;     // "AB:CD:…"（SHA-256，32 组）
+    std::string subject;
+    OptT createdAt, notAfter;
+};
+
 // ============================================================ 数据存储（GET /storage）
 struct StorageExt {
     int64_t diskTotal = 0, diskFree = 0, systemBytes = 0, dataBytes = 0;
@@ -199,6 +209,7 @@ struct PagesExt {
     IoMapExt io;
     CommExt comm;
     NetworkExt net;
+    TlsExt tls;
     StorageExt storage;
     AboutExt about;
     UsersExt users;

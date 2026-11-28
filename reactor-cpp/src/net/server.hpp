@@ -20,6 +20,7 @@
 #include "net/http.hpp"
 #include "net/router.hpp"
 #include "net/security.hpp"
+#include "net/tls.hpp"
 
 namespace reactor::net {
 
@@ -36,6 +37,10 @@ struct ServerOptions {
     int tcp_port = 8080;                // 0 = 系统分配（tcp_port() 取实际值）
     int64_t tcp_bind_retry_ms = 10000;  // 绑定失败后的重试间隔（C#: ApiHost.BindRetry）；0 = 不重试，start() 直接失败
     int max_connections_tcp = 64;       // C#: Kestrel MaxConcurrentConnections
+    // 加密：非空 = TCP 入口走 TLS（HTTPS / WSS），每条新连接取 tls->server_config() 的当前证书（重新生成后新连接立刻用新的）。
+    // 空 = 明文（api.json "tls": false 给老 PC 端用）。Unix 入口永远明文。
+    std::shared_ptr<TlsCertStore> tls;
+    int64_t tls_handshake_timeout_ms = 10000;   // 连上后这么久握手还没完成 → 断开
 
     // —— Unix socket 入口（本机触屏）——
     std::string unix_path;              // 空 = 不开；部署 /run/reactord/hmi.sock

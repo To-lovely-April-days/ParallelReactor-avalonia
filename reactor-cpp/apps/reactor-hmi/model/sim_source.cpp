@@ -201,7 +201,7 @@ void SimSource::rebuild_plans() {
         // 已做完的步：按表里的时长等比压进「程序已运行 - 当前步已运行」
         int64_t pastTotal = 0;
         for (int k = 0; k < pl.step; ++k) pastTotal += steps[static_cast<size_t>(k)].minutes * 60;
-        int64_t curStepStart = now_ - (pl.stepElapsed + (now_ - base_) / 1000) * 1000;
+        int64_t curStepStart = now_ - (pl.stepElapsed + step_run_ms(i) / 1000) * 1000;
         double scale = pastTotal > 0 ? double(curStepStart - t) / 1000.0 / double(pastTotal) : 1.0;
         for (int k = 0; k < nsteps; ++k) {
             const SD& sk = steps[static_cast<size_t>(k)];
@@ -255,7 +255,7 @@ void SimSource::rebuild_plans() {
         if (!pe.tempActual.empty() && ch.tempC) pe.tempActual.back().v = *ch.tempC;
         // 进度
         pg.elapsedSec = pl.progElapsed + (now_ - base_) / 1000;
-        int64_t stepEl = pl.stepElapsed + (now_ - base_) / 1000;
+        int64_t stepEl = pl.stepElapsed + step_run_ms(i) / 1000;  // 暂停的时间不算
         const SD& st = steps[static_cast<size_t>(pl.step)];
         pg.stepFraction = waiting ? 0 : std::min(1.0, double(stepEl) / (st.minutes * 60.0));
         int64_t rem = std::max<int64_t>(0, st.minutes * 60 - stepEl);
@@ -383,9 +383,44 @@ void SimSource::copy_to_all(int ch) {
 }
 void SimSource::abort_program(int ch) {
     ChannelSnap& x = c(ch);
-    if (x.program) { x.program->running = false; x.program->state = "aborted"; }
+    if (x.program) { x.program->running = false; x.program->state = "aborted"; x.program->paused = false; x.program->pausedAt.reset(); }
     x.programOwned = false; x.state = "ready"; x.valveOpen = false;
     m_.chanset[static_cast<size_t>(ch - 1)].heatOn = false;
+    plan_[static_cast<size_t>(ch - 1)].pausedAt = 0;
+}
+int64_t SimSource::step_run_ms(int i) const {
+    const PlanRow& pl = plan_[static_cast<size_t>(i)];
+    return (now_ - base_) - pl.pausedMs - (pl.pausedAt ? now_ - pl.pausedAt : 0);
+}
+// 暂停（同后台）：加热停、进气关、状态显示等待中；步骤计时冻结。模拟里搅拌是全机共用的，不动
+void SimSource::pause_program(int ch) {
+    ChannelSnap& x = c(ch);
+    PlanRow& pl = plan_[static_cast<size_t>(ch - 1)];
+    if (!x.program || !x.program->running || x.program->paused) return;
+    pl.pausedAt = now_;
+    pl.heatBefore = m_.chanset[static_cast<size_t>(ch - 1)].heatOn;
+    pl.stateBefore = x.state;
+    m_.chanset[static_cast<size_t>(ch - 1)].heatOn = false;
+    x.valveOpen = false;
+    x.program->paused = true;
+    x.program->pausedAt = now_;
+    x.program->state = "paused";
+    x.program->waitingGas = false;
+    if (x.state != "alarm") x.state = "wait";
+    rebuild_plans();
+}
+void SimSource::resume_program(int ch) {
+    ChannelSnap& x = c(ch);
+    PlanRow& pl = plan_[static_cast<size_t>(ch - 1)];
+    if (!x.program || !x.program->paused) return;
+    if (pl.pausedAt) pl.pausedMs += now_ - pl.pausedAt;
+    pl.pausedAt = 0;
+    m_.chanset[static_cast<size_t>(ch - 1)].heatOn = pl.heatBefore;
+    if (!pl.stateBefore.empty() && x.state == "wait") x.state = pl.stateBefore;
+    x.program->paused = false;
+    x.program->pausedAt.reset();
+    x.program->state = "running";
+    rebuild_plans();
 }
 void SimSource::ack_alarm(const std::string& id) {
     for (auto& a : m_.alarms)

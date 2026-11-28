@@ -26,6 +26,16 @@ program_run_set::Runs infos_of(const std::map<int, std::shared_ptr<ProgramEngine
     return m;
 }
 
+// 暂停中（收尾阶段不算）：快照 state 报 "paused"（新值，2026-11-29），其余字段照旧
+bool paused_now(const ProgramRunInfo& ri) { return ri.paused && ri.is_active() && ri.phase != ProgramRunPhase::Finishing; }
+const char* state_name(const ProgramRunInfo& ri) { return paused_now(ri) ? "paused" : program_run_set::phase_name(ri.phase); }
+void put_pause(ojson& j, const ProgramRunInfo& ri) {
+    bool p = paused_now(ri);
+    j["paused"] = p;
+    j["pausedAt"] = p && ri.paused_at_wall_ms ? ojson(store::fmt_utc_json(*ri.paused_at_wall_ms)) : ojson(nullptr);
+    j["pausedBy"] = p ? ojson(ri.paused_by) : ojson(nullptr);
+}
+
 }  // namespace
 
 // 剩余时间估算（新字段）：当前步骤估算时长 − 已用时间（不小于 0）+ 之后各步骤的估算（StepFields 的 DurationEstimate）
@@ -36,7 +46,7 @@ ojson ProgramEngine::remaining_json(const Run& r) const {
     DurationEstimate left;
     if (i < n) {
         auto cur = step_duration::of(r.steps[static_cast<size_t>(i)]);
-        double el = static_cast<double>(core_.clock().mono_ms() - r.step_started_mono) / 60000.0;
+        double el = static_cast<double>(vnow(r) - r.step_started_mono) / 60000.0;  // 暂停的时间不算
         left.minutes = std::max(0.0, cur.minutes - (r.current_index >= 0 ? el : 0.0));
         left.approx = cur.approx;
         left.upper_bound = cur.upper_bound;
@@ -57,7 +67,7 @@ ojson ProgramEngine::channel_program_json(const Run& r) const {
     j["running"] = ri.is_active();
     j["stepIndex"] = ri.index;
     j["stepCount"] = ri.step_count;
-    j["state"] = program_run_set::phase_name(ri.phase);
+    j["state"] = state_name(ri);
     j["message"] = ri.message;
     j["startedBy"] = ri.started_by;
     j["startedAt"] = store::fmt_utc_json(ri.started_at_wall_ms);
@@ -82,8 +92,9 @@ ojson ProgramEngine::channel_program_json(const Run& r) const {
     j["endReason"] = ri.end_reason ? ojson(*ri.end_reason) : ojson(nullptr);
     // 新增（触屏用，PC 忽略）：当前步实际已进行多久。方案里的计划起点和实际可能差很多（排队等气路、升温慢），
     // 触屏「已反应 x min」原来按计划起点算，反应提前开始时一直是 0
-    j["stepElapsedMin"] = ri.is_active() ? ojson(round1(static_cast<double>(core_.clock().mono_ms() - r.step_started_mono) / 60000.0))
+    j["stepElapsedMin"] = ri.is_active() ? ojson(round1(static_cast<double>(vnow(r) - r.step_started_mono) / 60000.0))
                                          : ojson(nullptr);
+    put_pause(j, ri);  // 新增（2026-11-29）：paused / pausedAt / pausedBy
     return j;
 }
 
@@ -104,7 +115,7 @@ ojson ProgramEngine::program_run(int ch) const {
     // C# ProgramRunSnap（字段与顺序不改）
     j["channel"] = ch;
     j["running"] = ri.is_active();
-    j["state"] = program_run_set::phase_name(ri.phase);
+    j["state"] = state_name(ri);
     j["stepIndex"] = ri.index;
     j["stepCount"] = ri.step_count;
     j["phase"] = ri.phase_text;
@@ -122,6 +133,7 @@ ojson ProgramEngine::program_run(int ch) const {
         states.push_back(ojson{{"index", static_cast<int>(k)}, {"state", r->recs[k].state}, {"message", r->recs[k].message}});
     j["stepStates"] = states;
     j["remaining"] = remaining_json(*r);
+    put_pause(j, ri);
     return j;
 }
 
@@ -169,7 +181,7 @@ ojson ProgramEngine::programs() const {
 std::string ProgramEngine::telemetry_step(int ch) const {
     auto r = active(ch);
     if (!r) return "";
-    return std::to_string(r->info.index + 1) + "/" + program_run_set::phase_name(r->info.phase);
+    return std::to_string(r->info.index + 1) + "/" + state_name(r->info);
 }
 
 }  // namespace reactor::ctl

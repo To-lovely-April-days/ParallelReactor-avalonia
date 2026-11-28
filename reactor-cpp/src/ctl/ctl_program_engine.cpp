@@ -323,6 +323,149 @@ OpResult ProgramEngine::abort(int ch) {
     return res;
 }
 
+// ============================ 暂停 / 继续 ============================
+
+int64_t ProgramEngine::vnow(const Run& r) const {
+    int64_t now = core_.clock().mono_ms();
+    return now - r.paused_total_ms - (r.paused ? now - r.paused_at_mono : 0);
+}
+
+bool ProgramEngine::is_paused(int ch) const {
+    auto r = valid_ch(ch) ? active(ch) : nullptr;
+    return r && r->paused;
+}
+
+OpResult ProgramEngine::pause(int ch, const std::string& source) {
+    if (!valid_ch(ch)) return channel_not_found(ch);
+    auto r = active(ch);
+    if (!r || r->cancelled || r->finishing)
+        return OpResult::fail(core::op_codes::kChannelStateInvalid, core::chan_name(ch) + " 没有正在执行的程序 · 无法暂停", "warn");
+    if (r->paused) return OpResult::none();
+    int rv = ch;
+    auto& c = core_.channel_mut(rv);
+    int i = r->current_index;
+    r->paused = true;
+    r->paused_at_mono = core_.clock().mono_ms();
+    ++r->gen;  // 之前排的定时器、取气路 / 吹总管 / 曲线的回调全部作废
+    if (r->timer) core_.loop().cancel(r->timer);
+    r->timer = 0;
+
+    // 1) 气路：本步正在用气路 / 排队等气路 / 吹总管 / 跑曲线 → 这一段安全中止，继续时从头重做本步
+    bool gas = r->runner && r->runner->gas_held();
+    bool waiting = r->runner && r->runner->waiting() != Await::None;
+    r->restart_on_resume = !r->runner || gas || waiting || r->acq.active || r->curve.has_value();
+    acquire_end(r, r->acq);
+    if (r->restart_on_resume) {
+        r->ops->cancel();
+        r->runner.reset();
+    }
+    if (gas) {
+        // 同中止收尾（finish）：等在途的写阀回来 → 全关（含排空）→ 只释放自己这段租约
+        int64_t gen = r->gas_gen;
+        r->ops->when_idle([this, gen, rv] {
+            const auto& lease = core_.gas_lease();
+            if (lease.owner() != core::GasOwner::Program || lease.owner_rv() != std::optional<int>(rv) || lease.generation() != gen) return;
+            core_.clear_valve_hold();
+            core_.close_all_valves([this, gen](bool, const std::string&) { core_.end_gas(core::GasOwner::Program, gen); });
+        });
+    } else if (core_.valves().sv_open(rv)) {
+        core_.close_sv(rv);  // 关本路进气
+    }
+    // 2) 稳压：停（暂停期间不补气），记下参数，继续时重开
+    r->resume_reg.reset();
+    if (r->reg.active) r->resume_reg = Run::RegResume{r->reg.gas, r->reg.target, r->reg.refill};
+    stop_regulation(r);
+    // 3) 加热：停曲线 / 逼近 + 本路 At=4（同手动停止）
+    r->curve.reset();
+    if (r->curve_timer) core_.loop().cancel(r->curve_timer);
+    r->curve_timer = 0;
+    stop_heat_for(r, "", nullptr);
+    // 4) 搅拌：释放程序的持有（别的程序还在用就保留；操作员手动开的搅拌程序本来就不持有，不碰）
+    r->resume_stir_rpm.reset();
+    if (stir_.holds(rv)) {
+        auto it = stir_rpm_.find(rv);
+        r->resume_stir_rpm = it != stir_rpm_.end() ? it->second : core_.stir().rpm();
+        release_stir(rv);
+    }
+    // 5) 状态：干活中的通道显示「等待中」（报警保持报警）；程序记录标「已暂停」
+    r->state_before_pause = c.state;
+    if (core::state_is_active(c.state)) c.set_state(ReactorState::Wait);
+    r->info.paused = true;
+    r->info.paused_at_wall_ms = core_.clock().wall_ms();
+    r->info.paused_by = source;
+    r->info.phase = ProgramRunPhase::Running;
+    r->info.waiting_on.reset();
+    std::string step_name = i >= 0 && i < static_cast<int>(r->steps.size()) ? r->steps[static_cast<size_t>(i)].name() : std::string();
+    r->info.phase_text = "第 " + std::to_string(i + 1) + " 步 · 已暂停";
+    set_status(r, "已暂停 · 加热、进气、搅拌已停");
+    set_rec(r, i, "running", "已暂停");
+    std::string what = std::string("加热已停、进气已关") + (r->resume_reg ? "、稳压已停" : "") + (r->resume_stir_rpm ? "、搅拌已释放" : "");
+    log("warn", core::chan_name(rv) + " 程序暂停",
+        "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · " + what +
+            (r->restart_on_resume ? " · 继续时从头重做本步" : ""),
+        "program.paused");
+    return OpResult::done(core::chan_name(rv) + " 程序已暂停 · " + what, "warn",
+                          ojson{{"rv", rv}, {"paused", true}, {"restartStep", r->restart_on_resume}});
+}
+
+OpResult ProgramEngine::resume(int ch, const std::string& source) {
+    if (!valid_ch(ch)) return channel_not_found(ch);
+    auto r = active(ch);
+    if (!r || r->cancelled || r->finishing)
+        return OpResult::fail(core::op_codes::kChannelStateInvalid, core::chan_name(ch) + " 没有正在执行的程序 · 无法继续", "warn");
+    if (!r->paused) return OpResult::none();
+    int rv = ch;
+    auto& c = core_.channel_mut(rv);
+    // 报警（超温 / 超压联锁未解除）时不能重新加热 / 进气
+    if (c.state == ReactorState::Alarm || core_.is_over_temp_tripped(rv) || core_.is_over_pressure_tripped(rv))
+        return OpResult::fail(core::op_codes::kChannelAlarm, core::chan_name(rv) + " 报警未解除 · 不能继续程序", "warn");
+    int64_t now = core_.clock().mono_ms();
+    int64_t dur = now - r->paused_at_mono;
+    r->paused_total_ms += dur;
+    r->paused = false;
+    ++r->gen;
+    r->info.paused = false;
+    r->info.paused_at_wall_ms.reset();
+    int i = std::max(0, r->current_index);
+    bool restart = r->restart_on_resume || !r->runner;
+    r->restart_on_resume = false;
+    // 1) 状态恢复（重做的步骤会自己再设）
+    if (c.state == ReactorState::Wait && r->state_before_pause != ReactorState::Alarm) c.set_state(r->state_before_pause);
+    // 2) 加热：按暂停前的目标重开（重做的是升温步骤时由步骤自己开）
+    bool step_heats = restart && r->steps[static_cast<size_t>(i)].type() == StepType::Heat;
+    if (r->heat_on && !step_heats) {
+        core_.set_sp_mode(rv, "fixed");
+        core_.start_fixed_heat(rv, r->heat_target);
+        core_.begin_heat_watch(rv, r->heat_target, r->heat_band);
+    }
+    // 3) 搅拌：重新请求暂停前的转速
+    if (r->resume_stir_rpm) {
+        int rpm = *r->resume_stir_rpm;
+        stir_request(rv, rpm);
+        if (!core_.stir().on()) core_.stir_start(rpm);
+    }
+    r->resume_stir_rpm.reset();
+    // 4) 稳压：按原参数重开
+    if (r->resume_reg) start_regulation(r, r->resume_reg->gas, r->resume_reg->target, r->resume_reg->refill);
+    r->resume_reg.reset();
+    std::string step_name = r->steps[static_cast<size_t>(i)].name();
+    log("info", core::chan_name(rv) + " 程序继续",
+        "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · 暂停 " +
+            fmt_dec(static_cast<double>(dur) / 60000.0, 1) + " 分" + (restart ? " · 本步从头重做" : ""),
+        "program.resumed");
+    // 5) 步骤：重做 / 从停下的地方接着走（马上 tick 一次：没到点的定时等待按剩余时间继续，等条件的重新判断）
+    if (restart) {
+        begin_step(r, i);
+    } else {
+        set_rec(r, i, "running", "正在执行");
+        r->info.phase_text = "执行第 " + std::to_string(i + 1) + " 步 · " + step_name;
+        set_status(r, "继续执行 · " + step_name);
+        schedule(r, vnow(*r));
+    }
+    return OpResult::done(core::chan_name(rv) + " 程序继续执行" + (restart ? " · 第 " + std::to_string(i + 1) + " 步从头重做" : ""), "ok",
+                          ojson{{"rv", rv}, {"paused", false}, {"restartStep", restart}});
+}
+
 int ProgramEngine::abort_all(AbortReason why) {
     int n = 0;
     for (int rv : running_ids()) {
@@ -414,13 +557,20 @@ void ProgramEngine::next_step(const std::shared_ptr<Run>& r) {
         return;
     }
     // 每步开始前查取消（中止后不能再进入下一步：下一步若是升温会同步重新打开加热）——取消由 request_abort 直接收尾
+    begin_step(r, i);
+}
+
+// 开始（或暂停后从头重做）第 i 步
+void ProgramEngine::begin_step(const std::shared_ptr<Run>& r, int i) {
+    int n = static_cast<int>(r->steps.size());
+    r->runner.reset();
     r->current_index = i;
     r->info.index = i;
     set_rec(r, i, "running", "正在执行");
     r->progress_text = std::to_string(i) + " / " + std::to_string(n);
     const auto& s = r->steps[static_cast<size_t>(i)];
     r->info.phase_text = "执行第 " + std::to_string(i + 1) + " 步 · " + s.name();
-    r->step_started_mono = core_.clock().mono_ms();
+    r->step_started_mono = vnow(*r);
     // 执行前按当前全局限值再校验一次（C4：设置可能在下发后被调低）
     if (auto bad = program_limits::check_step(s, limits(), unit_)) {
         step_fault(r, "第 " + fmt_00(s.ordinal()) + " 步 " + s.name() + " 参数超出全局限值：" + *bad);
@@ -434,7 +584,7 @@ void ProgramEngine::next_step(const std::shared_ptr<Run>& r) {
 void ProgramEngine::schedule(const std::shared_ptr<Run>& r, int64_t at_ms) {
     if (r->timer) core_.loop().cancel(r->timer);
     uint64_t g = r->gen;
-    int64_t delay = std::max<int64_t>(0, at_ms - core_.clock().mono_ms());
+    int64_t delay = std::max<int64_t>(0, at_ms - vnow(*r));  // at_ms 是步骤的虚拟时刻（暂停时间不算）
     r->timer = core_.loop().after(delay, [this, r, g] {
         r->timer = 0;
         if (g != r->gen) return;
@@ -444,7 +594,7 @@ void ProgramEngine::schedule(const std::shared_ptr<Run>& r, int64_t at_ms) {
 
 // 定时等待到点：先等在途的写阀回来，再做安全检查（C# WaitSliceAsync / HoldAsync），需要时即时读压，再 tick
 void ProgramEngine::wake(const std::shared_ptr<Run>& r, StepEvent ev) {
-    if (r->cancelled || r->finishing || !r->runner) return;
+    if (r->cancelled || r->finishing || r->paused || !r->runner) return;
     uint64_t g = r->gen;
     if (r->ops->in_flight() > 0) {
         r->ops->when_idle([this, r, g, ev] {
@@ -486,7 +636,7 @@ void ProgramEngine::wake(const std::shared_ptr<Run>& r, StepEvent ev) {
 StepInput ProgramEngine::input(const std::shared_ptr<Run>& r, StepEvent ev, std::optional<double> p, bool fresh) const {
     const auto& c = core_.channel(r->rv);
     StepInput in;
-    in.now_ms = core_.clock().mono_ms();
+    in.now_ms = vnow(*r);  // 暂停的时间不计入步骤计时
     in.limits = limits();
     if (c.t_online) in.temp_c = c.t;
     if (fresh) in.pressure_psi = p;
@@ -509,7 +659,7 @@ StepInput ProgramEngine::input(const std::shared_ptr<Run>& r, StepEvent ev, std:
 }
 
 void ProgramEngine::tick(const std::shared_ptr<Run>& r, StepEvent ev, std::optional<double> fresh_p, bool fresh_read) {
-    if (r->cancelled || r->finishing || !r->runner) return;
+    if (r->cancelled || r->finishing || r->paused || !r->runner) return;
     auto out = r->runner->tick(input(r, ev, fresh_p, fresh_read));
     uint64_t g = r->gen;
     for (const auto& a : out.actions) {
@@ -580,10 +730,20 @@ void ProgramEngine::act(const std::shared_ptr<Run>& r, const Action& a) {
             core_.start_fixed_heat(rv, a.value);
             core_.begin_heat_watch(rv, a.value, r->runner ? r->runner->step().num("band", 2) : 2.0);
             if (r->cancelled) r->heat_touched_after_abort = true;
+            r->heat_on = true;
+            r->heat_target = a.value;
+            r->heat_band = r->runner ? r->runner->step().num("band", 2) : 2.0;
             break;
         }
-        case ActionKind::RunCurve: run_curve(r, a); break;
+        case ActionKind::RunCurve: {
+            r->heat_on = true;
+            r->heat_target = a.segments.empty() ? c.tsp : a.segments.back().temp;  // 曲线跑完后停在终温
+            r->heat_band = r->runner ? r->runner->step().num("band", 2) : 2.0;
+            run_curve(r, a);
+            break;
+        }
         case ActionKind::StopHeat:
+            r->heat_on = false;
             r->curve.reset();
             stop_heat_for(r, a.text, nullptr);
             break;
@@ -787,6 +947,12 @@ void ProgramEngine::finish_tail(const std::shared_ptr<Run>& r) {
     if (c.state != ReactorState::Idle) c.set_state(r->aborted && !r->fail ? ReactorState::Stopped : ReactorState::Done);
     c.rpm_sp = 0;
     int n = static_cast<int>(r->steps.size());
+    if (r->paused) {  // 暂停中被中止 / 停止：计时停在暂停那一刻，记录不再标「已暂停」
+        r->paused_total_ms += core_.clock().mono_ms() - r->paused_at_mono;
+        r->paused = false;
+    }
+    r->info.paused = false;
+    r->info.paused_at_wall_ms.reset();
     r->info.status = "";
     r->info.index = r->current_index;
     std::string er = r->info.end_reason ? " · " + *r->info.end_reason : std::string();

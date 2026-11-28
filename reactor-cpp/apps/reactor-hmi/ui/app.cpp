@@ -338,4 +338,46 @@ void App::abort_confirm(int ch) {
     kit::Dialog::open(s);
 }
 
+void App::toggle_pause(int ch) {
+    const auto& c = model_->ch(ch);
+    if (model::program_paused(c.program ? &*c.program : nullptr)) act_.resume_program(ch);
+    else pause_confirm(ch);
+}
+
+void App::pause_confirm(int ch) {
+    const model::Model& m = *model_;
+    const auto& c = m.ch(ch);
+    const auto& p = m.progress[static_cast<size_t>(ch - 1)];
+    std::string who = trf("%d 号 · %s", ch, p.programName.c_str());
+    std::string step;
+    if (c.program && c.program->stepIndex < (int)p.stepNames.size())
+        step = trf("第 %d 步 %s", c.program->stepIndex + 1, tr(p.stepNames[static_cast<size_t>(c.program->stepIndex)].c_str()));
+    std::string detail = step + " · " + model::fmt_temp(c) + " °C · " + trf("已运行 %s", model::fmt_hmin(p.elapsedSec).c_str());
+    std::string c1 = tr("暂停后，"), c2 = trf("%d 号停止加热、关闭进气阀", ch), c3 = tr("，程序的搅拌也停。计时停住，继续时接着走。");
+    std::string note = tr("正在充气 / 放气的步骤会先安全停下，继续时这一步从头再做。");
+    kit::DialogSpec s;
+    s.w = 560;
+    s.color = col::AMBER;
+    s.title = tr("暂停程序？");
+    s.secondary = tr("不暂停");
+    s.primary = tr("暂停");
+    s.on_primary = [this, ch] { act_.pause_program(ch); };
+    s.body = [who, detail, c1, c2, c3, note, ch](lv_obj_t* b, int w) {
+        kit::mini_vessel(b, 0, 5, 34, chan_color(ch));
+        label_at(b, 38, 0, who.c_str(), 18, 700, col::INK);
+        label_at(b, 38, 25, detail.c_str(), 13.5, 400, col::SEC);
+        lv_obj_t* hl = box(b, 0, 58, w, 68, 0xfdf6e9, 10);
+        lv_obj_t* rt = rich(hl, 16, 12, w - 32, {{c1, 15, 400, col::INK}, {c2, 15, 700, col::AMBER}, {c3, 15, 400, col::INK}});
+        lv_obj_update_layout(rt);
+        int hh = std::max(68, (int)lv_obj_get_height(rt) + 24);  // 英文要三行：框跟着字高
+        lv_obj_set_height(hl, hh);
+        int ny = 58 + hh + 10;
+        lv_obj_t* nl = label_at(b, 0, ny, note.c_str(), 13.5, 400, col::SEC);
+        lv_obj_set_width(nl, w);
+        lv_obj_update_layout(nl);
+        return ny + lv_obj_get_height(nl) + 4;
+    };
+    kit::Dialog::open(s);
+}
+
 }  // namespace reactor::hmi

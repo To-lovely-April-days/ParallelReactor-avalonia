@@ -48,6 +48,8 @@ public:
     virtual void channel_enable(int ch, bool on) = 0;             // POST /channels/{id}/enable | /disable（界面里 idle = 停用）
     virtual void copy_to_all(int ch) = 0;                         // POST /channels/copy-config {from, to[]}：复制到其余启用、没跑程序的路
     virtual void abort_program(int ch) = 0;                       // DELETE /channels/{id}/program/run
+    virtual void pause_program(int ch) = 0;                       // POST /channels/{id}/program/pause（停加热、进气、搅拌，计时冻结）
+    virtual void resume_program(int ch) = 0;                      // POST /channels/{id}/program/resume
     // —— 报警 ——
     virtual void ack_alarm(const std::string& id) = 0;            // POST /alarms/{id}/ack
     virtual void ack_all() = 0;                                   // POST /alarms/ack-all
@@ -83,6 +85,7 @@ public:
     virtual void wifi_forget(const std::string& ssid) = 0;        // DELETE /network/wifi/saved/{ssid}
     virtual void wifi_disconnect() = 0;                           // POST /network/wifi/disconnect
     virtual void set_ip_mode(bool dhcp) = 0;                      // PUT /network/ip {mode: dhcp|manual}
+    virtual void regenerate_tls() = 0;                            // POST /system/tls/regenerate（只本机；换证书，PC 要重新核对指纹）
     virtual void comm_test(const std::string& module) = 0;        // POST /device/comm/{module}/test
     virtual void comm_reconnect(const std::string& module) = 0;   // POST /device/comm/{module}/reconnect
     virtual void quit_app() = 0;                                  // 退出触屏程序（只退界面，reactord 照常跑）
@@ -117,6 +120,8 @@ public:
     void channel_enable(int ch, bool on) override;
     void copy_to_all(int ch) override;
     void abort_program(int ch) override;
+    void pause_program(int ch) override;
+    void resume_program(int ch) override;
     void ack_alarm(const std::string& id) override;
     void ack_all() override;
     void set_language(const std::string& code) override;
@@ -144,6 +149,7 @@ public:
     void wifi_forget(const std::string& ssid) override;
     void wifi_disconnect() override;
     void set_ip_mode(bool dhcp) override;
+    void regenerate_tls() override;
     void comm_test(const std::string& module) override;
     void comm_reconnect(const std::string& module) override;
     void quit_app() override;

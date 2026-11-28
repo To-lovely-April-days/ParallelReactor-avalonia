@@ -8,6 +8,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
+#include <ctime>
 #include <functional>
 #include <memory>
 #include <string>
@@ -175,6 +176,7 @@ public:
                       m.x.net.connectedSsid.empty() ? 0 : (int)m.x.net.connectedSsid.size());
         std::string s = sig;
         for (int i = 1; i <= 8; ++i) s += m.ch(i).installed ? '1' : '0';
+        if (sec_ == 5) s += "/" + std::to_string((int)m.x.tls.known) + std::to_string((int)m.x.tls.tls) + m.x.tls.fingerprint;
         if (sec_ == 3) {
             s += "/" + std::to_string((int)std::lround(ss().calib_water * 100)) + "/" + std::to_string((int)ss().calib_redo) + "/" +
                  (L.calib ? L.calib->stage + std::to_string((int)L.calib->running) + std::to_string((int)L.calib->waitingOperator) : "none") +
@@ -794,6 +796,67 @@ private:
         kv_row(g3, 14, 132, rw - 28, "网关", N.gateway.empty() ? "—" : N.gateway, nullptr, true, 15, 400);
         kv_row(g3, 14, 180, rw - 28, "主机名", N.hostname.empty() ? "—" : N.hostname, nullptr, true, 15, 400);
         label_at(g3, 14, 236, tr("手动时可以改本机地址、子网掩码、网关和 DNS。"), 12.5, 400, col::SEC);
+        tls_block(m, rx, 156 + 262 + 12, rw);
+    }
+
+    // 连接加密（PC 端 HTTPS / WSS）：证书指纹给操作员核对；PC 第一次连接时显示同一串，对上了才确认
+    void tls_block(const Model& m, int x, int y, int w) {
+        const auto& T = m.x.tls;
+        if (!T.known) return;   // 老后端没有这个端点
+        int avail = bh_ - 18 - y;
+        bool roomy = avail >= 186;   // 1280×800 够放说明行；720 高时去掉说明行、按钮矮一点
+        if (!T.tls) {
+            lv_obj_t* g = group(body_, x, y, w, std::min(avail, 112), "连接加密");
+            lv_obj_t* p = pill(g, tr("未加密"), col::AMBER, 0xfbf1e0, 13, nullptr, true);
+            lv_obj_update_layout(p);
+            lv_obj_set_pos(p, w - 14 - lv_obj_get_width(p), 12);
+            lv_obj_t* l = label_at(g, 14, 44, tr("PC 连接没有加密（api.json 里 \"tls\": false）：令牌和数据都是明文传输，只给还不支持加密的老版本 PC 端临时用。"),
+                                   13, 400, col::SEC);
+            lv_obj_set_width(l, w - 28);
+            lv_label_set_long_mode(l, LV_LABEL_LONG_WRAP);
+            lv_obj_update_layout(l);
+            lv_obj_set_height(g, std::min(avail, 44 + (int)lv_obj_get_height(l) + 14));
+            return;
+        }
+        int fy = roomy ? 64 : 42, fh = roomy ? 60 : 56, by = fy + fh + (roomy ? 12 : 8), bh = roomy ? 38 : 34;
+        int gh = std::min(by + bh + (roomy ? 12 : 8), std::max(avail, by + bh + 8));
+        lv_obj_t* g = group(body_, x, y, w, gh, "连接加密");
+        lv_obj_t* p = pill(g, tr("已加密"), 0x14995a, 0xd7f0e1, 13, &ic::lock14);
+        lv_obj_update_layout(p);
+        lv_obj_set_pos(p, w - 14 - lv_obj_get_width(p), 12);
+        if (roomy) {
+            lv_obj_t* sl = label_at(g, 14, 40, tr("证书指纹 SHA-256 · PC 第一次连接时核对这一串"), 12.5, 400, col::SEC);
+            lv_obj_set_width(sl, w - 28);
+            dot_line(sl);
+        }
+        // 指纹：32 组两位十六进制 → 8 段（每段 4 组）→ 两行各 4 段，等宽列对齐，方便逐段念着核对
+        lv_obj_t* fb = box(g, 14, fy, w - 28, fh, 0xf3f6f9, 8);
+        std::vector<std::string> seg;
+        for (size_t i = 0; i < T.fingerprint.size() && seg.size() < 8; i += 12) seg.push_back(T.fingerprint.substr(i, 11));
+        int cw = (w - 28 - 20) / 4;
+        double px = 15;   // 每段之间至少留 10 px 空：放不下就把字缩小一点（最小 12）
+        while (px > 12 && !seg.empty() && text_width(seg[0].c_str(), font(px, 600)) > cw - 10) px -= 0.5;
+        for (size_t i = 0; i < seg.size() && i < 8; ++i)
+            label_at(fb, 10 + (int)(i % 4) * cw, (i < 4 ? 7 : fh / 2 + 3) - (roomy ? 0 : 1), seg[i].c_str(), px, 600, col::DEEP);
+        std::string when = T.createdAt ? std::string(tr("生成于 ")) + ymd_hm(*T.createdAt) : std::string();
+        if (!when.empty()) label_at(g, 14, by + (bh - 18) / 2, when.c_str(), 13, 400, col::SEC);
+        lv_obj_t* rb = tool_btn(g, 0, by, tr("重新生成证书"), &ic::refresh18, col::INK, bh, 14.5);
+        lv_obj_update_layout(rb);
+        lv_obj_set_x(rb, w - 14 - lv_obj_get_width(rb));
+        on_tap(rb, [this] {
+            confirm_stop(tr("重新生成证书？"), "", "",
+                         tr("重新生成后，所有 PC 端都要重新核对指纹才能连接。已经连着的 PC 不会断开，下次连接时会提示指纹变了。"), tr("取消"),
+                         tr("重新生成"), [this] { act().regenerate_tls(); });
+        });
+    }
+
+    static std::string ymd_hm(int64_t ms) {   // 「2026-11-18 10:05」本地时间
+        time_t t = (time_t)(ms / 1000);
+        struct tm tm_ {};
+        localtime_r(&t, &tm_);
+        char b[32];
+        std::snprintf(b, sizeof b, "%04d-%02d-%02d %02d:%02d", tm_.tm_year + 1900, tm_.tm_mon + 1, tm_.tm_mday, tm_.tm_hour, tm_.tm_min);
+        return b;
     }
 
     // ---------------------------------------------------------------- 6 通讯与模块

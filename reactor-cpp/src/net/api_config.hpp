@@ -22,8 +22,11 @@ struct ApiConfig {
     bool enabled = false;
     std::string bind = "0.0.0.0";
     int http_port = 8080;
-    int https_port = 0;                   // 未实现：只读入（C# 记 warn）
-    std::optional<std::string> cert_path; // 同上
+    // TCP 入口加密（HTTPS / WSS，自签证书 + PC 端指纹固定）。缺省开；false = 明文 HTTP / WS，只给还不会 TLS 的老 Avalonia PC 端用
+    //（启动时记 warn 事件）。证书在 <配置目录>/tls/，不在这里配。
+    bool tls = true;
+    int https_port = 0;                   // 旧字段：只读入，不用（加密就开在 httpPort 上）
+    std::optional<std::string> cert_path; // 同上（证书由设备自己生成，见 net/tls.hpp）
     std::vector<std::string> allowed_cidrs;  // 空 = 只允许回环
     std::vector<ApiToken> tokens;
     int heartbeat_timeout_sec = 10;

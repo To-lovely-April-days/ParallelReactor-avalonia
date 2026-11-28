@@ -406,6 +406,13 @@ void SimSource::build_pages() {
     x.net.wifiOn = true; x.net.connectedSsid = "Lab-5G"; x.net.ip = "192.168.1.36"; x.net.strength = 4;
     x.net.nearby = {{"Lab-2.4G", true, 4, false}, {"HTLAB-Office", true, 3, false}, {"Guest", false, 3, false},
                     {"Instrument-AP", true, 2, false}, {"TP-LINK_8F21", true, 1, false}};
+    // ---- PC 连接加密（假指纹）----
+    x.tls.known = true;
+    x.tls.tls = true;
+    x.tls.fingerprint = "A7:8D:AA:03:D3:01:D4:F1:B5:46:9A:F1:31:79:02:D2:F3:F2:44:54:E6:34:5C:7A:26:0A:B6:AD:21:67:CA:0A";
+    x.tls.subject = "CN=HT-PR8 htlab-pr8, O=HT-PR8 reactord";
+    x.tls.createdAt = day_at(18, 10, 5);
+    x.tls.notAfter = day_at(18, 10, 5) + 20LL * 365 * 86400000;
 
     // ---- 存储 / 关于 ----
     x.storage.diskTotal = (int64_t)(32.0 * 1073741824.0);
@@ -778,6 +785,20 @@ void SimSource::wifi_disconnect() {
     n.connectedSsid.clear();
 }
 void SimSource::set_ip_mode(bool dhcp) { m_.x.net.dhcp = dhcp; }
+// 模拟：换一串假指纹（真机由 reactord 生成新的自签证书）
+void SimSource::regenerate_tls() {
+    static uint32_t seed = 0x9e3779b9u;
+    static const char* hx = "0123456789ABCDEF";
+    std::string fp;
+    for (int i = 0; i < 32; ++i) {
+        seed = seed * 1664525u + 1013904223u;
+        if (i) fp += ':';
+        fp += hx[(seed >> 28) & 15];
+        fp += hx[(seed >> 24) & 15];
+    }
+    m_.x.tls.fingerprint = fp;
+    m_.x.tls.createdAt = m_.snap.ts;
+}
 void SimSource::comm_test(const std::string&) {}
 void SimSource::comm_reconnect(const std::string& id) {
     for (auto& mx : m_.x.comm.modules)

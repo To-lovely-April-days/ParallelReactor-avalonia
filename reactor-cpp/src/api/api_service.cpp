@@ -146,7 +146,11 @@ void ApiService::start() {
         audit_plain("warn", "接口未配置任何令牌 · 除 /health 外所有请求都会返回 401",
                     "请在 " + c.source_file_name() + " 的 tokens 里加入令牌的 SHA-256" + (c.file_found ? "" : "（该文件不存在，当前为 PR_API=1 强制启用）"));
     if (c.enabled && (c.https_port > 0 || (c.cert_path && !c.cert_path->empty())))
-        audit_plain("warn", "接口 HTTPS 未实现 · 已忽略 httpsPort / certPath", "只提供 HTTP（令牌明文传输），依赖网段隔离与白名单");
+        audit_plain("warn", "已忽略 httpsPort / certPath",
+                    "加密直接开在 httpPort 上（api.json \"tls\"），证书由设备自己生成在配置目录 tls/ 下，不用另配");
+    if (c.enabled && !c.tls)
+        audit_plain("warn", "PC 连接未加密（api.json \"tls\": false）",
+                    "令牌和数据都是明文传输，只建议给还不支持加密的老版本 PC 端临时使用；删掉这一项或改成 true 即恢复加密");
     for (const auto& w : c.warnings) audit_plain("warn", "接口配置已修正", c.source_file_name() + "：" + w);
     if (c.enabled && c.auto_grant_remote)
         audit_plain("warn", "远程控制申请免触屏确认（autoGrantRemote）", "任何 operator 令牌申请即获控制权；只用于无人值守 / 验收，现场请关闭");

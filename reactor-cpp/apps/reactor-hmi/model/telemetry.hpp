@@ -35,7 +35,12 @@ struct ChannelProgramSnap {
     bool running = false; int stepIndex = 0; int stepCount = 0; std::string state, message; OptS startedBy; OptT startedAt;
     bool waitingGas = false;
     std::optional<double> stepElapsedMin;   // 当前步实际已进行（新字段；旧后台没有）
+    // 暂停（2026-11-29 新字段）：暂停中 state = "paused"、running 仍为 true；加热、进气、程序的搅拌都已停
+    bool paused = false;
+    OptT pausedAt;
 };
+// 这一路的程序暂停中
+inline bool program_paused(const ChannelProgramSnap* p) { return p && p->running && (p->paused || p->state == "paused"); }
 // §6.3 单通道。state：idle / ready / heating / pressing / react / wait / stir / cooling / done / alarm
 struct ChannelSnap {
     int id = 0;

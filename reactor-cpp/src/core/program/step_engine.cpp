@@ -404,6 +404,7 @@ StepRunner& StepRunner::operator=(StepRunner&&) noexcept = default;
 const StepSnapshot& StepRunner::step() const { return impl_->s; }
 bool StepRunner::finished() const { return impl_->finished; }
 bool StepRunner::gas_held() const { return impl_->gas_held; }
+Await StepRunner::waiting() const { return impl_->waiting; }
 
 std::vector<Action> StepRunner::abort() {
     std::vector<Action> acts;

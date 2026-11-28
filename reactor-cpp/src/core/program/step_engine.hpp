@@ -161,6 +161,8 @@ public:
     const StepSnapshot& step() const;
     bool finished() const;
     bool gas_held() const;
+    // 正在等的外部事件（取气路 / 吹总管 / 曲线）；没有在等为 Await::None。程序暂停据此判断要不要从头重做本步
+    Await waiting() const;
 
     struct Impl;
 

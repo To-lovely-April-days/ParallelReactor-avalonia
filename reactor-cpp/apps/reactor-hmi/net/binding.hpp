@@ -69,6 +69,7 @@ std::string fmt_step_target(const json& t);   // {quantity, value} → 「80 °C
 void parse_device(const json& j, m::PagesExt& x, int64_t* bootAt);
 void parse_comm(const json& j, m::CommExt& c);
 void parse_network(const json& j, m::NetworkExt& n);
+void parse_tls(const json& j, m::TlsExt& t);   // GET /system/tls
 void parse_usb(const json& j, m::UsbExt& u);
 void parse_storage(const json& j, m::StorageExt& s);
 void parse_users(const json& j, m::UsersExt& u);

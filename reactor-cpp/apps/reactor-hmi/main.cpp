@@ -107,7 +107,9 @@ const std::vector<std::string>& page_names() {
         "set-general", "set-params", "set-pid", "set-calib", "set-channels", "set-net", "set-net-pw", "set-comm", "set-data",
         "set-user", "set-about", "set-quit",
         // 联调补的
-        "ctl-request"};
+        "ctl-request",
+        // 程序暂停 / 继续（2026-11-29）
+        "prog-paused", "pause-ask", "chan-quick-paused", "main-paused"};
     return v;
 }
 
@@ -316,6 +318,15 @@ void setup_page_net(Session& s, const std::string& name) {
     else if (name == "ctl-request") {
         app.go(PageId::Home, 0);  // 有待处理的申请时弹窗自己出来（App::update_control_request）
         if (!m.controlPending) note("后台没有待处理的控制申请");
+    } else if (name == "prog-paused" || name == "pause-ask" || name == "chan-quick-paused" || name == "main-paused") {
+        // 联调：只看后台现在的样子（不替你暂停）；找一路暂停中的，没有就退回在跑的
+        int pch = first([&](int k) { return model::program_paused(m.ch(k).program ? &*m.ch(k).program : nullptr); });
+        if (!pch) note("后台没有暂停中的程序");
+        int ch = or_(pch, or_(run_ch, idle_ch));
+        if (name == "prog-paused") prog(0, ch);
+        else if (name == "pause-ask") { prog(0, ch); app.pause_confirm(ch); }
+        else if (name == "chan-quick-paused") { app.go(PageId::Home, 0); app.open_quick(ch); }
+        else app.go(PageId::Home, 0);
     } else {
         app.go(PageId::Home, 0);
         if (!name.empty() && name != "main-f1") std::fprintf(stderr, "不认识的页面 %s（可用：见 --help）\n", name.c_str());
@@ -425,6 +436,10 @@ void setup_page(Session& s, const std::string& name) {
     else if (name == "set-about") app.go(PageId::Settings, 9);
     else if (name == "set-quit") { app.go(PageId::Settings, 0); settings_confirm_quit(app); }
     else if (name == "ctl-request") { app.go(PageId::Home, 0); s.sim->inject_control_request(); refresh(); }
+    else if (name == "prog-paused") { s.act->pause_program(3); refresh(); app.go(PageId::Program, 3); }
+    else if (name == "pause-ask") { app.go(PageId::Program, 3); app.pause_confirm(3); }
+    else if (name == "chan-quick-paused") { s.act->pause_program(3); refresh(); app.go(PageId::Home, 0); app.open_quick(3); }
+    else if (name == "main-paused") { s.act->pause_program(3); refresh(); app.go(PageId::Home, 0); }
     else std::fprintf(stderr, "不认识的页面 %s（可用：见 --help）\n", name.c_str());
 }
 

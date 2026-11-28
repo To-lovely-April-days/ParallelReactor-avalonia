@@ -148,6 +148,8 @@ m::ChannelSnap parse_channel(const json& j) {
         p.startedAt = j_time(pg, "startedAt");
         p.waitingGas = j_bool(pg, "waitingGas");
         p.stepElapsedMin = j_optnum(pg, "stepElapsedMin");
+        p.paused = j_bool(pg, "paused") || p.state == "paused";
+        p.pausedAt = j_time(pg, "pausedAt");
         c.program = std::move(p);
     }
     c.gasRate = j_optnum(j, "gasRate");
@@ -606,6 +608,15 @@ void parse_network(const json& j, m::NetworkExt& n) {
     n.ethernetIp = j_str(j, "ethernetIp");
     n.dhcp = j_bool(j, "dhcp", true);
     n.scanning = j_bool(j, "scanning");
+}
+
+void parse_tls(const json& j, m::TlsExt& t) {
+    t.known = true;
+    t.tls = j_bool(j, "tls");
+    t.fingerprint = j_str(j, "fingerprintSha256");
+    t.subject = j_str(j, "subject");
+    t.createdAt = j_time(j, "createdAt");
+    t.notAfter = j_time(j, "notAfter");
 }
 
 void parse_usb(const json& j, m::UsbExt& u) {

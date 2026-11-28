@@ -165,6 +165,10 @@ extern lv_image_dsc_t plus18;  // 18x18 A8
 extern lv_image_dsc_t plus26;  // 26x26 A8
 extern lv_image_dsc_t chart_line16;  // 16x16 A8
 extern lv_image_dsc_t stop_sq14;  // 14x14 A8
+extern lv_image_dsc_t pause14;  // 14x14 A8
+extern lv_image_dsc_t resume14;  // 14x14 A8
+extern lv_image_dsc_t pause22;  // 22x22 A8
+extern lv_image_dsc_t resume22;  // 22x22 A8
 extern lv_image_dsc_t doc18;  // 18x18 A8
 extern lv_image_dsc_t rerun18;  // 18x18 A8
 extern lv_image_dsc_t retest18;  // 18x18 A8

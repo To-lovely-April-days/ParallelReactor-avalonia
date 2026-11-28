@@ -222,19 +222,36 @@ void build_prog_run(lv_obj_t* body, App& app, const Model& m, int ch) {
     lv_obj_t* hc = nullptr;
     head_card(body, W, ch, pg.programName.empty() ? doc.name : pg.programName, &hc);
     lv_obj_t* t = lv_obj_get_child(hc, 0);
-    bool waiting = c.program && c.program->waitingGas;
-    lv_obj_t* pl = pill(hc, (waiting ? trf("等气路 · 第 %d / %d 步", si + 1, n) : trf("运行中 · 第 %d / %d 步", si + 1, n)).c_str(),
-                        waiting ? col::AMBER : 0x14995a, waiting ? 0xfdf3e1 : 0xe3f4ea, 13.5, nullptr, true);
+    bool paused = model::program_paused(c.program ? &*c.program : nullptr);
+    bool waiting = !paused && c.program && c.program->waitingGas;
+    lv_obj_t* pl = paused    ? pill(hc, trf("已暂停 · 第 %d / %d 步", si + 1, n).c_str(), col::AMBER, 0xfdf3e1, 13.5, &ic::pause14)
+                   : waiting ? pill(hc, trf("等气路 · 第 %d / %d 步", si + 1, n).c_str(), col::AMBER, 0xfdf3e1, 13.5, nullptr, true)
+                             : pill(hc, trf("运行中 · 第 %d / %d 步", si + 1, n).c_str(), 0x14995a, 0xe3f4ea, 13.5, nullptr, true);
     int x = place_after(hc, t, pl, 12, 17);
     std::string meta = trf("%s 开始 · 已 %s", hm(start).c_str(), model::fmt_hmin(pg.elapsedSec).c_str());
-    bool has_react = false;
-    for (auto& s : doc.steps) has_react = has_react || s.type == "react";
-    if (has_react) meta += trf(" · 反应时长看吸气，最晚 %s 结束", hm(latest).c_str());
-    label_at(hc, x + 18, 21, meta.c_str(), 14, 400, col::MUT);
+    if (paused) {
+        if (c.program->pausedAt) meta += trf(" · %s 暂停 · 加热、进气已停", hm(*c.program->pausedAt).c_str());
+        else meta += tr(" · 加热、进气已停");
+    } else {
+        bool has_react = false;
+        for (auto& s : doc.steps) has_react = has_react || s.type == "react";
+        if (has_react) meta += trf(" · 反应时长看吸气，最晚 %s 结束", hm(latest).c_str());
+    }
+    lv_obj_t* ml = label_at(hc, x + 18, 21, meta.c_str(), 14, 400, col::MUT);
     lv_obj_t* b1 = tool_btn(hc, 0, 0, tr("在曲线页看"), &ic::chart_line16);
+    // 暂停 / 继续（2026-11-29）：暂停中给蓝色实心「继续」，运行中给描边「暂停…」（要确认）
+    lv_obj_t* bp = paused ? filled_btn(hc, trc("继续 (暂停后)"), &ic::resume14) : tool_btn(hc, 0, 0, tr("暂停…"), &ic::pause14, col::INK);
     lv_obj_t* b2 = tool_btn(hc, 0, 0, tr("中止程序…"), &ic::stop_sq14, col::RED, 40, 15, 0xf0b4b4);
-    right_buttons(hc, cw, {b2, b1});
+    right_buttons(hc, cw, {b2, bp, b1});
+    // 说明行不能压到按钮（英文较长；三个按钮后右边更挤）：放不下就截断加省略号
+    lv_obj_update_layout(ml);
+    int room = lv_obj_get_x(b1) - (x + 18) - 12;
+    if (lv_obj_get_width(ml) > room && room > 40) {
+        lv_label_set_long_mode(ml, LV_LABEL_LONG_DOT);
+        lv_obj_set_width(ml, room);
+    }
     on_tap(b1, [&app] { app.go(PageId::Curve, 3); });
+    on_tap(bp, [&app, ch] { app.toggle_pause(ch); });
     on_tap(b2, [&app, ch] { app.abort_confirm(ch); });
     // 步骤节点
     int x0 = 76, x1 = cw - 76, cy = 100;
@@ -254,6 +271,7 @@ void build_prog_run(lv_obj_t* body, App& app, const Model& m, int ch) {
             sub = trf("已 %s · 约 %s", model::fmt_hmin(el).c_str(), model::fmt_hmin((sg->end - sg->start) / 1000).c_str());
             if (waiting) sub = trf("排队第 %d 位", pg.gasQueueRank.value_or(1));
             sc = col::BLUE;
+            if (paused) { sub = trf("已 %s · 已暂停", model::fmt_hmin(el).c_str()); sc = col::AMBER; }
         } else if (sg) sub = trf("约 %s", hm(sg->start).c_str());
         node(hc, x0 + (int)std::lround(k * sp), cy, k, st.type, kind, tr(model::step_value_line(st).c_str()), sub, sc, pg.stepFraction);
     }
@@ -308,7 +326,13 @@ void build_prog_run(lv_obj_t* body, App& app, const Model& m, int ch) {
         big_value(bc, 16, 64, tr("设定"), st ? tr(model::step_value_line(*st).c_str()) : "", "", col::BLUE, 30);
         big_value(bc, 16, 136, tr("这一步已"), model::fmt_hmin(si < (int)pe.segs.size() ? (now - pe.segs[(size_t)si].start) / 1000 : 0), "", col::INK, 22);
     }
-    if (si + 1 < n) {
+    if (paused) {
+        // 暂停中：下一步那块换成暂停说明
+        lv_obj_t* nb = box(bc, 16, bh - 70, 322, 54, 0xfdf6e9, 8);
+        icon(nb, &ic::pause14, col::AMBER, 12, 11);
+        label_at(nb, 32, 8, tr("已暂停 · 这一步的计时停住了"), 13.5, 700, col::AMBER);
+        label_at(nb, 12, 29, tr("加热、进气、程序的搅拌都已停 · 点「继续」接着走"), 13, 400, col::SEC);
+    } else if (si + 1 < n) {
         const auto& nx = doc.steps[(size_t)si + 1];
         lv_obj_t* nb = box(bc, 16, bh - 70, 322, 54, 0xf3f6f9, 8);
         char b[96];

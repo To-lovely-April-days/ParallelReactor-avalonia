@@ -53,7 +53,7 @@ public:
     // 数据分组：每组对应一个（或几个）GET
     enum G {
         Settings, Schema, Device, Alarms, Programs, Library, Templates, Pid, Comm, Network, Usb, Storage, Users,
-        Runs, Files, Leak, LeakSamples, Calib, Trend, kGroups
+        Runs, Files, Leak, LeakSamples, Calib, Trend, Tls, kGroups
     };
     void invalidate(G g);   // 任意线程：标脏，下一次 tick 重取
     void refetch_now(G g);  // 任意线程：马上重取（正在取就标脏，取完再取一次）
@@ -133,6 +133,8 @@ public:
     void channel_enable(int ch, bool on) override;
     void copy_to_all(int ch) override;
     void abort_program(int ch) override;
+    void pause_program(int ch) override;
+    void resume_program(int ch) override;
     void ack_alarm(const std::string& id) override;
     void ack_all() override;
     void set_language(const std::string& code) override;
@@ -160,6 +162,7 @@ public:
     void wifi_forget(const std::string& ssid) override;
     void wifi_disconnect() override;
     void set_ip_mode(bool dhcp) override;
+    void regenerate_tls() override;
     void comm_test(const std::string& module) override;
     void comm_reconnect(const std::string& module) override;
     void quit_app() override;

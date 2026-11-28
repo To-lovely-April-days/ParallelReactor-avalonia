@@ -429,6 +429,25 @@ void Routes::write(ApiService& s, net::Router& r) {
         return b;
     }));
 
+    // 暂停 / 继续（2026-11-29 新增）：暂停 = 停止类（同中止，远程无控制权也可）；继续 = 控制类（远程要持有控制权）
+    r.post(P + "/channels/{id}/program/pause", W({"program.pause", ActionClass::Stop}, [](const nlohmann::json*, const Request& q, const Source&) {
+        auto ch = channel_arg(q);
+        if (!ch.id) return ch.reject;
+        int id = *ch.id;
+        Bound b;
+        b.exec = sync([id](Commands& c, const Source& s) { return c.pause_program(s, id); });
+        return b;
+    }));
+
+    r.post(P + "/channels/{id}/program/resume", W({"program.resume", ActionClass::Control}, [](const nlohmann::json*, const Request& q, const Source&) {
+        auto ch = channel_arg(q);
+        if (!ch.id) return ch.reject;
+        int id = *ch.id;
+        Bound b;
+        b.exec = sync([id](Commands& c, const Source& s) { return c.resume_program(s, id); });
+        return b;
+    }));
+
     r.post(P + "/channels/{id}/program/copy", W({"program.copy", ActionClass::Control, true}, [self](const nlohmann::json* body, const Request& q, const Source&) {
         auto ch = channel_arg(q);
         if (!ch.id) return ch.reject;

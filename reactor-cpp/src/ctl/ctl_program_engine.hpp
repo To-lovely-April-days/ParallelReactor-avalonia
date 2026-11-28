@@ -67,6 +67,14 @@ public:
     OpResult run(int ch, const std::string& started_by = "local");
     // 中止（C# TryAbortProgram，幂等：没有程序 = silent）
     OpResult abort(int ch);
+    // 暂停（决定记录 2026-11-29「暂停时全部停下」）：停本路加热（At=4）、停稳压、关本路进气（正在用气路的步骤
+    // 安全中止：全关阀并只释放自己的租约）、释放程序的搅拌持有（没有别的程序在用就停搅拌）；步骤计时冻结。
+    // 没有程序在跑 → CHANNEL_STATE_INVALID；已暂停 → silent（幂等）。source = 事件里的来源（触屏 / 远程（…））
+    OpResult pause(int ch, const std::string& source = "触屏");
+    // 继续：重开加热（暂停前的目标）、重新请求搅拌、重开稳压，本步从停下的地方接着走（剩余时间保留；
+    // 等条件的步骤重新判断）；暂停时正在用气路 / 跑曲线的步骤从头重做。没在暂停 → silent
+    OpResult resume(int ch, const std::string& source = "触屏");
+    bool is_paused(int ch) const;
 
     // ================= 查询（控制线程） =================
     bool is_owned(int ch) const override;
@@ -120,6 +128,9 @@ private:
 
     // 执行（ctl_program_engine.cpp）
     void next_step(const std::shared_ptr<Run>& r);
+    void begin_step(const std::shared_ptr<Run>& r, int i);
+    // 步骤用的虚拟时钟：单调时钟 − 暂停累计（暂停中停在暂停那一刻）
+    int64_t vnow(const Run& r) const;
     void schedule(const std::shared_ptr<Run>& r, int64_t at_ms);
     void wake(const std::shared_ptr<Run>& r, core::program::StepEvent ev);
     void tick(const std::shared_ptr<Run>& r, core::program::StepEvent ev, std::optional<double> fresh_p, bool fresh_read);

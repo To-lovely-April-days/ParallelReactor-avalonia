@@ -2,6 +2,7 @@
   "enabled": true,
   "bind": "0.0.0.0",
   "httpPort": 8080,
+  "tls": true,
   "allowedCidrs": [],
   "tokens": [],
   "heartbeatTimeoutSec": 10,

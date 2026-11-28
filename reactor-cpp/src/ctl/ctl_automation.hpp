@@ -73,6 +73,8 @@ public:
     std::future<OpResult> check_run_async(int ch);
     std::future<OpResult> run_program_async(int ch, std::string started_by);
     std::future<OpResult> abort_program_async(int ch);
+    std::future<OpResult> pause_program_async(int ch, std::string source);
+    std::future<OpResult> resume_program_async(int ch, std::string source);
     std::future<OpResult> start_leak_test_async(std::vector<int> channels, std::optional<double> test_psi, std::string started_by);
     std::future<OpResult> abort_leak_test_async(bool strict);
     std::future<OpResult> start_calib_async(int ch, bool with_water, double water_ml, bool redo_manifold, std::string started_by);

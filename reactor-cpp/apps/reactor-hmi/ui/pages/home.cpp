@@ -196,15 +196,21 @@ public:
             lv_obj_set_pos(timer_i_, w_ - 14 - tw - 18, 14);
             lv_obj_remove_flag(timer_, LV_OBJ_FLAG_HIDDEN);
             lv_obj_remove_flag(timer_i_, LV_OBJ_FLAG_HIDDEN);
+            bool paused = model::program_paused(&*c.program);
             lv_label_set_text(step_, trf("第 %d/%d 步", c.program->stepIndex + 1, c.program->stepCount).c_str());
             std::string r;
-            if (c.program->waitingGas)
+            if (paused)
+                r = tr("已暂停");
+            else if (c.program->waitingGas)
                 r = p.waitingFor.empty() ? std::string(tr("等气路")) : trf("等 %s 号用完气路", chans_text(p.waitingFor).c_str());
             else if (p.remainingSec)
                 r = trf("剩 %s", model::fmt_hmin(*p.remainingSec).c_str());
             lv_label_set_text(right_, r.c_str());
+            lv_obj_set_style_text_color(right_, lv_color_hex(paused ? col::AMBER : col::MUT), 0);
+            lv_obj_set_style_text_font(right_, font(12, paused ? 700 : 400), 0);
             lv_obj_update_layout(right_);
             lv_obj_set_pos(right_, w_ - 14 - lv_obj_get_width(right_), 34);
+            lv_obj_set_style_bg_color(bar_, lv_color_hex(paused ? col::AMBER : col::BLUE), 0);
             double tot = (double)p.elapsedSec + (p.remainingSec ? (double)*p.remainingSec : 0);
             lv_obj_set_width(bar_, tot > 0 ? (int)std::lround(w_ * p.elapsedSec / tot) : 0);
         } else {
@@ -585,9 +591,10 @@ private:
             bool waiting = cs.program && cs.program->waitingGas;
             bool run = cs.program && cs.program->running && !waiting;
             bool stopped = !run && !waiting && cs.state == "stopped";
-            const char* chip = run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发";
-            uint32_t cbg = run ? 0xe8f0fb : waiting ? 0xfdf1e0 : 0xeef1f5;
-            uint32_t cfg = run ? col::BLUE : waiting ? col::AMBER : col::SEC;
+            bool paused = run && model::program_paused(&*cs.program);
+            const char* chip = paused ? "已暂停" : run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发";
+            uint32_t cbg = paused ? 0xfdf1e0 : run ? 0xe8f0fb : waiting ? 0xfdf1e0 : 0xeef1f5;
+            uint32_t cfg = paused ? col::AMBER : run ? col::BLUE : waiting ? col::AMBER : col::SEC;
             lv_obj_t* cp = label_at(row, nx, ty, tr(chip), 12, 700, cfg);
             lv_obj_set_style_bg_color(cp, lv_color_hex(cbg), 0);
             lv_obj_set_style_bg_opa(cp, LV_OPA_COVER, 0);
@@ -833,8 +840,9 @@ private:
                 bool waiting = c2.program && c2.program->waitingGas;
                 bool run = c2.program && c2.program->running && !waiting;
                 bool stopped = !run && !waiting && c2.state == "stopped";
-                label_at(r, 211, cy - 9, tr(run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发"), 12.5, 700,
-                         run ? col::BLUE : waiting ? col::AMBER : stopped ? col::SEC : col::MUT);
+                bool paused = run && model::program_paused(&*c2.program);
+                label_at(r, 211, cy - 9, tr(paused ? "已暂停" : run ? "运行中" : waiting ? "等气路" : stopped ? "手动停止" : "未下发"), 12.5, 700,
+                         paused ? col::AMBER : run ? col::BLUE : waiting ? col::AMBER : stopped ? col::SEC : col::MUT);
                 std::string d;
                 if (run) {
                     int si = c2.program->stepIndex;

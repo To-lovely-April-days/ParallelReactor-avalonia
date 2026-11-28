@@ -26,7 +26,8 @@ void Routes::control(ApiService& s, net::Router& r) {
 
     r.get(P + "/control", [self](const Request&) { return ok_json(self->control_state_json()); });
 
-    // POST /control/request {clientName}：登记申请（202 pending；autoGrant → 202 granted 带 leaseId + requestKey）
+    // POST /control/request {clientName | app + host}：登记申请。app = PC 软件名（如 Coalesce），host = 电脑名（如 实验室电脑）：
+    // 两个都给时名字记成「app · host」，触屏顶栏显示「app 控制中 · host」（2026-11-29）（202 pending；autoGrant → 202 granted 带 leaseId + requestKey）
     WriteSpec req_spec{"control.request", ActionClass::Record, true};
     req_spec.inline_exec = true;
     r.post(P + "/control/request", W(req_spec, [self](const nlohmann::json* body, const Request& q, const Source& src) {
@@ -34,8 +35,12 @@ void Routes::control(ApiService& s, net::Router& r) {
         Params p(body);
         auto client = p.str("clientName");
         if (!client && !p.bad()) client = p.str("client");
+        auto app = p.bad() ? std::nullopt : p.str("app");
+        auto host = p.bad() ? std::nullopt : p.str("host");
         if (p.bad()) return Bound::bad(p.error);
         std::string name = client.value_or(src.client_id);
+        if (app && !app->empty()) name = host && !host->empty() ? *app + " · " + *host : *app;
+        else if (host && !host->empty() && !client) name = *host;
         if (utf16_len(name) > static_cast<size_t>(cmd::kClientNameMax))
             return Bound::bad("clientName 过长（≤ " + std::to_string(cmd::kClientNameMax) + " 字符）");
         std::string token = src.client_id;

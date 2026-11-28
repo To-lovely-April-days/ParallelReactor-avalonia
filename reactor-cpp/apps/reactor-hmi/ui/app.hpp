@@ -41,6 +41,9 @@ public:
     void show_alarm(const model::AlarmItem& a);  // 按级别弹出（一级全屏 / 二级弹窗 / 三级气泡）
     void stop_all_confirm();
     void abort_confirm(int ch);
+    // 程序暂停 / 继续：暂停中 → 直接继续；否则先确认（每次停止都要确认）
+    void pause_confirm(int ch);
+    void toggle_pause(int ch);
 
     const model::Model& m() const { return *model_; }
     model::Actions& act() { return act_; }

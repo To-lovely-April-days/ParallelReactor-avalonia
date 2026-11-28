@@ -69,6 +69,8 @@ struct ApiDeps {
     std::function<void()> request_exit;          // POST /system/restart：让主循环退出（systemd Restart=always 再拉起）
     bool lease_ticker = true;                    // 起 1 s 租约计时线程（测试可关掉、手动 tick）
     core::PressureUnit unit = core::PressureUnit::MPa;
+    // TCP 入口的证书仓库（和 ServerOptions::tls 是同一个）。空 = 没开加密（api.json "tls": false 或接口未启用）
+    std::shared_ptr<net::TlsCertStore> tls;
 };
 
 // 一个写端点的静态属性（C# WriteSpec）
@@ -125,6 +127,8 @@ public:
     void bump_runs() { revs_runs_.fetch_add(1); }
     void bump_network() { revs_network_.fetch_add(1); }
     void bump_usb() { revs_usb_.fetch_add(1); }
+    // GET /system/tls 的内容（/health 也带指纹）：{tls, fingerprintSha256, subject, notBefore, notAfter, createdAt}
+    ojson tls_json() const;
     // 趋势（GET /trend）：[from, to) 每 step_ms 一桶，取桶内最后一个有效读数；fields 为 tempC / pressurePsi / gasMmol 的子集
     ojson trend(int64_t from, int64_t to, int64_t step_ms, const std::vector<std::string>& fields, const std::vector<int>& channels);
 

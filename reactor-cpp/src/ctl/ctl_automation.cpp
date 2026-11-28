@@ -84,6 +84,12 @@ std::future<OpResult> Automation::run_program_async(int ch, std::string started_
 std::future<OpResult> Automation::abort_program_async(int ch) {
     return post([this, ch] { return programs_->abort(ch); });
 }
+std::future<OpResult> Automation::pause_program_async(int ch, std::string source) {
+    return post([this, ch, source] { return programs_->pause(ch, source); });
+}
+std::future<OpResult> Automation::resume_program_async(int ch, std::string source) {
+    return post([this, ch, source] { return programs_->resume(ch, source); });
+}
 std::future<OpResult> Automation::start_leak_test_async(std::vector<int> channels, std::optional<double> test_psi, std::string started_by) {
     return post([this, channels, test_psi, started_by] { return leak_->start(channels, test_psi, started_by); });
 }

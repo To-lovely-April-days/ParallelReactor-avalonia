@@ -161,7 +161,7 @@ public:
         const auto& p = m.progress[static_cast<size_t>(ch_ - 1)];
         vessel_.set(st, ch_, c.tempC, st == VState::Holding ? p.stepFraction : 0, m.snap.stir.on);
         std::string chip;
-        if (run) chip = p.programName + " · " + tr("运行中");
+        if (run) chip = p.programName + " · " + tr(model::program_paused(&*c.program) ? "已暂停" : "运行中");
         else if (!c.installed) chip = tr("已停用");
         else if (st == VState::Stopped) chip = std::string(tr("手动停止")) + " · " + tr("没有程序（手动）");
         else chip = std::string(tr("已启用")) + " · " + tr("没有程序（手动）");

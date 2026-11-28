@@ -74,7 +74,11 @@ Hint hint(const Model& m, int id) {
     const ChannelSnap& c = m.ch(id);
     const ProgressExt& p = m.progress[static_cast<size_t>(id - 1)];
     Hint h;
-    switch (vstate(m, id)) {
+    VState vs = vstate(m, id);
+    // 程序暂停中（报警 / 读数中断优先）：釜下面写「已暂停」
+    if (program_paused(c.program ? &*c.program : nullptr) && vs != VState::OverTemp && vs != VState::OverPressure && vs != VState::Offline)
+        return Hint{"pause", tr("已暂停"), col::ST_AMB};
+    switch (vs) {
         case VState::Heating: h = {"up", f("%.0f °C", c.tempSpC), col::ST_ORG}; break;
         case VState::Pressing: h = {"up", f("%.3f MPa", psi_to_mpa(c.pressureSpPsi)), col::ST_GRN}; break;
         case VState::Reacting:

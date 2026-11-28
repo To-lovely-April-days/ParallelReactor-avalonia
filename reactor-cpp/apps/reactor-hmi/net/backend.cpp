@@ -26,7 +26,7 @@ constexpr int kRunDetails = 20;                    // 取详情（含每分钟�
 
 const char* group_name(NetBackend::G g) {
     static const char* n[] = {"settings", "schema", "device", "alarms", "programs", "library", "templates", "pid", "comm", "network",
-                              "usb", "storage", "users", "runs", "files", "leak", "leakSamples", "calib", "trend"};
+                              "usb", "storage", "users", "runs", "files", "leak", "leakSamples", "calib", "trend", "tls"};
     return n[g];
 }
 }  // namespace
@@ -237,6 +237,7 @@ void NetBackend::handle_event(const model::EventRecord& e) {
     if (starts("leak.")) grp_[Leak].dirty = grp_[LeakSamples].dirty = true;
     if (starts("calib.")) grp_[Calib].dirty = true;
     if (starts("network.")) grp_[Network].dirty = true;
+    if (starts("system.tls")) grp_[Tls].dirty = true;
     if (starts("export.") || starts("usb.")) grp_[Usb].dirty = true;
     if (starts("pid.") || starts("autotune.")) grp_[Pid].dirty = true;
     if (starts("session.")) grp_[Files].dirty = grp_[Runs].dirty = true;
@@ -575,6 +576,15 @@ void NetBackend::fetch(G g) {
                 publish_locked();
             });
             break;
+        case Tls:
+            get("/system/tls", [this, g, fail](const Reply& r) {
+                if (!r.ok()) return fail(r);   // 老后端没有：设置页不显示「连接加密」
+                std::lock_guard<std::mutex> lk(mu_);
+                parse_tls(r.json, m_.x.tls);
+                grp_[g].inflight = false;
+                publish_locked();
+            });
+            break;
         case Usb:
             get("/usb", [this, g, fail](const Reply& r) {
                 if (!r.ok()) return fail(r);
@@ -873,6 +883,8 @@ void NetActions::copy_to_all(int ch) {
     cmd("POST", "/channels/copy-config", {{"from", ch}, {"to", to}}, {}, "已复制到 " + fmt_channels(to));
 }
 void NetActions::abort_program(int ch) { cmd("DELETE", chp(ch, "/program/run"), nullptr, {NetBackend::Programs, NetBackend::Runs}, "", true); }
+void NetActions::pause_program(int ch) { cmd("POST", chp(ch, "/program/pause"), json::object(), {NetBackend::Programs}, "", true); }
+void NetActions::resume_program(int ch) { cmd("POST", chp(ch, "/program/resume"), json::object(), {NetBackend::Programs}); }
 void NetActions::ack_alarm(const std::string& id) { cmd("POST", "/alarms/" + url_encode(id) + "/ack", json::object(), {NetBackend::Alarms}); }
 void NetActions::ack_all() { cmd("POST", "/alarms/ack-all", json::object(), {NetBackend::Alarms}); }
 void NetActions::set_language(const std::string& code) { cmd("PUT", "/system/language", {{"code", code}}); }
@@ -1004,6 +1016,9 @@ void NetActions::wifi_connect(const std::string& ssid, const std::string& pw) {
 void NetActions::wifi_forget(const std::string& ssid) { cmd("DELETE", "/network/wifi/saved/" + url_encode(ssid), nullptr, {NetBackend::Network}); }
 void NetActions::wifi_disconnect() { cmd("POST", "/network/wifi/disconnect", json::object(), {NetBackend::Network}); }
 void NetActions::set_ip_mode(bool dhcp) { cmd("PUT", "/network/ip", {{"mode", dhcp ? "dhcp" : "manual"}}, {NetBackend::Network}); }
+void NetActions::regenerate_tls() {
+    cmd("POST", "/system/tls/regenerate", json::object(), {NetBackend::Tls}, "证书已重新生成 · PC 端要重新核对指纹");
+}
 void NetActions::comm_test(const std::string& module) {
     cmd("POST", "/device/comm/" + url_encode(module) + "/test", json::object(), {NetBackend::Comm}, "", false, [this](const Reply& r) {
         if (!r.ok() || !r.json.is_object() || !r.json.contains("result")) return;

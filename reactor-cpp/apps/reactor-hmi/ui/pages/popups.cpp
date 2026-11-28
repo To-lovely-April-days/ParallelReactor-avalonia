@@ -77,7 +77,7 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
         shade(0, cr.y1, cr.x1, cr.y2 - cr.y1 + 1);
         shade(cr.x2 + 1, cr.y1, DW - cr.x2 - 1, cr.y2 - cr.y1 + 1);
     }
-    int pw = run ? 500 : 360, ph = run ? 309 : 291;
+    int pw = run ? 560 : 360, ph = run ? 309 : 291;  // 跑程序的一路：5 个圆钮（加了暂停 / 继续）
     bool right_side = (ch - 1) % 4 < 2;
     int px = right_side ? cr.x2 + 18 : cr.x1 - 18 - pw;
     int py = (ch - 1) / 4 == 0 ? cr.y1 + 30 : cr.y2 - ph - 39;
@@ -159,6 +159,12 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
     lv_obj_t* chip = box(p, pw - 18 - 87, 14, 87, 26, 0xfff3e0, 13);
     icon(chip, &ic::lock13, col::AMBER, 10, 7);
     label_at(chip, 28, 4, tr("程序控制"), 12.5, 700, col::AMBER);
+    bool paused = model::program_paused(c.program ? &*c.program : nullptr);
+    if (paused) {
+        lv_obj_t* pp = pill(p, tr("已暂停"), col::AMBER, 0xfdf3e1, 13, &ic::pause14);
+        lv_obj_update_layout(pp);
+        lv_obj_set_pos(pp, pw - 18 - 87 - 10 - lv_obj_get_width(pp), 15);
+    }
     Vessel* v = new Vessel;
     v->create(p, 18, 52, Vessel::M);
     lv_obj_add_event_cb(v->obj(), [](lv_event_t* e) { delete static_cast<Vessel*>(lv_event_get_user_data(e)); }, LV_EVENT_DELETE, v);
@@ -179,13 +185,17 @@ lv_obj_t* open_chan_quick(App& app, int ch) {
     lv_obj_t* stn = label(p, "", 13, 400, col::SEC);
     lv_obj_t* rem = label(p, "", 13, 400, col::SEC);
     box(p, 18, 200, pw - 36, 1, 0xedf1f5);
-    lv_obj_t* b1 = round_btn(p, 76, 215, 52, RoundStyle::White, &ic::list22, tr("程序页"), col::INK);
+    lv_obj_t* b1 = round_btn(p, 72, 215, 52, RoundStyle::White, &ic::list22, tr("程序页"), col::INK);
     on_tap(b1, [&app] { app.go(PageId::Program); });
-    lv_obj_t* b2 = round_btn(p, 192, 215, 52, RoundStyle::White, &ic::chart22, tr("曲线"), col::INK);
+    lv_obj_t* b2 = round_btn(p, 176, 215, 52, RoundStyle::White, &ic::chart22, tr("曲线"), col::INK);
     on_tap(b2, [&app] { app.go(PageId::Curve, 3); });
-    lv_obj_t* b3 = round_btn(p, 308, 215, 52, RoundStyle::White, &ic::gear22, tr("设定(只看)"), col::INK);
+    lv_obj_t* b3 = round_btn(p, 280, 215, 52, RoundStyle::White, &ic::gear22, tr("设定(只看)"), col::INK);
     on_tap(b3, [&app, ch] { app.go(PageId::ChanFull, ch); });
-    lv_obj_t* b4 = round_btn(p, 424, 215, 52, RoundStyle::Stop, nullptr, tr("中止…"), col::RED);
+    // 暂停（要确认）/ 继续（不用确认）
+    lv_obj_t* bp = paused ? round_btn(p, 384, 215, 52, RoundStyle::Blue, &ic::resume22, trc("继续 (暂停后)"), col::BLUE)
+                          : round_btn(p, 384, 215, 52, RoundStyle::White, &ic::pause22, tr("暂停…"), col::INK);
+    on_tap(bp, [&app, ch] { app.close_overlays(); app.toggle_pause(ch); });
+    lv_obj_t* b4 = round_btn(p, 488, 215, 52, RoundStyle::Stop, nullptr, tr("中止…"), col::RED);
     on_tap(b4, [&app, ch] { app.close_overlays(); app.abort_confirm(ch); });
     auto upd = [ch, v, tv, tsp, pv, pu, segs, fills, stp, stn, rem, pw](const Model& mm) {
         const auto& cc = mm.ch(ch);

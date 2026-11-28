@@ -224,7 +224,11 @@ void ProgramEngine::run_curve(const std::shared_ptr<Run>& r, const Action& a) {
             r->heat_touched_after_abort = true;
             return;
         }
-        if (g != r->gen) return;
+        if (g != r->gen) {
+            // 全链启动期间被暂停：暂停时的停加热可能先于这次启动落到仪表，再停一次
+            if (r->paused && ok) stop_heat_for(r, "", nullptr);
+            return;
+        }
         if (!ok) {
             core_.emit_notice("err", core::chan_name(rv) + " 启动加热失败（温控通讯）· 请检查温控后重新启动");
             core_.alarms().log("err", rvs(rv), "启动加热失败", "AI-8 通讯失败，加热输出未启动", "alarm.heatStartFailed");
@@ -285,6 +289,7 @@ void ProgramEngine::start_regulation(const std::shared_ptr<Run>& r, int gas, dou
     g.gas = gas;
     g.target = target;
     g.band = std::max(1.0, target * refill_pct / 100.0);
+    g.refill = refill_pct;
     g.gain.reset();
     g.blocked_since.reset();
     g.blocked_why.reset();

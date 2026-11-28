@@ -1,0 +1,108 @@
+/*
+ * 本项目自己的 mbedTLS 3.6 裁剪配置（编译时 -DMBEDTLS_CONFIG_FILE="reactor_mbedtls_config.h"）。
+ * 注意文件名不能叫 mbedtls_config.h：mbedTLS 的 build_info.h 用引号包含，会先找到它自带的同名全量配置。
+ *
+ * 用途：reactord 的 TCP 入口（PC 端）跑 HTTPS / WSS，自签证书 + PC 端指纹固定。
+ *   - 协议：TLS 1.2 + TLS 1.3，服务端（单测里还要用客户端，所以客户端也编进来，体积很小）
+ *   - 证书 / 密钥：ECDSA P-256；自己生成（X.509 写）、自己读（X.509 解析、PEM）
+ *   - TLS 1.2 套件：ECDHE-ECDSA + AES-128/256-GCM、ChaCha20-Poly1305
+ *   - TLS 1.3 套件：TLS_AES_128_GCM_SHA256 / TLS_AES_256_GCM_SHA384 / TLS_CHACHA20_POLY1305_SHA256（ECDHE 临时密钥）
+ *   - 摘要：SHA-256 / SHA-384（指纹用 SHA-256）
+ *   - 随机数：CTR_DRBG + 熵源（平台熵 /dev/urandom / getrandom）
+ *   - 多线程：pthread 互斥（I/O 线程做握手，工作线程重新生成证书，PSA 全局状态要加锁）
+ * 不要：RSA、DHE、PSK、会话票据、重协商、DTLS、调试输出、旧算法。
+ */
+#ifndef REACTOR_MBEDTLS_CONFIG_H
+#define REACTOR_MBEDTLS_CONFIG_H
+
+/* —— 平台 —— */
+#define MBEDTLS_HAVE_ASM
+#define MBEDTLS_HAVE_TIME
+#define MBEDTLS_HAVE_TIME_DATE
+#define MBEDTLS_PLATFORM_C
+#define MBEDTLS_THREADING_C
+#define MBEDTLS_THREADING_PTHREAD
+#define MBEDTLS_DEPRECATED_REMOVED
+#define MBEDTLS_ERROR_C        /* 错误码 → 文字（日志用）*/
+
+/* —— 随机数 —— */
+#define MBEDTLS_ENTROPY_C
+#define MBEDTLS_CTR_DRBG_C
+
+/* —— 对称算法 —— */
+#define MBEDTLS_AES_C
+#define MBEDTLS_GCM_C
+#define MBEDTLS_CHACHA20_C
+#define MBEDTLS_POLY1305_C
+#define MBEDTLS_CHACHAPOLY_C
+#define MBEDTLS_CIPHER_C
+
+/* —— 摘要 / 密钥派生 —— */
+#define MBEDTLS_MD_C
+#define MBEDTLS_SHA224_C
+#define MBEDTLS_SHA256_C
+#define MBEDTLS_SHA384_C
+#define MBEDTLS_SHA512_C
+#define MBEDTLS_HKDF_C
+
+/* —— 椭圆曲线（只要 P-256 和 X25519 做密钥交换；签名只用 P-256）—— */
+#define MBEDTLS_BIGNUM_C
+#define MBEDTLS_ECP_C
+#define MBEDTLS_ECP_DP_SECP256R1_ENABLED
+#define MBEDTLS_ECP_DP_SECP384R1_ENABLED
+#define MBEDTLS_ECP_DP_CURVE25519_ENABLED
+#define MBEDTLS_ECP_NIST_OPTIM
+#define MBEDTLS_ECDH_C
+#define MBEDTLS_ECDSA_C
+#define MBEDTLS_ECDSA_DETERMINISTIC
+#define MBEDTLS_HMAC_DRBG_C   /* 确定性 ECDSA 要用 */
+
+/* —— PK / ASN.1 / X.509 / PEM —— */
+#define MBEDTLS_ASN1_PARSE_C
+#define MBEDTLS_ASN1_WRITE_C
+#define MBEDTLS_OID_C
+#define MBEDTLS_BASE64_C
+#define MBEDTLS_PEM_PARSE_C
+#define MBEDTLS_PEM_WRITE_C
+#define MBEDTLS_PK_C
+#define MBEDTLS_PK_PARSE_C
+#define MBEDTLS_PK_WRITE_C
+#define MBEDTLS_X509_USE_C
+#define MBEDTLS_X509_CRT_PARSE_C
+#define MBEDTLS_X509_CREATE_C
+#define MBEDTLS_X509_CRT_WRITE_C
+
+/* —— PSA（TLS 1.3 必需）—— */
+#define MBEDTLS_PSA_CRYPTO_C
+#define MBEDTLS_USE_PSA_CRYPTO
+
+/* —— TLS —— */
+#define MBEDTLS_SSL_TLS_C
+#define MBEDTLS_SSL_SRV_C
+#define MBEDTLS_SSL_CLI_C
+#define MBEDTLS_SSL_PROTO_TLS1_2
+#define MBEDTLS_SSL_PROTO_TLS1_3
+#define MBEDTLS_SSL_TLS1_3_COMPATIBILITY_MODE
+#define MBEDTLS_SSL_TLS1_3_KEY_EXCHANGE_MODE_EPHEMERAL_ENABLED
+#define MBEDTLS_KEY_EXCHANGE_ECDHE_ECDSA_ENABLED
+#define MBEDTLS_SSL_KEEP_PEER_CERTIFICATE
+#define MBEDTLS_SSL_EXTENDED_MASTER_SECRET
+#define MBEDTLS_SSL_ENCRYPT_THEN_MAC
+#define MBEDTLS_SSL_SERVER_NAME_INDICATION
+#define MBEDTLS_SSL_ALPN
+#define MBEDTLS_SSL_MAX_FRAGMENT_LENGTH
+
+/* 只开 AEAD 套件（GCM / ChaCha20-Poly1305）；默认的套件优先级表里没编进来的会被自动跳过 */
+#define MBEDTLS_SSL_CIPHERSUITES \
+    MBEDTLS_TLS1_3_AES_128_GCM_SHA256, \
+    MBEDTLS_TLS1_3_AES_256_GCM_SHA384, \
+    MBEDTLS_TLS1_3_CHACHA20_POLY1305_SHA256, \
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, \
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, \
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256
+
+/* 记录缓冲区：入 16 KB（必须能收下对方最大的记录），出 16 KB */
+#define MBEDTLS_SSL_IN_CONTENT_LEN 16384
+#define MBEDTLS_SSL_OUT_CONTENT_LEN 16384
+
+#endif /* REACTOR_MBEDTLS_CONFIG_H */

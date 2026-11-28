@@ -144,6 +144,7 @@ ApiConfig parse_api_config(const std::string& text, const std::string& source_na
         get_bool(root, "enabled", cfg.enabled);
         get_str(root, "bind", cfg.bind);
         get_int(root, "httpPort", cfg.http_port);
+        get_bool(root, "tls", cfg.tls);
         get_int(root, "httpsPort", cfg.https_port);
         get_opt_str(root, "certPath", cfg.cert_path);
         if (const json* v = find_ci(root, "allowedCidrs"); v && !v->is_null()) {

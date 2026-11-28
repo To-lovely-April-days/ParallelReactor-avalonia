@@ -120,6 +120,8 @@ public:
     OpResult run_program(const Source& src, int id);
     OpResult check_program_run(const Source& src, int id);
     OpResult abort_program(const Source& src, int id);
+    OpResult pause_program(const Source& src, int id);    // 暂停（停止类）
+    OpResult resume_program(const Source& src, int id);   // 继续（控制类）
     OpResult copy_program(const Source& src, int from, const std::vector<int>& to);
     OpResult start_calib(const Source& src, int id, bool with_water, double water_ml, bool redo_manifold);
     OpResult abort_calib(const Source& src);
