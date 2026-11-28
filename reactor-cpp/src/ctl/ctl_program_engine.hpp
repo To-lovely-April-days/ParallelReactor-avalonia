@@ -128,7 +128,7 @@ private:
 
     // 执行（ctl_program_engine.cpp）
     void next_step(const std::shared_ptr<Run>& r);
-    void begin_step(const std::shared_ptr<Run>& r, int i);
+    void begin_step(const std::shared_ptr<Run>& r, int i, std::optional<core::program::StepResumePoint> from = std::nullopt);
     // 步骤用的虚拟时钟：单调时钟 − 暂停累计（暂停中停在暂停那一刻）
     int64_t vnow(const Run& r) const;
     void schedule(const std::shared_ptr<Run>& r, int64_t at_ms);

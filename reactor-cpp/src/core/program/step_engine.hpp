@@ -143,6 +143,14 @@ struct RunnerConfig {
     PressureUnit unit = PressureUnit::MPa;      // 文案里的压力单位
 };
 
+// 暂停时本步要作废（持有 / 等气路）但已经有结论、不能从头重做的断点。
+// 目前只有气密检查：已判定通过 / 不通过、正在放空 → 继续时只补做放空，结论不变（临界漏气的釜重测可能就过了）。
+struct StepResumePoint {
+    int ph = 0;
+    std::optional<std::string> pending_fault;  // 放空后要报的故障（气密不通过且 onFail = stop）
+    std::string note;                          // 给事件 / 提示看的说明
+};
+
 class StepRunner {
 public:
     // head = 状态文字前缀（如「03/09 升温」）
@@ -163,6 +171,13 @@ public:
     bool gas_held() const;
     // 正在等的外部事件（取气路 / 吹总管 / 曲线）；没有在等为 Await::None。程序暂停据此判断要不要从头重做本步
     Await waiting() const;
+    // 暂停（本步要作废时）：能接着走的断点；没有 = 继续时从头重做
+    std::optional<StepResumePoint> resume_point() const;
+    // 新建的 runner 在第一次 tick 之前调用：从断点开始，不从头做
+    void start_at(const StepResumePoint& rp);
+    // 暂停后接着走（本步没作废）时调用。气密静置 / 保压中被暂停 → 重新静置并重取 P0（暂停期间的压降和计时不能混进保压）。
+    // 返回要记的事件说明；没有调整为 nullopt
+    std::optional<std::string> on_resume();
 
     struct Impl;
 

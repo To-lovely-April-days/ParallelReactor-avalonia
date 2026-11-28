@@ -108,6 +108,7 @@ struct ProgramEngine::Run {
     int64_t paused_at_mono = 0;
     int64_t paused_total_ms = 0;  // 已结束的暂停累计（步骤计时用的「虚拟时钟」= 单调时钟 − 暂停累计）
     bool restart_on_resume = false;          // 暂停时本步正在用气路 / 吹总管 / 跑曲线：继续时从头重做本步
+    std::optional<core::program::StepResumePoint> resume_point;  // 重做时可以接着走的断点（气密已判定 → 只补做放空）
     std::optional<int> resume_stir_rpm;      // 暂停前程序持有搅拌的转速
     core::ReactorState state_before_pause = core::ReactorState::Wait;
     struct RegResume { int gas = 0; double target = 0, refill = 3; };

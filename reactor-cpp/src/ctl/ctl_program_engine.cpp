@@ -355,6 +355,9 @@ OpResult ProgramEngine::pause(int ch, const std::string& source) {
     bool waiting = r->runner && r->runner->waiting() != Await::None;
     r->restart_on_resume = !r->runner || gas || waiting || r->acq.active || r->curve.has_value();
     acquire_end(r, r->acq);
+    // 已有结论的步骤（气密已判定、在放空）：继续时从断点接着走，不从头重测
+    r->resume_point.reset();
+    if (r->restart_on_resume && r->runner) r->resume_point = r->runner->resume_point();
     if (r->restart_on_resume) {
         r->ops->cancel();
         r->runner.reset();
@@ -400,12 +403,12 @@ OpResult ProgramEngine::pause(int ch, const std::string& source) {
     set_status(r, "已暂停 · 加热、进气、搅拌已停");
     set_rec(r, i, "running", "已暂停");
     std::string what = std::string("加热已停、进气已关") + (r->resume_reg ? "、稳压已停" : "") + (r->resume_stir_rpm ? "、搅拌已释放" : "");
+    bool redo = r->restart_on_resume && !r->resume_point;
+    std::string then = r->resume_point ? " · " + r->resume_point->note : redo ? std::string(" · 继续时从头重做本步") : std::string();
     log("warn", core::chan_name(rv) + " 程序暂停",
-        "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · " + what +
-            (r->restart_on_resume ? " · 继续时从头重做本步" : ""),
-        "program.paused");
+        "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · " + what + then, "program.paused");
     return OpResult::done(core::chan_name(rv) + " 程序已暂停 · " + what, "warn",
-                          ojson{{"rv", rv}, {"paused", true}, {"restartStep", r->restart_on_resume}});
+                          ojson{{"rv", rv}, {"paused", true}, {"restartStep", redo}});
 }
 
 OpResult ProgramEngine::resume(int ch, const std::string& source) {
@@ -429,6 +432,9 @@ OpResult ProgramEngine::resume(int ch, const std::string& source) {
     int i = std::max(0, r->current_index);
     bool restart = r->restart_on_resume || !r->runner;
     r->restart_on_resume = false;
+    std::optional<core::program::StepResumePoint> from = restart ? r->resume_point : std::nullopt;
+    r->resume_point.reset();
+    bool redo = restart && !from;
     // 1) 状态恢复（重做的步骤会自己再设）
     if (c.state == ReactorState::Wait && r->state_before_pause != ReactorState::Alarm) c.set_state(r->state_before_pause);
     // 2) 加热：按暂停前的目标重开（重做的是升温步骤时由步骤自己开）
@@ -449,21 +455,28 @@ OpResult ProgramEngine::resume(int ch, const std::string& source) {
     if (r->resume_reg) start_regulation(r, r->resume_reg->gas, r->resume_reg->target, r->resume_reg->refill);
     r->resume_reg.reset();
     std::string step_name = r->steps[static_cast<size_t>(i)].name();
+    // 本步没作废、接着走：步骤自己可能要调整（气密静置 / 保压中被暂停 → 重新静置并重取 P0）
+    std::optional<std::string> adjust;
+    if (!restart) adjust = r->runner->on_resume();
+    std::string how = from ? " · " + from->note : redo ? std::string(" · 本步从头重做") : adjust ? " · " + *adjust : std::string();
     log("info", core::chan_name(rv) + " 程序继续",
         "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · 暂停 " +
-            fmt_dec(static_cast<double>(dur) / 60000.0, 1) + " 分" + (restart ? " · 本步从头重做" : ""),
+            fmt_dec(static_cast<double>(dur) / 60000.0, 1) + " 分" + how,
         "program.resumed");
-    // 5) 步骤：重做 / 从停下的地方接着走（马上 tick 一次：没到点的定时等待按剩余时间继续，等条件的重新判断）
+    // 5) 步骤：重做 / 从断点开始 / 从停下的地方接着走（马上 tick 一次：没到点的定时等待按剩余时间继续，等条件的重新判断）
     if (restart) {
-        begin_step(r, i);
+        begin_step(r, i, from);
     } else {
         set_rec(r, i, "running", "正在执行");
         r->info.phase_text = "执行第 " + std::to_string(i + 1) + " 步 · " + step_name;
         set_status(r, "继续执行 · " + step_name);
         schedule(r, vnow(*r));
     }
-    return OpResult::done(core::chan_name(rv) + " 程序继续执行" + (restart ? " · 第 " + std::to_string(i + 1) + " 步从头重做" : ""), "ok",
-                          ojson{{"rv", rv}, {"paused", false}, {"restartStep", restart}});
+    std::string msg = core::chan_name(rv) + " 程序继续执行";
+    if (from) msg += " · 气密结果保留，只补做放空";
+    else if (redo) msg += " · 第 " + std::to_string(i + 1) + " 步从头重做";
+    else if (adjust) msg += " · 重新静置后再保压";
+    return OpResult::done(msg, "ok", ojson{{"rv", rv}, {"paused", false}, {"restartStep", redo}});
 }
 
 int ProgramEngine::abort_all(AbortReason why) {
@@ -560,8 +573,8 @@ void ProgramEngine::next_step(const std::shared_ptr<Run>& r) {
     begin_step(r, i);
 }
 
-// 开始（或暂停后从头重做）第 i 步
-void ProgramEngine::begin_step(const std::shared_ptr<Run>& r, int i) {
+// 开始（或暂停后从头重做 / 从断点接着走）第 i 步
+void ProgramEngine::begin_step(const std::shared_ptr<Run>& r, int i, std::optional<core::program::StepResumePoint> from) {
     int n = static_cast<int>(r->steps.size());
     r->runner.reset();
     r->current_index = i;
@@ -570,14 +583,15 @@ void ProgramEngine::begin_step(const std::shared_ptr<Run>& r, int i) {
     r->progress_text = std::to_string(i) + " / " + std::to_string(n);
     const auto& s = r->steps[static_cast<size_t>(i)];
     r->info.phase_text = "执行第 " + std::to_string(i + 1) + " 步 · " + s.name();
-    r->step_started_mono = vnow(*r);
+    if (!from) r->step_started_mono = vnow(*r);  // 从断点接着走：本步计时不清零
     // 执行前按当前全局限值再校验一次（C4：设置可能在下发后被调低）
-    if (auto bad = program_limits::check_step(s, limits(), unit_)) {
+    if (auto bad = !from ? program_limits::check_step(s, limits(), unit_) : std::nullopt) {
         step_fault(r, "第 " + fmt_00(s.ordinal()) + " 步 " + s.name() + " 参数超出全局限值：" + *bad);
         return;
     }
     std::string head = fmt_00(s.ordinal()) + "/" + fmt_00(n) + " " + s.name();
     r->runner = std::make_unique<StepRunner>(s, head, RunnerConfig{r->rv, unit_});
+    if (from) r->runner->start_at(*from);
     tick(r, StepEvent::None, std::nullopt, false);
 }
 

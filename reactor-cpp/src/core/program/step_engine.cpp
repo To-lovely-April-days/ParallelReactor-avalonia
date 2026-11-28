@@ -354,6 +354,8 @@ struct StepRunner::Impl {
     Await waiting = Await::None;
     bool curve_rejected = false;
 
+    static constexpr int64_t kRestartClock = INT64_MIN;  // t0 = 这个值：下一次 tick 时取「现在」重新计时
+
     // 通用阶段号（各步骤自己解释）
     int ph = 0;
     int64_t t0 = 0;
@@ -405,6 +407,36 @@ const StepSnapshot& StepRunner::step() const { return impl_->s; }
 bool StepRunner::finished() const { return impl_->finished; }
 bool StepRunner::gas_held() const { return impl_->gas_held; }
 Await StepRunner::waiting() const { return impl_->waiting; }
+
+// 气密：ph 5 = 已判定、在放空
+std::optional<StepResumePoint> StepRunner::resume_point() const {
+    const Impl& m = *impl_;
+    if (m.finished || m.s.type() != StepType::Leak || m.ph != 5) return std::nullopt;
+    StepResumePoint rp;
+    rp.ph = 5;
+    rp.pending_fault = m.pending_fault;
+    rp.note = m.pending_fault ? "气密已判定不通过 · 继续时只补做放空，然后停止这一路，不重测"
+                              : "气密已判定通过 · 继续时只补做放空，不重测";
+    return rp;
+}
+
+void StepRunner::start_at(const StepResumePoint& rp) {
+    Impl& m = *impl_;
+    if (m.s.type() != StepType::Leak || rp.ph != 5) return;
+    m.ph = 5;
+    m.pending_fault = rp.pending_fault;
+    m.start_vent(kLeakVentTo, kLeakVentMaxSec, 0, 0);
+}
+
+std::optional<std::string> StepRunner::on_resume() {
+    Impl& m = *impl_;
+    if (m.finished || m.s.type() != StepType::Leak || (m.ph != 3 && m.ph != 4)) return std::nullopt;
+    bool was_hold = m.ph == 4;
+    m.ph = 3;
+    m.t0 = Impl::kRestartClock;  // 下一次 tick 用当时的时刻重新开始静置
+    m.wake_at = -1;
+    return std::string(was_hold ? "保压中被暂停" : "静置中被暂停") + " · 重新静置并重取 P0（暂停期间的压降不算进保压）";
+}
 
 std::vector<Action> StepRunner::abort() {
     std::vector<Action> acts;
@@ -533,6 +565,7 @@ Sub StepRunner::Impl::leak(Ctx& c) {
                 break;
             }
             case 3:
+                if (t0 == kRestartClock) t0 = c.now();  // 暂停后重新静置
                 if (c.el_min(t0) < settle) {
                     c.status(head + " · 静置 剩 " + c.left(t0, settle));
                     c.wake_after(1);

@@ -211,3 +211,86 @@ TEST(ctl_program_pause, resume_refused_while_alarm) {
     CHECK_EQ(rs.code, std::string("CHANNEL_ALARM"));
     CHECK(r.pe().is_paused(1));
 }
+
+namespace {
+std::vector<prog::StepSnapshot> leak_then_hold(double hold_min) {
+    using std::string;
+    return steps({
+        {StepType::Leak, {{"pres", 50.0}, {"settle", 0.0}, {"hold", hold_min}, {"maxDrop", 2.0}, {"onFail", string("stop")}, {"after", string("vent")}}},
+        {StepType::Hold, {{"until", string("time")}, {"time", 0.5}}},
+        {StepType::End, {}},
+    });
+}
+}  // namespace
+
+// 气密判了不通过、放空中暂停：继续时只补做放空然后停止这一路，绝不重测（临界漏气的釜重测可能就过了）
+TEST(ctl_program_pause, leak_fail_verdict_kept_across_pause) {
+    PRig r(fast_settings());
+    r.phy.k = 0.3;  // 放得慢，好让暂停落在放空中间
+    r.phy.leak_psi_h[0] = 30;
+    r.pe().set_draft(1, leak_then_hold(5.0), "气密");
+    CHECK(r.pe().run(1).accepted);
+    CHECK(r.until([&] { return r.has_title("1 号 气密不通过"); }, 10 * 60 * 1000, 100));
+    r.advance(300);
+    CHECK(!r.run_ended(1));
+    auto p = r.pe().pause(1, "触屏");
+    CHECK(p.ok);
+    CHECK(!p.data["restartStep"].get<bool>());
+    CHECK(r.until([&] { return !r.c().gas_lease().busy(); }, 5000, 100));
+    double p_paused = r.phy.p[0];
+    CHECK(p_paused > 10);  // 还没放完
+    r.phy.leak_psi_h[0] = 0;  // 这时候重测会「通过」
+    r.advance(30 * 1000);
+    auto rs = r.pe().resume(1);
+    CHECK(rs.ok);
+    CHECK(!rs.data["restartStep"].get<bool>());
+    CHECK(rs.message.find("气密结果保留") != std::string::npos);
+    double p_max = 0;
+    CHECK(r.until([&] { p_max = std::max(p_max, r.phy.p[0]); return r.run_ended(1); }, 10 * 60 * 1000, 200));
+    CHECK(p_max <= p_paused + 0.5);  // 没有重新充气
+    CHECK(r.phy.p[0] < 5);           // 放空做完了
+    CHECK(r.phase_is(1, ProgramRunPhase::Failed));
+    CHECK_EQ(r.count_title("1 号 气密不通过"), 1);
+    CHECK(!r.has_title("1 号 气密通过"));
+    CHECK(all_closed(r));
+}
+
+// 气密通过后放空中暂停：继续时只补做放空，进入下一步，不再保压 5 分钟
+TEST(ctl_program_pause, leak_pass_verdict_kept_across_pause) {
+    PRig r(fast_settings());
+    r.phy.k = 0.3;
+    r.pe().set_draft(1, leak_then_hold(5.0), "气密");
+    CHECK(r.pe().run(1).accepted);
+    CHECK(r.until([&] { return r.has_title("1 号 气密通过"); }, 10 * 60 * 1000, 100));
+    r.advance(300);
+    CHECK(r.pe().pause(1).ok);
+    r.advance(10 * 1000);
+    auto rs = r.pe().resume(1);
+    CHECK(rs.ok);
+    int64_t t0 = r.clock.mono_ms();
+    CHECK(r.until([&] { auto* ri = r.pe().run_info(1); return ri && ri->index == 1; }, 10 * 60 * 1000, 200));
+    CHECK(r.clock.mono_ms() - t0 < 3 * 60 * 1000);  // 没有重新保压 5 min
+    CHECK_EQ(r.count_title("1 号 气密通过"), 1);
+    CHECK(r.until([&] { return r.run_ended(1); }, 10 * 60 * 1000, 1000));
+    CHECK(r.phase_is(1, ProgramRunPhase::Completed));
+}
+
+// 保压中暂停：暂停期间掉的压不能算进保压——继续时重新静置并重取 P0
+TEST(ctl_program_pause, leak_hold_restarts_after_pause) {
+    PRig r(fast_settings());
+    r.pe().set_draft(1, leak_then_hold(5.0), "气密");
+    CHECK(r.pe().run(1).accepted);
+    CHECK(r.until([&] { return !r.c().gas_lease().busy() && r.pe().run_info(1)->index == 0 && r.phy.p[0] > 45; }, 5 * 60 * 1000, 200));
+    r.advance(2 * 60 * 1000);  // 保压走了 2 min
+    CHECK(r.pe().pause(1).ok);
+    r.phy.leak_psi_h[0] = 30;  // 暂停 10 min 期间掉 5 psi（比如有人动了接头）
+    r.advance(10 * 60 * 1000);
+    r.phy.leak_psi_h[0] = 0;
+    auto rs = r.pe().resume(1);
+    CHECK(rs.ok);
+    CHECK(rs.message.find("重新静置") != std::string::npos);
+    CHECK(r.until([&] { return r.run_ended(1); }, 20 * 60 * 1000, 1000));
+    CHECK(r.has_title("1 号 气密通过"));
+    CHECK(!r.has_title("1 号 气密不通过"));
+    CHECK(r.phase_is(1, ProgramRunPhase::Completed));
+}
