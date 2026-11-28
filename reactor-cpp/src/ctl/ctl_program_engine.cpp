@@ -358,6 +358,12 @@ OpResult ProgramEngine::pause(int ch, const std::string& source) {
     // 已有结论的步骤（气密已判定、在放空）：继续时从断点接着走，不从头重测
     r->resume_point.reset();
     if (r->restart_on_resume && r->runner) r->resume_point = r->runner->resume_point();
+    // 上次继续后还在等到温（充压没重做）：断点照旧带着
+    if (r->step_after_heat) r->resume_point = r->step_after_heat_from;
+    r->step_after_heat = false;
+    r->step_after_heat_from.reset();
+    if (r->heat_wait_timer) core_.loop().cancel(r->heat_wait_timer);
+    r->heat_wait_timer = 0;
     if (r->restart_on_resume) {
         r->ops->cancel();
         r->runner.reset();
@@ -377,6 +383,8 @@ OpResult ProgramEngine::pause(int ch, const std::string& source) {
     // 2) 稳压：停（暂停期间不补气），记下参数，继续时重开
     r->resume_reg.reset();
     if (r->reg.active) r->resume_reg = Run::RegResume{r->reg.gas, r->reg.target, r->reg.refill};
+    else if (r->reg_after_heat) r->resume_reg = r->reg_after_heat;  // 还在等到温的稳压照旧带着
+    r->reg_after_heat.reset();
     stop_regulation(r);
     // 3) 加热：停曲线 / 逼近 + 本路 At=4（同手动停止）
     r->curve.reset();
@@ -392,7 +400,9 @@ OpResult ProgramEngine::pause(int ch, const std::string& source) {
     }
     // 5) 状态：干活中的通道显示「等待中」（报警保持报警）；程序记录标「已暂停」
     r->state_before_pause = c.state;
+    r->alarm_count_at_pause = c.alarm_count;
     if (core::state_is_active(c.state)) c.set_state(ReactorState::Wait);
+    pause_watch(r);
     r->info.paused = true;
     r->info.paused_at_wall_ms = core_.clock().wall_ms();
     r->info.paused_by = source;
@@ -422,15 +432,33 @@ OpResult ProgramEngine::resume(int ch, const std::string& source) {
     // 报警（超温 / 超压联锁未解除）时不能重新加热 / 进气
     if (c.state == ReactorState::Alarm || core_.is_over_temp_tripped(rv) || core_.is_over_pressure_tripped(rv))
         return OpResult::fail(core::op_codes::kChannelAlarm, core::chan_name(rv) + " 报警未解除 · 不能继续程序", "warn");
+    // 暂停中出过报警（已自动恢复）：看门定时器没来得及判的，这里补判 → 程序失败
+    if (alarm_since_pause(*r)) {
+        step_fault(r, core::chan_name(rv) + " 暂停中出现超温 / 超压报警");
+        return OpResult::fail(core::op_codes::kChannelAlarm, core::chan_name(rv) + " 暂停中出过超温 / 超压报警 · 程序已按失败结束", "warn");
+    }
+    int i = std::max(0, r->current_index);
+    const auto& step = r->steps[static_cast<size_t>(i)];
+    bool restart = r->restart_on_resume || !r->runner;
+    // 气路：要重做气路步骤或重开稳压时，先看气路能不能用（同下发：泄漏测试 / 标定 / 手动占着、气源不可用 → 拒绝，仍保持暂停）
+    bool redo_gas = restart && has_gas_steps(Steps{step});
+    if (redo_gas || r->resume_reg) {
+        const auto& lease = core_.gas_lease();
+        if (lease.busy() && lease.owner() != core::GasOwner::Program)
+            return OpResult::fail(core::op_codes::kGasBusy,
+                                  (lease.task().empty() ? std::string("气路序列") : lease.task()) + "进行中 · 等它完成或先停止，再继续程序", "warn");
+        if (auto gb = gas_block_for(rv, redo_gas ? needs_pressure(Steps{step}) : true))
+            return OpResult::fail(gb->code, gb->message + " · 不能继续程序", "warn");
+    }
     int64_t now = core_.clock().mono_ms();
     int64_t dur = now - r->paused_at_mono;
     r->paused_total_ms += dur;
     r->paused = false;
     ++r->gen;
+    if (r->timer) core_.loop().cancel(r->timer);  // 暂停看门
+    r->timer = 0;
     r->info.paused = false;
     r->info.paused_at_wall_ms.reset();
-    int i = std::max(0, r->current_index);
-    bool restart = r->restart_on_resume || !r->runner;
     r->restart_on_resume = false;
     std::optional<core::program::StepResumePoint> from = restart ? r->resume_point : std::nullopt;
     r->resume_point.reset();
@@ -438,12 +466,15 @@ OpResult ProgramEngine::resume(int ch, const std::string& source) {
     // 1) 状态恢复（重做的步骤会自己再设）
     if (c.state == ReactorState::Wait && r->state_before_pause != ReactorState::Alarm) c.set_state(r->state_before_pause);
     // 2) 加热：按暂停前的目标重开（重做的是升温步骤时由步骤自己开）
-    bool step_heats = restart && r->steps[static_cast<size_t>(i)].type() == StepType::Heat;
+    bool step_heats = restart && step.type() == StepType::Heat;
     if (r->heat_on && !step_heats) {
         core_.set_sp_mode(rv, "fixed");
         core_.start_fixed_heat(rv, r->heat_target);
         core_.begin_heat_watch(rv, r->heat_target, r->heat_band);
     }
+    // 釜还凉着：稳压和重做充压等到温再开（凉的时候补满气，升温后会冲过目标）
+    bool cold = r->heat_on && c.t_online && c.t < r->heat_target - r->heat_band;
+    std::string warm_to = fmt_dec(r->heat_target, 1) + "℃";
     // 3) 搅拌：重新请求暂停前的转速
     if (r->resume_stir_rpm) {
         int rpm = *r->resume_stir_rpm;
@@ -451,32 +482,99 @@ OpResult ProgramEngine::resume(int ch, const std::string& source) {
         if (!core_.stir().on()) core_.stir_start(rpm);
     }
     r->resume_stir_rpm.reset();
-    // 4) 稳压：按原参数重开
-    if (r->resume_reg) start_regulation(r, r->resume_reg->gas, r->resume_reg->target, r->resume_reg->refill);
+    // 4) 稳压：按原参数重开（凉着 → 到温后再开）
+    bool reg_wait = false;
+    if (r->resume_reg) {
+        if (cold) {
+            r->reg_after_heat = r->resume_reg;
+            reg_wait = true;
+        } else {
+            start_regulation(r, r->resume_reg->gas, r->resume_reg->target, r->resume_reg->refill);
+        }
+    }
     r->resume_reg.reset();
-    std::string step_name = r->steps[static_cast<size_t>(i)].name();
+    bool step_wait = cold && restart && step.type() == StepType::Press;
+    std::string step_name = step.name();
     // 本步没作废、接着走：步骤自己可能要调整（气密静置 / 保压中被暂停 → 重新静置并重取 P0）
     std::optional<std::string> adjust;
     if (!restart) adjust = r->runner->on_resume();
     std::string how = from ? " · " + from->note : redo ? std::string(" · 本步从头重做") : adjust ? " · " + *adjust : std::string();
+    if (reg_wait || step_wait)
+        how += " · 釜温 " + fmt_dec(c.t, 1) + "℃ · 先升温，到 " + warm_to + " 附近再" + (step_wait ? "重做充压" : "开稳压");
     log("info", core::chan_name(rv) + " 程序继续",
         "第 " + std::to_string(i + 1) + " 步 " + step_name + " · 来源 " + source + " · 暂停 " +
             fmt_dec(static_cast<double>(dur) / 60000.0, 1) + " 分" + how,
         "program.resumed");
     // 5) 步骤：重做 / 从断点开始 / 从停下的地方接着走（马上 tick 一次：没到点的定时等待按剩余时间继续，等条件的重新判断）
-    if (restart) {
+    if (step_wait) {
+        r->step_after_heat = true;
+        r->step_after_heat_from = from;
+        set_rec(r, i, "running", "等温度回到 " + warm_to + " 再充压");
+        r->info.phase_text = "第 " + std::to_string(i + 1) + " 步 · 等升温";
+        set_status(r, "继续 · 先升温到 " + warm_to + " 附近，再重做" + step_name);
+    } else if (restart) {
         begin_step(r, i, from);
     } else {
         set_rec(r, i, "running", "正在执行");
         r->info.phase_text = "执行第 " + std::to_string(i + 1) + " 步 · " + step_name;
-        set_status(r, "继续执行 · " + step_name);
+        set_status(r, "继续执行 · " + step_name + (reg_wait ? " · 到温后再开稳压" : ""));
         schedule(r, vnow(*r));
     }
+    if (reg_wait || step_wait) heat_wait(r);
     std::string msg = core::chan_name(rv) + " 程序继续执行";
     if (from) msg += " · 气密结果保留，只补做放空";
+    else if (step_wait) msg += " · 先升温，到温后重做充压";
     else if (redo) msg += " · 第 " + std::to_string(i + 1) + " 步从头重做";
     else if (adjust) msg += " · 重新静置后再保压";
-    return OpResult::done(msg, "ok", ojson{{"rv", rv}, {"paused", false}, {"restartStep", redo}});
+    if (reg_wait) msg += " · 到温后再开稳压";
+    return OpResult::done(msg, "ok", ojson{{"rv", rv}, {"paused", false}, {"restartStep", redo}, {"waitHeat", reg_wait || step_wait}});
+}
+
+bool ProgramEngine::alarm_since_pause(const Run& r) const {
+    const auto& c = core_.channel(r.rv);
+    return c.alarm_count != r.alarm_count_at_pause ||
+           (r.state_before_pause != ReactorState::Alarm && c.state == ReactorState::Alarm);
+}
+
+void ProgramEngine::pause_watch(const std::shared_ptr<Run>& r) {
+    uint64_t g = r->gen;
+    r->timer = core_.loop().after(500, [this, r, g] {
+        r->timer = 0;
+        if (g != r->gen || !r->paused || r->cancelled || r->finishing) return;
+        if (alarm_since_pause(*r)) {
+            log("err", core::chan_name(r->rv) + " 暂停中报警 · 程序失败", "暂停期间出现超温 / 超压报警，程序按失败结束（不能再继续）",
+                "program.pausedAlarm");
+            step_fault(r, core::chan_name(r->rv) + " 暂停中出现超温 / 超压报警");
+            return;
+        }
+        pause_watch(r);
+    });
+}
+
+void ProgramEngine::heat_wait(const std::shared_ptr<Run>& r) {
+    uint64_t g = r->gen;
+    r->heat_wait_timer = core_.loop().after(1000, [this, r, g] {
+        r->heat_wait_timer = 0;
+        if (g != r->gen || r->paused || r->cancelled || r->finishing) return;
+        if (!r->reg_after_heat && !r->step_after_heat) return;
+        const auto& c = core_.channel(r->rv);
+        if (c.state == ReactorState::Alarm) { step_fault(r, core::chan_name(r->rv) + " 超温 / 超压报警"); return; }
+        // 温度读不到就不再等（判断不了）；到了目标 − 带宽就放行
+        if (c.t_online && c.t < r->heat_target - r->heat_band) { heat_wait(r); return; }
+        std::string t = c.t_online ? fmt_dec(c.t, 1) + "℃" : std::string("温度读不到");
+        if (auto reg = r->reg_after_heat) {
+            r->reg_after_heat.reset();
+            start_regulation(r, reg->gas, reg->target, reg->refill);
+            log("info", core::chan_name(r->rv) + " 到温 · 稳压重开", "釜温 " + t + " · 按暂停前的参数重开稳压", "program.regResumed");
+        }
+        if (r->step_after_heat) {
+            r->step_after_heat = false;
+            auto from = r->step_after_heat_from;
+            r->step_after_heat_from.reset();
+            log("info", core::chan_name(r->rv) + " 到温 · 重做充压", "釜温 " + t, "program.stepResumed");
+            begin_step(r, std::max(0, r->current_index), from);
+        }
+    });
 }
 
 int ProgramEngine::abort_all(AbortReason why) {
@@ -707,8 +805,9 @@ void ProgramEngine::act(const std::shared_ptr<Run>& r, const Action& a) {
         case ActionKind::Log: log(a.level, a.text, a.detail, "program.step"); break;
         case ActionKind::SetState: c.set_state(a.state); break;
         case ActionKind::SetPressureSp: c.psp = a.value; break;
-        case ActionKind::StopRegulation: stop_regulation(r); break;
-        case ActionKind::StartRegulation: start_regulation(r, a.gas, a.value, a.value2); break;
+        // 步骤自己停 / 开稳压：继续时留着「到温再开」的稳压作废
+        case ActionKind::StopRegulation: r->reg_after_heat.reset(); stop_regulation(r); break;
+        case ActionKind::StartRegulation: r->reg_after_heat.reset(); start_regulation(r, a.gas, a.value, a.value2); break;
         case ActionKind::StartUptake: core_.start_uptake(rv, a.text); break;
         case ActionKind::StopUptake: core_.stop_uptake(rv, a.text); break;
         case ActionKind::RequestGas: {

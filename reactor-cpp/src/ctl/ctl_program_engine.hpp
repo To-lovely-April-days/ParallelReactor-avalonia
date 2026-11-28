@@ -131,6 +131,11 @@ private:
     void begin_step(const std::shared_ptr<Run>& r, int i, std::optional<core::program::StepResumePoint> from = std::nullopt);
     // 步骤用的虚拟时钟：单调时钟 − 暂停累计（暂停中停在暂停那一刻）
     int64_t vnow(const Run& r) const;
+    // 暂停中看门：出过超温 / 超压报警 → 程序失败（报警自动恢复了也算）
+    bool alarm_since_pause(const Run& r) const;
+    void pause_watch(const std::shared_ptr<Run>& r);
+    // 继续时釜凉：等温度回到目标带再开稳压 / 重做充压
+    void heat_wait(const std::shared_ptr<Run>& r);
     void schedule(const std::shared_ptr<Run>& r, int64_t at_ms);
     void wake(const std::shared_ptr<Run>& r, core::program::StepEvent ev);
     void tick(const std::shared_ptr<Run>& r, core::program::StepEvent ev, std::optional<double> fresh_p, bool fresh_read);

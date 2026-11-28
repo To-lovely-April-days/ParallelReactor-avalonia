@@ -113,6 +113,12 @@ struct ProgramEngine::Run {
     core::ReactorState state_before_pause = core::ReactorState::Wait;
     struct RegResume { int gas = 0; double target = 0, refill = 3; };
     std::optional<RegResume> resume_reg;     // 暂停前在稳压：继续时按原参数重开
+    uint32_t alarm_count_at_pause = 0;       // 暂停时通道的进报警次数：暂停中出过报警 → 程序失败
+    // 继续时釜还凉着（低于加热目标 − 带宽）：先升温，到温后再开稳压 / 再重做充压（凉的时候补满气，升温后会冲过目标）
+    std::optional<RegResume> reg_after_heat;
+    bool step_after_heat = false;
+    std::optional<core::program::StepResumePoint> step_after_heat_from;
+    EventLoop::TimerId heat_wait_timer = 0;
 };
 
 }  // namespace reactor::ctl

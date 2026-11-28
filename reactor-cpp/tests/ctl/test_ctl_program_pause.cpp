@@ -294,3 +294,78 @@ TEST(ctl_program_pause, leak_hold_restarts_after_pause) {
     CHECK(!r.has_title("1 号 气密不通过"));
     CHECK(r.phase_is(1, ProgramRunPhase::Completed));
 }
+
+namespace {
+std::vector<prog::StepSnapshot> heat_press_hold(double hold_min) {
+    using std::string;
+    return steps({
+        {StepType::Heat, {{"mode", string("fixed")}, {"temp", 40.0}, {"rate", 0.0}, {"band", 2.0}, {"wait", 0.1}, {"maxWait", 30.0}}},
+        {StepType::Press, {{"gas", string("A")}, {"pres", 100.0}, {"tol", 2.0}, {"regulate", string("on")}, {"refill", 3.0}, {"maxSec", 180.0}}},
+        {StepType::Hold, {{"until", string("time")}, {"time", hold_min}}},
+        {StepType::End, {}},
+    });
+}
+double temp1(PRig& r) { return r.c().channel(1).t; }
+}  // namespace
+
+// 继续时釜凉着：先升温，到温后才重开稳压（凉的时候补满气，升温后会冲过目标）
+TEST(ctl_program_pause, resume_cold_waits_for_heat_before_regulation) {
+    PRig r(fast_settings());
+    r.pe().set_draft(1, heat_press_hold(30.0), "热压");
+    CHECK(r.pe().run(1).accepted);
+    CHECK(r.until([&] { auto* ri = r.pe().run_info(1); return ri && ri->index == 2; }, 20 * 60 * 1000, 1000));
+    CHECK(r.pe().channel_program(1)["regulating"].get<bool>());
+    CHECK(r.pe().pause(1).ok);
+    r.advance(10 * 60 * 1000);  // 停了加热，凉下来
+    CHECK(temp1(r) < 30);
+    auto rs = r.pe().resume(1);
+    CHECK(rs.ok);
+    CHECK(rs.data["waitHeat"].get<bool>());
+    r.advance(3000);
+    CHECK(!r.pe().channel_program(1)["regulating"].get<bool>());  // 凉着不稳压
+    double t_on = 0;
+    CHECK(r.until([&] { t_on = temp1(r); return r.pe().channel_program(1)["regulating"].get<bool>(); }, 10 * 60 * 1000, 500));
+    CHECK(t_on >= 37.5);
+    CHECK(r.has_title("1 号 到温 · 稳压重开"));
+    CHECK(r.pe().abort(1).ok);
+}
+
+// 暂停中出报警：程序按失败结束，不能再继续
+TEST(ctl_program_pause, alarm_while_paused_fails_program) {
+    PRig r(fast_settings());
+    r.pe().set_draft(1, stir_heat_hold(30.0), "x");
+    CHECK(r.pe().run(1).accepted);
+    CHECK(r.until([&] { auto* ri = r.pe().run_info(1); return ri && ri->index == 2; }, 10 * 60 * 1000, 1000));
+    CHECK(r.pe().pause(1).ok);
+    r.advance(2000);
+    r.hw->sim_main->set_holding(1, pv_reg(1), 3000);  // 300 ℃ ≥ 超温限
+    CHECK(r.until([&] { return r.run_ended(1); }, 30000, 200));
+    CHECK(r.phase_is(1, ProgramRunPhase::Failed));
+    CHECK(r.has_title("1 号 暂停中报警 · 程序失败"));
+    CHECK_EQ(r.pe().resume(1).code, std::string("CHANNEL_STATE_INVALID"));
+}
+
+// 继续前查气路：泄漏测试占着气路 → 拒绝继续（仍保持暂停）；释放后可以继续
+TEST(ctl_program_pause, resume_refused_while_gas_busy) {
+    PRig r(fast_settings());
+    r.phy.k = 0.3;
+    using std::string;
+    r.pe().set_draft(1, steps({
+                            {StepType::Press, {{"gas", string("A")}, {"pres", 100.0}, {"tol", 2.0}, {"regulate", string("off")}, {"maxSec", 180.0}}},
+                            {StepType::End, {}},
+                        }),
+                     "充压");
+    CHECK(r.pe().run(1).accepted);
+    r.advance(1500);
+    CHECK(r.pe().pause(1).ok);
+    CHECK(r.until([&] { return !r.c().gas_lease().busy(); }, 5000, 100));
+    int64_t gen = r.c().begin_gas(core::GasOwner::Leak, "泄漏测试", {2}, {2});
+    auto rs = r.pe().resume(1);
+    CHECK(!rs.ok);
+    CHECK_EQ(rs.code, std::string("GAS_BUSY"));
+    CHECK(r.pe().is_paused(1));
+    r.c().end_gas(core::GasOwner::Leak, gen);
+    CHECK(r.pe().resume(1).ok);
+    CHECK(r.until([&] { return r.run_ended(1); }, 180000));
+    CHECK(r.phase_is(1, ProgramRunPhase::Completed));
+}
